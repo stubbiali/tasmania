@@ -791,11 +791,11 @@ def test1(data, subtests):
     state_new = dycore(state, {}, timestep)
 
     for key in state:
-        with subtests.test(key=key):
-            if key == "time":
-                compare_datetimes(state["time"], state_dc["time"])
-            else:
-                compare_arrays(state[key].values, state_dc[key].values)
+        # with subtests.test(key=key):
+        if key == "time":
+            compare_datetimes(state["time"], state_dc["time"])
+        else:
+            compare_arrays(state[key].values, state_dc[key].values)
 
     assert "time" in state_new
     compare_datetimes(state_new["time"], state["time"] + timestep)
@@ -836,13 +836,13 @@ def test1(data, subtests):
     )
 
     for name in state_new:
-        with subtests.test(name=name):
-            if name != "time":
-                compare_arrays(
-                    state_new[name].values[:-1, :-1, :-1],
-                    raw_state_new_val[name][:-1, :-1, :-1],
-                    # atol=1e-6,
-                )
+        # with subtests.test(name=name):
+        if name != "time":
+            compare_arrays(
+                state_new[name].values[:-1, :-1, :-1],
+                raw_state_new_val[name][:-1, :-1, :-1],
+                # atol=1e-6,
+            )
 
 
 @settings(
@@ -1066,11 +1066,11 @@ def test2(data, subtests):
     state_new = dycore(state, tendencies, timestep)
 
     for key in state:
-        with subtests.test(key=key):
-            if key == "time":
-                compare_datetimes(state["time"], state_dc["time"])
-            else:
-                compare_arrays(state[key].values, state_dc[key].values)
+        # with subtests.test(key=key):
+        if key == "time":
+            compare_datetimes(state["time"], state_dc["time"])
+        else:
+            compare_arrays(state[key].values, state_dc[key].values)
 
     assert "time" in state_new
     compare_datetimes(state_new["time"], state["time"] + timestep)
@@ -1116,13 +1116,13 @@ def test2(data, subtests):
     )
 
     for name in state_new:
-        with subtests.test(name=name):
-            if name != "time":
-                compare_arrays(
-                    state_new[name].values[:-1, :-1, :-1],
-                    raw_state_new_val[name][:-1, :-1, :-1],
-                    # atol=1e-6,
-                )
+        # with subtests.test(name=name):
+        if name != "time":
+            compare_arrays(
+                state_new[name].values[:-1, :-1, :-1],
+                raw_state_new_val[name][:-1, :-1, :-1],
+                # atol=1e-6,
+            )
 
 
 @settings(
@@ -1357,11 +1357,11 @@ def test3(data, subtests):
     state_new = dycore(state, tendencies, timestep)
 
     for key in state:
-        with subtests.test(key=key):
-            if key == "time":
-                compare_datetimes(state["time"], state_dc["time"])
-            else:
-                compare_arrays(state[key], state_dc[key])
+        # with subtests.test(key=key):
+        if key == "time":
+            compare_datetimes(state["time"], state_dc["time"])
+        else:
+            compare_arrays(state[key], state_dc[key])
 
     assert "time" in state_new
     compare_datetimes(state_new["time"], state["time"] + timestep)
@@ -1564,13 +1564,13 @@ def test3(data, subtests):
     )
 
     for name in state_new:
-        with subtests.test(name=name):
-            if name != "time":
-                compare_arrays(
-                    state_new[name].values[:-1, :-1, :-1],
-                    raw_state_3[name][:-1, :-1, :-1],
-                    # atol=1e-6,
-                )
+        # with subtests.test(name=name):
+        if name != "time":
+            compare_arrays(
+                state_new[name].values[:-1, :-1, :-1],
+                raw_state_3[name][:-1, :-1, :-1],
+                # atol=1e-6,
+            )
 
 
 @settings(
@@ -1831,11 +1831,11 @@ def test4(data, subtests):
     state_new = dycore(state, tendencies, timestep)
 
     for key in state:
-        with subtests.test(key=key):
-            if key == "time":
-                compare_datetimes(state["time"], state_dc["time"])
-            else:
-                compare_arrays(state[key], state_dc[key])
+        # with subtests.test(key=key):
+        if key == "time":
+            compare_datetimes(state["time"], state_dc["time"])
+        else:
+            compare_arrays(state[key], state_dc[key])
 
     assert "time" in state_new
     compare_datetimes(state_new["time"], state["time"] + timestep)
@@ -2092,13 +2092,13 @@ def test4(data, subtests):
         )
 
     for name in state_new:
-        with subtests.test(name=name):
-            if name != "time":
-                compare_arrays(
-                    state_new[name].values[:-1, :-1, :-1],
-                    raw_state_3[name][:-1, :-1, :-1],
-                    # atol=1e-6,
-                )
+        # with subtests.test(name=name):
+        if name != "time":
+            compare_arrays(
+                state_new[name].values[:-1, :-1, :-1],
+                raw_state_3[name][:-1, :-1, :-1],
+                # atol=1e-6,
+            )
 
 
 class FooTendencyComponent(TendencyComponent):
@@ -2373,11 +2373,11 @@ def test5(data, subtests):
     state_new = dycore(state, tendencies, timestep)
 
     for key in state:
-        with subtests.test(key=key):
-            if key == "time":
-                compare_datetimes(state["time"], state_dc["time"])
-            else:
-                compare_arrays(state[key], state_dc[key])
+        # with subtests.test(key=key):
+        if key == "time":
+            compare_datetimes(state["time"], state_dc["time"])
+        else:
+            compare_arrays(state[key], state_dc[key])
 
     assert "time" in state_new
     # compare_datetimes(state_new["time"], state["time"] + timestep)
@@ -2584,24 +2584,24 @@ def test5(data, subtests):
     )
 
     for name in state_new:
-        with subtests.test(name=name):
-            if name != "time":
-                compare_arrays(
-                    state_new[name].values[:-1, :-1, :-1],
-                    raw_state_3[name][:-1, :-1, :-1],
-                    # atol=1e-6,
-                )
+        # with subtests.test(name=name):
+        if name != "time":
+            compare_arrays(
+                state_new[name].values[:-1, :-1, :-1],
+                raw_state_3[name][:-1, :-1, :-1],
+                # atol=1e-6,
+            )
 
     gt.storage.prepare_numpy()
 
     state_new = dycore(state, tendencies_dc, timestep)
 
     for key in state:
-        with subtests.test(key=key):
-            if key == "time":
-                compare_datetimes(state["time"], state_dc["time"])
-            else:
-                compare_arrays(state[key], state_dc[key])
+        # with subtests.test(key=key):
+        if key == "time":
+            compare_datetimes(state["time"], state_dc["time"])
+        else:
+            compare_arrays(state[key], state_dc[key])
 
     assert "time" in state_new
     # compare_datetimes(state_new["time"], state["time"] + timestep)
@@ -2717,13 +2717,13 @@ def test5(data, subtests):
     )
 
     for name in state_new:
-        with subtests.test(name=name):
-            if name != "time":
-                compare_arrays(
-                    state_new[name].values[:-1, :-1, :-1],
-                    raw_state_6[name][:-1, :-1, :-1],
-                    # atol=1e-6,
-                )
+        # with subtests.test(name=name):
+        if name != "time":
+            compare_arrays(
+                state_new[name].values[:-1, :-1, :-1],
+                raw_state_6[name][:-1, :-1, :-1],
+                # atol=1e-6,
+            )
 
 
 if __name__ == "__main__":

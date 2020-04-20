@@ -183,13 +183,13 @@ def validation(
         output_names.append(mfpw)
 
     for name in input_names:
-        with subtests.test(name=name):
-            assert name in fluxer.input_properties
+        # with subtests.test(name=name):
+        assert name in fluxer.input_properties
     assert len(fluxer.input_properties) == len(input_names)
 
     for name in output_names:
-        with subtests.test(name=name):
-            assert name in fluxer.tendency_properties
+        # with subtests.test(name=name):
+        assert name in fluxer.tendency_properties
     assert len(fluxer.tendency_properties) == len(output_names)
 
     assert fluxer.diagnostic_properties == {}

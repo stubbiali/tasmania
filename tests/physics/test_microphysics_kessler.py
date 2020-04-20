@@ -251,13 +251,13 @@ def test_kessler_microphysics(data, subtests):
     tendencies, diagnostics = kessler(state)
 
     for name in tendency_names:
-        with subtests.test(name=name):
-            assert name in tendencies
+        # with subtests.test(name=name):
+        assert name in tendencies
     assert len(tendencies) == len(tendency_names)
 
     for name in diagnostic_names:
-        with subtests.test(name=name):
-            assert name in diagnostics
+        # with subtests.test(name=name):
+        assert name in diagnostics
     assert len(diagnostics) == len(diagnostic_names)
 
     rho = state["air_density"].to_units("kg m^-3").values[:nx, :ny, :nz]

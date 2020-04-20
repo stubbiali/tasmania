@@ -213,17 +213,17 @@ def test(data, subtests):
         )
         units = ("kg m^-2 K^-1 s^-1", "kg m^-1 K^-1 s^-2", "kg m^-1 K^-1 s^-2")
         for i in range(len(names)):
-            with subtests.test(diff_type=diff_type, name=names[i]):
-                assert names[i] in tendencies
-                field_val = get_dataarray_3d(
-                    val[names[i]],
-                    grid,
-                    units[i],
-                    name=names[i],
-                    grid_shape=(nx, ny, nz),
-                    set_coordinates=False,
-                )
-                compare_dataarrays(tendencies[names[i]], field_val)
+            # with subtests.test(diff_type=diff_type, name=names[i]):
+            assert names[i] in tendencies
+            field_val = get_dataarray_3d(
+                val[names[i]],
+                grid,
+                units[i],
+                name=names[i],
+                grid_shape=(nx, ny, nz),
+                set_coordinates=False,
+            )
+            compare_dataarrays(tendencies[names[i]], field_val)
 
         assert len(tendencies) == len(names)
 
@@ -269,17 +269,17 @@ def test(data, subtests):
             "g g^-1 s^-1",
         )
         for i in range(len(names)):
-            with subtests.test(diff_type=diff_type, name=names[i]):
-                assert names[i] in tendencies
-                field_val = get_dataarray_3d(
-                    val[names[i]],
-                    grid,
-                    units[i],
-                    name=names[i],
-                    grid_shape=(nx, ny, nz),
-                    set_coordinates=False,
-                )
-                compare_dataarrays(tendencies[names[i]], field_val)
+            # with subtests.test(diff_type=diff_type, name=names[i]):
+            assert names[i] in tendencies
+            field_val = get_dataarray_3d(
+                val[names[i]],
+                grid,
+                units[i],
+                name=names[i],
+                grid_shape=(nx, ny, nz),
+                set_coordinates=False,
+            )
+            compare_dataarrays(tendencies[names[i]], field_val)
 
         assert len(tendencies) == len(names)
 

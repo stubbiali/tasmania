@@ -164,11 +164,11 @@ def test_implicit(data, make_fake_tendency_component_1, subtests):
     out_state.pop("time", None)
     assert len(out_state) == len(diagnostics_val)
     for name in out_state:
-        with subtests.test(name=name):
-            assert name in diagnostics_val
-            compare_dataarrays(
-                out_state[name], diagnostics_val[name], compare_coordinate_values=False
-            )
+        # with subtests.test(name=name):
+        assert name in diagnostics_val
+        compare_dataarrays(
+            out_state[name], diagnostics_val[name], compare_coordinate_values=False
+        )
 
 
 if __name__ == "__main__":

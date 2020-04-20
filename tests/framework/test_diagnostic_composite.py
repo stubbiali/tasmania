@@ -220,13 +220,13 @@ def test_serial(data, subtests):
     diagnostics = dcc(state, timestep)
 
     for key in state:
-        with subtests.test(key=key):
-            if key == "time":
-                compare_datetimes(state["time"], state_dc["time"])
-            else:
-                compare_dataarrays(
-                    state[key], state_dc[key], compare_coordinate_values=False
-                )
+        # with subtests.test(key=key):
+        if key == "time":
+            compare_datetimes(state["time"], state_dc["time"])
+        else:
+            compare_dataarrays(
+                state[key], state_dc[key], compare_coordinate_values=False
+            )
 
     assert len(state) == len(state_dc)
 
@@ -431,13 +431,13 @@ def test_asparallel(data, subtests):
     diagnostics = dcc(state, timestep)
 
     for key in state:
-        with subtests.test(key=key):
-            if key == "time":
-                compare_datetimes(state["time"], state_dc["time"])
-            else:
-                compare_dataarrays(
-                    state[key], state_dc[key], compare_coordinate_values=False
-                )
+        # with subtests.test(key=key):
+        if key == "time":
+            compare_datetimes(state["time"], state_dc["time"])
+        else:
+            compare_dataarrays(
+                state[key], state_dc[key], compare_coordinate_values=False
+            )
 
     assert len(state) == len(state_dc)
 
