@@ -29,7 +29,7 @@ from hypothesis import (
 )
 import pytest
 
-import gt4py
+import gt4py as gt
 
 from tasmania.python.domain.grid import NumericalGrid
 from tasmania.python.domain.horizontal_boundaries.dirichlet import (
@@ -141,7 +141,7 @@ def test_enforce_raw(data):
     backend = data.draw(st_one_of(conf_backend), label="backend")
 
     if gt_powered:
-        gt4py.storage.prepare_numpy()
+        gt.storage.prepare_numpy()
 
     pgrid = data.draw(st_physical_grid(), label="grid")
     hb = data.draw(st_horizontal_boundary(pgrid.nx, pgrid.ny), label="hb")
@@ -195,7 +195,7 @@ def test_enforce(data):
     backend = data.draw(st_one_of(conf_backend), label="backend")
 
     if gt_powered:
-        gt4py.storage.prepare_numpy()
+        gt.storage.prepare_numpy()
 
     pgrid = data.draw(st_physical_grid(), label="grid")
     hb = data.draw(st_horizontal_boundary(pgrid.nx, pgrid.ny), label="hb")

@@ -30,7 +30,7 @@ from hypothesis import (
 )
 import pytest
 
-import gt4py
+import gt4py as gt
 
 from tasmania.python.domain.domain import Domain
 from tasmania.python.domain.horizontal_boundary import HorizontalBoundary
@@ -78,7 +78,7 @@ def test(data, subtests):
     dtype = data.draw(st_one_of(conf_dtype), label="dtype")
 
     if gt_powered:
-        gt4py.storage.prepare_numpy()
+        gt.storage.prepare_numpy()
 
     nx = data.draw(st_length(axis_name="x"), label="nx")
     ny = data.draw(st_length(axis_name="y"), label="ny")

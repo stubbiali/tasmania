@@ -31,7 +31,7 @@ from hypothesis import (
 import numpy as np
 import pytest
 
-import gt4py
+import gt4py as gt
 
 from tasmania.python.domain.horizontal_boundary import HorizontalBoundary
 
@@ -154,7 +154,7 @@ def test_field(data):
     dtype = data.draw(st_one_of(conf_dtype), label="dtype")
 
     if gt_powered:
-        gt4py.storage.prepare_numpy()
+        gt.storage.prepare_numpy()
 
     grid = data.draw(
         st_physical_grid(xaxis_length=(2, None), yaxis_length=(2, None)), label="grid"
@@ -265,7 +265,7 @@ def test_enforce(data):
     dtype = data.draw(st_one_of(conf_dtype), label="dtype")
 
     if gt_powered:
-        gt4py.storage.prepare_numpy()
+        gt.storage.prepare_numpy()
 
     grid = data.draw(
         st_physical_grid(xaxis_length=(2, None), yaxis_length=(2, None)), label="grid"
@@ -355,7 +355,7 @@ def test_outermost_layers(data):
     dtype = data.draw(st_one_of(conf_dtype), label="dtype")
 
     if gt_powered:
-        gt4py.storage.prepare_numpy()
+        gt.storage.prepare_numpy()
 
     grid = data.draw(
         st_physical_grid(xaxis_length=(2, None), yaxis_length=(2, None)), label="grid"
