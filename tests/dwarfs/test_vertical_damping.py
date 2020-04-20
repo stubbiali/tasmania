@@ -21,7 +21,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 from hypothesis import (
-    assume,
     given,
     HealthCheck,
     reproduce_failure,
@@ -30,6 +29,8 @@ from hypothesis import (
 )
 from pandas import Timedelta
 import pytest
+
+import gt4py as gt
 
 from tasmania.python.dwarfs.vertical_damping import VerticalDamping as VD
 from tasmania.python.utils.storage_utils import zeros
@@ -100,6 +101,9 @@ def test_rayleigh(data):
     backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    if gt_powered:
+        gt.storage.prepare_numpy()
 
     domain = data.draw(
         st_domain(

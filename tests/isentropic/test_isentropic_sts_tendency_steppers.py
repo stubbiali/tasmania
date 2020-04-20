@@ -31,7 +31,7 @@ from hypothesis import (
 )
 import pytest
 
-import gt4py
+import gt4py as gt
 
 from tasmania.python.isentropic.physics.implicit_vertical_advection import (
     IsentropicImplicitVerticalAdvectionDiagnostic,
@@ -163,20 +163,20 @@ def validation(
         output_names.append(mfpw)
 
     for name in input_names:
-        with subtests.test(name=name):
-            assert name in stepper.input_properties
+        # with subtests.test(name=name):
+        assert name in stepper.input_properties
     assert len(stepper.input_properties) == len(input_names)
 
     for name in prv_input_names:
-        with subtests.test(name=name):
-            assert name in stepper.provisional_input_properties
+        # with subtests.test(name=name):
+        assert name in stepper.provisional_input_properties
     assert len(stepper.provisional_input_properties) == len(prv_input_names)
 
     assert stepper.diagnostic_properties == {}
 
     for name in output_names:
-        with subtests.test(name=name):
-            assert name in stepper.output_properties
+        # with subtests.test(name=name):
+        assert name in stepper.output_properties
     assert len(stepper.output_properties) == len(output_names)
 
     if toaptoil:
@@ -333,8 +333,6 @@ def validation(
 )
 @given(data=hyp_st.data())
 def test_isentropic_vertical_advection_dry(data, subtests):
-    gt4py.storage.prepare_numpy()
-
     # ========================================
     # random data generation
     # ========================================
@@ -342,6 +340,9 @@ def test_isentropic_vertical_advection_dry(data, subtests):
     backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    if gt_powered:
+        gt.storage.prepare_numpy()
 
     domain = data.draw(
         st_domain(gt_powered=gt_powered, backend=backend, dtype=dtype), label="domain"
@@ -442,8 +443,6 @@ def test_isentropic_vertical_advection_dry(data, subtests):
 )
 @given(data=hyp_st.data())
 def test_isentropic_vertical_advection_moist(data, subtests):
-    gt4py.storage.prepare_numpy()
-
     # ========================================
     # random data generation
     # ========================================
@@ -451,6 +450,9 @@ def test_isentropic_vertical_advection_moist(data, subtests):
     backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    if gt_powered:
+        gt.storage.prepare_numpy()
 
     domain = data.draw(
         st_domain(gt_powered=gt_powered, backend=backend, dtype=dtype), label="domain"

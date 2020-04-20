@@ -22,7 +22,6 @@
 #
 from copy import deepcopy
 from hypothesis import (
-    assume,
     given,
     HealthCheck,
     reproduce_failure,
@@ -30,6 +29,8 @@ from hypothesis import (
     strategies as hyp_st,
 )
 import pytest
+
+import gt4py as gt
 
 from tasmania.python.dwarfs.horizontal_smoothing import HorizontalSmoothing as HS
 from tasmania.python.utils.storage_utils import zeros
@@ -162,6 +163,9 @@ def test_first_order(data):
     backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    if gt_powered:
+        gt.storage.prepare_numpy()
 
     nb = data.draw(hyp_st.integers(min_value=1, max_value=max(1, conf_nb)), label="nb")
     domain = data.draw(
@@ -315,6 +319,9 @@ def test_second_order(data):
     backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    if gt_powered:
+        gt.storage.prepare_numpy()
 
     nb = data.draw(hyp_st.integers(min_value=2, max_value=max(2, conf_nb)), label="nb")
     domain = data.draw(
@@ -490,6 +497,9 @@ def test_third_order(data):
     backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    if gt_powered:
+        gt.storage.prepare_numpy()
 
     nb = data.draw(hyp_st.integers(min_value=3, max_value=max(3, conf_nb)), label="nb")
     domain = data.draw(

@@ -21,7 +21,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 from hypothesis import (
-    assume,
     given,
     HealthCheck,
     reproduce_failure,
@@ -54,8 +53,6 @@ from tests.utilities import compare_arrays
 )
 @given(hyp_st.data())
 def test_horizontal_velocity_staggered(data):
-    gt.storage.prepare_numpy()
-
     # ========================================
     # random data generation
     # ========================================
@@ -63,6 +60,9 @@ def test_horizontal_velocity_staggered(data):
     backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    if gt_powered:
+        gt.storage.prepare_numpy()
 
     domain = data.draw(
         st_domain(
@@ -178,9 +178,6 @@ def test_horizontal_velocity_staggered(data):
 )
 @given(hyp_st.data())
 def test_horizontal_velocity(data):
-    # comment the following line to prevent segfault
-    gt.storage.prepare_numpy()
-
     # ========================================
     # random data generation
     # ========================================
@@ -188,6 +185,10 @@ def test_horizontal_velocity(data):
     backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    if gt_powered:
+        # comment the following line to prevent segfault
+        gt.storage.prepare_numpy()
 
     domain = data.draw(
         st_domain(
@@ -303,9 +304,6 @@ def test_horizontal_velocity(data):
 )
 @given(hyp_st.data())
 def test_water_constituent(data):
-    # comment the following line to prevent segfault
-    gt.storage.prepare_numpy()
-
     # ========================================
     # random data generation
     # ========================================
@@ -313,6 +311,10 @@ def test_water_constituent(data):
     backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    if gt_powered:
+        # comment the following line to prevent segfault
+        gt.storage.prepare_numpy()
 
     domain = data.draw(
         st_domain(

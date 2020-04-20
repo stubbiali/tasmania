@@ -294,8 +294,6 @@ def validation(
 )
 @given(data=hyp_st.data())
 def test_upwind(data, subtests):
-    gt.storage.prepare_numpy()
-
     # ========================================
     # random data generation
     # ========================================
@@ -303,6 +301,9 @@ def test_upwind(data, subtests):
     backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    if gt_powered:
+        gt.storage.prepare_numpy()
 
     domain = data.draw(
         st_domain(
@@ -410,8 +411,6 @@ def test_upwind(data, subtests):
 )
 @given(data=hyp_st.data())
 def test_centered(data, subtests):
-    gt.storage.prepare_numpy()
-
     # ========================================
     # random data generation
     # ========================================
@@ -419,6 +418,9 @@ def test_centered(data, subtests):
     backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    if gt_powered:
+        gt.storage.prepare_numpy()
 
     domain = data.draw(
         st_domain(
@@ -526,8 +528,6 @@ def test_centered(data, subtests):
 )
 @given(data=hyp_st.data())
 def test_third_order_upwind(data, subtests):
-    gt.storage.prepare_numpy()
-
     # ========================================
     # random data generation
     # ========================================
@@ -535,6 +535,9 @@ def test_third_order_upwind(data, subtests):
     backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    if gt_powered:
+        gt.storage.prepare_numpy()
 
     domain = data.draw(
         st_domain(
@@ -642,8 +645,6 @@ def test_third_order_upwind(data, subtests):
 )
 @given(data=hyp_st.data())
 def _test_fifth_order_upwind(data, subtests):
-    gt.storage.prepare_numpy()
-
     # ========================================
     # random data generation
     # ========================================

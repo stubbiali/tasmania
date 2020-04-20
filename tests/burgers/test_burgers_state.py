@@ -114,8 +114,6 @@ def test_zhao_solution_factory(data):
 )
 @given(hyp_st.data())
 def test_zhao_state_factory(data):
-    gt.storage.prepare_numpy()
-
     # ========================================
     # random data generation
     # ========================================
@@ -127,12 +125,14 @@ def test_zhao_state_factory(data):
     )
 
     init_time = data.draw(hyp_st.datetimes())
-    time = data.draw(hyp_st.datetimes(min_value=init_time))
 
     gt_powered = data.draw(hyp_st.booleans())
     backend = data.draw(st_one_of(conf_backend))
     dtype = grid.x.dtype
     default_origin = data.draw(st_one_of(conf_dorigin))
+
+    if gt_powered:
+        gt.storage.prepare_numpy()
 
     # ========================================
     # test

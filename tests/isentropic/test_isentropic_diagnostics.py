@@ -77,6 +77,9 @@ def test_diagnostic_variables(data):
     dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
+    if gt_powered:
+        gt.storage.prepare_numpy()
+
     grid = data.draw(
         st_physical_grid(zaxis_name="z", zaxis_length=(2, 20), dtype=dtype), label="grid"
     )
@@ -200,6 +203,9 @@ def test_montgomery(data):
     dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
+    if gt_powered:
+        gt.storage.prepare_numpy()
+
     grid = data.draw(
         st_physical_grid(zaxis_name="z", zaxis_length=(2, 20), dtype=dtype), label="grid"
     )
@@ -289,6 +295,9 @@ def test_height(data):
     backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    if gt_powered:
+        gt.storage.prepare_numpy()
 
     grid = data.draw(
         st_physical_grid(zaxis_name="z", zaxis_length=(2, 20), dtype=dtype), label="grid"
@@ -380,6 +389,9 @@ def test_density_and_temperature(data):
     backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    if gt_powered:
+        gt.storage.prepare_numpy()
 
     grid = data.draw(
         st_physical_grid(zaxis_name="z", zaxis_length=(2, 20)), label="grid"
@@ -531,8 +543,6 @@ unit_registry = UnitRegistry()
 )
 @given(hyp_st.data())
 def test_isentropic_diagnostics(data):
-    gt.storage.prepare_numpy()
-
     # ========================================
     # random data generation
     # ========================================
@@ -540,6 +550,9 @@ def test_isentropic_diagnostics(data):
     backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    if gt_powered:
+        gt.storage.prepare_numpy()
 
     domain = data.draw(
         st_domain(gt_powered=gt_powered, backend=backend, dtype=dtype), label="domain"
@@ -732,8 +745,6 @@ def test_isentropic_diagnostics(data):
 )
 @given(hyp_st.data())
 def test_horizontal_velocity(data):
-    gt.storage.prepare_numpy()
-
     # ========================================
     # random data generation
     # ========================================
@@ -741,6 +752,9 @@ def test_horizontal_velocity(data):
     backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    if gt_powered:
+        gt.storage.prepare_numpy()
 
     domain = data.draw(st_domain(), label="domain")
     hb = domain.horizontal_boundary

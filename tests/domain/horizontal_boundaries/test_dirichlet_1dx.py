@@ -37,15 +37,13 @@ from tasmania.python.domain.horizontal_boundary import HorizontalBoundary
 from tasmania.python.domain.grid import NumericalGrid
 
 from tests.conf import backend as conf_backend, datatype as conf_dtype
-from tests.utilities import (
-    compare_arrays,
-    compare_dataarrays,
-    pi_function,
+from tests.strategies import (
     st_horizontal_boundary_layers,
     st_one_of,
     st_physical_grid,
     st_raw_field,
 )
+from tests.utilities import compare_arrays, compare_dataarrays, pi_function
 
 
 @settings(

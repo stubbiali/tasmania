@@ -25,14 +25,14 @@ from hypothesis import (
     given,
     HealthCheck,
     reproduce_failure,
-    seed,
     settings,
     strategies as hyp_st,
 )
 import numpy as np
 import pytest
 
-from gt4py import gtscript, storage as gt_storage, __externals__
+from gt4py import gtscript, storage as gt_storage
+from gt4py.gtscript import PARALLEL, computation, interval
 
 from tasmania.python.burgers.dynamics.advection import BurgersAdvection
 from tasmania.python.utils.storage_utils import zeros
@@ -813,6 +813,159 @@ def test_fifth_order_gt(data):
 
     adv_u_x_val, adv_u_y_val = fifth_order_advection(dx, dy, u, v, u)
     adv_v_x_val, adv_v_y_val = fifth_order_advection(dx, dy, u, v, v)
+
+    compare_arrays(adv_u_x[nb:-nb, nb:-nb], adv_u_x_val[nb:-nb, nb:-nb])
+    compare_arrays(adv_u_y[nb:-nb, nb:-nb], adv_u_y_val[nb:-nb, nb:-nb])
+    compare_arrays(adv_v_x[nb:-nb, nb:-nb], adv_v_x_val[nb:-nb, nb:-nb])
+    compare_arrays(adv_v_y[nb:-nb, nb:-nb], adv_v_y_val[nb:-nb, nb:-nb])
+
+
+def sixth_order_advection(dx, dy, u, v, phi):
+    adv_x = deepcopy(phi)
+    adv_x[3:-3, :, :] = (
+        u[3:-3, :, :]
+        / (60.0 * dx)
+        * (
+            45.0 * (phi[4:-2, :, :] - phi[2:-4, :, :])
+            - 9.0 * (phi[5:-1, :, :] - phi[1:-5, :, :])
+            + (phi[6:, :, :] - phi[:-6, :, :])
+        )
+    )
+
+    adv_y = deepcopy(phi)
+    adv_y[:, 3:-3, :] = (
+        v[:, 3:-3, :]
+        / (60.0 * dy)
+        * (
+            45.0 * (phi[:, 4:-2, :] - phi[:, 2:-4, :])
+            - 9.0 * (phi[:, 5:-1, :] - phi[:, 1:-5, :])
+            + (phi[:, 6:, :] - phi[:, :-6, :])
+        )
+    )
+
+    return adv_x, adv_y
+
+
+@settings(
+    suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
+    deadline=None,
+)
+@given(hyp_st.data())
+def test_sixth_order_numpy(data):
+    # ========================================
+    # random data generation
+    # ========================================
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    nb = data.draw(hyp_st.integers(min_value=3, max_value=max(3, conf_nb)), label="nb")
+    grid = data.draw(
+        st_physical_grid(
+            xaxis_length=(2 * nb + 1, 40),
+            yaxis_length=(2 * nb + 1, 40),
+            zaxis_length=(1, 1),
+            dtype=dtype,
+        ),
+        label="grid",
+    )
+    state = data.draw(st_burgers_state(grid, gt_powered=False), label="state")
+
+    # ========================================
+    # test test
+    # ========================================
+    dx = grid.grid_xy.dx.to_units("m").values.item()
+    dy = grid.grid_xy.dy.to_units("m").values.item()
+    u = state["x_velocity"].to_units("m s^-1").values
+    v = state["y_velocity"].to_units("m s^-1").values
+
+    advection = BurgersAdvection.factory("sixth_order", gt_powered=False)
+    adv_u_x, adv_u_y, adv_v_x, adv_v_y = advection.call(dx, dy, u, v)
+
+    adv_u_x_val, adv_u_y_val = sixth_order_advection(dx, dy, u, v, u)
+    adv_v_x_val, adv_v_y_val = sixth_order_advection(dx, dy, u, v, v)
+
+    compare_arrays(adv_u_x, adv_u_x_val[3:-3, 3:-3])
+    compare_arrays(adv_u_y, adv_u_y_val[3:-3, 3:-3])
+    compare_arrays(adv_v_x, adv_v_x_val[3:-3, 3:-3])
+    compare_arrays(adv_v_y, adv_v_y_val[3:-3, 3:-3])
+
+
+@settings(
+    suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
+    deadline=None,
+)
+@given(hyp_st.data())
+def test_sixth_order_gt(data):
+    gt_storage.prepare_numpy()
+
+    # ========================================
+    # random data generation
+    # ========================================
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    nb = data.draw(hyp_st.integers(min_value=3, max_value=max(3, conf_nb)), label="nb")
+    grid = data.draw(
+        st_physical_grid(
+            xaxis_length=(2 * nb + 1, 40),
+            yaxis_length=(2 * nb + 1, 40),
+            zaxis_length=(1, 1),
+            dtype=dtype,
+        ),
+        label="grid",
+    )
+    state = data.draw(
+        st_burgers_state(
+            grid, gt_powered=True, backend=backend, default_origin=default_origin
+        ),
+        label="state",
+    )
+
+    # ========================================
+    # test test
+    # ========================================
+    dx = grid.grid_xy.dx.to_units("m").values.item()
+    dy = grid.grid_xy.dy.to_units("m").values.item()
+    u = state["x_velocity"].to_units("m s^-1").values
+    v = state["y_velocity"].to_units("m s^-1").values
+
+    grid_shape = u.shape
+    adv_u_x = zeros(
+        grid_shape,
+        gt_powered=True,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
+    adv_u_y = zeros(
+        grid_shape,
+        gt_powered=True,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
+    adv_v_x = zeros(
+        grid_shape,
+        gt_powered=True,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
+    adv_v_y = zeros(
+        grid_shape,
+        gt_powered=True,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
+
+    advection = BurgersAdvection.factory("sixth_order", gt_powered=True)
+
+    ws = WrappingStencil(advection, nb, backend, dtype)
+
+    ws(dx, dy, u, v, adv_u_x, adv_u_y, adv_v_x, adv_v_y)
+
+    adv_u_x_val, adv_u_y_val = sixth_order_advection(dx, dy, u, v, u)
+    adv_v_x_val, adv_v_y_val = sixth_order_advection(dx, dy, u, v, v)
 
     compare_arrays(adv_u_x[nb:-nb, nb:-nb], adv_u_x_val[nb:-nb, nb:-nb])
     compare_arrays(adv_u_y[nb:-nb, nb:-nb], adv_u_y_val[nb:-nb, nb:-nb])

@@ -56,8 +56,6 @@ mfwv = "mass_fraction_of_water_vapor_in_air"
 )
 @given(hyp_st.data())
 def test_dry(data):
-    gt.storage.prepare_numpy()
-
     # ========================================
     # random data generation
     # ========================================
@@ -65,6 +63,9 @@ def test_dry(data):
     backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    if gt_powered:
+        gt.storage.prepare_numpy()
 
     domain = data.draw(
         st_domain(
@@ -205,8 +206,6 @@ def test_dry(data):
 )
 @given(hyp_st.data())
 def test_moist(data):
-    gt.storage.prepare_numpy()
-
     # ========================================
     # random data generation
     # ========================================
@@ -214,6 +213,9 @@ def test_moist(data):
     backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    if gt_powered:
+        gt.storage.prepare_numpy()
 
     domain = data.draw(
         st_domain(

@@ -36,7 +36,8 @@ from gt4py.gtscript import PARALLEL, computation, interval
 from tasmania.python.utils.storage_utils import zeros
 
 from tests.conf import default_origin as conf_dorigin
-from tests.utilities import compare_arrays, st_one_of, st_raw_field
+from tests.strategies import st_one_of, st_raw_field
+from tests.utilities import compare_arrays
 
 
 @gtscript.function

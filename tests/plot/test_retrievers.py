@@ -35,7 +35,8 @@ from sympl import DataArray
 from tasmania.python.plot.retrievers import DataRetriever, DataRetrieverComposite
 from tasmania import get_dataarray_3d
 
-from tests.utilities import st_domain, st_isentropic_state_f, st_one_of
+from tests.strategies import st_domain, st_isentropic_state_f, st_one_of
+
 
 units = {
     "air_density": ("kg m^-3", "g cm^-3", None),

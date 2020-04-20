@@ -64,8 +64,6 @@ mfpw = "mass_fraction_of_precipitation_water_in_air"
 )
 @given(data=hyp_st.data())
 def test(data, subtests):
-    gt.storage.prepare_numpy()
-
     # ========================================
     # random data generation
     # ========================================
@@ -73,6 +71,9 @@ def test(data, subtests):
     backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_default_origin), label="default_origin")
+
+    if gt_powered:
+        gt.storage.prepare_numpy()
 
     nb = data.draw(hyp_st.integers(min_value=2, max_value=max(2, conf_nb)), label="nb")
     domain = data.draw(

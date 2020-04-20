@@ -85,8 +85,6 @@ def precipitation_validation(state, timestep, maxcfl, rhow):
 )
 @given(data=hyp_st.data())
 def test_clipping(data, subtests):
-    gt_storage.prepare_numpy()
-
     # ========================================
     # random data generation
     # ========================================
@@ -94,6 +92,9 @@ def test_clipping(data, subtests):
     backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    if gt_powered:
+        gt_storage.prepare_numpy()
 
     domain = data.draw(
         st_domain(
@@ -176,8 +177,6 @@ def test_clipping(data, subtests):
 )
 @given(hyp_st.data())
 def test_precipitation(data):
-    gt_storage.prepare_numpy()
-
     # ========================================
     # random data generation
     # ========================================
@@ -185,6 +184,9 @@ def test_precipitation(data):
     backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    if gt_powered:
+        gt_storage.prepare_numpy()
 
     domain = data.draw(
         st_domain(
@@ -377,8 +379,6 @@ flux_properties = {
 )
 @given(hyp_st.data())
 def test_sedimentation_flux(data):
-    gt_storage.prepare_numpy()
-
     # ========================================
     # random data generation
     # ========================================
@@ -386,6 +386,9 @@ def test_sedimentation_flux(data):
     backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    if gt_powered:
+        gt_storage.prepare_numpy()
 
     domain = data.draw(
         st_domain(

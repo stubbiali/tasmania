@@ -29,7 +29,7 @@ from hypothesis import (
 )
 import pytest
 
-from gt4py import gtscript
+from gt4py import gtscript, storage as gt_storage
 from gt4py.gtscript import PARALLEL, __INLINED, computation, interval
 
 from tasmania.python.isentropic.dynamics.horizontal_fluxes import (
@@ -638,6 +638,8 @@ def test_upwind_numpy(data):
 )
 @given(hyp_st.data())
 def test_upwind_gt(data):
+    gt_storage.prepare_numpy()
+
     # ========================================
     # random data generation
     # ========================================
@@ -737,6 +739,8 @@ def test_centered_numpy(data):
 )
 @given(hyp_st.data())
 def test_centered_gt(data):
+    gt_storage.prepare_numpy()
+
     # ========================================
     # random data generation
     # ========================================
@@ -848,6 +852,8 @@ def test_third_order_upwind_numpy(data):
 )
 @given(hyp_st.data())
 def test_third_order_upwind_gt(data):
+    gt_storage.prepare_numpy()
+
     # ========================================
     # random data generation
     # ========================================
@@ -954,6 +960,8 @@ def test_fifth_order_upwind_numpy(data):
 )
 @given(hyp_st.data())
 def test_fifth_order_upwind_gt(data):
+    gt_storage.prepare_numpy()
+
     # ========================================
     # random data generation
     # ========================================

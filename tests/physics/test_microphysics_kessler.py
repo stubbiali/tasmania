@@ -100,8 +100,6 @@ def kessler_validation(
 )
 @given(data=hyp_st.data())
 def test_kessler_microphysics(data, subtests):
-    gt.storage.prepare_numpy()
-
     # ========================================
     # random data generation
     # ========================================
@@ -109,6 +107,9 @@ def test_kessler_microphysics(data, subtests):
     backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    if gt_powered:
+        gt.storage.prepare_numpy()
 
     domain = data.draw(
         st_domain(gt_powered=gt_powered, backend=backend, dtype=dtype), label="domain"
@@ -346,8 +347,6 @@ def kessler_saturation_adjustment_diagnostic_validation(
 )
 @given(hyp_st.data())
 def test_kessler_saturation_adjustment_diagnostic(data):
-    gt.storage.prepare_numpy()
-
     # ========================================
     # random data generation
     # ========================================
@@ -355,6 +354,9 @@ def test_kessler_saturation_adjustment_diagnostic(data):
     backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    if gt_powered:
+        gt.storage.prepare_numpy()
 
     domain = data.draw(
         st_domain(gt_powered=gt_powered, backend=backend, dtype=dtype), label="domain"
@@ -553,8 +555,6 @@ def kessler_saturation_adjustment_prognostic_validation(
 )
 @given(hyp_st.data())
 def test_kessler_saturation_adjustment_prognostic(data):
-    gt.storage.prepare_numpy()
-
     # ========================================
     # random data generation
     # ========================================
@@ -562,6 +562,9 @@ def test_kessler_saturation_adjustment_prognostic(data):
     backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    if gt_powered:
+        gt.storage.prepare_numpy()
 
     domain = data.draw(
         st_domain(gt_powered=gt_powered, backend=backend, dtype=dtype), label="domain"
@@ -738,8 +741,6 @@ def kessler_fall_velocity_validation(rho, qr):
 )
 @given(hyp_st.data())
 def test_kessler_fall_velocity(data):
-    gt.storage.prepare_numpy()
-
     # ========================================
     # random data generation
     # ========================================
@@ -747,6 +748,9 @@ def test_kessler_fall_velocity(data):
     backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    if gt_powered:
+        gt.storage.prepare_numpy()
 
     domain = data.draw(
         st_domain(gt_powered=gt_powered, backend=backend, dtype=dtype), label="domain"
@@ -822,8 +826,6 @@ def test_kessler_fall_velocity(data):
 )
 @given(hyp_st.data())
 def test_kessler_sedimentation(data):
-    gt.storage.prepare_numpy()
-
     # ========================================
     # random data generation
     # ========================================
@@ -831,6 +833,9 @@ def test_kessler_sedimentation(data):
     backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    if gt_powered:
+        gt.storage.prepare_numpy()
 
     domain = data.draw(
         st_domain(

@@ -56,8 +56,6 @@ from tests.utilities import compare_dataarrays
 )
 @given(hyp_st.data())
 def test_conservative(data):
-    gt.storage.prepare_numpy()
-
     # ========================================
     # random data generation
     # ========================================
@@ -65,6 +63,9 @@ def test_conservative(data):
     backend = data.draw((st_one_of(conf_backend)), label="backend")
     dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw((st_one_of(conf_default_origin)), label="default_origin")
+
+    if gt_powered:
+        gt.storage.prepare_numpy()
 
     nb = data.draw(hyp_st.integers(min_value=1, max_value=max(1, conf_nb)), label="nb")
     domain = data.draw(

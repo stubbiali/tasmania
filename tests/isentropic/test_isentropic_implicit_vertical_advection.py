@@ -147,15 +147,15 @@ def validation_diagnostic(
         output_names.append(mfpw)
 
     for name in input_names:
-        with subtests.test(name=name):
-            assert name in fluxer.input_properties
+        # with subtests.test(name=name):
+        assert name in fluxer.input_properties
     assert len(fluxer.input_properties) == len(input_names)
 
     assert fluxer.tendency_properties == {}
 
     for name in output_names:
-        with subtests.test(name=name):
-            assert name in fluxer.diagnostic_properties
+        # with subtests.test(name=name):
+        assert name in fluxer.diagnostic_properties
     assert len(fluxer.diagnostic_properties) == len(output_names)
 
     if toaptoil:
@@ -284,8 +284,6 @@ def validation_diagnostic(
 )
 @given(data=hyp_st.data())
 def test_diagnostic_dry(data, subtests):
-    gt.storage.prepare_numpy()
-
     # ========================================
     # random data generation
     # ========================================
@@ -293,6 +291,9 @@ def test_diagnostic_dry(data, subtests):
     backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    if gt_powered:
+        gt.storage.prepare_numpy()
 
     domain = data.draw(
         st_domain(
@@ -381,8 +382,6 @@ def test_diagnostic_dry(data, subtests):
 )
 @given(data=hyp_st.data())
 def test_diagnostic_moist(data, subtests):
-    gt.storage.prepare_numpy()
-
     # ========================================
     # random data generation
     # ========================================
@@ -390,6 +389,9 @@ def test_diagnostic_moist(data, subtests):
     backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    if gt_powered:
+        gt.storage.prepare_numpy()
 
     domain = data.draw(
         st_domain(
@@ -573,8 +575,6 @@ def check_consistency(
 )
 @given(hyp_st.data())
 def test_diagnostic_consistency(data):
-    gt.storage.prepare_numpy()
-
     # ========================================
     # random data generation
     # ========================================
@@ -582,6 +582,9 @@ def test_diagnostic_consistency(data):
     backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    if gt_powered:
+        gt.storage.prepare_numpy()
 
     domain = data.draw(
         st_domain(
@@ -675,13 +678,13 @@ def validation_prognostic(
         output_names.append(mfpw)
 
     for name in input_names:
-        with subtests.test(name=name):
-            assert name in fluxer.input_properties
+        # with subtests.test(name=name):
+        assert name in fluxer.input_properties
     assert len(fluxer.input_properties) == len(input_names)
 
     for name in output_names:
-        with subtests.test(name=name):
-            assert name in fluxer.tendency_properties
+        # with subtests.test(name=name):
+        assert name in fluxer.tendency_properties
     assert len(fluxer.tendency_properties) == len(output_names)
 
     assert fluxer.diagnostic_properties == {}
@@ -815,8 +818,6 @@ def validation_prognostic(
 )
 @given(data=hyp_st.data())
 def test_prognostic_dry(data, subtests):
-    gt.storage.prepare_numpy()
-
     # ========================================
     # random data generation
     # ========================================
@@ -824,6 +825,9 @@ def test_prognostic_dry(data, subtests):
     backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    if gt_powered:
+        gt.storage.prepare_numpy()
 
     domain = data.draw(
         st_domain(
@@ -912,8 +916,6 @@ def test_prognostic_dry(data, subtests):
 )
 @given(data=hyp_st.data())
 def test_prognostic_moist(data, subtests):
-    gt.storage.prepare_numpy()
-
     # ========================================
     # random data generation
     # ========================================
@@ -921,6 +923,9 @@ def test_prognostic_moist(data, subtests):
     backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    if gt_powered:
+        gt.storage.prepare_numpy()
 
     domain = data.draw(
         st_domain(
