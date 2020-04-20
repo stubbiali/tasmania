@@ -26,3 +26,9 @@ exclude = '''
   | profiling
 )/
 '''
+
+[tool.coverage.run]
+omit = [
+    "tasmania/python/domain/grids/*",
+    "tasmania/python/domain/topographies/user_defined.py"
+]

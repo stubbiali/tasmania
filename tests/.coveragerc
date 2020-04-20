@@ -1,2 +1,4 @@
-[report]
-omit = ../tasmania/plot/animation.py
+[run]
+omit =
+    ../tasmania/python/domain/grids/*
+    ../tasmania/python/domain/topographies/user_defined.py
