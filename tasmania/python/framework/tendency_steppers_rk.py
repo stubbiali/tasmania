@@ -22,7 +22,7 @@
 #
 import numpy as np
 
-from tasmania.python.framework.tendency_steppers import TendencyStepper, registry
+from tasmania.python.framework.tendency_stepper import TendencyStepper, registry
 from tasmania.python.utils.framework_utils import get_increment
 
 

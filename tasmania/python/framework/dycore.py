@@ -47,13 +47,13 @@ from tasmania.python.utils.framework_utils import (
 )
 
 if TYPE_CHECKING:
-    from tasmania.python.grids.domain import Domain
-    from tasmania.python.grids.grid import Grid
-    from tasmania.python.grids.horizontal_boundary import HorizontalBoundary
+    from tasmania.python.domain.domain import Domain
+    from tasmania.python.domain.grid import Grid
+    from tasmania.python.domain.horizontal_boundary import HorizontalBoundary
 
 
 class DynamicalCore(abc.ABC):
-    """     
+    """
     Abstract base class representing a generic dynamical core based on the
     partial time-splitting method. Specification of the input requirements,
     implementation of the differential operators, and definition of the
@@ -619,7 +619,9 @@ class DynamicalCore(abc.ABC):
                 {} if self._fast_tends is None else self._fast_tends.input_properties
             )
             fast_params_diag_properties = (
-                {} if self._fast_tends is None else self._fast_tends.diagnostic_properties
+                {}
+                if self._fast_tends is None
+                else self._fast_tends.diagnostic_properties
             )
 
             # Add to the requirements the variables to feed the fast

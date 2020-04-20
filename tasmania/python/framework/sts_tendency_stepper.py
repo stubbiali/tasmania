@@ -113,7 +113,7 @@ class STSTendencyStepper(abc.ABC):
 
                 * :class:`tasmania.TendencyComponent`, or
                 * :class:`tasmania.ImplicitTendencyComponent`.
-                
+
         gt_powered : `bool`, optional
             `True` to perform all the intensive math operations harnessing GT4Py.
         backend : `str`, optional

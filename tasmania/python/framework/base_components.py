@@ -24,9 +24,9 @@ import abc
 import sympl
 from typing import Optional
 
-from tasmania.python.grids.domain import Domain
-from tasmania.python.grids.grid import Grid
-from tasmania.python.grids.horizontal_boundary import HorizontalBoundary
+from tasmania.python.domain.domain import Domain
+from tasmania.python.domain.grid import Grid
+from tasmania.python.domain.horizontal_boundary import HorizontalBoundary
 
 allowed_grid_types = ("physical", "numerical")
 

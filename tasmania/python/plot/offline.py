@@ -30,13 +30,13 @@ from tasmania.python.plot.plot_utils import make_lineplot
 from tasmania.python.utils import taz_types
 
 if TYPE_CHECKING:
-    from tasmania.python.grids.grid import Grid
+    from tasmania.python.domain.grid import Grid
 
 
 class Line(Drawer):
     """
     Draw a line by retrieving a scalar value from multiple states which might
-    be defined over different grids.
+    be defined over different domain.
     """
 
     def __init__(

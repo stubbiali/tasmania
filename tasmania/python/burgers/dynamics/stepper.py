@@ -25,15 +25,14 @@ import numpy as np
 from typing import Optional, TYPE_CHECKING
 
 from gt4py import gtscript, __externals__
-
-# from gt4py.__gtscript__ import computation, interval, PARALLEL
+from gt4py.gtscript import __INLINED, PARALLEL, computation, interval
 
 from tasmania.python.burgers.dynamics.advection import BurgersAdvection
 from tasmania.python.utils import taz_types
 from tasmania.python.utils.storage_utils import zeros
 
 if TYPE_CHECKING:
-    from tasmania.python.grids.horizontal_grid import HorizontalGrid
+    from tasmania.python.domain.horizontal_grid import HorizontalGrid
 
 
 class ForwardEulerStepNumpy:
@@ -41,7 +40,7 @@ class ForwardEulerStepNumpy:
         self.advection = advection
 
     def __call__(
-            self,
+        self,
         in_u: np.ndarray,
         in_v: np.ndarray,
         in_u_tmp: np.ndarray,
@@ -131,7 +130,7 @@ class BurgersStepper(abc.ABC):
         grid_xy: "HorizontalGrid",
         nb: int,
         flux_scheme: str,
-            gt_powered: bool,
+        gt_powered: bool,
         backend: str,
         backend_opts: taz_types.options_dict_t,
         build_info: taz_types.options_dict_t,
@@ -241,7 +240,7 @@ class BurgersStepper(abc.ABC):
         grid_xy: "HorizontalGrid",
         nb: int,
         flux_scheme: str,
-            gt_powered: bool,
+        gt_powered: bool,
         *,
         backend: str = "numpy",
         backend_opts: Optional[taz_types.options_dict_t] = None,
@@ -328,7 +327,7 @@ class ForwardEuler(BurgersStepper):
         grid_xy,
         nb,
         flux_scheme,
-            gt_powered,
+        gt_powered,
         backend,
         backend_opts,
         build_info,
@@ -447,7 +446,7 @@ class RK2(BurgersStepper):
         grid_xy,
         nb,
         flux_scheme,
-            gt_powered,
+        gt_powered,
         backend,
         backend_opts,
         build_info,
@@ -570,7 +569,7 @@ class RK3WS(RK2):
         grid_xy,
         nb,
         flux_scheme,
-            gt_powered,
+        gt_powered,
         backend,
         backend_opts,
         build_info,

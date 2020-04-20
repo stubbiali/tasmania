@@ -47,7 +47,8 @@ class Gaussian(PhysicalTopography):
         center_x=None,
         center_y=None,
         width_x=None,
-        width_y=None
+        width_y=None,
+        **kwargs
     ) -> None:
         """
         Parameters
@@ -79,6 +80,8 @@ class Gaussian(PhysicalTopography):
             1-item :class:`~sympl.DataArray` representing the mountain half-width
             in the :math:`y`-direction :math:`\sigma_y`. Defaults to 1, in the
             same units of the `y`-axis.
+        **kwargs :
+            Catch-all unused keyword arguments.
         """
         super().__init__(
             grid,
@@ -124,6 +127,8 @@ class Gaussian(PhysicalTopography):
 
         xx, yy = np.meshgrid(xv, yv, indexing="ij")
         topo_steady = np.zeros_like(xx, dtype=dtype)
-        topo_steady[...] = hmax * np.exp(-((xx - cx) / wx) ** 2 - ((yy - cy) / wy) ** 2)
+        topo_steady[...] = hmax * np.exp(
+            -(((xx - cx) / wx) ** 2) - ((yy - cy) / wy) ** 2
+        )
 
         return topo_steady

@@ -25,7 +25,7 @@ from typing import Optional, Tuple, Union
 
 from gt4py import gtscript
 
-from tasmania.python.framework.sts_tendency_steppers import STSTendencyStepper, registry
+from tasmania.python.framework.sts_tendency_stepper import STSTendencyStepper, registry
 from tasmania.python.isentropic.physics.implicit_vertical_advection import (
     IsentropicImplicitVerticalAdvectionDiagnostic,
 )
@@ -83,7 +83,7 @@ def setup_tridiagonal_system(
 
 @gtscript.function
 def setup_tridiagonal_system_bc(
-    phi_prv: taz_types.gtfield_t
+    phi_prv: taz_types.gtfield_t,
 ) -> "Tuple[taz_types.gtfield_t, taz_types.gtfield_t, taz_types.gtfield_t]":
     a = 0.0
     c = 0.0
@@ -305,15 +305,21 @@ class IsentropicVerticalAdvection(STSTendencyStepper):
             sqr = np.zeros_like(in_qr)
             sqr_prv = np.zeros_like(in_qv)
 
-            sqv[i, j, kstart:kstop] = in_s[i, j, kstart:kstop] * in_qv[i, j, kstart:kstop]
+            sqv[i, j, kstart:kstop] = (
+                in_s[i, j, kstart:kstop] * in_qv[i, j, kstart:kstop]
+            )
             sqv_prv[i, j, kstart:kstop] = (
                 in_s_prv[i, j, kstart:kstop] * in_qv_prv[i, j, kstart:kstop]
             )
-            sqc[i, j, kstart:kstop] = in_s[i, j, kstart:kstop] * in_qc[i, j, kstart:kstop]
+            sqc[i, j, kstart:kstop] = (
+                in_s[i, j, kstart:kstop] * in_qc[i, j, kstart:kstop]
+            )
             sqc_prv[i, j, kstart:kstop] = (
                 in_s_prv[i, j, kstart:kstop] * in_qc_prv[i, j, kstart:kstop]
             )
-            sqr[i, j, kstart:kstop] = in_s[i, j, kstart:kstop] * in_qr[i, j, kstart:kstop]
+            sqr[i, j, kstart:kstop] = (
+                in_s[i, j, kstart:kstop] * in_qr[i, j, kstart:kstop]
+            )
             sqr_prv[i, j, kstart:kstop] = (
                 in_s_prv[i, j, kstart:kstop] * in_qr_prv[i, j, kstart:kstop]
             )

@@ -23,7 +23,7 @@
 from typing import Tuple
 
 from tasmania.python.framework.base_components import TendencyComponent
-from tasmania.python.grids.domain import Domain
+from tasmania.python.domain.domain import Domain
 from tasmania.python.utils import taz_types
 
 
@@ -48,5 +48,7 @@ class FakeTendencyComponent(TendencyComponent):
 
 
 class FakeComponent:
-    def __init__(self, real_component: taz_types.component_t, property_name: str) -> None:
+    def __init__(
+        self, real_component: taz_types.component_t, property_name: str
+    ) -> None:
         self.input_properties = getattr(real_component, property_name)

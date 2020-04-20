@@ -30,7 +30,7 @@ from tasmania.python.utils import taz_types
 from tasmania.python.utils.storage_utils import get_storage_shape, zeros
 
 if TYPE_CHECKING:
-    from tasmania.python.grids.domain import Domain
+    from tasmania.python.domain.domain import Domain
 
 
 mfwv = "mass_fraction_of_water_vapor_in_air"

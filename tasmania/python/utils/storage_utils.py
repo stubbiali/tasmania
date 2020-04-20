@@ -458,7 +458,9 @@ def get_storage_shape(
             tuple(out_shape[i] >= min_shape[i] for i in range(len(min_shape)))
         ), error_msg
     else:
-        error_msg = "storage shape must be between {} and {}".format(min_shape, max_shape)
+        error_msg = "storage shape must be between {} and {}".format(
+            min_shape, max_shape
+        )
         assert all(
             tuple(
                 min_shape[i] <= out_shape[i] <= max_shape[i]

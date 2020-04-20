@@ -24,7 +24,7 @@ import numpy as np
 from sympl import DataArray
 from typing import List, Optional, Sequence, Union
 
-from tasmania.python.grids.grid import Grid
+from tasmania.python.domain.grid import Grid
 from tasmania.python.plot.utils import to_units
 from tasmania.python.utils import taz_types
 
@@ -44,7 +44,7 @@ class DataRetriever:
         """
         Parameters
         ----------
-        grids : tasmania.Grid
+        domain : tasmania.Grid
             The underlying grid.
         field_name : str
             The field to retrieve.
@@ -92,7 +92,10 @@ class DataRetriever:
 
         if field_name in state:  # model variable
 
-            if field_name == "precipitation" or field_name == "accumulated_precipitation":
+            if (
+                field_name == "precipitation"
+                or field_name == "accumulated_precipitation"
+            ):
                 return to_units(state[field_name][x, y], field_units).values
             else:
                 return to_units(state[field_name][x, y, z], field_units).values
@@ -462,7 +465,12 @@ class DataRetrieverComposite:
             for j in range(len(fnames[i])):
                 iretrievers.append(
                     DataRetriever(
-                        grids[i], fnames[i][j], funits[i][j], fx[i][j], fy[i][j], fz[i][j]
+                        grids[i],
+                        fnames[i][j],
+                        funits[i][j],
+                        fx[i][j],
+                        fy[i][j],
+                        fz[i][j],
                     )
                 )
             self._retrievers.append(iretrievers)

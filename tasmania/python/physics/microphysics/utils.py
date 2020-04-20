@@ -39,7 +39,7 @@ from tasmania.python.utils.gtscript_utils import stencil_clip_defs
 from tasmania.python.utils.storage_utils import get_storage_shape, zeros
 
 if TYPE_CHECKING:
-    from tasmania.python.grids.domain import Domain
+    from tasmania.python.domain.domain import Domain
 
 
 mfwv = "mass_fraction_of_water_vapor_in_air"
@@ -253,11 +253,15 @@ class Precipitation(ImplicitTendencyComponent):
 
         super().__init__(domain, grid_type, **kwargs)
 
-        self._pcs = get_physical_constants(self._d_physical_constants, physical_constants)
+        self._pcs = get_physical_constants(
+            self._d_physical_constants, physical_constants
+        )
 
         nx, ny = self.grid.nx, self.grid.ny
         in_shape = (
-            (storage_shape[0], storage_shape[1], 1) if storage_shape is not None else None
+            (storage_shape[0], storage_shape[1], 1)
+            if storage_shape is not None
+            else None
         )
         storage_shape = get_storage_shape(in_shape, (nx, ny, 1))
 

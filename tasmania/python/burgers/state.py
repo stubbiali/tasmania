@@ -29,7 +29,7 @@ from tasmania.python.utils import taz_types
 from tasmania.python.utils.storage_utils import get_dataarray_3d, zeros
 
 if TYPE_CHECKING:
-    from tasmania.python.grids.grid import Grid
+    from tasmania.python.domain.grid import Grid
 
 
 class ZhaoSolutionFactory:

@@ -30,7 +30,7 @@ from tasmania.python.utils import taz_types
 from tasmania.python.utils.storage_utils import zeros
 
 if TYPE_CHECKING:
-    from tasmania.python.grids.domain import Domain
+    from tasmania.python.domain.domain import Domain
 
 
 class BurgersHorizontalDiffusion(TendencyComponent):

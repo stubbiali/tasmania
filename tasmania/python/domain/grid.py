@@ -245,7 +245,7 @@ class PhysicalGrid(Grid):
         domain_z: DataArray,
         nz: int,
         z_interface: Optional[DataArray] = None,
-        topography_type: str = "flat_terrain",
+        topography_type: str = "flat",
         topography_kwargs: Dict[str, Any] = None,
         dtype: taz_types.dtype_t = np.float64,
     ) -> None:
@@ -279,11 +279,11 @@ class PhysicalGrid(Grid):
             top of the domain. In other words, the coordinate system is supposed
             fully terrain-following.
         topography_type : `str`, optional
-            Topography type. Defaults to 'flat_terrain'.
-            See :class:`~tasmania.Topography` for all available options.
+            The topography type. Defaults to 'flat'.
+                 See :class:`~tasmania.PhysicalTopography` for all available options.
         topography_kwargs : `dict`, optional
             Keyword arguments to be forwarded to the constructor of
-            :class:`~tasmania.Topography`.
+            :class:`~tasmania.PhysicalTopography`.
         dtype : `data-type`, optional
             The data-type of the storages.
 
@@ -344,7 +344,7 @@ class PhysicalGrid(Grid):
             if (topography_kwargs is None or not isinstance(topography_kwargs, dict))
             else topography_kwargs
         )
-        topo = PhysicalTopography(grid_xy, topography_type, **kwargs)
+        topo = PhysicalTopography.factory(topography_type, grid_xy, **kwargs)
 
         # call parent's constructor
         super().__init__(grid_xy, z, zhl, zi, topo)

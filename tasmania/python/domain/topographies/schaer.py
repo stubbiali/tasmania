@@ -53,7 +53,8 @@ class Schaer(PhysicalTopography):
         center_x=None,
         center_y=None,
         width_x=None,
-        width_y=None
+        width_y=None,
+        **kwargs
     ) -> None:
         """
         Parameters
@@ -85,6 +86,8 @@ class Schaer(PhysicalTopography):
             1-item :class:`~sympl.DataArray` representing the mountain half-width
             in the :math:`y`-direction :math:`\sigma_y`. Defaults to 1, in the
             same units of the `y`-axis.
+        **kwargs :
+            Catch-all unused keyword arguments.
         """
         super().__init__(
             grid,

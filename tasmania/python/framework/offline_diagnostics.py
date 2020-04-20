@@ -27,7 +27,7 @@ from sympl._core.get_np_arrays import get_numpy_arrays_with_properties
 from sympl._core.restore_dataarray import restore_data_arrays_with_properties
 from typing import Mapping, Optional, Sequence, Tuple, Union
 
-from tasmania.python.grids.grid import Grid
+from tasmania.python.domain.grid import Grid
 from tasmania.python.utils import taz_types
 from tasmania.python.utils.utils import assert_sequence
 
@@ -111,7 +111,9 @@ class OfflineDiagnosticComponent(abc.ABC):
         """
         pass
 
-    def __call__(self, *states: taz_types.dataarray_dict_t) -> taz_types.dataarray_dict_t:
+    def __call__(
+        self, *states: taz_types.dataarray_dict_t
+    ) -> taz_types.dataarray_dict_t:
         """
         Call operator retrieving the diagnostics.
 
@@ -198,7 +200,7 @@ class RMSD(OfflineDiagnosticComponent):
         ----------
         grid : tasmania.Grid, Sequence[tasmania.Grid]
             The underlying grid(s). The two input states may be defined
-            over different grids.
+            over different domain.
         fields : dict[str, dict]
             Dictionary whose keys are strings denoting the model variables
             for which the RMSD should be computed, and whose values are
@@ -241,7 +243,7 @@ class RMSD(OfflineDiagnosticComponent):
 
     @property
     def input_properties(
-        self
+        self,
     ) -> Tuple[taz_types.properties_dict_t, taz_types.properties_dict_t]:
         g1, g2 = self._grids
 
@@ -311,7 +313,7 @@ class RRMSD(OfflineDiagnosticComponent):
         ----------
         grid : tasmania.Grid, Sequence[tasmania.Grid]
             The underlying grid(s). The two input states may be defined
-            over different grids.
+            over different domain.
         fields : dict[str, dict]
             Dictionary whose keys are strings denoting the model variables
             for which the RRMSD should be computed, and whose values are
@@ -354,7 +356,7 @@ class RRMSD(OfflineDiagnosticComponent):
 
     @property
     def input_properties(
-        self
+        self,
     ) -> Tuple[taz_types.properties_dict_t, taz_types.properties_dict_t]:
         g1, g2 = self._grids
 
@@ -419,8 +421,12 @@ class ColumnSum(OfflineDiagnosticComponent):
     @property
     def input_properties(self) -> Tuple[taz_types.properties_dict_t]:
         g = self._grid
-        dimx = g.x_at_u_locations.dims[0] if "u_locations" in self._fname else g.x.dims[0]
-        dimy = g.y_at_v_locations.dims[0] if "v_locations" in self._fname else g.y.dims[0]
+        dimx = (
+            g.x_at_u_locations.dims[0] if "u_locations" in self._fname else g.x.dims[0]
+        )
+        dimy = (
+            g.y_at_v_locations.dims[0] if "v_locations" in self._fname else g.y.dims[0]
+        )
         dimz = (
             g.z_on_interface_levels[0]
             if "interface_levels" in self._fname
@@ -434,8 +440,12 @@ class ColumnSum(OfflineDiagnosticComponent):
     @property
     def diagnostic_properties(self) -> taz_types.properties_dict_t:
         g = self._grid
-        dimx = g.x_at_u_locations.dims[0] if "u_locations" in self._fname else g.x.dims[0]
-        dimy = g.y_at_v_locations.dims[0] if "v_locations" in self._fname else g.y.dims[0]
+        dimx = (
+            g.x_at_u_locations.dims[0] if "u_locations" in self._fname else g.x.dims[0]
+        )
+        dimy = (
+            g.y_at_v_locations.dims[0] if "v_locations" in self._fname else g.y.dims[0]
+        )
         dimz = (
             g.z_on_interface_levels[0]
             if "interface_levels" in self._fname

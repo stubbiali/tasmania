@@ -40,7 +40,7 @@ from tasmania.python.utils.storage_utils import (
 )
 
 if TYPE_CHECKING:
-    from tasmania.python.grids.grid import Grid
+    from tasmania.python.domain.grid import Grid
 
 
 _d_physical_constants = {

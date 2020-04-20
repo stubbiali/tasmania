@@ -34,7 +34,7 @@ class UserDefined(PhysicalTopography):
     the string must be fully C++-compliant.
     """
 
-    def __init__(self, grid, time, smooth, *, expression=None) -> None:
+    def __init__(self, grid, time, smooth, *, expression=None, **kwargs) -> None:
         """
         Parameters
         ----------
@@ -49,6 +49,8 @@ class UserDefined(PhysicalTopography):
         expression : `str`, optional
             Analytical expression of the terrain profile in the independent
             variables :math:`x` and :math:`y`. Must be fully C++-compliant.
+        **kwargs :
+            Catch-all unused keyword arguments.
         """
         super().__init__(grid, time, smooth, expression=expression)
 

@@ -32,7 +32,7 @@ from tasmania.python.utils import taz_types
 from tasmania.python.utils.storage_utils import zeros
 
 if TYPE_CHECKING:
-    from tasmania.python.grids.domain import Domain
+    from tasmania.python.domain.domain import Domain
 
 
 class Smagorinsky2d(TendencyComponent):
@@ -229,11 +229,13 @@ class Smagorinsky2d(TendencyComponent):
         nu = cs ** 2 * dx * dy * (2.0 * (s00 ** 2 + 2.0 * s01 ** 2 + s11 ** 2)) ** 0.5
         out_u_tnd[ib:ie, jb:je, k] = 2.0 * (
             (nu[2:, 1:-1] * s00[2:, 1:-1] - nu[:-2, 1:-1] * s00[:-2, 1:-1]) / (2.0 * dx)
-            + (nu[1:-1, 2:] * s01[1:-1, 2:] - nu[1:-1, :-2] * s01[1:-1, :-2]) / (2.0 * dy)
+            + (nu[1:-1, 2:] * s01[1:-1, 2:] - nu[1:-1, :-2] * s01[1:-1, :-2])
+            / (2.0 * dy)
         )
         out_v_tnd[ib:ie, jb:je, k] = 2.0 * (
             (nu[2:, 1:-1] * s01[2:, 1:-1] - nu[:-2, 1:-1] * s01[:-2, 1:-1]) / (2.0 * dx)
-            + (nu[1:-1, 2:] * s11[1:-1, 2:] - nu[1:-1, :-2] * s11[1:-1, :-2]) / (2.0 * dy)
+            + (nu[1:-1, 2:] * s11[1:-1, 2:] - nu[1:-1, :-2] * s11[1:-1, :-2])
+            / (2.0 * dy)
         )
 
     @staticmethod
@@ -254,14 +256,18 @@ class Smagorinsky2d(TendencyComponent):
                 + (in_v[+1, 0, 0] - in_v[-1, 0, 0]) / (2.0 * dx)
             )
             s11 = (in_v[0, +1, 0] - in_v[0, -1, 0]) / (2.0 * dy)
-            nu = cs ** 2 * dx * dy * (2.0 * (s00 ** 2 + 2.0 * s01 ** 2 + s11 ** 2)) ** 0.5
+            nu = (
+                cs ** 2 * dx * dy * (2.0 * (s00 ** 2 + 2.0 * s01 ** 2 + s11 ** 2)) ** 0.5
+            )
             out_u_tnd = 2.0 * (
-                (nu[+1, 0, 0] * s00[+1, 0, 0] - nu[-1, 0, 0] * s00[-1, 0, 0]) / (2.0 * dx)
+                (nu[+1, 0, 0] * s00[+1, 0, 0] - nu[-1, 0, 0] * s00[-1, 0, 0])
+                / (2.0 * dx)
                 + (nu[0, +1, 0] * s01[0, +1, 0] - nu[0, -1, 0] * s01[0, -1, 0])
                 / (2.0 * dy)
             )
             out_v_tnd = 2.0 * (
-                (nu[+1, 0, 0] * s01[+1, 0, 0] - nu[-1, 0, 0] * s01[-1, 0, 0]) / (2.0 * dx)
+                (nu[+1, 0, 0] * s01[+1, 0, 0] - nu[-1, 0, 0] * s01[-1, 0, 0])
+                / (2.0 * dx)
                 + (nu[0, +1, 0] * s11[0, +1, 0] - nu[0, -1, 0] * s11[0, -1, 0])
                 / (2.0 * dy)
             )

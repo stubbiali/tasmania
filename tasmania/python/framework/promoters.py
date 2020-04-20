@@ -32,8 +32,8 @@ from tasmania.python.framework._base import (
 from tasmania.python.utils import taz_types
 
 if TYPE_CHECKING:
-    from tasmania.python.grids.domain import Domain
-    from tasmania.python.grids.grid import Grid
+    from tasmania.python.domain.domain import Domain
+    from tasmania.python.domain.grid import Grid
 
 
 allowed_grid_types = ("physical", "numerical")
@@ -130,7 +130,9 @@ class Diagnostic2Tendency(BaseDiagnostic2Tendency):
             rm = props.get("remove_from_diagnostics", False)
 
             if any(src != trg for src, trg in zip(diagnostics[name].dims, dims)):
-                tendencies[tend_name] = diagnostics[name].transpose(*dims).to_units(units)
+                tendencies[tend_name] = (
+                    diagnostics[name].transpose(*dims).to_units(units)
+                )
             else:
                 tendencies[tend_name] = diagnostics[name].to_units(units)
 
@@ -231,7 +233,9 @@ class Tendency2Diagnostic(BaseTendency2Diagnostic):
             rm = props.get("remove_from_tendencies", False)
 
             if any(src != trg for src, trg in zip(tendencies[name].dims, dims)):
-                diagnostics[diag_name] = tendencies[name].transpose(*dims).to_units(units)
+                diagnostics[diag_name] = (
+                    tendencies[name].transpose(*dims).to_units(units)
+                )
             else:
                 diagnostics[diag_name] = tendencies[name].to_units(units)
 

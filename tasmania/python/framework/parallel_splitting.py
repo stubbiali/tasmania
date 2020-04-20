@@ -35,7 +35,7 @@ from tasmania.python.framework.composite import (
     DiagnosticComponentComposite as TasmaniaDiagnosticComponentComposite,
 )
 from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
-from tasmania.python.framework.tendency_steppers import TendencyStepper
+from tasmania.python.framework.tendency_stepper import TendencyStepper
 from tasmania.python.utils import taz_types
 from tasmania.python.utils.dict_utils import DataArrayDictOperator
 from tasmania.python.utils.framework_utils import (
@@ -454,7 +454,7 @@ class ParallelSplitting:
 
     @property
     def component_list(
-        self
+        self,
     ) -> Tuple[Union[taz_types.diagnostic_component_t, TendencyStepper], ...]:
         """
         Return

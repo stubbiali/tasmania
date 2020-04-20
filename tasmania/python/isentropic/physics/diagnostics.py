@@ -31,7 +31,7 @@ from tasmania.python.utils import taz_types
 from tasmania.python.utils.storage_utils import zeros
 
 if TYPE_CHECKING:
-    from tasmania.python.grids.domain import Domain
+    from tasmania.python.domain.domain import Domain
 
 
 class IsentropicDiagnostics(DiagnosticComponent):
@@ -241,7 +241,9 @@ class IsentropicDiagnostics(DiagnosticComponent):
 
         return return_dict
 
-    def array_call(self, state: taz_types.gtstorage_dict_t) -> taz_types.gtstorage_dict_t:
+    def array_call(
+        self, state: taz_types.gtstorage_dict_t
+    ) -> taz_types.gtstorage_dict_t:
         s = state["air_isentropic_density"]
         self._core.get_diagnostic_variables(
             s, self._pt, self._out_p, self._out_exn, self._out_mtg, self._out_h
@@ -273,7 +275,7 @@ class IsentropicVelocityComponents(DiagnosticComponent):
     def __init__(
         self,
         domain: "Domain",
-            gt_powered: bool = True,
+        gt_powered: bool = True,
         *,
         backend: str = "numpy",
         backend_opts: Optional[taz_types.options_dict_t] = None,
@@ -381,7 +383,9 @@ class IsentropicVelocityComponents(DiagnosticComponent):
 
         return return_dict
 
-    def array_call(self, state: taz_types.gtstorage_dict_t) -> taz_types.gtstorage_dict_t:
+    def array_call(
+        self, state: taz_types.gtstorage_dict_t
+    ) -> taz_types.gtstorage_dict_t:
         # extract the required model variables from the input state
         s = state["air_isentropic_density"]
         su = state["x_momentum_isentropic"]

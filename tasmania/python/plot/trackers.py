@@ -32,7 +32,7 @@ from tasmania.python.plot.plot_utils import make_contourf, make_lineplot
 from tasmania.python.utils import taz_types
 
 if TYPE_CHECKING:
-    from tasmania.python.grids.grid import Grid
+    from tasmania.python.domain.grid import Grid
 
 
 class TimeSeries(Drawer):

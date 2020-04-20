@@ -32,7 +32,7 @@ from tasmania.python.utils import taz_types
 from tasmania.python.utils.storage_utils import get_dataarray_3d, zeros
 
 if TYPE_CHECKING:
-    from tasmania.python.grids.domain import Domain
+    from tasmania.python.domain.domain import Domain
 
 
 # convenient shortcuts

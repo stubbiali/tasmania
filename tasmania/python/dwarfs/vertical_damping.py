@@ -35,7 +35,7 @@ from tasmania.python.utils.storage_utils import zeros
 from tasmania.python.utils.utils import greater_or_equal_than as ge
 
 if TYPE_CHECKING:
-    from tasmania.python.grids.grid import Grid
+    from tasmania.python.domain.grid import Grid
 
 
 class VerticalDamping(abc.ABC):
@@ -252,7 +252,9 @@ class VerticalDamping(abc.ABC):
         if damp_type == "rayleigh":
             return Rayleigh(*args)
         else:
-            raise ValueError("Unknown damping scheme. Available options: " "rayleigh" ".")
+            raise ValueError(
+                "Unknown damping scheme. Available options: " "rayleigh" "."
+            )
 
     @staticmethod
     @abc.abstractmethod

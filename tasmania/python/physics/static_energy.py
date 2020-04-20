@@ -32,7 +32,7 @@ from tasmania.python.utils.data_utils import get_physical_constants
 from tasmania.python.utils.storage_utils import get_storage_shape, zeros
 
 if TYPE_CHECKING:
-    from tasmania.python.grids.domain import Domain
+    from tasmania.python.domain.domain import Domain
 
 
 class DryStaticEnergy(DiagnosticComponent):
@@ -152,22 +152,24 @@ class DryStaticEnergy(DiagnosticComponent):
         return diagnostics
 
     def _stencil_numpy(
-            self,
-            in_t: np.ndarray,
-            in_h: np.ndarray,
-            out_dse: np.ndarray,
-            *,
-            origin: taz_types.triplet_int_t,
-            domain: taz_types.triplet_int_t,
-            **kwargs  # catch-all
+        self,
+        in_t: np.ndarray,
+        in_h: np.ndarray,
+        out_dse: np.ndarray,
+        *,
+        origin: taz_types.triplet_int_t,
+        domain: taz_types.triplet_int_t,
+        **kwargs  # catch-all
     ):
         i = slice(origin[0], origin[0] + domain[0])
         j = slice(origin[1], origin[1] + domain[1])
         k = slice(origin[2], origin[2] + domain[2])
-        kp1 = slice(origin[2]+1, origin[2] + domain[2]+1)
+        kp1 = slice(origin[2] + 1, origin[2] + domain[2] + 1)
 
         if self._stgz:
-            out_dse[i, j, k] = self._cp * in_t[i, j, k] + self._g * 0.5 * (in_h[i, j, k] + in_h[i, j, kp1])
+            out_dse[i, j, k] = self._cp * in_t[i, j, k] + self._g * 0.5 * (
+                in_h[i, j, k] + in_h[i, j, kp1]
+            )
         else:
             out_dse[i, j, k] = self._cp * in_t[i, j, k] + self._g * in_h[i, j, k]
 
@@ -204,7 +206,7 @@ class MoistStaticEnergy(DiagnosticComponent):
         grid_type: str = "numerical",
         physical_constants: Optional[Mapping[str, DataArray]] = None,
         gt_powered: bool = True,
-            *,
+        *,
         backend: str = "numpy",
         backend_opts: Optional[taz_types.options_dict_t] = None,
         build_info: Optional[taz_types.options_dict_t] = None,

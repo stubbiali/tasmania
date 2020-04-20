@@ -41,7 +41,7 @@ from tasmania.python.utils.data_utils import get_physical_constants
 from tasmania.python.utils.storage_utils import zeros
 
 if TYPE_CHECKING:
-    from tasmania.python.grids.domain import Domain
+    from tasmania.python.domain.domain import Domain
 
 
 mfwv = "mass_fraction_of_water_vapor_in_air"
@@ -419,11 +419,17 @@ class IsentropicVerticalAdvection(TendencyComponent):
         # compute the isentropic density of the water species
         if self._moist:
             sqv = np.zeros_like(in_qv)
-            sqv[i, j, kstart:kstop] = in_s[i, j, kstart:kstop] * in_qv[i, j, kstart:kstop]
+            sqv[i, j, kstart:kstop] = (
+                in_s[i, j, kstart:kstop] * in_qv[i, j, kstart:kstop]
+            )
             sqc = np.zeros_like(in_qc)
-            sqc[i, j, kstart:kstop] = in_s[i, j, kstart:kstop] * in_qc[i, j, kstart:kstop]
+            sqc[i, j, kstart:kstop] = (
+                in_s[i, j, kstart:kstop] * in_qc[i, j, kstart:kstop]
+            )
             sqr = np.zeros_like(in_qr)
-            sqr[i, j, kstart:kstop] = in_s[i, j, kstart:kstop] * in_qr[i, j, kstart:kstop]
+            sqr[i, j, kstart:kstop] = (
+                in_s[i, j, kstart:kstop] * in_qr[i, j, kstart:kstop]
+            )
         else:
             sqv = sqc = sqr = None
 

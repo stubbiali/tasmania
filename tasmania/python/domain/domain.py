@@ -53,7 +53,7 @@ class Domain:
         horizontal_boundary_type: str = "periodic",
         nb: int = 3,
         horizontal_boundary_kwargs: Optional[Dict[str, Any]] = None,
-        topography_type: str = "flat_terrain",
+        topography_type: str = "flat",
         topography_kwargs: Optional[Dict[str, Any]] = None,
         gt_powered: bool = True,
         *,
@@ -111,7 +111,7 @@ class Domain:
             Data type of the storages.
         """
         # the physical grid
-        kwargs = (
+        topo_kwargs = (
             {}
             if (topography_kwargs is None or not isinstance(topography_kwargs, dict))
             else topography_kwargs
@@ -125,12 +125,12 @@ class Domain:
             nz,
             z_interface=z_interface,
             topography_type=topography_type,
-            topography_kwargs=kwargs,
+            topography_kwargs=topo_kwargs,
             dtype=dtype,
         )
 
         # the object handling the horizontal boundary conditions
-        kwargs = (
+        hb_kwargs = (
             {}
             if (
                 horizontal_boundary_kwargs is None
@@ -146,7 +146,7 @@ class Domain:
             gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
-            **kwargs
+            **hb_kwargs
         )
 
         # the numerical grid

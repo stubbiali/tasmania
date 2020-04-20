@@ -35,7 +35,7 @@ from tasmania.python.framework.composite import (
     DiagnosticComponentComposite as TasmaniaDiagnosticComponentComposite,
 )
 from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
-from tasmania.python.framework.sts_tendency_steppers import STSTendencyStepper
+from tasmania.python.framework.sts_tendency_stepper import STSTendencyStepper
 from tasmania.python.utils import taz_types
 from tasmania.python.utils.framework_utils import (
     check_property_compatibility,

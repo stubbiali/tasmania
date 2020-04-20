@@ -141,7 +141,10 @@ from tasmania.python.plot.trackers import TimeSeries, HovmollerDiagram
 # utilities
 from tasmania.python.utils import taz_types
 from tasmania.python.utils.dict_utils import DataArrayDictOperator
-from tasmania.python.utils.exceptions import ConstantNotFoundError, TimeInconsistencyError
+from tasmania.python.utils.exceptions import (
+    ConstantNotFoundError,
+    TimeInconsistencyError,
+)
 from tasmania.python.utils.io_utils import load_netcdf_dataset, NetCDFMonitor
 from tasmania.python.utils.meteo_utils import (
     get_isothermal_isentropic_analytical_solution,

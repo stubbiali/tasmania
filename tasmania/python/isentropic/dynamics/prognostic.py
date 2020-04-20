@@ -28,8 +28,8 @@ from tasmania.python.utils import taz_types
 from tasmania.python.utils.storage_utils import zeros
 
 if TYPE_CHECKING:
-    from tasmania.python.grids.grid import Grid
-    from tasmania.python.grids.horizontal_boundary import HorizontalBoundary
+    from tasmania.python.domain.grid import Grid
+    from tasmania.python.domain.horizontal_boundary import HorizontalBoundary
     from tasmania.python.isentropic.dynamics.horizontal_fluxes import (
         IsentropicHorizontalFlux,
         IsentropicMinimalHorizontalFlux,

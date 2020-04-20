@@ -42,7 +42,7 @@ from tasmania.python.utils.storage_utils import zeros
 from tasmania.python.utils.utils import thomas_numpy
 
 if TYPE_CHECKING:
-    from tasmania.python.grids.domain import Domain
+    from tasmania.python.domain.domain import Domain
 
 
 mfwv = "mass_fraction_of_water_vapor_in_air"
@@ -89,7 +89,7 @@ def setup_tridiagonal_system(
 
 @gtscript.function
 def setup_tridiagonal_system_bc(
-    phi: taz_types.gtfield_t
+    phi: taz_types.gtfield_t,
 ) -> "Tuple[taz_types.gtfield_t, taz_types.gtfield_t, taz_types.gtfield_t]":
     a = 0.0
     c = 0.0
@@ -422,11 +422,17 @@ class IsentropicImplicitVerticalAdvectionDiagnostic(ImplicitTendencyComponent):
         # compute the isentropic density of the water species
         if self._moist:
             sqv = np.zeros_like(in_qv)
-            sqv[i, j, kstart:kstop] = in_s[i, j, kstart:kstop] * in_qv[i, j, kstart:kstop]
+            sqv[i, j, kstart:kstop] = (
+                in_s[i, j, kstart:kstop] * in_qv[i, j, kstart:kstop]
+            )
             sqc = np.zeros_like(in_qc)
-            sqc[i, j, kstart:kstop] = in_s[i, j, kstart:kstop] * in_qc[i, j, kstart:kstop]
+            sqc[i, j, kstart:kstop] = (
+                in_s[i, j, kstart:kstop] * in_qc[i, j, kstart:kstop]
+            )
             sqr = np.zeros_like(in_qr)
-            sqr[i, j, kstart:kstop] = in_s[i, j, kstart:kstop] * in_qr[i, j, kstart:kstop]
+            sqr[i, j, kstart:kstop] = (
+                in_s[i, j, kstart:kstop] * in_qr[i, j, kstart:kstop]
+            )
         else:
             sqv = sqc = sqr = None
 
@@ -1115,11 +1121,17 @@ class IsentropicImplicitVerticalAdvectionPrognostic(ImplicitTendencyComponent):
         # compute the isentropic density of the water species
         if self._moist:
             sqv = np.zeros_like(in_qv)
-            sqv[i, j, kstart:kstop] = in_s[i, j, kstart:kstop] * in_qv[i, j, kstart:kstop]
+            sqv[i, j, kstart:kstop] = (
+                in_s[i, j, kstart:kstop] * in_qv[i, j, kstart:kstop]
+            )
             sqc = np.zeros_like(in_qc)
-            sqc[i, j, kstart:kstop] = in_s[i, j, kstart:kstop] * in_qc[i, j, kstart:kstop]
+            sqc[i, j, kstart:kstop] = (
+                in_s[i, j, kstart:kstop] * in_qc[i, j, kstart:kstop]
+            )
             sqr = np.zeros_like(in_qr)
-            sqr[i, j, kstart:kstop] = in_s[i, j, kstart:kstop] * in_qr[i, j, kstart:kstop]
+            sqr[i, j, kstart:kstop] = (
+                in_s[i, j, kstart:kstop] * in_qr[i, j, kstart:kstop]
+            )
         else:
             sqv = sqc = sqr = None
 
