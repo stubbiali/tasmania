@@ -30,8 +30,9 @@ except (ImportError, ModuleNotFoundError):
 
 import gt4py as gt
 
-from tasmania.python.domain.horizontal_boundary import HorizontalBoundary, registry
+from tasmania.python.domain.horizontal_boundary import HorizontalBoundary
 from tasmania.python.domain.horizontal_boundaries.utils import repeat_axis, shrink_axis
+from tasmania.python.utils.framework_utils import register
 
 
 class Relaxed(HorizontalBoundary):
@@ -654,7 +655,7 @@ class Relaxed1DY(HorizontalBoundary):
         field[:mi, mj - 1] = field_ref[:mi, mj - 1]
 
 
-@registry(name="relaxed")
+@register(name="relaxed", registry_class=HorizontalBoundary)
 def dispatch(nx, ny, nb, gt_powered, backend="numpy", dtype=np.float64, nr=8):
     """ Dispatch based on the grid size. """
     if nx == 1:

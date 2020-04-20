@@ -72,22 +72,22 @@ from tests.strategies import (
 from tests.utilities import compare_arrays, compare_dataarrays
 
 
-def test_register():
+def test_registry():
     # dirichlet
-    assert "dirichlet" in HorizontalBoundary.register
-    assert HorizontalBoundary.register["dirichlet"] == dispatch_dirichlet
+    assert "dirichlet" in HorizontalBoundary.registry
+    assert HorizontalBoundary.registry["dirichlet"] == dispatch_dirichlet
 
     # identity
-    assert "identity" in HorizontalBoundary.register
-    assert HorizontalBoundary.register["identity"] == dispatch_identity
+    assert "identity" in HorizontalBoundary.registry
+    assert HorizontalBoundary.registry["identity"] == dispatch_identity
 
     # periodic
-    assert "periodic" in HorizontalBoundary.register
-    assert HorizontalBoundary.register["periodic"] == dispatch_periodic
+    assert "periodic" in HorizontalBoundary.registry
+    assert HorizontalBoundary.registry["periodic"] == dispatch_periodic
 
     # relaxed
-    assert "relaxed" in HorizontalBoundary.register
-    assert HorizontalBoundary.register["relaxed"] == dispatch_relaxed
+    assert "relaxed" in HorizontalBoundary.registry
+    assert HorizontalBoundary.registry["relaxed"] == dispatch_relaxed
 
 
 def test_factory():

@@ -30,8 +30,9 @@ except (ImportError, ModuleNotFoundError):
 
 import gt4py as gt
 
-from tasmania.python.domain.horizontal_boundary import HorizontalBoundary, registry
+from tasmania.python.domain.horizontal_boundary import HorizontalBoundary
 from tasmania.python.domain.horizontal_boundaries.utils import repeat_axis, shrink_axis
+from tasmania.python.utils.framework_utils import register
 
 
 def placeholder(time, grid, slice_x, slice_y, field_name, field_units):
@@ -565,7 +566,7 @@ class Dirichlet1DY(HorizontalBoundary):
         )
 
 
-@registry(name="dirichlet")
+@register(name="dirichlet", registry_class=HorizontalBoundary)
 def dispatch(
     nx, ny, nb, gt_powered, backend="numpy", dtype=np.float64, core=placeholder
 ):

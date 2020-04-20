@@ -27,8 +27,9 @@ try:
 except (ImportError, ModuleNotFoundError):
     cp = np
 
-from tasmania.python.domain.horizontal_boundary import HorizontalBoundary, registry
+from tasmania.python.domain.horizontal_boundary import HorizontalBoundary
 from tasmania.python.domain.horizontal_boundaries.utils import repeat_axis, shrink_axis
+from tasmania.python.utils.framework_utils import register
 
 
 class Identity(HorizontalBoundary):
@@ -232,7 +233,7 @@ class Identity1DY(HorizontalBoundary):
         pass
 
 
-@registry(name="identity")
+@register(name="identity", registry_class=HorizontalBoundary)
 def dispatch(nx, ny, nb, gt_powered, backend="numpy", dtype=np.float64):
     """ Dispatch based on the grid size. """
     if nx == 1:

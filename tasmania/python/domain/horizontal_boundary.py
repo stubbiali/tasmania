@@ -27,13 +27,14 @@ from sympl import DataArray
 from typing import Any, Dict, Optional, Sequence
 
 from tasmania.python.utils import taz_types
+from tasmania.python.utils.framework_utils import factorize
 from tasmania.python.utils.storage_utils import deepcopy_dataarray
 
 
 class HorizontalBoundary(abc.ABC):
     """ Handle boundary conditions for a two-dimensional rectilinear grid. """
 
-    register = {}
+    registry = {}
 
     def __init__(
         self,
@@ -518,31 +519,7 @@ class HorizontalBoundary(abc.ABC):
         child_kwargs = {"backend": backend, "dtype": dtype}
         child_kwargs.update(kwargs)
 
-        if boundary_type in HorizontalBoundary.register:
-            obj = HorizontalBoundary.register[boundary_type](*args, **kwargs)
-            obj.type = boundary_type
-            return obj
-        else:
-            raise RuntimeError(
-                f"Unknown boundary type '{boundary_type}'. "
-                f"Supported types are: "
-                f"{', '.join(key for key in HorizontalBoundary.register.keys())}."
-            )
+        obj = factorize(boundary_type, HorizontalBoundary, args, child_kwargs)
+        obj.type = boundary_type
 
-
-def registry(name):
-    def core(cls):
-        if (
-            name in HorizontalBoundary.register
-            and HorizontalBoundary.register[name] != cls
-        ):
-            import warnings
-
-            warnings.warn(
-                f"Cannot register '{name}' as already present in HorizontalBoundary.register."
-            )
-        else:
-            HorizontalBoundary.register[name] = cls
-        return cls
-
-    return core
+        return obj
