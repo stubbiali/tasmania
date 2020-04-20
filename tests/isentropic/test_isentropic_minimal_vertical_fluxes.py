@@ -22,7 +22,6 @@
 #
 from copy import deepcopy
 from hypothesis import (
-    assume,
     given,
     HealthCheck,
     reproduce_failure,
@@ -473,7 +472,7 @@ def test_upwind_numpy(data):
     domain = data.draw(
         st_domain(zaxis_length=(3, 40), gt_powered=False, dtype=dtype), label="domain"
     )
-    grid = domain.physical_grid
+    grid = domain.numerical_grid
     nx, ny, nz = grid.nx, grid.ny, grid.nz
 
     field = data.draw(
@@ -511,7 +510,7 @@ def test_upwind_gt(data):
         st_domain(zaxis_length=(3, 40), gt_powered=True, backend=backend, dtype=dtype),
         label="domain",
     )
-    grid = domain.physical_grid
+    grid = domain.numerical_grid
     nx, ny, nz = grid.nx, grid.ny, grid.nz
 
     field = data.draw(
@@ -554,7 +553,7 @@ def test_centered_numpy(data):
     domain = data.draw(
         st_domain(zaxis_length=(3, 40), gt_powered=False, dtype=dtype), label="domain"
     )
-    grid = domain.physical_grid
+    grid = domain.numerical_grid
     nx, ny, nz = grid.nx, grid.ny, grid.nz
 
     field = data.draw(
@@ -592,7 +591,7 @@ def test_centered_gt(data):
         st_domain(zaxis_length=(3, 40), gt_powered=True, backend=backend, dtype=dtype),
         label="domain",
     )
-    grid = domain.physical_grid
+    grid = domain.numerical_grid
     nx, ny, nz = grid.nx, grid.ny, grid.nz
 
     field = data.draw(
@@ -642,7 +641,7 @@ def test_third_order_upwind_numpy(data):
     domain = data.draw(
         st_domain(zaxis_length=(5, 40), gt_powered=False, dtype=dtype), label="domain"
     )
-    grid = domain.physical_grid
+    grid = domain.numerical_grid
     nx, ny, nz = grid.nx, grid.ny, grid.nz
 
     field = data.draw(
@@ -680,7 +679,7 @@ def test_third_order_upwind_gt(data):
         st_domain(zaxis_length=(5, 40), gt_powered=True, backend=backend, dtype=dtype),
         label="domain",
     )
-    grid = domain.physical_grid
+    grid = domain.numerical_grid
     nx, ny, nz = grid.nx, grid.ny, grid.nz
 
     field = data.draw(
@@ -730,7 +729,7 @@ def test_fifth_order_upwind_numpy(data):
     domain = data.draw(
         st_domain(zaxis_length=(7, 40), gt_powered=False, dtype=dtype), label="domain"
     )
-    grid = domain.physical_grid
+    grid = domain.numerical_grid
     nx, ny, nz = grid.nx, grid.ny, grid.nz
 
     field = data.draw(
@@ -768,7 +767,7 @@ def _test_fifth_order_upwind_gt(data):
         st_domain(zaxis_length=(7, 40), gt_powered=True, backend=backend, dtype=dtype),
         label="domain",
     )
-    grid = domain.physical_grid
+    grid = domain.numerical_grid
     nx, ny, nz = grid.nx, grid.ny, grid.nz
 
     field = data.draw(

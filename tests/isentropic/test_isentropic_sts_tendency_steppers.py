@@ -345,7 +345,10 @@ def test_isentropic_vertical_advection_dry(data, subtests):
         gt.storage.prepare_numpy()
 
     domain = data.draw(
-        st_domain(gt_powered=gt_powered, backend=backend, dtype=dtype), label="domain"
+        st_domain(
+            zaxis_length=(2, None), gt_powered=gt_powered, backend=backend, dtype=dtype
+        ),
+        label="domain",
     )
     grid = domain.numerical_grid
     nx, ny, nz = grid.nx, grid.ny, grid.nz
@@ -455,7 +458,10 @@ def test_isentropic_vertical_advection_moist(data, subtests):
         gt.storage.prepare_numpy()
 
     domain = data.draw(
-        st_domain(gt_powered=gt_powered, backend=backend, dtype=dtype), label="domain"
+        st_domain(
+            zaxis_length=(2, None), gt_powered=gt_powered, backend=backend, dtype=dtype
+        ),
+        label="domain",
     )
     grid = domain.numerical_grid
     nx, ny, nz = grid.nx, grid.ny, grid.nz
