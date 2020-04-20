@@ -43,18 +43,24 @@ from tasmania.python.domain.topography import (
     NumericalTopography,
 )
 
-from tests.utilities import (
-    compare_arrays,
-    compare_dataarrays,
-    compare_datetimes,
+from tests.strategies import (
     st_floats,
     st_horizontal_boundary,
     st_horizontal_field,
     st_physical_horizontal_grid,
     st_topography_kwargs,
 )
+from tests.utilities import compare_arrays, compare_dataarrays, compare_datetimes
 
 
+@settings(
+    suppress_health_check=(
+        HealthCheck.too_slow,
+        HealthCheck.data_too_large,
+        HealthCheck.filter_too_much,
+    ),
+    deadline=None,
+)
 @given(hyp_st.data())
 def test_topography_properties(data):
     # ========================================
@@ -90,6 +96,14 @@ def test_topography_properties(data):
         compare_dataarrays(profile, topo.profile)
 
 
+@settings(
+    suppress_health_check=(
+        HealthCheck.too_slow,
+        HealthCheck.data_too_large,
+        HealthCheck.filter_too_much,
+    ),
+    deadline=None,
+)
 @given(hyp_st.data())
 def test_topography_update(data):
     # ========================================
@@ -148,6 +162,14 @@ def test_physical_topography_registry():
     assert PhysicalTopography.register["schaer"] == Schaer
 
 
+@settings(
+    suppress_health_check=(
+        HealthCheck.too_slow,
+        HealthCheck.data_too_large,
+        HealthCheck.filter_too_much,
+    ),
+    deadline=None,
+)
 @given(hyp_st.data())
 def test_physical_topography_factory(data):
     # ========================================
@@ -172,7 +194,11 @@ def test_physical_topography_factory(data):
 
 
 @settings(
-    suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
+    suppress_health_check=(
+        HealthCheck.too_slow,
+        HealthCheck.data_too_large,
+        HealthCheck.filter_too_much,
+    ),
     deadline=None,
 )
 @given(hyp_st.data())

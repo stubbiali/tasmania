@@ -37,17 +37,18 @@ from tasmania.python.domain.horizontal_grid import (
 )
 
 from tests.conf import datatype as conf_dtype
-from tests.utilities import (
-    compare_dataarrays,
-    get_xaxis,
-    get_yaxis,
-    st_horizontal_boundary,
-    st_interval,
-    st_length,
-    st_one_of,
+from tests.strategies import st_horizontal_boundary, st_interval, st_length, st_one_of
+from tests.utilities import compare_dataarrays, get_xaxis, get_yaxis
+
+
+@settings(
+    suppress_health_check=(
+        HealthCheck.too_slow,
+        HealthCheck.data_too_large,
+        HealthCheck.filter_too_much,
+    ),
+    deadline=None,
 )
-
-
 @given(hyp_st.data())
 def test_grid(data):
     # ========================================
@@ -130,6 +131,14 @@ def test_grid(data):
     assert grid.ny == ny
 
 
+@settings(
+    suppress_health_check=(
+        HealthCheck.too_slow,
+        HealthCheck.data_too_large,
+        HealthCheck.filter_too_much,
+    ),
+    deadline=None,
+)
 @given(hyp_st.data())
 def test_physical_grid(data):
     # ========================================
@@ -164,6 +173,14 @@ def test_physical_grid(data):
     assert grid.ny == ny
 
 
+@settings(
+    suppress_health_check=(
+        HealthCheck.too_slow,
+        HealthCheck.data_too_large,
+        HealthCheck.filter_too_much,
+    ),
+    deadline=None,
+)
 @given(hyp_st.data())
 def test_numerical_grid(data):
     # ========================================

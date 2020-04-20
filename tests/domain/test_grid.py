@@ -34,11 +34,7 @@ from tasmania.python.domain.grid import Grid, PhysicalGrid, NumericalGrid
 from tasmania.python.domain.topography import PhysicalTopography
 
 from tests.conf import datatype as conf_dtype
-from tests.utilities import (
-    compare_dataarrays,
-    get_xaxis,
-    get_yaxis,
-    get_zaxis,
+from tests.strategies import (
     st_horizontal_boundary,
     st_interface,
     st_interval,
@@ -47,8 +43,17 @@ from tests.utilities import (
     st_physical_horizontal_grid,
     st_topography_kwargs,
 )
+from tests.utilities import compare_dataarrays, get_xaxis, get_yaxis, get_zaxis
 
 
+@settings(
+    suppress_health_check=(
+        HealthCheck.too_slow,
+        HealthCheck.data_too_large,
+        HealthCheck.filter_too_much,
+    ),
+    deadline=None,
+)
 @given(hyp_st.data())
 def test_grid(data):
     # ========================================
@@ -61,8 +66,9 @@ def test_grid(data):
     zi = data.draw(st_interface(domain_z))
 
     topo_kwargs = data.draw(st_topography_kwargs(grid_xy.x, grid_xy.y))
-    topo_type = topo_kwargs["type"]
-    topo = PhysicalTopography(grid_xy, topo_type, **topo_kwargs)
+    topo_type = topo_kwargs.pop("type")
+    topo_kwargs = {"time": topo_kwargs["time"], "smooth": topo_kwargs["smooth"]}
+    topo = PhysicalTopography.factory(topo_type, grid_xy, **topo_kwargs)
 
     # ========================================
     # test bed
@@ -81,6 +87,14 @@ def test_grid(data):
     assert nz == grid.nz
 
 
+@settings(
+    suppress_health_check=(
+        HealthCheck.too_slow,
+        HealthCheck.data_too_large,
+        HealthCheck.filter_too_much,
+    ),
+    deadline=None,
+)
 @given(hyp_st.data())
 def test_physical_grid(data):
     # ========================================
@@ -99,7 +113,8 @@ def test_physical_grid(data):
     zi = data.draw(st_interface(domain_z), label="zi")
 
     topo_kwargs = data.draw(st_topography_kwargs(domain_x, domain_y), label="kwargs")
-    topo_type = topo_kwargs["type"]
+    topo_type = topo_kwargs.pop("type")
+    topo_kwargs = {"time": topo_kwargs["time"], "smooth": topo_kwargs["smooth"]}
 
     dtype = data.draw(st_one_of(conf_dtype), label="dtype")
 
@@ -111,7 +126,7 @@ def test_physical_grid(data):
     z, zhl, dz = get_zaxis(domain_z, nz, dtype)
 
     grid = PhysicalGrid(
-        domain_x, nx, domain_y, ny, domain_z, nz, zi, topo_type, topo_kwargs, dtype
+        domain_x, nx, domain_y, ny, domain_z, nz, zi, topo_type, topo_kwargs, dtype=dtype
     )
 
     compare_dataarrays(x, grid.grid_xy.x)
@@ -126,6 +141,14 @@ def test_physical_grid(data):
     assert nz == grid.nz
 
 
+@settings(
+    suppress_health_check=(
+        HealthCheck.too_slow,
+        HealthCheck.data_too_large,
+        HealthCheck.filter_too_much,
+    ),
+    deadline=None,
+)
 @given(hyp_st.data())
 def test_numerical_grid(data):
     # ========================================
@@ -145,6 +168,7 @@ def test_numerical_grid(data):
 
     topo_kwargs = data.draw(st_topography_kwargs(domain_x, domain_y), label="kwargs")
     topo_type = topo_kwargs["type"]
+    topo_kwargs = {"time": topo_kwargs["time"], "smooth": topo_kwargs["smooth"]}
 
     dtype = data.draw(st_one_of(conf_dtype), label="dtype")
 

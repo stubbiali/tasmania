@@ -20,7 +20,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from hypothesis import given, strategies as hyp_st
+from hypothesis import HealthCheck, given, settings, strategies as hyp_st
 import numpy as np
 import pytest
 from sympl import DataArray
@@ -28,13 +28,18 @@ from sympl import DataArray
 from tasmania.python.domain.topography import PhysicalTopography
 from tasmania.python.utils.storage_utils import deepcopy_dataarray, get_dataarray_2d
 
-from tests.utilities import (
-    compare_dataarrays,
-    st_physical_horizontal_grid,
-    st_topography_kwargs,
+from tests.strategies import st_physical_horizontal_grid, st_topography_kwargs
+from tests.utilities import compare_dataarrays
+
+
+@settings(
+    suppress_health_check=(
+        HealthCheck.too_slow,
+        HealthCheck.data_too_large,
+        HealthCheck.filter_too_much,
+    ),
+    deadline=None,
 )
-
-
 @given(hyp_st.data())
 def test_compute_steady_profile(data):
     # ========================================

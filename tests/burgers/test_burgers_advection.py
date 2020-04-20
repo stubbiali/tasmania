@@ -43,7 +43,8 @@ from tests.conf import (
     default_origin as conf_dorigin,
     nb as conf_nb,
 )
-from tests.utilities import compare_arrays, st_burgers_state, st_one_of, st_physical_grid
+from tests.strategies import st_burgers_state, st_one_of, st_physical_grid
+from tests.utilities import compare_arrays
 
 
 class WrappingStencil:

@@ -37,38 +37,13 @@ from tasmania.python.domain.horizontal_boundary import HorizontalBoundary
 from tasmania.python.domain.grid import NumericalGrid
 
 from tests.conf import backend as conf_backend, datatype as conf_dtype
-from tests.utilities import (
-    compare_arrays,
-    compare_dataarrays,
+from tests.strategies import (
     st_horizontal_boundary_layers,
     st_one_of,
     st_physical_grid,
     st_raw_field,
 )
-
-
-def pi(time, grid, slice_x, slice_y, field_name, field_units):
-    if slice_x is not None:
-        li = slice_x.stop - slice_x.start
-    else:
-        li = (
-            grid.nx + 1
-            if "at_u_locations" in field_name or "at_uv_locations" in field_name
-            else grid.nx
-        )
-
-    if slice_y is not None:
-        lj = slice_y.stop - slice_y.start
-    else:
-        lj = (
-            grid.ny + 1
-            if "at_v_locations" in field_name or "at_uv_locations" in field_name
-            else grid.ny
-        )
-
-    out = np.pi * np.ones((li, lj, 1), dtype=grid.x.dtype)
-
-    return out
+from tests.utilities import compare_arrays, compare_dataarrays, pi_function
 
 
 @settings(
@@ -282,7 +257,7 @@ def test_enforce(data):
         gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
-        core=pi,
+        core=pi_function,
     )
 
     cgrid = NumericalGrid(grid, hb)
@@ -354,7 +329,7 @@ def test_outermost_layers(data):
         gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
-        core=pi,
+        core=pi_function,
     )
 
     cgrid = NumericalGrid(grid, hb)

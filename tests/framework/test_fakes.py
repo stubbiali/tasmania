@@ -34,8 +34,8 @@ import pytest
 import gt4py as gt
 
 from tasmania.python.framework.fakes import FakeTendencyComponent
-from tasmania.python.framework.sts_tendency_steppers import STSTendencyStepper
-from tasmania.python.framework.tendency_steppers import TendencyStepper
+from tasmania.python.framework.sts_tendency_stepper import STSTendencyStepper
+from tasmania.python.framework.tendency_stepper import TendencyStepper
 
 from tests.conf import (
     backend as conf_backend,

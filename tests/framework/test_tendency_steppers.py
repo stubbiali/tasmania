@@ -33,7 +33,7 @@ import pytest
 import gt4py as gt
 
 from tasmania.python.framework.fakes import FakeTendencyComponent
-from tasmania.python.framework.tendency_steppers import TendencyStepper, register
+from tasmania.python.framework.tendency_stepper import TendencyStepper, register
 from tasmania.python.framework.tendency_steppers_implicit import Implicit
 from tasmania.python.framework.tendency_steppers_rk import ForwardEuler, RK2, RK3WS
 

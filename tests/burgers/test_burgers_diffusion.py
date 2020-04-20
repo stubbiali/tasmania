@@ -53,7 +53,7 @@ from tests.dwarfs.test_horizontal_diffusion import (
     assert_xz,
     assert_yz,
 )
-from tests.utilities import st_burgers_state, st_domain, st_floats, st_one_of
+from tests.strategies import st_burgers_state, st_domain, st_floats, st_one_of
 
 
 def second_order_validation(grid, smooth_coeff, phi, phi_tnd, nb):

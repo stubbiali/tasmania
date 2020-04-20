@@ -37,7 +37,8 @@ import gt4py as gt
 from tasmania.python.burgers.state import ZhaoSolutionFactory, ZhaoStateFactory
 
 from tests.conf import backend as conf_backend, default_origin as conf_dorigin
-from tests.utilities import compare_arrays, st_floats, st_one_of, st_physical_grid
+from tests.strategies import st_floats, st_one_of, st_physical_grid
+from tests.utilities import compare_arrays
 
 
 @settings(

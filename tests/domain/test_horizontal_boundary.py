@@ -20,18 +20,18 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from copy import deepcopy
 from hypothesis import (
-    assume,
     given,
     HealthCheck,
     settings,
     strategies as hyp_st,
     reproduce_failure,
 )
-import numpy as np
 import pytest
 
+import gt4py
+
+from tasmania.python.domain.grid import NumericalGrid
 from tasmania.python.domain.horizontal_boundaries.dirichlet import (
     Dirichlet,
     Dirichlet1DX,
@@ -57,6 +57,19 @@ from tasmania.python.domain.horizontal_boundaries.relaxed import (
     dispatch as dispatch_relaxed,
 )
 from tasmania.python.domain.horizontal_boundary import HorizontalBoundary
+from tasmania.python.utils.storage_utils import (
+    deepcopy_array_dict,
+    deepcopy_dataarray_dict,
+)
+
+from tests.conf import backend as conf_backend
+from tests.strategies import (
+    st_horizontal_boundary,
+    st_one_of,
+    st_physical_grid,
+    st_state,
+)
+from tests.utilities import compare_arrays, compare_dataarrays
 
 
 def test_register():
@@ -109,6 +122,112 @@ def test_factory():
     assert isinstance(obj, Relaxed1DX)
     obj = HorizontalBoundary.factory("relaxed", 1, 20, 1, nr=2)
     assert isinstance(obj, Relaxed1DY)
+
+
+@settings(
+    suppress_health_check=(
+        HealthCheck.too_slow,
+        HealthCheck.data_too_large,
+        HealthCheck.filter_too_much,
+    ),
+    deadline=None,
+)
+@given(hyp_st.data())
+def test_enforce_raw(data):
+    # ========================================
+    # random data generation
+    # ========================================
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+
+    if gt_powered:
+        gt4py.storage.prepare_numpy()
+
+    pgrid = data.draw(st_physical_grid(), label="grid")
+    hb = data.draw(st_horizontal_boundary(pgrid.nx, pgrid.ny), label="hb")
+    ngrid = NumericalGrid(pgrid, hb)
+
+    state = data.draw(st_state(ngrid, gt_powered=gt_powered, backend=backend))
+
+    field_properties = {}
+    for key in state:
+        if key is not "time" and data.draw(hyp_st.booleans()):
+            field_properties[key] = {"units": state[key].attrs["units"]}
+
+    # ========================================
+    # test
+    # ========================================
+    hb.reference_state = state
+
+    raw_state = {"time": state["time"]}
+    raw_state.update({key: state[key].values for key in state if key is not "time"})
+    raw_state_dc = deepcopy_array_dict(raw_state)
+
+    hb.enforce_raw(raw_state, field_properties, ngrid)
+
+    for key in state:
+        if key is not "time":
+            if key in field_properties:
+                hb.enforce_field(
+                    raw_state_dc[key],
+                    field_name=key,
+                    field_units=state[key].attrs["units"],
+                    time=state["time"],
+                    grid=ngrid,
+                )
+            compare_arrays(raw_state[key], raw_state_dc[key])
+
+
+@settings(
+    suppress_health_check=(
+        HealthCheck.too_slow,
+        HealthCheck.data_too_large,
+        HealthCheck.filter_too_much,
+    ),
+    deadline=None,
+)
+@given(hyp_st.data())
+def test_enforce(data):
+    # ========================================
+    # random data generation
+    # ========================================
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+
+    if gt_powered:
+        gt4py.storage.prepare_numpy()
+
+    pgrid = data.draw(st_physical_grid(), label="grid")
+    hb = data.draw(st_horizontal_boundary(pgrid.nx, pgrid.ny), label="hb")
+    ngrid = NumericalGrid(pgrid, hb)
+
+    state = data.draw(st_state(ngrid, gt_powered=gt_powered, backend=backend))
+
+    field_names = []
+    for key in state:
+        if key is not "time" and data.draw(hyp_st.booleans()):
+            field_names.append(key)
+
+    # ========================================
+    # test
+    # ========================================
+    hb.reference_state = state
+
+    state_dc = deepcopy_dataarray_dict(state)
+
+    hb.enforce(state, field_names, ngrid)
+
+    for key in state:
+        if key is not "time":
+            if key in field_names:
+                hb.enforce_field(
+                    state_dc[key].values,
+                    field_name=key,
+                    field_units=state[key].attrs["units"],
+                    time=state["time"],
+                    grid=ngrid,
+                )
+            compare_dataarrays(state[key], state_dc[key])
 
 
 if __name__ == "__main__":

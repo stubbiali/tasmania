@@ -47,13 +47,8 @@ from tests.burgers.test_burgers_advection import (
     third_order_advection,
     fifth_order_advection,
 )
-from tests.utilities import (
-    compare_arrays,
-    st_burgers_state,
-    st_domain,
-    st_one_of,
-    st_timedeltas,
-)
+from tests.strategies import st_burgers_state, st_domain, st_one_of, st_timedeltas
+from tests.utilities import compare_arrays
 
 
 @settings(

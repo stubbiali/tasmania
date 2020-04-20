@@ -30,16 +30,13 @@ from hypothesis import (
 )
 import numpy as np
 import pytest
-from sympl import DataArray
 
 import gt4py
 
 from tasmania.python.domain.horizontal_boundary import HorizontalBoundary
 
 from tests.conf import backend as conf_backend, datatype as conf_dtype
-from tests.utilities import (
-    compare_arrays,
-    compare_dataarrays,
+from tests.strategies import (
     st_horizontal_boundary_kwargs,
     st_horizontal_boundary_layers,
     st_one_of,
@@ -47,6 +44,7 @@ from tests.utilities import (
     st_raw_field,
     st_state,
 )
+from tests.utilities import compare_arrays, compare_dataarrays
 
 
 @settings(

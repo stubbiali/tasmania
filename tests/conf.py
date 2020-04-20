@@ -55,7 +55,7 @@ axis_z = {
 
 # topography2d
 topography = {
-    "type": ("flat_terrain", "gaussian", "schaer", "user_defined"),
+    "type": ("flat", "gaussian", "schaer"),  # , "user_defined"
     "time": (timedelta(seconds=1), timedelta(minutes=60)),
     "units_to_max_height": {"km": (0, 2)},
     "units_to_half_width_x": {"m": (1, 50e3)},
