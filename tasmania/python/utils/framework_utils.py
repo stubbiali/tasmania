@@ -26,12 +26,26 @@ from sympl._core.combine_properties import (
     InvalidPropertyDictError,
 )
 from sympl._core.units import clean_units
-from typing import Any, Dict, Mapping, Optional, Sequence, Tuple, TYPE_CHECKING, Type
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Mapping,
+    Optional,
+    Sequence,
+    TYPE_CHECKING,
+    Tuple,
+    Type,
+    TypeVar,
+)
 
 from tasmania.python.utils import taz_types
 
 if TYPE_CHECKING:
     from tasmania.python.framework._base import BaseTendency2Diagnostic
+
+
+T = TypeVar("T")
 
 
 def check_properties_compatibility(
@@ -370,3 +384,56 @@ def restore_tendency_units(tendencies: taz_types.mutable_dataarray_dict_t) -> No
             tendencies[name].attrs["units"] = clean_units(
                 tendencies[name].attrs["units"] + " s^-1"
             )
+
+
+def register(
+    name: str,
+    registry_class: Optional[Type[T]] = None,
+    registry_name: Optional[str] = None,
+) -> Callable:
+    def core(cls):
+        rcls = registry_class or cls
+        rname = registry_name or "registry"
+
+        if not hasattr(rcls, rname):
+            raise RuntimeError(
+                f"Class {rcls.__name__} does not have the attribute '{rname}'."
+            )
+        registry = getattr(rcls, rname)
+
+        if name in registry and registry[name] != cls:
+            import warnings
+
+            warnings.warn(
+                f"Cannot register {cls.__name__} as '{name}' since this name "
+                f"has already been used to register {registry[name]}."
+            )
+        else:
+            registry[name] = cls
+
+        return cls
+
+    return core
+
+
+def factorize(
+    name: str, registry_class: Type[T], args, kwargs, registry_name: Optional[str] = None
+) -> T:
+    rcls = registry_class
+    rname = registry_name or "registry"
+
+    if not hasattr(rcls, rname):
+        raise RuntimeError(
+            f"Class {rcls.__name__} does not have the attribute '{rname}'."
+        )
+    registry = getattr(rcls, rname)
+
+    if name in registry:
+        obj = registry[name](*args, **kwargs)
+        return obj
+    else:
+        raise RuntimeError(
+            f"No entity has been registered as '{name}'. "
+            f"Available options are: "
+            f"{', '.join(key for key in registry.keys())}."
+        )
