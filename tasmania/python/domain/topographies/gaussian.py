@@ -23,10 +23,11 @@
 import numpy as np
 from sympl import DataArray
 
-from tasmania.python.domain.topography import PhysicalTopography, registry
+from tasmania.python.domain.topography import PhysicalTopography
+from tasmania.python.utils.framework_utils import register
 
 
-@registry(name="gaussian")
+@register(name="gaussian")
 class Gaussian(PhysicalTopography):
     """ An isolated Gaussian mountain.
 

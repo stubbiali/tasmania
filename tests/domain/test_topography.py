@@ -22,14 +22,12 @@
 #
 from copy import deepcopy
 from hypothesis import (
-    assume,
     given,
     HealthCheck,
     reproduce_failure,
     settings,
     strategies as hyp_st,
 )
-import numpy as np
 from pandas import Timedelta
 import pytest
 
@@ -150,16 +148,16 @@ def test_topography_update(data):
 
 def test_physical_topography_registry():
     # flat
-    assert "flat" in PhysicalTopography.register
-    assert PhysicalTopography.register["flat"] == Flat
+    assert "flat" in PhysicalTopography.registry
+    assert PhysicalTopography.registry["flat"] == Flat
 
     # gaussian
-    assert "gaussian" in PhysicalTopography.register
-    assert PhysicalTopography.register["gaussian"] == Gaussian
+    assert "gaussian" in PhysicalTopography.registry
+    assert PhysicalTopography.registry["gaussian"] == Gaussian
 
     # schaer
-    assert "schaer" in PhysicalTopography.register
-    assert PhysicalTopography.register["schaer"] == Schaer
+    assert "schaer" in PhysicalTopography.registry
+    assert PhysicalTopography.registry["schaer"] == Schaer
 
 
 @settings(

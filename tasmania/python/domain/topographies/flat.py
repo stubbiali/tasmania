@@ -22,10 +22,11 @@
 #
 import numpy as np
 
-from tasmania.python.domain.topography import PhysicalTopography, registry
+from tasmania.python.domain.topography import PhysicalTopography
+from tasmania.python.utils.framework_utils import register
 
 
-@registry(name="flat")
+@register(name="flat")
 class Flat(PhysicalTopography):
     """ Flat terrain. """
 

@@ -28,6 +28,7 @@ from sympl import DataArray
 from typing import Any, Dict, Optional, TYPE_CHECKING
 
 from tasmania.python.utils import taz_types
+from tasmania.python.utils.framework_utils import factorize
 from tasmania.python.utils.storage_utils import get_dataarray_2d
 from tasmania.python.utils.utils import smaller_than as lt
 
@@ -111,7 +112,7 @@ class Topography:
 class PhysicalTopography(abc.ABC, Topography):
     """ A time-dependent topography defined over a physical grid. """
 
-    register = {}
+    registry = {}
 
     def __init__(
         self,
@@ -218,36 +219,12 @@ class PhysicalTopography(abc.ABC, Topography):
         obj :
             An instance of the derived class registered as ``topography_type``.
         """
-        if topography_type in PhysicalTopography.register:
-            obj = PhysicalTopography.register[topography_type](
-                grid, time, smooth, **kwargs
-            )
-            obj.type = topography_type
-            return obj
-        else:
-            raise RuntimeError(
-                f"Unknown topography type '{topography_type}'. "
-                f"Supported types are: "
-                f"{', '.join(key for key in PhysicalTopography.register.keys())}."
-            )
+        args = (grid, time, smooth)
 
+        obj = factorize(topography_type, PhysicalTopography, args, kwargs)
+        obj.type = topography_type
 
-def registry(name):
-    def core(cls):
-        if (
-            name in PhysicalTopography.register
-            and PhysicalTopography.register[name] != cls
-        ):
-            import warnings
-
-            warnings.warn(
-                f"Cannot register '{name}' as already present in PhysicalTopography.register."
-            )
-        else:
-            PhysicalTopography.register[name] = cls
-        return cls
-
-    return core
+        return obj
 
 
 class NumericalTopography(Topography):
