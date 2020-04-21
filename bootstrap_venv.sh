@@ -1,10 +1,10 @@
 #!/bin/bash
 
-MODULES=( )
-# MODULES=( daint-gpu cray-python/3.6.5.7 cudatoolkit )
+# MODULES=( )
+MODULES=( daint-gpu cray-python/3.6.5.7 cudatoolkit )
 PYTHON=python3.6
 DISABLE_CEXT=1
-CUDA=
+CUDA=cuda-101
 VENV=venv
 FRESH_INSTALL=1
 
@@ -12,7 +12,7 @@ function install()
 {
   source $VENV/bin/activate && \
     pip install --upgrade pip && \
-    export DISABLE_TASMANIA_CEXT=$DISABLE_CEXT; pip install -e . && \
+    export DISABLE_TASMANIA_CEXT=$DISABLE_CEXT; pip install -e .[$CUDA] && \
     pip install -r requirements_dev.txt && \
 	  pip install -e docker/external/xarray && \
     pip install -e docker/external/sympl && \
