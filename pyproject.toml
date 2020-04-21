@@ -30,5 +30,7 @@ exclude = '''
 [tool.coverage.run]
 omit = [
     "tasmania/python/domain/grids/*",
-    "tasmania/python/domain/topographies/user_defined.py"
+    "tasmania/python/domain/topographies/user_defined.py",
+    "tasmania/python/framework/offline_diagnostics.py",
+    "tasmania/python/framework/tendency_steppers/rk3.py"
 ]

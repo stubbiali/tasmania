@@ -30,32 +30,32 @@ from hypothesis import (
 )
 import pytest
 
-import gt4py as gt
-
 from tasmania.python.framework.fakes import FakeTendencyComponent
-from tasmania.python.framework.tendency_stepper import TendencyStepper, register
-from tasmania.python.framework.tendency_steppers_implicit import Implicit
-from tasmania.python.framework.tendency_steppers_rk import ForwardEuler, RK2, RK3WS
+from tasmania.python.framework.tendency_stepper import TendencyStepper
+from tasmania.python.framework.tendency_steppers.forward_euler import ForwardEuler
+from tasmania.python.framework.tendency_steppers.implicit import Implicit
+from tasmania.python.framework.tendency_steppers.rk2 import RK2
+from tasmania.python.framework.tendency_steppers.rk3ws import RK3WS
 
 from tests.strategies import st_domain, st_one_of
 
 
-def test_register():
+def test_registry():
     # forward euler
-    assert "forward_euler" in register
-    assert register["forward_euler"] == ForwardEuler
+    assert "forward_euler" in TendencyStepper.registry
+    assert TendencyStepper.registry["forward_euler"] == ForwardEuler
 
     # rk2
-    assert "rk2" in register
-    assert register["rk2"] == RK2
+    assert "rk2" in TendencyStepper.registry
+    assert TendencyStepper.registry["rk2"] == RK2
 
     # rk3ws
-    assert "rk3ws" in register
-    assert register["rk3ws"] == RK3WS
+    assert "rk3ws" in TendencyStepper.registry
+    assert TendencyStepper.registry["rk3ws"] == RK3WS
 
     # implicit
-    assert "implicit" in register
-    assert register["implicit"] == Implicit
+    assert "implicit" in TendencyStepper.registry
+    assert TendencyStepper.registry["implicit"] == Implicit
 
 
 @settings(
@@ -68,8 +68,6 @@ def test_register():
 )
 @given(data=hyp_st.data())
 def test_factory(data):
-    gt.storage.prepare_numpy()
-
     # ========================================
     # random data generation
     # ========================================

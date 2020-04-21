@@ -32,7 +32,7 @@ import pytest
 
 import gt4py as gt
 
-from tasmania.python.framework.tendency_steppers_implicit import Implicit
+from tasmania.python.framework.tendency_stepper import TendencyStepper
 from tasmania.python.isentropic.physics.implicit_vertical_advection import (
     IsentropicImplicitVerticalAdvectionDiagnostic,
 )
@@ -62,9 +62,7 @@ from tests.utilities import compare_dataarrays
     deadline=None,
 )
 @given(data=hyp_st.data())
-def test_implicit(data, make_fake_tendency_component_1, subtests):
-    gt.storage.prepare_numpy()
-
+def test_implicit(data, subtests):
     # ========================================
     # random data generation
     # ========================================
@@ -72,6 +70,9 @@ def test_implicit(data, make_fake_tendency_component_1, subtests):
     backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    if gt_powered:
+        gt.storage.prepare_numpy()
 
     domain = data.draw(
         st_domain(
@@ -133,7 +134,8 @@ def test_implicit(data, make_fake_tendency_component_1, subtests):
         storage_shape=storage_shape,
     )
 
-    imp = Implicit(
+    imp = TendencyStepper.factory(
+        "implicit",
         iva,
         execution_policy="serial",
         gt_powered=gt_powered,

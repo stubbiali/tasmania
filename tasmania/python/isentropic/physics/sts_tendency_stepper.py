@@ -25,11 +25,12 @@ from typing import Optional, Tuple, Union
 
 from gt4py import gtscript
 
-from tasmania.python.framework.sts_tendency_stepper import STSTendencyStepper, registry
+from tasmania.python.framework.sts_tendency_stepper import STSTendencyStepper
 from tasmania.python.isentropic.physics.implicit_vertical_advection import (
     IsentropicImplicitVerticalAdvectionDiagnostic,
 )
 from tasmania.python.utils import taz_types
+from tasmania.python.utils.framework_utils import register
 from tasmania.python.utils.utils import thomas_numpy
 
 
@@ -91,7 +92,7 @@ def setup_tridiagonal_system_bc(
     return a, c, d
 
 
-@registry(scheme_name="isentropic_vertical_advection")
+@register(name="isentropic_vertical_advection")
 class IsentropicVerticalAdvection(STSTendencyStepper):
     """ Couple the Crank-Nicholson integrator with centered finite differences
     in space to discretize the vertical advection in the isentropic model. """

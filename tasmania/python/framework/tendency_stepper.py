@@ -36,29 +36,9 @@ from typing import Optional, Tuple
 from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
 from tasmania.python.utils import taz_types
 from tasmania.python.utils.dict_utils import DataArrayDictOperator
-from tasmania.python.utils.framework_utils import check_property_compatibility
+from tasmania.python.utils.framework_utils import check_property_compatibility, factorize
 from tasmania.python.utils.storage_utils import deepcopy_dataarray
 from tasmania.python.utils.utils import assert_sequence
-
-
-register = {}
-
-
-def registry(scheme_name):
-    def core(cls):
-        if scheme_name in register and register[scheme_name] != cls:
-            import warnings
-
-            warnings.warn(
-                "Cannot register '{}' as already present in the register.".format(
-                    scheme_name
-                )
-            )
-        else:
-            register[scheme_name] = cls
-        return cls
-
-    return core
 
 
 class TendencyStepper(abc.ABC):
@@ -66,6 +46,8 @@ class TendencyStepper(abc.ABC):
     Callable abstract base class which steps a model state based on the
     tendencies calculated by a set of wrapped prognostic components.
     """
+
+    registry = {}
 
     allowed_component_type = (
         TendencyComponent,
@@ -283,6 +265,45 @@ class TendencyStepper(abc.ABC):
 
         return diagnostics, out_state
 
+    @abc.abstractmethod
+    def _call(
+        self, state: taz_types.dataarray_dict_t, timestep: taz_types.timedelta_t
+    ) -> Tuple[taz_types.dataarray_dict_t, taz_types.dataarray_dict_t]:
+        """
+        Step the model state. As this method is marked as abstract,
+        its implementation is delegated to the derived classes.
+
+        Parameters
+        ----------
+        state : dict[str, sympl.DataArray]
+            Dictionary whose keys are strings denoting the input model
+            variables, and whose values are :class:`sympl.DataArray`\s
+            storing values for those variables.
+        timestep : datetime.timedelta
+            The time step.
+
+        Return
+        ------
+        diagnostics : dict[str, sympl.DataArray]
+            The diagnostics retrieved from the input state.
+        out_state : dict[str, sympl.DataArray]
+            The output (stepped) state.
+        """
+        pass
+
+    def _allocate_output_state(
+        self, state: taz_types.dataarray_dict_t
+    ) -> taz_types.dataarray_dict_t:
+        out_state = self._out_state or {}
+
+        if not out_state:
+            for name in self.output_properties:
+                units = self.output_properties[name]["units"]
+                out_state[name] = deepcopy_dataarray(state[name].to_units(units))
+                out_state[name].values[...] = 0.0
+
+        return out_state
+
     @staticmethod
     def factory(
         scheme: str,
@@ -297,8 +318,7 @@ class TendencyStepper(abc.ABC):
         rebuild: bool = False,
         **kwargs
     ) -> "TendencyStepper":
-        """
-        Factory returning an instance of the desired derived class.
+        """ Get an instance of the desired derived class.
 
         Parameters
         ----------
@@ -348,66 +368,15 @@ class TendencyStepper(abc.ABC):
         obj :
             Instance of the desired derived class.
         """
-        derived_class = register.get(scheme, None)
-
-        if derived_class is None:
-            raise RuntimeError(
-                "Unsupported time integration scheme "
-                "{}"
-                ". "
-                "Available integrators are: {}.".format(
-                    scheme, ", ".join(register.keys())
-                )
-            )
-
-        return derived_class(
-            *args,
-            execution_policy=execution_policy,
-            enforce_horizontal_boundary=enforce_horizontal_boundary,
-            gt_powered=gt_powered,
-            backend=backend,
-            backend_opts=backend_opts,
-            build_info=build_info,
-            dtype=dtype,
-            rebuild=rebuild,
-            **kwargs
-        )
-
-    @abc.abstractmethod
-    def _call(
-        self, state: taz_types.dataarray_dict_t, timestep: taz_types.timedelta_t
-    ) -> Tuple[taz_types.dataarray_dict_t, taz_types.dataarray_dict_t]:
-        """
-        Step the model state. As this method is marked as abstract,
-        its implementation is delegated to the derived classes.
-
-        Parameters
-        ----------
-        state : dict[str, sympl.DataArray]
-            Dictionary whose keys are strings denoting the input model
-            variables, and whose values are :class:`sympl.DataArray`\s
-            storing values for those variables.
-        timestep : datetime.timedelta
-            The time step.
-
-        Return
-        ------
-        diagnostics : dict[str, sympl.DataArray]
-            The diagnostics retrieved from the input state.
-        out_state : dict[str, sympl.DataArray]
-            The output (stepped) state.
-        """
-        pass
-
-    def _allocate_output_state(
-        self, state: taz_types.dataarray_dict_t
-    ) -> taz_types.dataarray_dict_t:
-        out_state = self._out_state or {}
-
-        if not out_state:
-            for name in self.output_properties:
-                units = self.output_properties[name]["units"]
-                out_state[name] = deepcopy_dataarray(state[name].to_units(units))
-                out_state[name].values[...] = 0.0
-
-        return out_state
+        child_kwargs = {
+            "execution_policy": execution_policy,
+            "enforce_horizontal_boundary": enforce_horizontal_boundary,
+            "gt_powered": gt_powered,
+            "backend": backend,
+            "backend_opts": backend_opts,
+            "build_info": build_info,
+            "dtype": dtype,
+            "rebuild": rebuild,
+        }
+        child_kwargs.update(kwargs)
+        return factorize(scheme, TendencyStepper, args, child_kwargs)

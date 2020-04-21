@@ -21,7 +21,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 from hypothesis import (
-    assume,
     given,
     HealthCheck,
     settings,
@@ -30,37 +29,40 @@ from hypothesis import (
 )
 import pytest
 
-import gt4py as gt
-
 from tasmania.python.framework.fakes import FakeTendencyComponent
-from tasmania.python.framework.sts_tendency_stepper import STSTendencyStepper, register
-from tasmania.python.framework.sts_tendency_steppers_rk import ForwardEuler, RK2, RK3WS
+from tasmania.python.framework.sts_tendency_stepper import STSTendencyStepper
+from tasmania.python.framework.sts_tendency_steppers.forward_euler import ForwardEuler
+from tasmania.python.framework.sts_tendency_steppers.rk2 import RK2
+from tasmania.python.framework.sts_tendency_steppers.rk3ws import RK3WS
 from tasmania.python.isentropic.physics.implicit_vertical_advection import (
     IsentropicImplicitVerticalAdvectionDiagnostic,
 )
-from tasmania.python.isentropic.physics.sts_tendency_steppers import (
+from tasmania.python.isentropic.physics.sts_tendency_stepper import (
     IsentropicVerticalAdvection,
 )
 
 from tests.strategies import st_domain, st_one_of
 
 
-def test_register():
+def test_registry():
     # forward euler
-    assert "forward_euler" in register
-    assert register["forward_euler"] == ForwardEuler
+    assert "forward_euler" in STSTendencyStepper.registry
+    assert STSTendencyStepper.registry["forward_euler"] == ForwardEuler
 
     # rk2
-    assert "rk2" in register
-    assert register["rk2"] == RK2
+    assert "rk2" in STSTendencyStepper.registry
+    assert STSTendencyStepper.registry["rk2"] == RK2
 
     # rk3ws
-    assert "rk3ws" in register
-    assert register["rk3ws"] == RK3WS
+    assert "rk3ws" in STSTendencyStepper.registry
+    assert STSTendencyStepper.registry["rk3ws"] == RK3WS
 
-    # isentropic_prognostic vertical advection
-    assert "isentropic_vertical_advection" in register
-    assert register["isentropic_vertical_advection"] == IsentropicVerticalAdvection
+    # isentropic prognostic vertical advection
+    assert "isentropic_vertical_advection" in STSTendencyStepper.registry
+    assert (
+        STSTendencyStepper.registry["isentropic_vertical_advection"]
+        == IsentropicVerticalAdvection
+    )
 
 
 @settings(
@@ -73,8 +75,6 @@ def test_register():
 )
 @given(data=hyp_st.data())
 def test_factory(data):
-    gt.storage.prepare_numpy()
-
     # ========================================
     # random data generation
     # ========================================

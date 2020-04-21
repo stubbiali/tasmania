@@ -36,7 +36,7 @@ import gt4py as gt
 from tasmania.python.isentropic.physics.implicit_vertical_advection import (
     IsentropicImplicitVerticalAdvectionDiagnostic,
 )
-from tasmania.python.isentropic.physics.sts_tendency_steppers import (
+from tasmania.python.isentropic.physics.sts_tendency_stepper import (
     IsentropicVerticalAdvection,
 )
 from tasmania.python.utils.storage_utils import get_dataarray_3d, zeros

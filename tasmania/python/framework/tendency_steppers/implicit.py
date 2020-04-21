@@ -22,11 +22,11 @@
 #
 import numpy as np
 
-from tasmania.python.framework.tendency_stepper import TendencyStepper, registry
-from tasmania.python.utils.framework_utils import get_increment
+from tasmania.python.framework.tendency_stepper import TendencyStepper
+from tasmania.python.utils.framework_utils import get_increment, register
 
 
-@registry(scheme_name="implicit")
+@register(name="implicit")
 class Implicit(TendencyStepper):
     """ Interpret the diagnostics as the new values for the prognostic variables. """
 

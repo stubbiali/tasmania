@@ -36,29 +36,9 @@ from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
 from tasmania.python.framework.fakes import FakeComponent
 from tasmania.python.utils import taz_types
 from tasmania.python.utils.dict_utils import DataArrayDictOperator
-from tasmania.python.utils.framework_utils import check_property_compatibility
+from tasmania.python.utils.framework_utils import check_property_compatibility, factorize
 from tasmania.python.utils.storage_utils import deepcopy_dataarray
 from tasmania.python.utils.utils import assert_sequence
-
-
-register = {}
-
-
-def registry(scheme_name):
-    def core(cls):
-        if scheme_name in register and register[scheme_name] != cls:
-            import warnings
-
-            warnings.warn(
-                "Cannot register '{}' as already present in the register.".format(
-                    scheme_name
-                )
-            )
-        else:
-            register[scheme_name] = cls
-        return cls
-
-    return core
 
 
 class STSTendencyStepper(abc.ABC):
@@ -67,6 +47,8 @@ class STSTendencyStepper(abc.ABC):
     tendencies calculated by a set of wrapped prognostic components,
     pursuing the sequential-tendency splitting (STS) approach.
     """
+
+    registry = {}
 
     allowed_component_type = (
         TendencyComponent,
@@ -329,8 +311,7 @@ class STSTendencyStepper(abc.ABC):
         rebuild: bool = False,
         **kwargs
     ) -> "STSTendencyStepper":
-        """
-        Factory returning an instance of the desired derived class.
+        """ Get an instance of the desired derived class.
 
         Parameters
         ----------
@@ -380,30 +361,18 @@ class STSTendencyStepper(abc.ABC):
         obj :
             Instance of the desired derived class.
         """
-        derived_class = register.get(scheme, None)
-
-        if derived_class is None:
-            raise RuntimeError(
-                "Unsupported time integration scheme "
-                "{}"
-                ". "
-                "Available integrators are: {}.".format(
-                    scheme, ", ".join(register.keys())
-                )
-            )
-
-        return derived_class(
-            *args,
-            execution_policy=execution_policy,
-            enforce_horizontal_boundary=enforce_horizontal_boundary,
-            gt_powered=gt_powered,
-            backend=backend,
-            backend_opts=backend_opts,
-            build_info=build_info,
-            dtype=dtype,
-            rebuild=rebuild,
-            **kwargs
-        )
+        child_kwargs = {
+            "execution_policy": execution_policy,
+            "enforce_horizontal_boundary": enforce_horizontal_boundary,
+            "gt_powered": gt_powered,
+            "backend": backend,
+            "backend_opts": backend_opts,
+            "build_info": build_info,
+            "dtype": dtype,
+            "rebuild": rebuild,
+        }
+        child_kwargs.update(kwargs)
+        return factorize(scheme, STSTendencyStepper, args, child_kwargs)
 
     @abc.abstractmethod
     def _call(
