@@ -4,7 +4,7 @@
 MODULES=( daint-gpu cray-python/3.6.5.7 cudatoolkit )
 PYTHON=python3.6
 DISABLE_CEXT=1
-CUDA=cuda-101
+CUDA=cuda101
 VENV=venv
 FRESH_INSTALL=1
 

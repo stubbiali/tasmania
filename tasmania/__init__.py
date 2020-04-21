@@ -114,10 +114,6 @@ from tasmania.python.physics.microphysics.kessler import (
     KesslerSaturationAdjustmentPrognostic,
     KesslerSedimentation,
 )
-from tasmania.python.physics.microphysics.old_kessler import (
-    KesslerMicrophysics as OldKesslerMicrophysics,
-    KesslerSaturationAdjustment as OldKesslerSaturationAdjustment,
-)
 from tasmania.python.physics.microphysics.utils import Clipping, Precipitation
 from tasmania.python.physics.turbulence import Smagorinsky2d
 
@@ -218,8 +214,6 @@ __all__ = (
     NumericalHorizontalGrid,
     NumericalTopography,
     OfflineDiagnosticComponent,
-    OldKesslerMicrophysics,
-    OldKesslerSaturationAdjustment,
     ParallelSplitting,
     PhysicalGrid,
     PhysicalHorizontalGrid,
