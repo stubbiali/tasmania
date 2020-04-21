@@ -40,7 +40,7 @@ parser.add_argument(
     "-n",
     metavar="NAMELIST",
     type=str,
-    default="namelist_sts_0.py",
+    default="namelist_sts.py",
     help="The namelist file.",
     dest="namelist",
 )
