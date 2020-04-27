@@ -1,26 +1,26 @@
 #!/bin/bash
 
-# MODULES=( )
-MODULES=( daint-gpu cray-python/3.6.5.7 cudatoolkit )
+MODULES=( )
+# MODULES=( daint-gpu cray-python/3.6.5.7 cudatoolkit )
 PYTHON=python3.6
 DISABLE_CEXT=1
 CUDA=
 VENV=venv
-FRESH_INSTALL=0
+FRESH_INSTALL=1
 
 function install()
 {
   source $VENV/bin/activate && \
     pip install --upgrade pip && \
     export DISABLE_TASMANIA_CEXT=$DISABLE_CEXT; \
-		pip install -e .[$CUDA] || pip install -e . && \
-    pip install -r requirements_dev.txt && \
-	  pip install -e docker/external/xarray && \
+	  pip install -e .[$CUDA] || pip install -e . && \
+    pip install -e docker/external/xarray && \
     pip install -e docker/external/sympl && \
     pip install -e docker/external/gt4py[$CUDA] || \
       pip install -e docker/external/gt4py && \
-	  python -m gt4py.gt_src_manager install && \
-	  deactivate
+	python -m gt4py.gt_src_manager install && \
+    pip install -r requirements_dev.txt && \
+	deactivate
 
   # On OSX only:
   # change matplotlib backend from macosx to TkAgg
