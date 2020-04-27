@@ -65,7 +65,7 @@ domain = taz.Domain(
     horizontal_boundary_type=nl.hb_type,
     nb=nl.nb,
     horizontal_boundary_kwargs=nl.hb_kwargs,
-    topography_type="flat_terrain",
+    topography_type="flat",
     gt_powered=nl.gt_powered,
     backend=nl.gt_kwargs["backend"],
     dtype=nl.gt_kwargs["dtype"],
@@ -213,11 +213,7 @@ wall_time = time.time() - wall_time_start
 gt.storage.restore_numpy()
 u = np.asarray(state["x_velocity"].values)
 uex = zsof(state["time"], cgrid, field_name="x_velocity", field_units="m s^-1")
-print(
-    "RMSE(u) = {:.5E} m/s".format(
-        np.linalg.norm(u - uex) / np.sqrt(u.size)
-    )
-)
+print("RMSE(u) = {:.5E} m/s".format(np.linalg.norm(u - uex) / np.sqrt(u.size)))
 
 # print logs
 print("Total wall time: {}.".format(taz.get_time_string(wall_time)))

@@ -27,7 +27,7 @@ from sympl import DataArray
 import tasmania as taz
 
 
-factor = 0
+factor = 8
 
 # initial conditions
 init_time = datetime(year=1992, month=2, day=20, hour=0)
@@ -49,7 +49,7 @@ hb_kwargs = {"core": zsof}
 # gt4py settings
 gt_powered = True
 gt_kwargs = {
-    "backend": "gtx86",
+    "backend": "gtcuda",
     "build_info": None,
     "dtype": np.float64,
     "exec_info": None,
@@ -57,7 +57,9 @@ gt_kwargs = {
     "rebuild": False,
     "managed_memory": False,
 }
-gt_kwargs["backend_opts"] = {"verbose": True} if gt_kwargs["backend"] != "numpy" else None
+gt_kwargs["backend_opts"] = (
+    {"verbose": True} if gt_kwargs["backend"] != "numpy" else None
+)
 
 # numerical scheme
 time_integration_scheme = "rk3ws"
@@ -66,10 +68,10 @@ flux_scheme = "fifth_order"
 # simulation time
 cfl = 1.0
 timestep = pd.Timedelta(cfl / (nx - 1) ** 2, unit="s")
-niter = 4 ** factor * 100
+niter = 100  # 4 ** factor * 100
 
 # output
 save = False
 save_frequency = -1
 filename = "../../data/burgers_fc_{}.nc".format(gt_kwargs["backend"])
-print_frequency = 1
+print_frequency = -1
