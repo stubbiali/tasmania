@@ -77,7 +77,8 @@ def test_properties(data):
     assert hb.nj == ny
     assert hb.type == "relaxed"
     assert "nr" in hb.kwargs
-    assert len(hb.kwargs) == 1
+    assert "nz" in hb.kwargs
+    assert len(hb.kwargs) == 2
 
 
 @settings(
@@ -164,6 +165,7 @@ def test_field(data):
     hb_kwargs = data.draw(
         st_horizontal_boundary_kwargs("relaxed", nx, ny, nb), label="hb_kwargs"
     )
+    hb_kwargs["nz"] = nz
 
     pfield = data.draw(
         st_raw_field(
@@ -237,18 +239,18 @@ def enforce(cf_val, cf_ref, hb):
     )
 
 
-def validation(cf, cf_val, hb):
+def validation(cf, cf_val, hb, mk):
     nb, nr = hb.nb, hb.kwargs["nr"]
 
-    compare_arrays(cf[nr:-nr, nr:-nr], cf_val[nr:-nr, nr:-nr])
-    compare_arrays(cf[:nr, :nr], cf_val[:nr, :nr])
-    compare_arrays(cf[:nr, nr:-nr], cf_val[:nr, nr:-nr])
-    compare_arrays(cf[:nr, -nr:], cf_val[:nr, -nr:])
-    compare_arrays(cf[-nr:, :nr], cf_val[-nr:, :nr])
-    compare_arrays(cf[-nr:, nr:-nr], cf_val[-nr:, nr:-nr])
-    compare_arrays(cf[-nr:, -nr:], cf_val[-nr:, -nr:])
-    compare_arrays(cf[nr:-nr, :nr], cf_val[nr:-nr, :nr])
-    compare_arrays(cf[nr:-nr, -nr:], cf_val[nr:-nr, -nr:])
+    compare_arrays(cf[nr:-nr, nr:-nr, :mk], cf_val[nr:-nr, nr:-nr, :mk])
+    compare_arrays(cf[:nr, :nr, :mk], cf_val[:nr, :nr, :mk])
+    compare_arrays(cf[:nr, nr:-nr, :mk], cf_val[:nr, nr:-nr, :mk])
+    compare_arrays(cf[:nr, -nr:, :mk], cf_val[:nr, -nr:, :mk])
+    compare_arrays(cf[-nr:, :nr, :mk], cf_val[-nr:, :nr, :mk])
+    compare_arrays(cf[-nr:, nr:-nr, :mk], cf_val[-nr:, nr:-nr, :mk])
+    compare_arrays(cf[-nr:, -nr:, :mk], cf_val[-nr:, -nr:, :mk])
+    compare_arrays(cf[nr:-nr, :nr, :mk], cf_val[nr:-nr, :nr, :mk])
+    compare_arrays(cf[nr:-nr, -nr:, :mk], cf_val[nr:-nr, -nr:, :mk])
 
 
 @settings(
@@ -275,6 +277,7 @@ def test_enforce(data):
     hb_kwargs = data.draw(
         st_horizontal_boundary_kwargs("relaxed", nx, ny, nb), label="hb_kwargs"
     )
+    hb_kwargs["nz"] = nz
 
     storage_shape = (nx + 1, ny + 1, nz + 1)
     cfield = data.draw(
@@ -311,7 +314,7 @@ def test_enforce(data):
     cf_val = deepcopy(cfield[:-1, :-1])
     cf_ref = ref_state["afield"].values[:-1, :-1]
     enforce(cf_val, cf_ref, hb)
-    validation(cf[:-1, :-1], cf_val, hb)
+    validation(cf[:-1, :-1], cf_val, hb, nz)
 
     # (nx+1, ny)
     cf = deepcopy(cfield)
@@ -320,7 +323,7 @@ def test_enforce(data):
     cf_val = deepcopy(cfield[:, :-1])
     cf_ref = ref_state["afield_at_u_locations"].values[:, :-1]
     enforce(cf_val, cf_ref, hb)
-    validation(cf[:, :-1], cf_val, hb)
+    validation(cf[:, :-1], cf_val, hb, nz)
 
     # (nx, ny+1)
     cf = deepcopy(cfield)
@@ -329,7 +332,7 @@ def test_enforce(data):
     cf_val = deepcopy(cfield[:-1, :])
     cf_ref = ref_state["afield_at_v_locations"].values[:-1, :]
     enforce(cf_val, cf_ref, hb)
-    validation(cf[:-1, :], cf_val, hb)
+    validation(cf[:-1, :], cf_val, hb, nz)
 
     # (nx+1, ny+1)
     cf = deepcopy(cfield)
@@ -338,7 +341,7 @@ def test_enforce(data):
     cf_val = cfield
     cf_ref = ref_state["afield_at_uv_locations"].values
     enforce(cf_val, cf_ref, hb)
-    validation(cf, cf_val, hb)
+    validation(cf, cf_val, hb, nz)
 
 
 @settings(

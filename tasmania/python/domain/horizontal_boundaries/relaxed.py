@@ -33,12 +33,14 @@ import gt4py as gt
 from tasmania.python.domain.horizontal_boundary import HorizontalBoundary
 from tasmania.python.domain.horizontal_boundaries.utils import repeat_axis, shrink_axis
 from tasmania.python.utils.framework_utils import register
+from tasmania.python.utils.gtscript_utils import stencil_irelax_defs
+from tasmania.python.utils.storage_utils import zeros
 
 
 class Relaxed(HorizontalBoundary):
     """ Relaxed boundary conditions. """
 
-    def __init__(self, nx, ny, nb, gt_powered, backend, dtype, nr=8):
+    def __init__(self, nx, ny, nb, gt_powered, backend, dtype, nr=8, nz=None):
         """
         Parameters
         ----------
@@ -59,6 +61,10 @@ class Relaxed(HorizontalBoundary):
         nr : `int`, optional
             Depth of each relaxation region close to the
             horizontal boundaries. Minimum is ``nb``, maximum is 8 (default).
+        nz : `int`, optional
+            Number of vertical main levels. Only needed if ``gt_powered=True``.
+            If not provided, it will be inferred from the arguments passed to
+            to the ``enforce_field`` method the first time it is invoked.
         """
         assert (
             nx > 1
@@ -75,56 +81,8 @@ class Relaxed(HorizontalBoundary):
 
         super().__init__(nx, ny, nb, gt_powered, backend, dtype)
         self._kwargs["nr"] = nr
-
-        # the relaxation coefficients
-        rel = np.array(
-            [
-                1.0,
-                1.0 - np.tanh(0.5),
-                1.0 - np.tanh(1.0),
-                1.0 - np.tanh(1.5),
-                1.0 - np.tanh(2.0),
-                1.0 - np.tanh(2.5),
-                1.0 - np.tanh(3.0),
-                1.0 - np.tanh(3.5),
-            ]
-        )
-        rel = rel[:nr]
-        rel[:nb] = 1.0
-        rrel = rel[::-1]
-
-        # the relaxation matrices
-        xneg = np.repeat(rel[:, np.newaxis], ny - 2 * nr + 1, axis=1)
-        xpos = np.repeat(rrel[:, np.newaxis], ny - 2 * nr + 1, axis=1)
-        yneg = np.repeat(rel[np.newaxis, :], nx - 2 * nr + 1, axis=0)
-        ypos = np.repeat(rrel[np.newaxis, :], nx - 2 * nr + 1, axis=0)
-
-        # the corner relaxation matrices
-        xnegyneg = np.zeros((nr, nr))
-        for i in range(nr):
-            xnegyneg[i, i:] = rel[i]
-            xnegyneg[i:, i] = rel[i]
-        xposyneg = xnegyneg[::-1, :]
-        xposypos = xposyneg[:, ::-1]
-        xnegypos = xnegyneg[:, ::-1]
-
-        # inspect the backend properties to load the proper asarray function
-        backend = backend or "numpy"
-        if self._gt_powered:
-            device = gt.backend.from_name(backend).storage_info["device"]
-        else:
-            device = "numpy"
-        asarray = cp.asarray if device == "gpu" else np.asarray
-
-        # made all matrices three-dimensional to harness array broadcasting
-        self._xneg = asarray(xneg[:, :, np.newaxis])
-        self._xpos = asarray(xpos[:, :, np.newaxis])
-        self._yneg = asarray(yneg[:, :, np.newaxis])
-        self._ypos = asarray(ypos[:, :, np.newaxis])
-        self._xnegyneg = asarray(xnegyneg[:, :, np.newaxis])
-        self._xnegypos = asarray(xnegypos[:, :, np.newaxis])
-        self._xposyneg = asarray(xposyneg[:, :, np.newaxis])
-        self._xposypos = asarray(xposypos[:, :, np.newaxis])
+        self._kwargs["nz"] = nz
+        self._allocate_coefficient_matrices()
 
     @property
     def ni(self):
@@ -174,7 +132,7 @@ class Relaxed(HorizontalBoundary):
         self, field, field_name=None, field_units=None, time=None, grid=None
     ):
         # shortcuts
-        nb, nr = self.nb, self._xneg.shape[0]
+        nb, nr = self.nb, self._kwargs["nr"]
         field_name = field_name or ""
 
         # convenient definitions
@@ -191,6 +149,12 @@ class Relaxed(HorizontalBoundary):
         )
         mj_int = mj - 2 * nr
 
+        # if needed, allocate the coefficient matrices
+        if self._xneg is None:
+            nz = 1 if field.ndim <= 2 else field.shape[2]
+            self._kwargs["nz"] = nz
+            self._allocate_coefficient_matrices()
+
         # the boundary values
         field_ref = self.reference_state[field_name].to_units(field_units).values
         # xneg = np.repeat(field_ref[0:1, :], nr, axis=0)
@@ -198,35 +162,91 @@ class Relaxed(HorizontalBoundary):
         # yneg = np.repeat(field_ref[:, 0:1], nr, axis=1)
         # ypos = np.repeat(field_ref[:, -1:], nr, axis=1)
 
-        # set the outermost layers
-        field[:nb, :] = field_ref[:nb, :]
-        field[mi - nb : mi, :] = field_ref[mi - nb : mi, :]
-        field[nb : mi - nb, :nb] = field_ref[nb : mi - nb, :nb]
-        field[nb : mi - nb, mj - nb : mj] = field_ref[nb : mi - nb, mj - nb : mj]
+        if not self._gt_powered:
+            # set the outermost layers
+            field[:nb, :] = field_ref[:nb, :]
+            field[mi - nb : mi, :] = field_ref[mi - nb : mi, :]
+            field[nb : mi - nb, :nb] = field_ref[nb : mi - nb, :nb]
+            field[nb : mi - nb, mj - nb : mj] = field_ref[nb : mi - nb, mj - nb : mj]
 
-        # apply the relaxed boundary conditions in the negative x-direction
-        i, j = slice(nb, nr), slice(nr, mj - nr)
-        field[i, j] -= self._xneg[nb:, :mj_int] * (field[i, j] - field_ref[i, j])
-        i, j = slice(nb, nr), slice(nb, nr)
-        field[i, j] -= self._xnegyneg[nb:, nb:] * (field[i, j] - field_ref[i, j])
-        i, j = slice(nb, nr), slice(mj - nr, mj - nb)
-        field[i, j] -= self._xnegypos[nb:, :-nb] * (field[i, j] - field_ref[i, j])
+            # apply the relaxed boundary conditions in the negative x-direction
+            i, j = slice(nb, nr), slice(nr, mj - nr)
+            field[i, j] -= self._xneg[nb:, :mj_int] * (field[i, j] - field_ref[i, j])
+            i, j = slice(nb, nr), slice(nb, nr)
+            field[i, j] -= self._xnegyneg[nb:, nb:] * (field[i, j] - field_ref[i, j])
+            i, j = slice(nb, nr), slice(mj - nr, mj - nb)
+            field[i, j] -= self._xnegypos[nb:, :-nb] * (field[i, j] - field_ref[i, j])
 
-        # apply the relaxed boundary conditions in the positive x-direction
-        i, j = slice(mi - nr, mi - nb), slice(nr, mj - nr)
-        field[i, j] -= self._xpos[:-nb, :mj_int] * (field[i, j] - field_ref[i, j])
-        i, j = slice(mi - nr, mi - nb), slice(nb, nr)
-        field[i, j] -= self._xposyneg[:-nb, nb:] * (field[i, j] - field_ref[i, j])
-        i, j = slice(mi - nr, mi - nb), slice(mj - nr, mj - nb)
-        field[i, j] -= self._xposypos[:-nb, :-nb] * (field[i, j] - field_ref[i, j])
+            # apply the relaxed boundary conditions in the positive x-direction
+            i, j = slice(mi - nr, mi - nb), slice(nr, mj - nr)
+            field[i, j] -= self._xpos[:-nb, :mj_int] * (field[i, j] - field_ref[i, j])
+            i, j = slice(mi - nr, mi - nb), slice(nb, nr)
+            field[i, j] -= self._xposyneg[:-nb, nb:] * (field[i, j] - field_ref[i, j])
+            i, j = slice(mi - nr, mi - nb), slice(mj - nr, mj - nb)
+            field[i, j] -= self._xposypos[:-nb, :-nb] * (field[i, j] - field_ref[i, j])
 
-        # apply the relaxed boundary conditions in the negative y-direction
-        i, j = slice(nr, mi - nr), slice(nb, nr)
-        field[i, j] -= self._yneg[:mi_int, nb:] * (field[i, j] - field_ref[i, j])
+            # apply the relaxed boundary conditions in the negative y-direction
+            i, j = slice(nr, mi - nr), slice(nb, nr)
+            field[i, j] -= self._yneg[:mi_int, nb:] * (field[i, j] - field_ref[i, j])
 
-        # apply the relaxed boundary conditions in the positive y-direction
-        i, j = slice(nr, mi - nr), slice(mj - nr, mj - nb)
-        field[i, j] -= self._ypos[:mi_int, :-nb] * (field[i, j] - field_ref[i, j])
+            # apply the relaxed boundary conditions in the positive y-direction
+            i, j = slice(nr, mi - nr), slice(mj - nr, mj - nb)
+            field[i, j] -= self._ypos[:mi_int, :-nb] * (field[i, j] - field_ref[i, j])
+        else:
+            mk = (
+                self._kwargs["nz"] + 1
+                if "on_interface_levels" in field_name
+                else self._kwargs["nz"]
+            )
+            k = slice(0, mk)
+
+            # set the outermost layers
+            field[:nb, :, k] = field_ref[:nb, :, k]
+            field[mi - nb : mi, :, k] = field_ref[mi - nb : mi, :, k]
+            field[nb : mi - nb, :nb, k] = field_ref[nb : mi - nb, :nb, k]
+            field[nb : mi - nb, mj - nb : mj, k] = field_ref[
+                nb : mi - nb, mj - nb : mj, k
+            ]
+
+            # apply the relaxed boundary conditions in the negative x-direction
+            i, j = slice(nb, nr), slice(nr, mj - nr)
+            field[i, j, k] -= self._xneg[nb:, :mj_int, k] * (
+                field[i, j, k] - field_ref[i, j, k]
+            )
+            i, j = slice(nb, nr), slice(nb, nr)
+            field[i, j, k] -= self._xnegyneg[nb:, nb:, k] * (
+                field[i, j, k] - field_ref[i, j, k]
+            )
+            i, j = slice(nb, nr), slice(mj - nr, mj - nb)
+            field[i, j, k] -= self._xnegypos[nb:, :-nb, k] * (
+                field[i, j, k] - field_ref[i, j, k]
+            )
+
+            # apply the relaxed boundary conditions in the positive x-direction
+            i, j = slice(mi - nr, mi - nb), slice(nr, mj - nr)
+            field[i, j, k] -= self._xpos[:-nb, :mj_int, k] * (
+                field[i, j, k] - field_ref[i, j, k]
+            )
+            i, j = slice(mi - nr, mi - nb), slice(nb, nr)
+            field[i, j, k] -= self._xposyneg[:-nb, nb:, k] * (
+                field[i, j, k] - field_ref[i, j, k]
+            )
+            i, j = slice(mi - nr, mi - nb), slice(mj - nr, mj - nb)
+            field[i, j, k] -= self._xposypos[:-nb, :-nb, k] * (
+                field[i, j, k] - field_ref[i, j, k]
+            )
+
+            # apply the relaxed boundary conditions in the negative y-direction
+            i, j = slice(nr, mi - nr), slice(nb, nr)
+            field[i, j, k] -= self._yneg[:mi_int, nb:, k] * (
+                field[i, j, k] - field_ref[i, j, k]
+            )
+
+            # apply the relaxed boundary conditions in the positive y-direction
+            i, j = slice(nr, mi - nr), slice(mj - nr, mj - nb)
+            field[i, j, k] -= self._ypos[:mi_int, :-nb, k] * (
+                field[i, j, k] - field_ref[i, j, k]
+            )
 
     def set_outermost_layers_x(
         self, field, field_name=None, field_units=None, time=None, grid=None
@@ -263,6 +283,122 @@ class Relaxed(HorizontalBoundary):
         field_ref = self.reference_state[field_name].to_units(field_units).values
         field[:mi, 0] = field_ref[:mi, 0]
         field[:mi, mj - 1] = field_ref[:mi, mj - 1]
+
+    def _allocate_coefficient_matrices(self):
+        nx, ny = self.nx, self.ny
+        nb, nr = self.nb, self._kwargs["nr"]
+        backend, dtype = self._backend, self._dtype
+
+        # the relaxation coefficients
+        rel = np.array(
+            [
+                1.0,
+                1.0 - np.tanh(0.5),
+                1.0 - np.tanh(1.0),
+                1.0 - np.tanh(1.5),
+                1.0 - np.tanh(2.0),
+                1.0 - np.tanh(2.5),
+                1.0 - np.tanh(3.0),
+                1.0 - np.tanh(3.5),
+            ]
+        )
+        rel = rel[:nr]
+        rel[:nb] = 1.0
+        rrel = rel[::-1]
+
+        # the relaxation matrices
+        xneg = np.repeat(rel[:, np.newaxis], ny - 2 * nr + 1, axis=1)
+        xpos = np.repeat(rrel[:, np.newaxis], ny - 2 * nr + 1, axis=1)
+        yneg = np.repeat(rel[np.newaxis, :], nx - 2 * nr + 1, axis=0)
+        ypos = np.repeat(rrel[np.newaxis, :], nx - 2 * nr + 1, axis=0)
+
+        # the corner relaxation matrices
+        xnegyneg = np.zeros((nr, nr))
+        for i in range(nr):
+            xnegyneg[i, i:] = rel[i]
+            xnegyneg[i:, i] = rel[i]
+        xposyneg = xnegyneg[::-1, :]
+        xposypos = xposyneg[:, ::-1]
+        xnegypos = xnegyneg[:, ::-1]
+
+        # inspect the backend properties to load the proper asarray function
+        backend = backend or "numpy"
+        if self._gt_powered:
+            device = gt.backend.from_name(backend).storage_info["device"]
+        else:
+            device = "cpu"
+        asarray = cp.asarray if device == "gpu" else np.asarray
+
+        if not self._gt_powered:
+            # make all matrices three-dimensional to harness array broadcasting
+            self._xneg = asarray(xneg[:, :, np.newaxis])
+            self._xpos = asarray(xpos[:, :, np.newaxis])
+            self._yneg = asarray(yneg[:, :, np.newaxis])
+            self._ypos = asarray(ypos[:, :, np.newaxis])
+            self._xnegyneg = asarray(xnegyneg[:, :, np.newaxis])
+            self._xnegypos = asarray(xnegypos[:, :, np.newaxis])
+            self._xposyneg = asarray(xposyneg[:, :, np.newaxis])
+            self._xposypos = asarray(xposypos[:, :, np.newaxis])
+        else:
+            nz = self._kwargs["nz"]
+
+            if nz is None:
+                self._xneg = None
+                self._xpos = None
+                self._yneg = None
+                self._ypos = None
+                self._xnegyneg = None
+                self._xnegypos = None
+                self._xposyneg = None
+                self._xposypos = None
+            else:
+                # convert all matrices into gt storages
+                self._xneg = zeros(
+                    (nr, ny - 2 * nr + 1, nz + 1),
+                    gt_powered=True,
+                    backend=backend,
+                    dtype=dtype,
+                )
+                self._xneg[...] = xneg[:, :, np.newaxis]
+                self._xpos = zeros(
+                    (nr, ny - 2 * nr + 1, nz + 1),
+                    gt_powered=True,
+                    backend=backend,
+                    dtype=dtype,
+                )
+                self._xpos[...] = xpos[:, :, np.newaxis]
+
+                self._yneg = zeros(
+                    (nx - 2 * nr + 1, nr, nz + 1),
+                    gt_powered=True,
+                    backend=backend,
+                    dtype=dtype,
+                )
+                self._yneg[...] = yneg[:, :, np.newaxis]
+                self._ypos = zeros(
+                    (nx - 2 * nr + 1, nr, nz + 1),
+                    gt_powered=True,
+                    backend=backend,
+                    dtype=dtype,
+                )
+                self._ypos[...] = ypos[:, :, np.newaxis]
+
+                self._xnegyneg = zeros(
+                    (nr, nr, nz + 1), gt_powered=True, backend=backend, dtype=dtype
+                )
+                self._xnegyneg[...] = xnegyneg[:, :, np.newaxis]
+                self._xnegypos = zeros(
+                    (nr, nr, nz + 1), gt_powered=True, backend=backend, dtype=dtype
+                )
+                self._xnegypos[...] = xnegypos[:, :, np.newaxis]
+                self._xposyneg = zeros(
+                    (nr, nr, nz + 1), gt_powered=True, backend=backend, dtype=dtype
+                )
+                self._xposyneg[...] = xposyneg[:, :, np.newaxis]
+                self._xposypos = zeros(
+                    (nr, nr, nz + 1), gt_powered=True, backend=backend, dtype=dtype
+                )
+                self._xposypos[...] = xposypos[:, :, np.newaxis]
 
 
 class Relaxed1DX(HorizontalBoundary):
@@ -656,11 +792,11 @@ class Relaxed1DY(HorizontalBoundary):
 
 
 @register(name="relaxed", registry_class=HorizontalBoundary)
-def dispatch(nx, ny, nb, gt_powered, backend="numpy", dtype=np.float64, nr=8):
+def dispatch(nx, ny, nb, gt_powered, backend="numpy", dtype=np.float64, nr=8, nz=None):
     """ Dispatch based on the grid size. """
     if nx == 1:
         return Relaxed1DY(1, ny, nb, gt_powered, backend, dtype, nr)
     elif ny == 1:
         return Relaxed1DX(nx, 1, nb, gt_powered, backend, dtype, nr)
     else:
-        return Relaxed(nx, ny, nb, gt_powered, backend, dtype, nr)
+        return Relaxed(nx, ny, nb, gt_powered, backend, dtype, nr, nz)

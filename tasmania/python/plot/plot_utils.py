@@ -466,7 +466,7 @@ def set_axes_properties(ax: plt.Axes, **kwargs) -> None:
     z_scale = kwargs.get("z_scale", "linear")
     z_ticks = kwargs.get("z_ticks", None)
     z_ticklabels = kwargs.get("z_ticklabels", None)
-    z_ticklabels_color = kwargs.get("z_ticklabels_color", "black")
+    z_ticklabels_color = kwargs.get("z_ticklabels_color", None)
     z_ticklabels_rotation = kwargs.get("z_ticklabels_rotation", None)
     z_tickformat = kwargs.get("z_tickformat", None)
     zaxis_minor_ticks_visible = kwargs.get("zaxis_minor_ticks_visible", False)
@@ -532,16 +532,14 @@ def set_axes_properties(ax: plt.Axes, **kwargs) -> None:
         if ax.get_zlabel() == "":
             ax.set(zlabel=z_label)
     except AttributeError:
-        if z_label != "":
-            import warnings
-
-            warnings.warn(
-                "The plot is not three-dimensional, therefore the "
-                "argument ''z_label'' is disregarded.",
-                RuntimeWarning,
-            )
-        else:
-            pass
+        # import warnings
+        #
+        # warnings.warn(
+        #     "The plot is not three-dimensional, therefore the "
+        #     "argument ''z_label'' is disregarded.",
+        #     RuntimeWarning,
+        # )
+        pass
 
     # axes labelcolors
     if ax.get_xlabel() != "" and x_labelcolor != "":
@@ -552,16 +550,14 @@ def set_axes_properties(ax: plt.Axes, **kwargs) -> None:
         if ax.get_zlabel() != "" and z_labelcolor != "":
             ax.zaxis.label.set_color(z_labelcolor)
     except AttributeError:
-        if z_labelcolor != "":
-            import warnings
-
-            warnings.warn(
-                "The plot is not three-dimensional, therefore the "
-                "argument ''z_labelcolor'' is disregarded.",
-                RuntimeWarning,
-            )
-        else:
-            pass
+        # import warnings
+        #
+        # warnings.warn(
+        #     "The plot is not three-dimensional, therefore the "
+        #     "argument ''z_labelcolor'' is disregarded.",
+        #     RuntimeWarning,
+        # )
+        pass
 
     # axes limits
     if x_lim is not None:
@@ -572,13 +568,14 @@ def set_axes_properties(ax: plt.Axes, **kwargs) -> None:
         if z_lim is not None:
             ax.set_zlim(z_lim)
     except AttributeError:
-        import warnings
-
-        warnings.warn(
-            "The plot is not three-dimensional, therefore the "
-            "argument ''z_lim'' is disregarded.",
-            RuntimeWarning,
-        )
+        # import warnings
+        #
+        # warnings.warn(
+        #     "The plot is not three-dimensional, therefore the "
+        #     "argument ''z_lim'' is disregarded.",
+        #     RuntimeWarning,
+        # )
+        pass
 
     # invert the axes
     if invert_xaxis:
@@ -589,13 +586,14 @@ def set_axes_properties(ax: plt.Axes, **kwargs) -> None:
         if invert_zaxis:
             ax.invert_zaxis()
     except AttributeError:
-        import warnings
-
-        warnings.warn(
-            "The plot is not three-dimensional, therefore the "
-            "argument ''invert_zaxis'' is disregarded.",
-            RuntimeWarning,
-        )
+        # import warnings
+        #
+        # warnings.warn(
+        #     "The plot is not three-dimensional, therefore the "
+        #     "argument ''invert_zaxis'' is disregarded.",
+        #     RuntimeWarning,
+        # )
+        pass
 
     # axes scale
     if x_scale is not None:
@@ -606,13 +604,14 @@ def set_axes_properties(ax: plt.Axes, **kwargs) -> None:
         if z_scale is not None:
             ax.set_zscale(z_scale)
     except AttributeError:
-        import warnings
-
-        warnings.warn(
-            "The plot is not three-dimensional, therefore the "
-            "argument ''z_scale'' is disregarded.",
-            RuntimeWarning,
-        )
+        # import warnings
+        #
+        # warnings.warn(
+        #     "The plot is not three-dimensional, therefore the "
+        #     "argument ''z_scale'' is disregarded.",
+        #     RuntimeWarning,
+        # )
+        pass
 
     # axes ticks
     if x_ticks is not None:
@@ -623,13 +622,14 @@ def set_axes_properties(ax: plt.Axes, **kwargs) -> None:
         if z_ticks is not None:
             ax.get_zaxis().set_ticks(z_ticks)
     except AttributeError:
-        import warnings
-
-        warnings.warn(
-            "The plot is not three-dimensional, therefore the "
-            "argument ''z_ticks'' is disregarded.",
-            RuntimeWarning,
-        )
+        # import warnings
+        #
+        # warnings.warn(
+        #     "The plot is not three-dimensional, therefore the "
+        #     "argument ''z_ticks'' is disregarded.",
+        #     RuntimeWarning,
+        # )
+        pass
 
     # axes tick labels
     if x_ticklabels is not None:
@@ -640,13 +640,14 @@ def set_axes_properties(ax: plt.Axes, **kwargs) -> None:
         if z_ticklabels is not None:
             ax.get_zaxis().set_ticklabels(z_ticklabels)
     except AttributeError:
-        import warnings
-
-        warnings.warn(
-            "The plot is not three-dimensional, therefore the "
-            "argument ''z_ticklabels'' is disregarded.",
-            RuntimeWarning,
-        )
+        # import warnings
+        #
+        # warnings.warn(
+        #     "The plot is not three-dimensional, therefore the "
+        #     "argument ''z_ticklabels'' is disregarded.",
+        #     RuntimeWarning,
+        # )
+        pass
 
     # axes tick labels color
     if x_ticklabels_color != "":
@@ -654,16 +655,17 @@ def set_axes_properties(ax: plt.Axes, **kwargs) -> None:
     if y_ticklabels_color != "":
         ax.tick_params(axis="y", colors=y_ticklabels_color)
     try:
-        if z_ticklabels_color != "":
+        if z_ticklabels_color is not None:
             ax.tick_params(axis="z", colors=z_ticklabels_color)
     except AttributeError:
-        import warnings
-
-        warnings.warn(
-            "The plot is not three-dimensional, therefore the "
-            "argument ''z_ticklabels_color'' is disregarded.",
-            RuntimeWarning,
-        )
+        # import warnings
+        #
+        # warnings.warn(
+        #     "The plot is not three-dimensional, therefore the "
+        #     "argument ''z_ticklabels_color'' is disregarded.",
+        #     RuntimeWarning,
+        # )
+        pass
 
     # axes tick format
     if x_tickformat is not None:
@@ -687,13 +689,14 @@ def set_axes_properties(ax: plt.Axes, **kwargs) -> None:
             ax.get_zaxis().set_tick_params(which="minor", size=0)
             ax.get_zaxis().set_tick_params(which="minor", width=0)
     except AttributeError:
-        import warnings
-
-        warnings.warn(
-            "The plot is not three-dimensional, therefore the "
-            "argument ''zaxis_minor_ticks_visible'' is disregarded.",
-            RuntimeWarning,
-        )
+        # import warnings
+        #
+        # warnings.warn(
+        #     "The plot is not three-dimensional, therefore the "
+        #     "argument ''zaxis_minor_ticks_visible'' is disregarded.",
+        #     RuntimeWarning,
+        # )
+        pass
 
     # axes visibility
     if not xaxis_visible:
@@ -704,13 +707,14 @@ def set_axes_properties(ax: plt.Axes, **kwargs) -> None:
         if not zaxis_visible:
             ax.get_zaxis().set_visible(False)
     except AttributeError:
-        import warnings
-
-        warnings.warn(
-            "The plot is not three-dimensional, therefore the "
-            "argument ''zaxis_visible'' is disregarded.",
-            RuntimeWarning,
-        )
+        # import warnings
+        #
+        # warnings.warn(
+        #     "The plot is not three-dimensional, therefore the "
+        #     "argument ''zaxis_visible'' is disregarded.",
+        #     RuntimeWarning,
+        # )
+        pass
 
     # legend
     if legend_on:
@@ -967,7 +971,7 @@ def make_lineplot(x: np.ndarray, y: np.ndarray, ax: plt.Axes, **kwargs) -> None:
     x_factor = kwargs.get("x_factor", 1.0)
     y_factor = kwargs.get("y_factor", 1.0)
     linestyle = kwargs.get("linestyle", "solid")
-    linestyle = linestyle or "solid"
+    # linestyle = linestyle or "solid"
     linewidth = kwargs.get("linewidth", 1.5)
     linecolor = kwargs.get("linecolor", "blue")
     marker = kwargs.get("marker", None)
@@ -990,7 +994,7 @@ def make_lineplot(x: np.ndarray, y: np.ndarray, ax: plt.Axes, **kwargs) -> None:
             x,
             y,
             color=linecolor,
-            linestyle=linestyle_dict[linestyle],
+            linestyle=linestyle_dict[linestyle] if linestyle is not None else None,
             linewidth=linewidth,
             marker=marker,
             markersize=markersize,
@@ -1003,7 +1007,7 @@ def make_lineplot(x: np.ndarray, y: np.ndarray, ax: plt.Axes, **kwargs) -> None:
             x,
             y,
             color=linecolor,
-            linestyle=linestyle_dict[linestyle],
+            linestyle=linestyle_dict[linestyle] if linestyle is not None else None,
             linewidth=linewidth,
             marker=marker,
             markersize=markersize,
@@ -1683,6 +1687,7 @@ def add_annotation(ax: plt.Axes, **kwargs) -> None:
     # get keyword arguments
     fontsize = kwargs.get("fontsize", 16)
     text = kwargs.get("text", "")
+    text_color = kwargs.get("text_color", "blue")
     location = kwargs.get("location", (0, 0))
     horizontal_alignment = kwargs.get("horizontal_alignment", "left")
     vertical_alignment = kwargs.get("vertical_alignment", "center")
@@ -1694,4 +1699,5 @@ def add_annotation(ax: plt.Axes, **kwargs) -> None:
         horizontalalignment=horizontal_alignment,
         verticalalignment=vertical_alignment,
         fontsize=fontsize,
+        color=text_color,
     )
