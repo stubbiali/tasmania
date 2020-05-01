@@ -31,6 +31,8 @@ from hypothesis import (
 )
 import pytest
 
+import gt4py as gt
+
 from tasmania.python.framework.parallel_splitting import ParallelSplitting
 from tasmania.python.utils.storage_utils import deepcopy_dataarray_dict
 
@@ -205,6 +207,9 @@ def test_forward_euler(
     gt_kwargs = {"backend": backend, "dtype": dtype, "default_origin": default_origin}
     same_shape = data.draw(hyp_st.booleans(), label="same_shape")
 
+    if gt_powered:
+        gt.storage.prepare_numpy()
+
     nb = data.draw(hyp_st.integers(min_value=1, max_value=max(1, conf_nb)), label="nb")
     domain = data.draw(
         st_domain(
@@ -316,7 +321,7 @@ def test_forward_euler(
     v = state_dc["y_velocity_at_v_locations"].to_units("m s^-1").values
     sv = state_dc["y_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").values
     sv1 = state_prv_dc["y_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").values
-    if same_shape:
+    if same_shape or gt_powered:
         sv3 = sv[:, :-1] + timestep.total_seconds() * 0.5 * s[:, :-1] * (
             v[:, :-1] + v[:, 1:]
         )
@@ -350,6 +355,9 @@ def test_rk2(data, make_fake_tendency_component_1, make_fake_tendency_component_
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
     gt_kwargs = {"backend": backend, "dtype": dtype, "default_origin": default_origin}
     same_shape = data.draw(hyp_st.booleans(), label="same_shape")
+
+    if gt_powered:
+        gt.storage.prepare_numpy()
 
     nb = data.draw(hyp_st.integers(min_value=1, max_value=max(1, conf_nb)), label="nb")
     domain = data.draw(
@@ -466,7 +474,7 @@ def test_rk2(data, make_fake_tendency_component_1, make_fake_tendency_component_
     v = state_dc["y_velocity_at_v_locations"].to_units("m s^-1").values
     sv = state_dc["y_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").values
     sv1 = state_prv_dc["y_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").values
-    if same_shape:
+    if same_shape or gt_powered:
         sv3 = sv[:, :-1] + timestep.total_seconds() * 0.5 * s3b[:, :-1] * (
             v[:, :-1] + v[:, 1:]
         )

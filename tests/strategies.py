@@ -512,7 +512,7 @@ def st_domain(
         assume(nb < nx / 2)
     if ny > 1:
         assume(nb < ny / 2)
-    hb_kwargs = draw(st_horizontal_boundary_kwargs(hb_type, nx, ny, nb))
+    hb_kwargs = draw(st_horizontal_boundary_kwargs(hb_type, nx, ny, nb, nz=nz))
 
     topo_kwargs = draw(st_topography_kwargs(domain_x, domain_y))
     topography_type = topo_kwargs.pop("type")
@@ -809,7 +809,9 @@ def st_isentropic_state(
     dz = grid.dz.to_units("K").values.item()
     dtype = grid.x.dtype
     set_coordinates = False
-    if storage_shape is not None:
+    if gt_powered and storage_shape is None:
+        storage_shape = (nx + 1, ny + 1, nz + 1)
+    elif storage_shape is not None:
         storage_shape = (
             max(nx + 1, storage_shape[0]),
             max(ny + 1, storage_shape[1]),
@@ -1170,7 +1172,9 @@ def st_isentropic_state_f(
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     dtype = grid.x.dtype
     set_coordinates = False
-    if storage_shape is not None:
+    if gt_powered and storage_shape is None:
+        storage_shape = (nx + 1, ny + 1, nz + 1)
+    elif storage_shape is not None:
         storage_shape = (
             max(nx + 1, storage_shape[0]),
             max(ny + 1, storage_shape[1]),

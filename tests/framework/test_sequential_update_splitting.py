@@ -155,8 +155,6 @@ def test_properties(
 def test_forward_euler(
     data, make_fake_tendency_component_1, make_fake_tendency_component_2
 ):
-    gt.storage.prepare_numpy()
-
     # ========================================
     # random data generation
     # ========================================
@@ -168,6 +166,9 @@ def test_forward_euler(
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
     gt_kwargs = {"backend": backend, "dtype": dtype, "default_origin": default_origin}
     same_shape = data.draw(hyp_st.booleans(), label="same_shape")
+
+    if gt_powered:
+        gt.storage.prepare_numpy()
 
     nb = data.draw(hyp_st.integers(min_value=3, max_value=max(3, conf_nb)), label="nb")
     domain = data.draw(
@@ -258,7 +259,7 @@ def test_forward_euler(
     assert "y_momentum_isentropic" in state
     v1 = state_dc["y_velocity_at_v_locations"].to_units("m s^-1").values
     sv1 = state_dc["y_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").values
-    if same_shape:
+    if same_shape or gt_powered:
         sv3 = sv1[:, :-1] + timestep.total_seconds() * 0.5 * s2[:, :-1] * (
             v1[:, :-1] + v1[:, 1:]
         )
@@ -278,8 +279,6 @@ def test_forward_euler(
 )
 @given(data=hyp_st.data())
 def test_rk2(data, make_fake_tendency_component_1, make_fake_tendency_component_2):
-    gt.storage.prepare_numpy()
-
     # ========================================
     # random data generation
     # ========================================
@@ -291,6 +290,9 @@ def test_rk2(data, make_fake_tendency_component_1, make_fake_tendency_component_
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
     gt_kwargs = {"backend": backend, "dtype": dtype, "default_origin": default_origin}
     same_shape = data.draw(hyp_st.booleans(), label="same_shape")
+
+    if gt_powered:
+        gt.storage.prepare_numpy()
 
     nb = data.draw(hyp_st.integers(min_value=3, max_value=max(3, conf_nb)), label="nb")
     domain = data.draw(
@@ -385,7 +387,7 @@ def test_rk2(data, make_fake_tendency_component_1, make_fake_tendency_component_
     assert "y_momentum_isentropic" in state
     v1 = state_dc["y_velocity_at_v_locations"].to_units("m s^-1").values
     sv1 = state_dc["y_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").values
-    if same_shape:
+    if same_shape or gt_powered:
         sv3 = sv1[:, :-1] + timestep.total_seconds() * 0.5 * s3b[:, :-1] * (
             v1[:, :-1] + v1[:, 1:]
         )

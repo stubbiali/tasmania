@@ -55,8 +55,6 @@ from tests.strategies import st_domain, st_isentropic_state_f, st_one_of, st_tim
 )
 @given(data=hyp_st.data())
 def test_fake_tendency_component(data, make_fake_tendency_component_1):
-    gt.storage.prepare_numpy()
-
     # ========================================
     # random data generation
     # ========================================
@@ -64,6 +62,9 @@ def test_fake_tendency_component(data, make_fake_tendency_component_1):
     backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    if gt_powered:
+        gt.storage.prepare_numpy()
 
     domain = data.draw(
         st_domain(gt_powered=gt_powered, backend=backend, dtype=dtype), label="domain"
@@ -107,8 +108,6 @@ def test_fake_tendency_component(data, make_fake_tendency_component_1):
 )
 @given(data=hyp_st.data())
 def test_fake_tendency_component_tendency_stepper(data, make_fake_tendency_component_1):
-    gt.storage.prepare_numpy()
-
     # ========================================
     # random data generation
     # ========================================
@@ -116,6 +115,9 @@ def test_fake_tendency_component_tendency_stepper(data, make_fake_tendency_compo
     backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    if gt_powered:
+        gt.storage.prepare_numpy()
 
     domain = data.draw(
         st_domain(gt_powered=gt_powered, backend=backend, dtype=dtype), label="domain"
@@ -202,8 +204,6 @@ def test_fake_tendency_component_tendency_stepper(data, make_fake_tendency_compo
 def test_fake_tendency_component_sts_tendency_stepper(
     data, make_fake_tendency_component_1
 ):
-    gt.storage.prepare_numpy()
-
     # ========================================
     # random data generation
     # ========================================
@@ -211,6 +211,9 @@ def test_fake_tendency_component_sts_tendency_stepper(
     backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    if gt_powered:
+        gt.storage.prepare_numpy()
 
     domain = data.draw(
         st_domain(gt_powered=gt_powered, backend=backend, dtype=dtype), label="domain"

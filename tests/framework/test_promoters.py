@@ -68,14 +68,15 @@ class FakeTendency2Diagnostic(Tendency2Diagnostic):
 )
 @given(hyp_st.data())
 def test_tendency_to_diagnostic(data):
-    gt.storage.prepare_numpy()
-
     # ========================================
     # random data generation
     # ========================================
     gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
     backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+
+    if gt_powered:
+        gt.storage.prepare_numpy()
 
     domain = data.draw(
         st_domain(
@@ -213,14 +214,15 @@ class FakeDiagnostic2Tendency(Diagnostic2Tendency):
 )
 @given(hyp_st.data())
 def test_diagnostic_to_tendency(data):
-    gt.storage.prepare_numpy()
-
     # ========================================
     # random data generation
     # ========================================
     gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
     backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+
+    if gt_powered:
+        gt.storage.prepare_numpy()
 
     domain = data.draw(
         st_domain(

@@ -118,8 +118,6 @@ def isentropic_diagnostics_validation(grid, state, cp, p_ref, rd, g):
 )
 @given(data=hyp_st.data())
 def test_serial(data, subtests):
-    gt.storage.prepare_numpy()
-
     # ========================================
     # random data generation
     # ========================================
@@ -127,6 +125,9 @@ def test_serial(data, subtests):
     backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    if gt_powered:
+        gt.storage.prepare_numpy()
 
     domain = data.draw(
         st_domain(
@@ -326,8 +327,6 @@ def test_serial(data, subtests):
 )
 @given(data=hyp_st.data())
 def test_asparallel(data, subtests):
-    gt.storage.prepare_numpy()
-
     # ========================================
     # random data generation
     # ========================================
@@ -335,6 +334,9 @@ def test_asparallel(data, subtests):
     backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    if gt_powered:
+        gt.storage.prepare_numpy()
 
     domain = data.draw(
         st_domain(

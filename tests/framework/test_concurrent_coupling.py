@@ -124,8 +124,6 @@ def test_compatibility(
 )
 @given(data=hyp_st.data())
 def test_serial(data, make_fake_tendency_component_1, make_fake_tendency_component_2):
-    gt.storage.prepare_numpy()
-
     # ========================================
     # random data generation
     # ========================================
@@ -135,6 +133,9 @@ def test_serial(data, make_fake_tendency_component_1, make_fake_tendency_compone
     dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
     same_shape = data.draw(hyp_st.booleans(), label="same_shape")
+
+    if gt_powered:
+        gt.storage.prepare_numpy()
 
     domain = data.draw(
         st_domain(
@@ -208,7 +209,7 @@ def test_serial(data, make_fake_tendency_component_1, make_fake_tendency_compone
 
     assert "y_momentum_isentropic" in tendencies
     v = state["y_velocity_at_v_locations"].to_units("m s^-1").values
-    if same_shape:
+    if same_shape or gt_powered:
         v_val = deepcopy(v)
         v_val[:-1, :-1, :-1] = (
             0.5 * s[:-1, :-1, :-1] * (v[:-1, :-1, :-1] + v[:-1, 1:, :-1])
@@ -263,8 +264,6 @@ class FakeTendency2Diagnostic(Tendency2Diagnostic):
 def test_tendency_to_diagnostic(
     data, make_fake_tendency_component_1, make_fake_tendency_component_2
 ):
-    gt.storage.prepare_numpy()
-
     # ========================================
     # random data generation
     # ========================================
@@ -274,6 +273,9 @@ def test_tendency_to_diagnostic(
     dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
     same_shape = data.draw(hyp_st.booleans(), label="same_shape")
+
+    if gt_powered:
+        gt.storage.prepare_numpy()
 
     domain = data.draw(
         st_domain(
@@ -357,7 +359,7 @@ def test_tendency_to_diagnostic(
 
     assert "y_momentum_isentropic" in tendencies
     v = state["y_velocity_at_v_locations"].to_units("m s^-1").values
-    if same_shape:
+    if same_shape or gt_powered:
         v_val = deepcopy(v)
         v_val[:-1, :-1, :-1] = (
             0.5 * s[:-1, :-1, :-1] * (v[:-1, :-1, :-1] + v[:-1, 1:, :-1])
