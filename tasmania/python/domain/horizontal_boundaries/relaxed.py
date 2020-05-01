@@ -211,16 +211,19 @@ class Relaxed(HorizontalBoundary):
 
         # if needed, allocate the coefficient matrix
         if not self._ready2go:
-            if field.ndim <= 2:
-                nz = 1
-            else:
-                nz = (
-                    field.shape[2] - 1
-                    if "on_interface_levels" in field_name
-                    else field.shape[2]
-                )
-            self._kwargs["nz"] = nz
-            self._allocate_coefficient_matrix()
+            if self._kwargs["nz"] is None:
+                if grid is not None:
+                    nz = grid.nz
+                elif field.ndim <= 2:
+                    nz = 1
+                else:
+                    nz = (
+                        field.shape[2] - 1
+                        if "on_interface_levels" in field_name
+                        else field.shape[2]
+                    )
+                self._kwargs["nz"] = nz
+            self._allocate_coefficient_matrix(field.shape)
 
         # the coefficient matrix
         g = self._gamma
@@ -318,13 +321,13 @@ class Relaxed(HorizontalBoundary):
         field[:mi, 0] = field_ref[:mi, 0]
         field[:mi, mj - 1] = field_ref[:mi, mj - 1]
 
-    def _allocate_coefficient_matrix(self):
+    def _allocate_coefficient_matrix(self, field_shape=None):
         nx, ny = self.nx, self.ny
         nb, nr = self.nb, self._kwargs["nr"]
         backend, dtype = self._backend, self._dtype
         nz = self._kwargs["nz"]
 
-        if nz is None:
+        if nz is None or (self._gt_powered and field_shape is None):
             self._ready2go = False
             return
         else:
@@ -377,14 +380,11 @@ class Relaxed(HorizontalBoundary):
             )
         else:
             # get the proper storage shape
-            if self._storage_shape is None:
-                shape = (nx + 1, ny + 1, nz + 1)
-            else:
-                shape = (
-                    max(self._storage_shape[0], nx + 1),
-                    max(self._storage_shape[1], ny + 1),
-                    max(self._storage_shape[2], nz + 1),
-                )
+            min_shape = (nx + 1, ny + 1, nz + 1)
+            fshape = self._storage_shape or min_shape
+            shape = tuple(
+                max(fshape[i], field_shape[i]) for i in range(len(field_shape))
+            )
             self._storage_shape = shape
 
             # create a single coefficient matrix
@@ -586,16 +586,19 @@ class Relaxed1DX(HorizontalBoundary):
 
         # if needed, allocate the coefficient matrix
         if not self._ready2go:
-            if field.ndim <= 2:
-                nz = 1
-            else:
-                nz = (
-                    field.shape[2] - 1
-                    if "on_interface_levels" in field_name
-                    else field.shape[2]
-                )
-            self._kwargs["nz"] = nz
-            self._allocate_coefficient_matrix()
+            if self._kwargs["nz"] is None:
+                if grid is not None:
+                    nz = grid.nz
+                elif field.ndim <= 2:
+                    nz = 1
+                else:
+                    nz = (
+                        field.shape[2] - 1
+                        if "on_interface_levels" in field_name
+                        else field.shape[2]
+                    )
+                self._kwargs["nz"] = nz
+            self._allocate_coefficient_matrix(field.shape)
 
         # the coefficient matrix
         g = self._gamma
@@ -676,13 +679,13 @@ class Relaxed1DX(HorizontalBoundary):
         field[:mi, 0] = field_ref[:mi, 0]
         field[:mi, mj - 1] = field_ref[:mi, mj - 1]
 
-    def _allocate_coefficient_matrix(self):
+    def _allocate_coefficient_matrix(self, field_shape=None):
         nx, ny = self.nx, self.ny
         nb, nr = self.nb, self._kwargs["nr"]
         backend, dtype = self._backend, self._dtype
         nz = self._kwargs["nz"]
 
-        if nz is None:
+        if nz is None or (self._gt_powered and field_shape is None):
             self._ready2go = False
             return
         else:
@@ -724,14 +727,11 @@ class Relaxed1DX(HorizontalBoundary):
             )
         else:
             # get the proper storage shape
-            if self._storage_shape is None:
-                shape = (nx + 1, 2 * nb + 2, nz + 1)
-            else:
-                shape = (
-                    max(self._storage_shape[0], nx + 1),
-                    max(self._storage_shape[1], 2 * nb + 2),
-                    max(self._storage_shape[2], nz + 1),
-                )
+            min_shape = (nx + 1, 2 * nb + 2, nz + 1)
+            fshape = self._storage_shape or min_shape
+            shape = tuple(
+                max(fshape[i], field_shape[i]) for i in range(len(field_shape))
+            )
             self._storage_shape = shape
 
             # create a single coefficient matrix
@@ -746,9 +746,9 @@ class Relaxed1DX(HorizontalBoundary):
 
         # fill the coefficient matrix
         g = self._gamma
-        g[:nr, nb:-nb] = asarray(xneg[:, :, np.newaxis])
-        g[nx - nr : nx, nb:-nb] = asarray(xpos[:, :, np.newaxis])
-        g[nx : nx + 1, nb:-nb] = 1.0
+        g[:nr, nb : nb + 2] = asarray(xneg[:, :, np.newaxis])
+        g[nx - nr : nx, nb : nb + 2] = asarray(xpos[:, :, np.newaxis])
+        g[nx : nx + 1, nb : nb + 2] = 1.0
 
 
 class Relaxed1DY(HorizontalBoundary):
@@ -925,16 +925,19 @@ class Relaxed1DY(HorizontalBoundary):
         )
         # if needed, allocate the coefficient matrix
         if not self._ready2go:
-            if field.ndim <= 2:
-                nz = 1
-            else:
-                nz = (
-                    field.shape[2] - 1
-                    if "on_interface_levels" in field_name
-                    else field.shape[2]
-                )
-            self._kwargs["nz"] = nz
-            self._allocate_coefficient_matrix()
+            if self._kwargs["nz"] is None:
+                if grid is not None:
+                    nz = grid.nz
+                elif field.ndim <= 2:
+                    nz = 1
+                else:
+                    nz = (
+                        field.shape[2] - 1
+                        if "on_interface_levels" in field_name
+                        else field.shape[2]
+                    )
+                self._kwargs["nz"] = nz
+            self._allocate_coefficient_matrix(field.shape)
 
         # the coefficient matrix
         g = self._gamma
@@ -1015,13 +1018,13 @@ class Relaxed1DY(HorizontalBoundary):
         field[:mi, 0] = field_ref[:mi, 0]
         field[:mi, mj - 1] = field_ref[:mi, mj - 1]
 
-    def _allocate_coefficient_matrix(self):
+    def _allocate_coefficient_matrix(self, field_shape=None):
         nx, ny = self.nx, self.ny
         nb, nr = self.nb, self._kwargs["nr"]
         backend, dtype = self._backend, self._dtype
         nz = self._kwargs["nz"]
 
-        if nz is None:
+        if nz is None or (self._gt_powered and field_shape is None):
             self._ready2go = False
             return
         else:
@@ -1063,14 +1066,11 @@ class Relaxed1DY(HorizontalBoundary):
             )
         else:
             # get the proper storage shape
-            if self._storage_shape is None:
-                shape = (2 * nb + 2, ny + 1, nz + 1)
-            else:
-                shape = (
-                    max(self._storage_shape[0], 2 * nb + 2),
-                    max(self._storage_shape[1], ny + 1),
-                    max(self._storage_shape[2], nz + 1),
-                )
+            min_shape = (2 * nb + 2, ny + 1, nz + 1)
+            fshape = self._storage_shape or min_shape
+            shape = tuple(
+                max(fshape[i], field_shape[i]) for i in range(len(field_shape))
+            )
             self._storage_shape = shape
 
             # create a single coefficient matrix
@@ -1085,9 +1085,9 @@ class Relaxed1DY(HorizontalBoundary):
 
         # fill the coefficient matrix
         g = self._gamma
-        g[nb:-nb, :nr] = asarray(yneg[:, :, np.newaxis])
-        g[nb:-nb, ny - nr : ny] = asarray(ypos[:, :, np.newaxis])
-        g[nb:-nb, ny : ny + 1] = 1.0
+        g[nb : nb + 2, :nr] = asarray(yneg[:, :, np.newaxis])
+        g[nb : nb + 2, ny - nr : ny] = asarray(ypos[:, :, np.newaxis])
+        g[nb : nb + 2, ny : ny + 1] = 1.0
 
 
 @register(name="relaxed", registry_class=HorizontalBoundary)
