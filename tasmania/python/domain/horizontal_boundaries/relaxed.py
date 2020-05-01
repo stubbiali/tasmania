@@ -34,7 +34,7 @@ from tasmania.python.domain.horizontal_boundary import HorizontalBoundary
 from tasmania.python.domain.horizontal_boundaries.utils import repeat_axis, shrink_axis
 from tasmania.python.utils.framework_utils import register
 from tasmania.python.utils.gtscript_utils import stencil_irelax_defs
-from tasmania.python.utils.storage_utils import zeros
+from tasmania.python.utils.storage_utils import get_asarray_function, zeros
 
 
 class Relaxed(HorizontalBoundary):
@@ -366,12 +366,7 @@ class Relaxed(HorizontalBoundary):
         xnegypos = xnegyneg[:, ::-1]
 
         # inspect the backend properties to load the proper asarray function
-        backend = backend or "numpy"
-        if self._gt_powered:
-            device = gt.backend.from_name(backend).storage_info["device"]
-        else:
-            device = "gpu" if backend == "cupy" else "cpu"
-        asarray = cp.asarray if device == "gpu" else np.asarray
+        asarray = get_asarray_function(self._gt_powered, backend or "numpy")
 
         if not self._gt_powered:
             # create a single coefficient matrix
@@ -713,12 +708,7 @@ class Relaxed1DX(HorizontalBoundary):
         xpos = np.repeat(rrel[:, np.newaxis], 2, axis=1)
 
         # inspect the backend properties to load the proper asarray function
-        backend = backend or "numpy"
-        if self._gt_powered:
-            device = gt.backend.from_name(backend).storage_info["device"]
-        else:
-            device = "gpu" if backend == "cupy" else "cpu"
-        asarray = cp.asarray if device == "gpu" else np.asarray
+        asarray = get_asarray_function(self._gt_powered, backend or "numpy")
 
         if not self._gt_powered:
             # create a single coefficient matrix
@@ -1052,12 +1042,7 @@ class Relaxed1DY(HorizontalBoundary):
         ypos = np.repeat(rrel[np.newaxis, :], 2, axis=0)
 
         # inspect the backend properties to load the proper asarray function
-        backend = backend or "numpy"
-        if self._gt_powered:
-            device = gt.backend.from_name(backend).storage_info["device"]
-        else:
-            device = "gpu" if backend == "cupy" else "cpu"
-        asarray = cp.asarray if device == "gpu" else np.asarray
+        asarray = get_asarray_function(self._gt_powered, backend or "numpy")
 
         if not self._gt_powered:
             # create a single coefficient matrix

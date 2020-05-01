@@ -25,8 +25,17 @@ import pint
 from sympl import DataArray
 from typing import Optional, TYPE_CHECKING
 
+try:
+    import cupy as cp
+except ImportError:
+    cp = np
+
 from tasmania.python.utils import taz_types
-from tasmania.python.utils.storage_utils import get_dataarray_3d, zeros
+from tasmania.python.utils.storage_utils import (
+    get_asarray_function,
+    get_dataarray_3d,
+    zeros,
+)
 
 if TYPE_CHECKING:
     from tasmania.python.domain.grid import Grid
@@ -207,6 +216,8 @@ class ZhaoStateFactory:
         default_origin = self._default_origin
         managed_memory = self._managed_memory
 
+        asarray = get_asarray_function(gt_powered, backend)
+
         u = zeros(
             (nx, ny, 1),
             gt_powered=gt_powered,
@@ -215,7 +226,7 @@ class ZhaoStateFactory:
             default_origin=default_origin,
             managed_memory=managed_memory,
         )
-        u[...] = self._solution_factory(time, grid, field_name="x_velocity")
+        u[...] = asarray(self._solution_factory(time, grid, field_name="x_velocity"))
         u_da = get_dataarray_3d(u, grid, "m s^-1", "x_velocity", set_coordinates=False)
         u_da.attrs["backend"] = backend
         u_da.attrs["default_origin"] = default_origin
@@ -228,7 +239,7 @@ class ZhaoStateFactory:
             default_origin=default_origin,
             managed_memory=managed_memory,
         )
-        v[...] = self._solution_factory(time, grid, field_name="y_velocity")
+        v[...] = asarray(self._solution_factory(time, grid, field_name="y_velocity"))
         v_da = get_dataarray_3d(v, grid, "m s^-1", "y_velocity", set_coordinates=False)
         v_da.attrs["backend"] = backend
         v_da.attrs["default_origin"] = default_origin

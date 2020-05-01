@@ -33,6 +33,7 @@ import gt4py as gt
 from tasmania.python.domain.horizontal_boundary import HorizontalBoundary
 from tasmania.python.domain.horizontal_boundaries.utils import repeat_axis, shrink_axis
 from tasmania.python.utils.framework_utils import register
+from tasmania.python.utils.storage_utils import get_asarray_function
 
 
 def placeholder(time, grid, slice_x, slice_y, field_name, field_units):
@@ -131,12 +132,7 @@ class Dirichlet(HorizontalBoundary):
             else self.ny
         )
 
-        backend = self._backend or "numpy"
-        if self._gt_powered:
-            device = gt.backend.from_name(backend).storage_info["device"]
-        else:
-            device = "gpu" if backend == "cupy" else "cpu"
-        asarray = cp.asarray if device == "gpu" else np.asarray
+        asarray = get_asarray_function(self._gt_powered, self._backend or "numpy")
 
         field[:nb, :mj] = asarray(
             core(time, grid, slice(0, nb), slice(0, mj), field_name, field_units)
@@ -175,12 +171,7 @@ class Dirichlet(HorizontalBoundary):
             else self.ny
         )
 
-        backend = self._backend or "numpy"
-        if self._gt_powered:
-            device = gt.backend.from_name(backend).storage_info["device"]
-        else:
-            device = "gpu" if backend == "cupy" else "cpu"
-        asarray = cp.asarray if device == "gpu" else np.asarray
+        asarray = get_asarray_function(self._gt_powered, self._backend or "numpy")
 
         field[:1, :mj] = asarray(
             core(time, grid, slice(0, 1), slice(0, mj), field_name, field_units)
@@ -206,12 +197,7 @@ class Dirichlet(HorizontalBoundary):
             else self.ny
         )
 
-        backend = self._backend or "numpy"
-        if self._gt_powered:
-            device = gt.backend.from_name(backend).storage_info["device"]
-        else:
-            device = "gpu" if backend == "cupy" else "cpu"
-        asarray = cp.asarray if device == "gpu" else np.asarray
+        asarray = get_asarray_function(self._gt_powered, self._backend or "numpy")
 
         field[:mi, :1] = asarray(
             core(time, grid, slice(0, mi), slice(0, 1), field_name, field_units)
@@ -320,12 +306,7 @@ class Dirichlet1DX(HorizontalBoundary):
             else self.nj
         )
 
-        backend = self._backend or "numpy"
-        if self._gt_powered:
-            device = gt.backend.from_name(backend).storage_info["device"]
-        else:
-            device = "gpu" if backend == "cupy" else "cpu"
-        asarray = cp.asarray if device == "gpu" else np.asarray
+        asarray = get_asarray_function(self._gt_powered, self._backend or "numpy")
 
         field[:nb, nb : mj - nb] = asarray(
             core(time, grid, slice(0, nb), slice(nb, mj - nb), field_name, field_units)
@@ -361,12 +342,7 @@ class Dirichlet1DX(HorizontalBoundary):
             else self.nj
         )
 
-        backend = self._backend or "numpy"
-        if self._gt_powered:
-            device = gt.backend.from_name(backend).storage_info["device"]
-        else:
-            device = "gpu" if backend == "cupy" else "cpu"
-        asarray = cp.asarray if device == "gpu" else np.asarray
+        asarray = get_asarray_function(self._gt_powered, self._backend or "numpy")
 
         field[:1, :mj] = asarray(
             core(time, grid, slice(0, 1), slice(0, mj), field_name, field_units)
@@ -392,12 +368,7 @@ class Dirichlet1DX(HorizontalBoundary):
             else self.nj
         )
 
-        backend = self._backend or "numpy"
-        if self._gt_powered:
-            device = gt.backend.from_name(backend).storage_info["device"]
-        else:
-            device = "gpu" if backend == "cupy" else "cpu"
-        asarray = cp.asarray if device == "gpu" else np.asarray
+        asarray = get_asarray_function(self._gt_powered, self._backend or "numpy")
 
         field[:mi, :1] = asarray(
             core(time, grid, slice(0, mi), slice(0, 1), field_name, field_units)
@@ -506,12 +477,7 @@ class Dirichlet1DY(HorizontalBoundary):
             else self.ny
         )
 
-        backend = self._backend or "numpy"
-        if self._gt_powered:
-            device = gt.backend.from_name(backend).storage_info["device"]
-        else:
-            device = "gpu" if backend == "cupy" else "cpu"
-        asarray = cp.asarray if device == "gpu" else np.asarray
+        asarray = get_asarray_function(self._gt_powered, self._backend or "numpy")
 
         field[nb : mi - nb, :nb] = asarray(
             core(time, grid, slice(nb, mi - nb), slice(0, nb), field_name, field_units)
@@ -547,12 +513,7 @@ class Dirichlet1DY(HorizontalBoundary):
             else self.ny
         )
 
-        backend = self._backend or "numpy"
-        if self._gt_powered:
-            device = gt.backend.from_name(backend).storage_info["device"]
-        else:
-            device = "gpu" if backend == "cupy" else "cpu"
-        asarray = cp.asarray if device == "gpu" else np.asarray
+        asarray = get_asarray_function(self._gt_powered, self._backend or "numpy")
 
         field[:1, :mj] = asarray(
             core(time, grid, slice(0, 1), slice(0, mj), field_name, field_units)
@@ -578,12 +539,7 @@ class Dirichlet1DY(HorizontalBoundary):
             else self.ny
         )
 
-        backend = self._backend or "numpy"
-        if self._gt_powered:
-            device = gt.backend.from_name(backend).storage_info["device"]
-        else:
-            device = "gpu" if backend == "cupy" else "cpu"
-        asarray = cp.asarray if device == "gpu" else np.asarray
+        asarray = get_asarray_function(self._gt_powered, self._backend or "numpy")
 
         field[:mi, :1] = asarray(
             core(time, grid, slice(0, mi), slice(0, 1), field_name, field_units)

@@ -25,6 +25,11 @@ import numpy as np
 from sympl import DataArray
 from typing import TYPE_CHECKING, Optional, Sequence, Union
 
+try:
+    import cupy as cp
+except ImportError:
+    cp = np
+
 import gt4py as gt
 
 from tasmania.python.utils import taz_types
@@ -525,7 +530,8 @@ def empty(
             managed_memory=managed_memory,
         )
     else:
-        storage = np.empty(storage_shape, dtype=dtype)
+        _empty = cp.empty if backend == "cupy" else np.empty
+        storage = _empty(storage_shape, dtype=dtype)
 
     return storage
 
@@ -552,7 +558,8 @@ def zeros(
             managed_memory=managed_memory,
         )
     else:
-        storage = np.zeros(storage_shape, dtype=dtype)
+        _zeros = cp.zeros if backend == "cupy" else np.zeros
+        storage = _zeros(storage_shape, dtype=dtype)
 
     return storage
 
@@ -579,7 +586,8 @@ def ones(
             managed_memory=managed_memory,
         )
     else:
-        storage = np.ones(storage_shape, dtype=dtype)
+        _ones = cp.ones if backend == "cupy" else np.ones
+        storage = _ones(storage_shape, dtype=dtype)
 
     return storage
 
@@ -611,3 +619,11 @@ def deepcopy_dataarray_dict(
         if name != "time":
             dst[name] = deepcopy_dataarray(src[name])
     return dst
+
+
+def get_asarray_function(gt_powered: bool = True, backend: str = "numpy"):
+    if gt_powered:
+        device = gt.backend.from_name(backend).storage_info["device"]
+    else:
+        device = "gpu" if backend == "cupy" else "cpu"
+    return cp.asarray if device == "gpu" else np.asarray
