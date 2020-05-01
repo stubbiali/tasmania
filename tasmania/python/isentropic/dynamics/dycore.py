@@ -781,17 +781,13 @@ class IsentropicDynamicalCore(DynamicalCore):
             try:
                 ref_state = hb.reference_state
                 self._s_ref[...] = (
-                    ref_state["air_isentropic_density"].to_units("kg m^-2 K^-1").values
+                    ref_state["air_isentropic_density"].to_units("kg m^-2 K^-1").data
                 )
                 self._su_ref[...] = (
-                    ref_state["x_momentum_isentropic"]
-                    .to_units("kg m^-1 K^-1 s^-1")
-                    .values
+                    ref_state["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").data
                 )
                 self._sv_ref[...] = (
-                    ref_state["y_momentum_isentropic"]
-                    .to_units("kg m^-1 K^-1 s^-1")
-                    .values
+                    ref_state["y_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").data
                 )
             except KeyError:
                 raise RuntimeError(
@@ -900,17 +896,13 @@ class IsentropicDynamicalCore(DynamicalCore):
             try:
                 ref_state = hb.reference_state
                 self._s_ref[...] = (
-                    ref_state["air_isentropic_density"].to_units("kg m^-2 K^-1").values
+                    ref_state["air_isentropic_density"].to_units("kg m^-2 K^-1").data
                 )
                 self._su_ref[...] = (
-                    ref_state["x_momentum_isentropic"]
-                    .to_units("kg m^-1 K^-1 s^-1")
-                    .values
+                    ref_state["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").data
                 )
                 self._sv_ref[...] = (
-                    ref_state["y_momentum_isentropic"]
-                    .to_units("kg m^-1 K^-1 s^-1")
-                    .values
+                    ref_state["y_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").data
                 )
 
                 # self._qv_ref[...] = (

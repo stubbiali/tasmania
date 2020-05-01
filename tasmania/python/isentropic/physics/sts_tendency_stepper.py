@@ -189,37 +189,33 @@ class IsentropicVerticalAdvection(STSTendencyStepper):
                 else state["tendency_of_air_potential_temperature"]
             )
             .to_units("K s^-1")
-            .values
+            .data
         )
-        in_s = state["air_isentropic_density"].to_units("kg m^-2 K^-1").values
-        in_su = state["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").values
-        in_sv = state["y_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").values
+        in_s = state["air_isentropic_density"].to_units("kg m^-2 K^-1").data
+        in_su = state["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").data
+        in_sv = state["y_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").data
         if self._moist:
-            in_qv = state[mfwv].to_units("g g^-1").values
-            in_qc = state[mfcw].to_units("g g^-1").values
-            in_qr = state[mfpw].to_units("g g^-1").values
+            in_qv = state[mfwv].to_units("g g^-1").data
+            in_qc = state[mfcw].to_units("g g^-1").data
+            in_qr = state[mfpw].to_units("g g^-1").data
 
         # grab arrays from provisional state
-        in_s_prv = prv_state["air_isentropic_density"].to_units("kg m^-2 K^-1").values
-        in_su_prv = (
-            prv_state["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").values
-        )
-        in_sv_prv = (
-            prv_state["y_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").values
-        )
+        in_s_prv = prv_state["air_isentropic_density"].to_units("kg m^-2 K^-1").data
+        in_su_prv = prv_state["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").data
+        in_sv_prv = prv_state["y_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").data
         if self._moist:
-            in_qv_prv = prv_state[mfwv].to_units("g g^-1").values
-            in_qc_prv = prv_state[mfcw].to_units("g g^-1").values
-            in_qr_prv = prv_state[mfpw].to_units("g g^-1").values
+            in_qv_prv = prv_state[mfwv].to_units("g g^-1").data
+            in_qc_prv = prv_state[mfcw].to_units("g g^-1").data
+            in_qr_prv = prv_state[mfpw].to_units("g g^-1").data
 
         # grab output arrays
-        out_s = out_state["air_isentropic_density"].values
-        out_su = out_state["x_momentum_isentropic"].values
-        out_sv = out_state["y_momentum_isentropic"].values
+        out_s = out_state["air_isentropic_density"].data
+        out_su = out_state["x_momentum_isentropic"].data
+        out_sv = out_state["y_momentum_isentropic"].data
         if self._moist:
-            out_qv = out_state[mfwv].values
-            out_qc = out_state[mfcw].values
-            out_qr = out_state[mfpw].values
+            out_qv = out_state[mfwv].data
+            out_qc = out_state[mfcw].data
+            out_qr = out_state[mfpw].data
 
         # set the stencil's arguments
         stencil_args = {

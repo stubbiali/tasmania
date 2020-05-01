@@ -248,9 +248,7 @@ class IsentropicDiagnostics:
         dz = self._grid.dz.to_units("K").values.item()
 
         # set the topography
-        self._topo[:nx, :ny, nz] = self._grid.topography.profile.to_units("m").values[
-            ...
-        ]
+        self._topo[:nx, :ny, nz] = self._grid.topography.profile.to_units("m").values
 
         # retrieve all the diagnostic variables
         self._stencil_diagnostic_variables(
@@ -292,9 +290,7 @@ class IsentropicDiagnostics:
         theta_s = self._grid.z_on_interface_levels.to_units("K").values[-1]
 
         # set the topography
-        self._topo[:nx, :ny, nz] = self._grid.topography.profile.to_units("m").values[
-            ...
-        ]
+        self._topo[:nx, :ny, nz] = self._grid.topography.profile.to_units("m").values
 
         # run the stencil
         self._stencil_montgomery(
@@ -333,9 +329,7 @@ class IsentropicDiagnostics:
         dz = self._grid.dz.to_units("K").values.item()
 
         # set the topography
-        self._topo[:nx, :ny, nz] = self._grid.topography.profile.to_units("m").values[
-            ...
-        ]
+        self._topo[:nx, :ny, nz] = self._grid.topography.profile.to_units("m").values
 
         # run the stencil
         self._stencil_height(

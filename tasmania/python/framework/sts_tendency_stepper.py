@@ -412,6 +412,6 @@ class STSTendencyStepper(abc.ABC):
             for name in self.output_properties:
                 units = self.output_properties[name]["units"]
                 out_state[name] = deepcopy_dataarray(state[name].to_units(units))
-                out_state[name].values[...] = 0.0
+                out_state[name].data[...] = 0.0
 
         return out_state

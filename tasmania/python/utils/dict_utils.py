@@ -135,15 +135,18 @@ class DataArrayDictOperator:
 
             for key in shared_keys:
                 assert "units" in dst[key].attrs
-                src_field = src[key].to_units(dst[key].attrs["units"]).values
-                dst_field = dst[key].values
+                src_field = src[key].to_units(dst[key].attrs["units"]).data
+                dst_field = dst[key].data
                 self._stencil_copy(
-                    src=src_field, dst=dst_field, origin=(0, 0, 0), domain=src_field.shape
+                    src=src_field,
+                    dst=dst_field,
+                    origin=(0, 0, 0),
+                    domain=src_field.shape,
                 )
         else:
             for key in shared_keys:
                 assert "units" in dst[key].attrs
-                dst[key].values[...] = src[key].to_units(dst[key].attrs["units"]).values
+                dst[key].data[...] = src[key].to_units(dst[key].attrs["units"]).data
 
         if unshared_variables_in_output:
             for key in unshared_keys:
@@ -208,20 +211,20 @@ class DataArrayDictOperator:
             else:
                 out_da = deepcopy_dataarray(dict1[key])
 
-            field1 = dict1[key].to_units(units).values
-            field2 = dict2[key].to_units(units).values
+            field1 = dict1[key].to_units(units).data
+            field2 = dict2[key].to_units(units).data
             out_da.attrs["units"] = units
 
             if self._gt_powered:
                 self._stencil_add(
                     in_a=field1,
                     in_b=field2,
-                    out_c=out_da.values,
+                    out_c=out_da.data,
                     origin=(0, 0, 0),
                     domain=field1.shape,
                 )
             else:
-                out_da.values[...] = field1 + field2
+                out_da.data[...] = field1 + field2
 
             out[key] = out_da
 
@@ -239,13 +242,13 @@ class DataArrayDictOperator:
                 if key in out:
                     if self._gt_powered:
                         self._stencil_copy(
-                            src=_dict[key].to_units(units).values,
-                            dst=out[key].values,
+                            src=_dict[key].to_units(units).data,
+                            dst=out[key].data,
                             origin=(0, 0, 0),
                             domain=_dict[key].shape,
                         )
                     else:
-                        out[key].values[...] = _dict[key].to_units(units).values
+                        out[key].data[...] = _dict[key].to_units(units).data
 
                     out[key].attrs["units"] = units
                 else:
@@ -302,8 +305,8 @@ class DataArrayDictOperator:
             props = field_properties.get(key, {})
             units = props.get("units", dict1[key].attrs["units"])
             dict1[key] = dict1[key].to_units(units)
-            field1 = dict1[key].values
-            field2 = dict2[key].to_units(units).values
+            field1 = dict1[key].data
+            field2 = dict2[key].to_units(units).data
 
             if self._gt_powered:
                 self._stencil_iadd(
@@ -382,20 +385,20 @@ class DataArrayDictOperator:
             else:
                 out_da = deepcopy_dataarray(dict1[key])
 
-            field1 = dict1[key].to_units(units).values
-            field2 = dict2[key].to_units(units).values
+            field1 = dict1[key].to_units(units).data
+            field2 = dict2[key].to_units(units).data
             out_da.attrs["units"] = units
 
             if self._gt_powered:
                 self._stencil_sub(
                     in_a=field1,
                     in_b=field2,
-                    out_c=out_da.values,
+                    out_c=out_da.data,
                     origin=(0, 0, 0),
                     domain=field1.shape,
                 )
             else:
-                out_da.values[...] = field1 - field2
+                out_da.data[...] = field1 - field2
 
             out[key] = out_da
 
@@ -419,13 +422,13 @@ class DataArrayDictOperator:
                     if key in out:
                         if self._gt_powered:
                             self._stencil_copy(
-                                src=dict1[key].to_units(units).values,
-                                dst=out[key].values,
+                                src=dict1[key].to_units(units).data,
+                                dst=out[key].data,
                                 origin=(0, 0, 0),
                                 domain=dict1[key].shape,
                             )
                         else:
-                            out[key].values[...] = dict1[key].to_units(units).values
+                            out[key].data[...] = dict1[key].to_units(units).data
 
                         out[key].attrs["units"] = units
                     else:
@@ -436,18 +439,18 @@ class DataArrayDictOperator:
                     if key in out:
                         if self._gt_powered:
                             self._stencil_copychange(
-                                src=dict2[key].to_units(units).values,
-                                dst=out[key].values,
+                                src=dict2[key].to_units(units).data,
+                                dst=out[key].data,
                                 origin=(0, 0, 0),
                                 domain=dict2[key].shape,
                             )
                         else:
-                            out[key].values[...] = -dict2[key].to_units(units).values
+                            out[key].data[...] = -dict2[key].to_units(units).data
 
                         out[key].attrs["units"] = units
                     else:
                         out[key] = dict2[key].to_units(units)
-                        out[key].values *= -1
+                        out[key].data *= -1
 
         return out
 
@@ -495,8 +498,8 @@ class DataArrayDictOperator:
             props = field_properties.get(key, {})
             units = props.get("units", dict1[key].attrs["units"])
             dict1[key] = dict1[key].to_units(units)
-            field1 = dict1[key].values
-            field2 = dict2[key].to_units(units).values
+            field1 = dict1[key].data
+            field2 = dict2[key].to_units(units).data
 
             if self._gt_powered:
                 self._stencil_isub(
@@ -523,13 +526,13 @@ class DataArrayDictOperator:
 
                     if self._gt_powered:
                         self._stencil_iscale(
-                            inout_a=dict1[key].values,
+                            inout_a=dict1[key].data,
                             f=-1.0,
                             origin=(0, 0, 0),
                             domain=dict1[key].shape,
                         )
                     else:
-                        dict1[key].values *= -1
+                        dict1[key].data *= -1
 
     def scale(
         self,
@@ -558,14 +561,14 @@ class DataArrayDictOperator:
                 props = field_properties.get(key, {})
                 units = props.get("units", dictionary[key].attrs["units"])
                 field = dictionary[key].to_units(units)
-                rfield = field.values
+                rfield = field.data
 
                 if key in out:
                     out[key].attrs["units"] = units
                 else:
                     out[key] = deepcopy_dataarray(field)
 
-                rout = out[key].values
+                rout = out[key].data
 
                 if self._gt_powered:
                     self._stencil_scale(
@@ -600,7 +603,7 @@ class DataArrayDictOperator:
                 props = field_properties.get(key, {})
                 units = props.get("units", dictionary[key].attrs["units"])
                 dictionary[key] = dictionary[key].to_units(units)
-                rfield = dictionary[key].values
+                rfield = dictionary[key].data
 
                 if self._gt_powered:
                     self._stencil_iscale(
@@ -639,16 +642,16 @@ class DataArrayDictOperator:
             units = props.get("units", dict1[key].attrs["units"])
 
             field1 = dict1[key].to_units(units)
-            rfield1 = field1.values
-            rfield2 = dict2[key].to_units(units).values
-            rfield3 = dict3[key].to_units(units).values
+            rfield1 = field1.data
+            rfield2 = dict2[key].to_units(units).data
+            rfield3 = dict3[key].to_units(units).data
 
             if key in out:
                 out[key].attrs["units"] = units
             else:
                 out[key] = deepcopy_dataarray(field1)
 
-            rout = out[key].values
+            rout = out[key].data
 
             if self._gt_powered:
                 self._stencil_addsub(
@@ -689,9 +692,9 @@ class DataArrayDictOperator:
             units = props.get("units", dict1[key].attrs["units"])
 
             dict1[key] = dict1[key].to_units(units)
-            rfield1 = dict1[key].values
-            rfield2 = dict2[key].to_units(units).values
-            rfield3 = dict3[key].to_units(units).values
+            rfield1 = dict1[key].data
+            rfield2 = dict2[key].to_units(units).data
+            rfield3 = dict3[key].to_units(units).data
 
             if self._gt_powered:
                 self._stencil_iaddsub(
@@ -733,15 +736,15 @@ class DataArrayDictOperator:
             units = props.get("units", dict1[key].attrs["units"])
 
             field1 = dict1[key].to_units(units)
-            rfield1 = field1.values
-            rfield2 = dict2[key].to_units(units).values
+            rfield1 = field1.data
+            rfield2 = dict2[key].to_units(units).data
 
             if key in out:
                 out[key].attrs["units"] = units
             else:
                 out[key] = deepcopy_dataarray(field1)
 
-            rout = out[key].values
+            rout = out[key].data
 
             if self._gt_powered:
                 self._stencil_fma(
@@ -788,16 +791,16 @@ class DataArrayDictOperator:
             units = props.get("units", state[key].attrs["units"])
 
             field = state[key].to_units(units)
-            r_field = field.values
-            r_field_prv = state_prv[key].to_units(units).values
-            r_tnd = tnd[key].to_units(units).values
+            r_field = field.data
+            r_field_prv = state_prv[key].to_units(units).data
+            r_tnd = tnd[key].to_units(units).data
 
             if key in out:
                 out[key].attrs["units"] = units
             else:
                 out[key] = deepcopy_dataarray(field)
 
-            r_out = out[key].values
+            r_out = out[key].data
 
             if self._gt_powered:
                 self._stencil_sts_rk2_0(
@@ -845,16 +848,16 @@ class DataArrayDictOperator:
             units = props.get("units", state[key].attrs["units"])
 
             field = state[key].to_units(units)
-            r_field = field.values
-            r_field_prv = state_prv[key].to_units(units).values
-            r_tnd = tnd[key].to_units(units).values
+            r_field = field.data
+            r_field_prv = state_prv[key].to_units(units).data
+            r_tnd = tnd[key].to_units(units).data
 
             if key in out:
                 out[key].attrs["units"] = units
             else:
                 out[key] = deepcopy_dataarray(field)
 
-            r_out = out[key].values
+            r_out = out[key].data
 
             if self._gt_powered:
                 self._stencil_sts_rk3ws_0(

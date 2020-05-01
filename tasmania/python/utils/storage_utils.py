@@ -336,7 +336,7 @@ def get_array_dict(
             props = properties.get(key, {})
             units = props.get("units", dataarray_dict[key].attrs.get("units"))
             assert units is not None, "Units not specified for {}.".format(key)
-            array_dict[key] = dataarray_dict[key].to_units(units).values
+            array_dict[key] = dataarray_dict[key].to_units(units).data
 
     return array_dict
 
@@ -371,7 +371,7 @@ def get_physical_state(
             mz = nz + 1 if "on_interface_levels" in name else nz
             units = cstate[name].attrs["units"]
 
-            raw_cfield = cstate[name].values
+            raw_cfield = cstate[name].data
             raw_pfield = hb.get_physical_field(raw_cfield, name)
 
             if len(storage_shape) == 2:
@@ -420,7 +420,7 @@ def get_numerical_state(
             mz = nz + 1 if "on_interface_levels" in name else nz
             units = pstate[name].attrs["units"]
 
-            raw_pfield = pstate[name].values
+            raw_pfield = pstate[name].data
             raw_cfield = hb.get_numerical_field(raw_pfield, name)
 
             if len(raw_cfield.shape) == 2:
@@ -594,7 +594,8 @@ def deepcopy_array_dict(src: taz_types.array_dict_t) -> taz_types.array_dict_t:
 
 def deepcopy_dataarray(src: DataArray) -> DataArray:
     return DataArray(
-        deepcopy(src.values),
+        # deepcopy(src.values),
+        deepcopy(src.data),
         coords=src.coords,
         dims=src.dims,
         name=src.name,

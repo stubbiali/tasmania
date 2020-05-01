@@ -232,9 +232,9 @@ def convert_relative_humidity_to_water_vapor(
         Retrieved from `<https://www.vaisala.com>`_.
     """
     # Extract the raw arrays
-    p_ = p.to_units("Pa").values
-    t_ = t.to_units("K").values
-    rh_ = rh.to_units("1").values
+    p_ = p.to_units("Pa").data
+    t_ = t.to_units("K").data
+    rh_ = rh.to_units("1").data
 
     # Get the saturation water vapor pressure
     if method == "tetens":
