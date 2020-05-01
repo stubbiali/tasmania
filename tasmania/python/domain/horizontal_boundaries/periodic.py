@@ -46,7 +46,7 @@ class Periodic(HorizontalBoundary):
         assert nb <= nx / 2, "Number of boundary layers cannot exceed ny/2."
         assert nb <= ny / 2, "Number of boundary layers cannot exceed ny/2."
 
-        super().__init__(nx, ny, nb, gt_powered, backend, dtype)
+        super().__init__(nx, ny, nb, gt_powered, backend=backend, dtype=dtype)
 
     @property
     def ni(self):
@@ -185,7 +185,7 @@ class Periodic1DX(HorizontalBoundary):
         assert ny == 1, "Number of grid points along second dimension must be 1."
         assert nb <= nx / 2, "Number of boundary layers cannot exceed nx/2."
 
-        super().__init__(nx, ny, nb, gt_powered, backend, dtype)
+        super().__init__(nx, ny, nb, gt_powered, backend=backend, dtype=dtype)
 
     @property
     def ni(self):
@@ -316,7 +316,7 @@ class Periodic1DY(HorizontalBoundary):
         ), "Number of grid points along second dimension should be larger than 1."
         assert nb <= ny / 2, "Number of boundary layers cannot exceed ny/2."
 
-        super().__init__(nx, ny, nb, gt_powered, backend, dtype)
+        super().__init__(nx, ny, nb, gt_powered, backend=backend, dtype=dtype)
 
     @property
     def ni(self):
@@ -438,7 +438,21 @@ class Periodic1DY(HorizontalBoundary):
 
 
 @register(name="periodic", registry_class=HorizontalBoundary)
-def dispatch(nx, ny, nb, gt_powered, backend="numpy", dtype=np.float64):
+def dispatch(
+    nx,
+    ny,
+    nb,
+    gt_powered,
+    backend="numpy",
+    backend_opts=None,
+    build_info=None,
+    dtype=np.float64,
+    exec_info=None,
+    default_origin=None,
+    rebuild=False,
+    storage_shape=None,
+    managed_memory=False,
+):
     """ Dispatch based on the grid size. """
     if nx == 1:
         return Periodic1DY(1, ny, nb, gt_powered, backend, dtype)

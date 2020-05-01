@@ -163,9 +163,8 @@ def test_field(data):
     nx, ny, nz = grid.grid_xy.nx, grid.grid_xy.ny, grid.nz
     nb = data.draw(st_horizontal_boundary_layers(nx, ny), label="nb")
     hb_kwargs = data.draw(
-        st_horizontal_boundary_kwargs("relaxed", nx, ny, nb), label="hb_kwargs"
+        st_horizontal_boundary_kwargs("relaxed", nx, ny, nb, nz=nz), label="hb_kwargs"
     )
-    hb_kwargs["nz"] = nz
 
     pfield = data.draw(
         st_raw_field(
@@ -218,39 +217,22 @@ def test_field(data):
 
 
 def enforce(cf_val, cf_ref, hb):
-    nx, ny, nr = hb.nx, hb.ny, hb.kwargs["nr"]
-    ni, nj = cf_val.shape[:2]
-
-    cf_val[:nr, :nr] -= hb._xnegyneg * (cf_val[:nr, :nr] - cf_ref[:nr, :nr])
-    cf_val[:nr, nr:-nr] -= hb._xneg[:, : (-1 if nj == ny else None)] * (
-        cf_val[:nr, nr:-nr] - cf_ref[:nr, nr:-nr]
-    )
-    cf_val[:nr, -nr:] -= hb._xnegypos * (cf_val[:nr, -nr:] - cf_ref[:nr, -nr:])
-    cf_val[-nr:, :nr] -= hb._xposyneg * (cf_val[-nr:, :nr] - cf_ref[-nr:, :nr])
-    cf_val[-nr:, nr:-nr] -= hb._xpos[:, : (-1 if nj == ny else None)] * (
-        cf_val[-nr:, nr:-nr] - cf_ref[-nr:, nr:-nr]
-    )
-    cf_val[-nr:, -nr:] -= hb._xposypos * (cf_val[-nr:, -nr:] - cf_ref[-nr:, -nr:])
-    cf_val[nr:-nr, :nr] -= hb._yneg[: (-1 if ni == nx else None), :] * (
-        cf_val[nr:-nr, :nr] - cf_ref[nr:-nr, :nr]
-    )
-    cf_val[nr:-nr, -nr:] -= hb._ypos[: (-1 if ni == nx else None), :] * (
-        cf_val[nr:-nr, -nr:] - cf_ref[nr:-nr, -nr:]
-    )
+    mi, mj, mk = cf_val.shape
+    cf_val -= hb._gamma[:mi, :mj, :mk] * (cf_val - cf_ref[:mi, :mj, :mk])
 
 
-def validation(cf, cf_val, hb, mk):
-    nb, nr = hb.nb, hb.kwargs["nr"]
+def validation(cf, cf_val, hb):
+    nr = hb.kwargs["nr"]
 
-    compare_arrays(cf[nr:-nr, nr:-nr, :mk], cf_val[nr:-nr, nr:-nr, :mk])
-    compare_arrays(cf[:nr, :nr, :mk], cf_val[:nr, :nr, :mk])
-    compare_arrays(cf[:nr, nr:-nr, :mk], cf_val[:nr, nr:-nr, :mk])
-    compare_arrays(cf[:nr, -nr:, :mk], cf_val[:nr, -nr:, :mk])
-    compare_arrays(cf[-nr:, :nr, :mk], cf_val[-nr:, :nr, :mk])
-    compare_arrays(cf[-nr:, nr:-nr, :mk], cf_val[-nr:, nr:-nr, :mk])
-    compare_arrays(cf[-nr:, -nr:, :mk], cf_val[-nr:, -nr:, :mk])
-    compare_arrays(cf[nr:-nr, :nr, :mk], cf_val[nr:-nr, :nr, :mk])
-    compare_arrays(cf[nr:-nr, -nr:, :mk], cf_val[nr:-nr, -nr:, :mk])
+    compare_arrays(cf[nr:-nr, nr:-nr], cf_val[nr:-nr, nr:-nr])
+    compare_arrays(cf[:nr, :nr], cf_val[:nr, :nr])
+    compare_arrays(cf[:nr, nr:-nr], cf_val[:nr, nr:-nr])
+    compare_arrays(cf[:nr, -nr:], cf_val[:nr, -nr:])
+    compare_arrays(cf[-nr:, :nr], cf_val[-nr:, :nr])
+    compare_arrays(cf[-nr:, nr:-nr], cf_val[-nr:, nr:-nr])
+    compare_arrays(cf[-nr:, -nr:], cf_val[-nr:, -nr:])
+    compare_arrays(cf[nr:-nr, :nr], cf_val[nr:-nr, :nr])
+    compare_arrays(cf[nr:-nr, -nr:], cf_val[nr:-nr, -nr:])
 
 
 @settings(
@@ -275,15 +257,27 @@ def test_enforce(data):
     nx, ny, nz = grid.grid_xy.nx, grid.grid_xy.ny, grid.nz
     nb = data.draw(st_horizontal_boundary_layers(nx, ny), label="nb")
     hb_kwargs = data.draw(
-        st_horizontal_boundary_kwargs("relaxed", nx, ny, nb), label="hb_kwargs"
+        st_horizontal_boundary_kwargs("relaxed", nx, ny, nb, nz=nz), label="hb_kwargs"
     )
-    hb_kwargs["nz"] = nz
 
-    storage_shape = (nx + 1, ny + 1, nz + 1)
     cfield = data.draw(
         st_raw_field(
-            storage_shape, -1e4, 1e4, gt_powered=gt_powered, backend=backend, dtype=dtype
+            (nx + 1, ny + 1, nz + 1),
+            -1e4,
+            1e4,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
         )
+    )
+
+    dnx = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dnx")
+    dny = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dny")
+    dnz = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dnz")
+    storage_shape = (
+        None
+        if data.draw(hyp_st.booleans(), label="not_storage_shape") and not gt_powered
+        else (nx + dnx, ny + dny, nz + dnz)
     )
 
     ref_state = data.draw(
@@ -303,6 +297,7 @@ def test_enforce(data):
         gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
+        storage_shape=storage_shape,
         **hb_kwargs
     )
     hb.reference_state = ref_state
@@ -311,37 +306,37 @@ def test_enforce(data):
     cf = deepcopy(cfield)
     units = ref_state["afield"].attrs["units"]
     hb.enforce_field(cf, field_name="afield", field_units=units)
-    cf_val = deepcopy(cfield[:-1, :-1])
-    cf_ref = ref_state["afield"].values[:-1, :-1]
+    cf_val = deepcopy(cfield[:-1, :-1, :-1])
+    cf_ref = ref_state["afield"].values
     enforce(cf_val, cf_ref, hb)
-    validation(cf[:-1, :-1], cf_val, hb, nz)
+    validation(cf[:-1, :-1, :-1], cf_val, hb)
 
     # (nx+1, ny)
     cf = deepcopy(cfield)
     units = ref_state["afield_at_u_locations"].attrs["units"]
     hb.enforce_field(cf, field_name="afield_at_u_locations", field_units=units)
-    cf_val = deepcopy(cfield[:, :-1])
-    cf_ref = ref_state["afield_at_u_locations"].values[:, :-1]
+    cf_val = deepcopy(cfield[:, :-1, :-1])
+    cf_ref = ref_state["afield_at_u_locations"].values
     enforce(cf_val, cf_ref, hb)
-    validation(cf[:, :-1], cf_val, hb, nz)
+    validation(cf[:, :-1, :-1], cf_val, hb)
 
     # (nx, ny+1)
     cf = deepcopy(cfield)
     units = ref_state["afield_at_v_locations"].attrs["units"]
     hb.enforce_field(cf, field_name="afield_at_v_locations", field_units=units)
-    cf_val = deepcopy(cfield[:-1, :])
-    cf_ref = ref_state["afield_at_v_locations"].values[:-1, :]
+    cf_val = deepcopy(cfield[:-1, :, :-1])
+    cf_ref = ref_state["afield_at_v_locations"].values
     enforce(cf_val, cf_ref, hb)
-    validation(cf[:-1, :], cf_val, hb, nz)
+    validation(cf[:-1, :, :-1], cf_val, hb)
 
     # (nx+1, ny+1)
     cf = deepcopy(cfield)
     units = ref_state["afield_at_uv_locations"].attrs["units"]
     hb.enforce_field(cf, field_name="afield_at_uv_locations", field_units=units)
-    cf_val = cfield
+    cf_val = cfield[:, :, :-1]
     cf_ref = ref_state["afield_at_uv_locations"].values
     enforce(cf_val, cf_ref, hb)
-    validation(cf, cf_val, hb, nz)
+    validation(cf[:, :, :-1], cf_val, hb)
 
 
 @settings(
@@ -366,7 +361,7 @@ def test_outermost_layers(data):
     nx, ny, nz = grid.grid_xy.nx, grid.grid_xy.ny, grid.nz
     nb = data.draw(st_horizontal_boundary_layers(nx, ny), label="nb")
     hb_kwargs = data.draw(
-        st_horizontal_boundary_kwargs("relaxed", nx, ny, nb), label="hb_kwargs"
+        st_horizontal_boundary_kwargs("relaxed", nx, ny, nb, nz=nz), label="hb_kwargs"
     )
 
     storage_shape = (nx + 1, ny + 1, nz + 1)

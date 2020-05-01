@@ -84,7 +84,7 @@ class Dirichlet(HorizontalBoundary):
         assert "field_name" in signature.parameters, error_msg
         assert "field_units" in signature.parameters, error_msg
 
-        super().__init__(nx, ny, nb, gt_powered, backend, dtype)
+        super().__init__(nx, ny, nb, gt_powered, backend=backend, dtype=dtype)
 
         self._kwargs["core"] = core
 
@@ -132,7 +132,10 @@ class Dirichlet(HorizontalBoundary):
         )
 
         backend = self._backend or "numpy"
-        device = gt.backend.from_name(backend).storage_info["device"]
+        if self._gt_powered:
+            device = gt.backend.from_name(backend).storage_info["device"]
+        else:
+            device = "gpu" if backend == "cupy" else "cpu"
         asarray = cp.asarray if device == "gpu" else np.asarray
 
         field[:nb, :mj] = asarray(
@@ -173,7 +176,10 @@ class Dirichlet(HorizontalBoundary):
         )
 
         backend = self._backend or "numpy"
-        device = gt.backend.from_name(backend).storage_info["device"]
+        if self._gt_powered:
+            device = gt.backend.from_name(backend).storage_info["device"]
+        else:
+            device = "gpu" if backend == "cupy" else "cpu"
         asarray = cp.asarray if device == "gpu" else np.asarray
 
         field[:1, :mj] = asarray(
@@ -201,7 +207,10 @@ class Dirichlet(HorizontalBoundary):
         )
 
         backend = self._backend or "numpy"
-        device = gt.backend.from_name(backend).storage_info["device"]
+        if self._gt_powered:
+            device = gt.backend.from_name(backend).storage_info["device"]
+        else:
+            device = "gpu" if backend == "cupy" else "cpu"
         asarray = cp.asarray if device == "gpu" else np.asarray
 
         field[:mi, :1] = asarray(
@@ -254,7 +263,7 @@ class Dirichlet1DX(HorizontalBoundary):
         assert "field_name" in signature.parameters, error_msg
         assert "field_units" in signature.parameters, error_msg
 
-        super().__init__(nx, ny, nb, gt_powered, backend, dtype)
+        super().__init__(nx, ny, nb, gt_powered, backend=backend, dtype=dtype)
 
         self._kwargs["core"] = core
 
@@ -312,7 +321,10 @@ class Dirichlet1DX(HorizontalBoundary):
         )
 
         backend = self._backend or "numpy"
-        device = gt.backend.from_name(backend).storage_info["device"]
+        if self._gt_powered:
+            device = gt.backend.from_name(backend).storage_info["device"]
+        else:
+            device = "gpu" if backend == "cupy" else "cpu"
         asarray = cp.asarray if device == "gpu" else np.asarray
 
         field[:nb, nb : mj - nb] = asarray(
@@ -350,7 +362,10 @@ class Dirichlet1DX(HorizontalBoundary):
         )
 
         backend = self._backend or "numpy"
-        device = gt.backend.from_name(backend).storage_info["device"]
+        if self._gt_powered:
+            device = gt.backend.from_name(backend).storage_info["device"]
+        else:
+            device = "gpu" if backend == "cupy" else "cpu"
         asarray = cp.asarray if device == "gpu" else np.asarray
 
         field[:1, :mj] = asarray(
@@ -378,7 +393,10 @@ class Dirichlet1DX(HorizontalBoundary):
         )
 
         backend = self._backend or "numpy"
-        device = gt.backend.from_name(backend).storage_info["device"]
+        if self._gt_powered:
+            device = gt.backend.from_name(backend).storage_info["device"]
+        else:
+            device = "gpu" if backend == "cupy" else "cpu"
         asarray = cp.asarray if device == "gpu" else np.asarray
 
         field[:mi, :1] = asarray(
@@ -431,7 +449,7 @@ class Dirichlet1DY(HorizontalBoundary):
         assert "field_name" in signature.parameters, error_msg
         assert "field_units" in signature.parameters, error_msg
 
-        super().__init__(nx, ny, nb, gt_powered, backend, dtype)
+        super().__init__(nx, ny, nb, gt_powered, backend=backend, dtype=dtype)
 
         self._kwargs["core"] = core
 
@@ -489,7 +507,10 @@ class Dirichlet1DY(HorizontalBoundary):
         )
 
         backend = self._backend or "numpy"
-        device = gt.backend.from_name(backend).storage_info["device"]
+        if self._gt_powered:
+            device = gt.backend.from_name(backend).storage_info["device"]
+        else:
+            device = "gpu" if backend == "cupy" else "cpu"
         asarray = cp.asarray if device == "gpu" else np.asarray
 
         field[nb : mi - nb, :nb] = asarray(
@@ -527,7 +548,10 @@ class Dirichlet1DY(HorizontalBoundary):
         )
 
         backend = self._backend or "numpy"
-        device = gt.backend.from_name(backend).storage_info["device"]
+        if self._gt_powered:
+            device = gt.backend.from_name(backend).storage_info["device"]
+        else:
+            device = "gpu" if backend == "cupy" else "cpu"
         asarray = cp.asarray if device == "gpu" else np.asarray
 
         field[:1, :mj] = asarray(
@@ -555,7 +579,10 @@ class Dirichlet1DY(HorizontalBoundary):
         )
 
         backend = self._backend or "numpy"
-        device = gt.backend.from_name(backend).storage_info["device"]
+        if self._gt_powered:
+            device = gt.backend.from_name(backend).storage_info["device"]
+        else:
+            device = "gpu" if backend == "cupy" else "cpu"
         asarray = cp.asarray if device == "gpu" else np.asarray
 
         field[:mi, :1] = asarray(
@@ -568,7 +595,20 @@ class Dirichlet1DY(HorizontalBoundary):
 
 @register(name="dirichlet", registry_class=HorizontalBoundary)
 def dispatch(
-    nx, ny, nb, gt_powered, backend="numpy", dtype=np.float64, core=placeholder
+    nx,
+    ny,
+    nb,
+    gt_powered,
+    backend="numpy",
+    backend_opts=None,
+    build_info=None,
+    dtype=np.float64,
+    exec_info=None,
+    default_origin=None,
+    rebuild=False,
+    storage_shape=None,
+    managed_memory=False,
+    core=placeholder,
 ):
     """ Dispatch based on the grid size. """
     if nx == 1:

@@ -386,7 +386,7 @@ def st_horizontal_boundary_layers(nx, ny):
 
 
 @hyp_st.composite
-def st_horizontal_boundary_kwargs(draw, hb_type, nx, ny, nb):
+def st_horizontal_boundary_kwargs(draw, hb_type, nx, ny, nb, nz=None):
     """
     Strategy drawing a valid set of keyword arguments for the constructor
     of the specified class handling the lateral boundaries.
@@ -405,6 +405,7 @@ def st_horizontal_boundary_kwargs(draw, hb_type, nx, ny, nb):
                 )
             )
         hb_kwargs["nr"] = nr
+        hb_kwargs["nz"] = nz
     elif hb_type == "dirichlet":
         hb_kwargs["core"] = pi_function
 
@@ -412,12 +413,45 @@ def st_horizontal_boundary_kwargs(draw, hb_type, nx, ny, nb):
 
 
 @hyp_st.composite
-def st_horizontal_boundary(draw, nx, ny, nb=None):
+def st_horizontal_boundary(
+    draw,
+    nx,
+    ny,
+    nb=None,
+    nz=None,
+    gt_powered=True,
+    *,
+    backend="numpy",
+    backend_opts=None,
+    build_info=None,
+    dtype=np.float64,
+    exec_info=None,
+    default_origin=None,
+    rebuild=False,
+    storage_shape=None,
+    managed_memory=False
+):
     """ Strategy drawing an object handling the lateral boundary conditions. """
     hb_type = draw(st_horizontal_boundary_type())
     nb = nb if nb is not None else draw(st_horizontal_boundary_layers(nx, ny))
-    hb_kwargs = draw(st_horizontal_boundary_kwargs(hb_type, nx, ny, nb))
-    return taz.HorizontalBoundary.factory(hb_type, nx, ny, nb, **hb_kwargs)
+    hb_kwargs = draw(st_horizontal_boundary_kwargs(hb_type, nx, ny, nb, nz=nz))
+    return taz.HorizontalBoundary.factory(
+        hb_type,
+        nx,
+        ny,
+        nb,
+        gt_powered,
+        backend=backend,
+        backend_opts=backend_opts,
+        build_info=build_info,
+        dtype=dtype,
+        exec_info=exec_info,
+        default_origin=default_origin,
+        rebuild=rebuild,
+        storage_shape=storage_shape,
+        managed_memory=managed_memory,
+        **hb_kwargs
+    )
 
 
 @hyp_st.composite
@@ -433,7 +467,14 @@ def st_domain(
     gt_powered=True,
     *,
     backend="numpy",
-    dtype=np.float64
+    backend_opts=None,
+    build_info=None,
+    dtype=np.float64,
+    exec_info=None,
+    default_origin=None,
+    rebuild=False,
+    storage_shape=None,
+    managed_memory=False
 ):
     """ Strategy drawing a :class:`tasmania.Domain` object. """
     domain_x = draw(st_interval(axis_name=xaxis_name))
@@ -490,7 +531,14 @@ def st_domain(
         topography_kwargs=topo_kwargs,
         gt_powered=gt_powered,
         backend=backend,
+        backend_opts=backend_opts,
+        build_info=build_info,
         dtype=dtype,
+        exec_info=exec_info,
+        default_origin=default_origin,
+        rebuild=rebuild,
+        storage_shape=storage_shape,
+        managed_memory=managed_memory,
     )
 
 
@@ -630,7 +678,9 @@ def st_state(
     nx, ny, nz = grid.grid_xy.nx, grid.grid_xy.ny, grid.nz
     dtype = grid.x.dtype
 
-    if storage_shape is not None:
+    if gt_powered and storage_shape is None:
+        storage_shape = (nx + 1, ny + 1, nz + 1)
+    elif storage_shape is not None:
         storage_shape = (
             max(nx + 1, storage_shape[0]),
             max(ny + 1, storage_shape[1]),

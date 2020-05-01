@@ -61,6 +61,8 @@ from tasmania.python.utils.gtscript_utils import (
     stencil_clip_defs,
     stencil_iclip_defs,
     stencil_thomas_defs,
+    stencil_relax_defs,
+    stencil_irelax_defs,
 )
 from tasmania.python.utils.storage_utils import zeros
 
@@ -2000,6 +2002,197 @@ def test_thomas_gt(data):
         compare_arrays(d_val, d[i, j])
     except AssertionError:
         print("Numerical verification of Thomas' algorithm failed.")
+
+
+@settings(
+    suppress_health_check=(
+        HealthCheck.too_slow,
+        HealthCheck.data_too_large,
+        HealthCheck.filter_too_much,
+    ),
+    deadline=None,
+)
+@given(hyp_st.data())
+def test_relax(data):
+    gt_storage.prepare_numpy()
+
+    # ========================================
+    # random data generation
+    # ========================================
+    nx = data.draw(hyp_st.integers(min_value=1, max_value=30), label="nx")
+    ny = data.draw(hyp_st.integers(min_value=1, max_value=30), label="ny")
+    nz = data.draw(hyp_st.integers(min_value=2, max_value=30), label="nz")
+
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    a = data.draw(
+        st_raw_field(
+            shape=(nx, ny, nz),
+            min_value=-1e4,
+            max_value=1e4,
+            gt_powered=True,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+        ),
+        label="a",
+    )
+    b = data.draw(
+        st_raw_field(
+            shape=(nx, ny, nz),
+            min_value=-1e4,
+            max_value=1e4,
+            gt_powered=True,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+        ),
+        label="b",
+    )
+    c = data.draw(
+        st_raw_field(
+            shape=(nx, ny, nz),
+            min_value=-1e4,
+            max_value=1e4,
+            gt_powered=True,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+        ),
+        label="c",
+    )
+
+    # ========================================
+    # test bed
+    # ========================================
+    stencil = gtscript.stencil(
+        backend=backend,
+        definition=stencil_relax_defs,
+        dtypes={"dtype": dtype},
+        rebuild=False,
+    )
+
+    out = zeros(
+        (nx, ny, nz),
+        gt_powered=True,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
+    stencil(
+        in_gamma=a,
+        in_phi=b,
+        in_phi_ref=c,
+        out_phi=out,
+        origin=(0, 0, 0),
+        domain=(nx, ny, nz),
+    )
+    out_val = zeros(
+        (nx, ny, nz),
+        gt_powered=True,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
+    out_val[...] = b - a * (b - c)
+
+    stencil(
+        in_gamma=a,
+        in_phi=b,
+        in_phi_ref=c,
+        out_phi=b,
+        origin=(0, 0, 0),
+        domain=(nx, ny, nz),
+    )
+    compare_arrays(b, out_val)
+
+
+@settings(
+    suppress_health_check=(
+        HealthCheck.too_slow,
+        HealthCheck.data_too_large,
+        HealthCheck.filter_too_much,
+    ),
+    deadline=None,
+)
+@given(hyp_st.data())
+def test_irelax(data):
+    gt_storage.prepare_numpy()
+
+    # ========================================
+    # random data generation
+    # ========================================
+    nx = data.draw(hyp_st.integers(min_value=1, max_value=30), label="nx")
+    ny = data.draw(hyp_st.integers(min_value=1, max_value=30), label="ny")
+    nz = data.draw(hyp_st.integers(min_value=2, max_value=30), label="nz")
+
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    a = data.draw(
+        st_raw_field(
+            shape=(nx, ny, nz),
+            min_value=-1e4,
+            max_value=1e4,
+            gt_powered=True,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+        ),
+        label="a",
+    )
+    b = data.draw(
+        st_raw_field(
+            shape=(nx, ny, nz),
+            min_value=-1e4,
+            max_value=1e4,
+            gt_powered=True,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+        ),
+        label="b",
+    )
+    c = data.draw(
+        st_raw_field(
+            shape=(nx, ny, nz),
+            min_value=-1e4,
+            max_value=1e4,
+            gt_powered=True,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+        ),
+        label="c",
+    )
+
+    # ========================================
+    # test bed
+    # ========================================
+    stencil = gtscript.stencil(
+        backend=backend,
+        definition=stencil_irelax_defs,
+        dtypes={"dtype": dtype},
+        rebuild=False,
+    )
+
+    b_val = zeros(
+        (nx, ny, nz),
+        gt_powered=True,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
+    b_val[...] = b - a * (b - c)
+
+    stencil(
+        in_gamma=a, in_phi_ref=c, inout_phi=b, origin=(0, 0, 0), domain=(nx, ny, nz),
+    )
+
+    compare_arrays(b, b_val)
 
 
 if __name__ == "__main__":

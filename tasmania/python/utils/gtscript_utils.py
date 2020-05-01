@@ -20,10 +20,10 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-import numpy as np
 from typing import Callable
 
 from gt4py import gtscript
+from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval
 
 from tasmania.python.utils import taz_types
 
@@ -51,7 +51,9 @@ def negative(phi: taz_types.gtfield_t) -> taz_types.gtfield_t:
     return -phi if phi < 0 else 0
 
 
-def stencil_copy_defs(src: gtscript.Field["dtype"], dst: gtscript.Field["dtype"]) -> None:
+def stencil_copy_defs(
+    src: gtscript.Field["dtype"], dst: gtscript.Field["dtype"]
+) -> None:
     with computation(PARALLEL), interval(...):
         dst = src
 
@@ -230,3 +232,22 @@ def stencil_thomas_defs(
             if beta[0, 0, 0] != 0.0
             else (delta[0, 0, 0] - c[0, 0, 0] * x[0, 0, 1]) / b[0, 0, 0]
         )
+
+
+def stencil_relax_defs(
+    in_gamma: gtscript.Field["dtype"],
+    in_phi: gtscript.Field["dtype"],
+    in_phi_ref: gtscript.Field["dtype"],
+    out_phi: gtscript.Field["dtype"],
+) -> None:
+    with computation(PARALLEL), interval(...):
+        out_phi = in_phi - in_gamma * (in_phi - in_phi_ref)
+
+
+def stencil_irelax_defs(
+    in_gamma: gtscript.Field["dtype"],
+    in_phi_ref: gtscript.Field["dtype"],
+    inout_phi: gtscript.Field["dtype"],
+) -> None:
+    with computation(PARALLEL), interval(...):
+        inout_phi = inout_phi - in_gamma * (inout_phi - in_phi_ref)

@@ -77,7 +77,8 @@ def test_properties(data):
     assert hb.nj == 2 * nb + 1
     assert hb.type == "relaxed"
     assert "nr" in hb.kwargs
-    assert len(hb.kwargs) == 1
+    assert "nz" in hb.kwargs
+    assert len(hb.kwargs) == 2
 
 
 @settings(
@@ -211,14 +212,10 @@ def test_field(data):
 
 def enforce(cf_val, cf_ref, hb):
     nx, nb, nr = hb.nx, hb.nb, hb.kwargs["nr"]
-    ni, nj = cf_val.shape[:2]
+    mi, mj, mk = cf_val.shape
 
-    cf_val[:nr, nb:-nb] -= hb._xneg[:, : (-1 if nj == 2 * nb + 1 else None)] * (
-        cf_val[:nr, nb:-nb] - cf_ref[:nr, nb:-nb]
-    )
-    cf_val[-nr:, nb:-nb] -= hb._xpos[:, : (-1 if nj == 2 * nb + 1 else None)] * (
-        cf_val[-nr:, nb:-nb] - cf_ref[-nr:, nb:-nb]
-    )
+    j, k = slice(nb, nb + 2 if mj == 2 * nb + 2 else nb + 1), slice(0, mk)
+    cf_val[:, j, k] -= hb._gamma[:mi, j, k] * (cf_val[:, j, k] - cf_ref[:mi, j, k])
     cf_val[:, :nb] = cf_val[:, nb : nb + 1]
     cf_val[:, -nb:] = cf_val[:, -nb - 1 : -nb]
 
@@ -255,13 +252,18 @@ def test_enforce(data):
     nx, ny, nz = grid.grid_xy.nx, grid.grid_xy.ny, grid.nz
     nb = data.draw(st_horizontal_boundary_layers(nx, ny), label="nb")
     hb_kwargs = data.draw(
-        st_horizontal_boundary_kwargs("relaxed", nx, ny, nb), label="hb_kwargs"
+        st_horizontal_boundary_kwargs("relaxed", nx, ny, nb, nz=nz), label="hb_kwargs"
     )
 
     storage_shape = (nx + 1, ny + 2 * nb + 1, nz + 1)
     cfield = data.draw(
         st_raw_field(
-            storage_shape, -1e4, 1e4, gt_powered=gt_powered, backend=backend, dtype=dtype
+            storage_shape,
+            -1e4,
+            1e4,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
         )
     )
 
@@ -290,37 +292,37 @@ def test_enforce(data):
     cf = deepcopy(cfield)
     units = ref_state["afield"].attrs["units"]
     hb.enforce_field(cf, field_name="afield", field_units=units)
-    cf_val = deepcopy(cfield[:-1, :-1])
-    cf_ref = ref_state["afield"].values[:-1, :-1]
+    cf_val = deepcopy(cfield[:-1, :-1, :-1])
+    cf_ref = ref_state["afield"].values
     enforce(cf_val, cf_ref, hb)
-    validation(cf[:-1, :-1], cf_val, hb)
+    validation(cf[:-1, :-1, :-1], cf_val, hb)
 
     # (nx+1, 1)
     cf = deepcopy(cfield)
     units = ref_state["afield_at_u_locations"].attrs["units"]
     hb.enforce_field(cf, field_name="afield_at_u_locations", field_units=units)
-    cf_val = deepcopy(cfield[:, :-1])
-    cf_ref = ref_state["afield_at_u_locations"].values[:, :-1]
+    cf_val = deepcopy(cfield[:, :-1, :-1])
+    cf_ref = ref_state["afield_at_u_locations"].values
     enforce(cf_val, cf_ref, hb)
-    validation(cf[:, :-1], cf_val, hb)
+    validation(cf[:, :-1, :-1], cf_val, hb)
 
     # (nx, 2)
     cf = deepcopy(cfield)
     units = ref_state["afield_at_v_locations"].attrs["units"]
     hb.enforce_field(cf, field_name="afield_at_v_locations", field_units=units)
-    cf_val = deepcopy(cfield[:-1, :])
-    cf_ref = ref_state["afield_at_v_locations"].values[:-1, :]
+    cf_val = deepcopy(cfield[:-1, :, :-1])
+    cf_ref = ref_state["afield_at_v_locations"].values
     enforce(cf_val, cf_ref, hb)
-    validation(cf[:-1, :], cf_val, hb)
+    validation(cf[:-1, :, :-1], cf_val, hb)
 
     # (nx+1, 2)
     cf = deepcopy(cfield)
     units = ref_state["afield_at_uv_locations"].attrs["units"]
     hb.enforce_field(cf, field_name="afield_at_uv_locations", field_units=units)
-    cf_val = cfield
+    cf_val = cfield[:, :, :-1]
     cf_ref = ref_state["afield_at_uv_locations"].values
     enforce(cf_val, cf_ref, hb)
-    validation(cf, cf_val, hb)
+    validation(cf[:, :, :-1], cf_val, hb)
 
 
 @settings(

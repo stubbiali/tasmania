@@ -58,7 +58,14 @@ class Domain:
         gt_powered: bool = True,
         *,
         backend: str = "numpy",
-        dtype: taz_types.dtype_t = np.float64
+        backend_opts: Optional[taz_types.options_dict_t] = None,
+        build_info: Optional[taz_types.options_dict_t] = None,
+        dtype: taz_types.dtype_t = np.float64,
+        exec_info: Optional[taz_types.mutable_options_dict_t] = None,
+        default_origin: Optional[taz_types.triplet_int_t] = None,
+        rebuild: bool = False,
+        storage_shape: Optional[taz_types.triplet_int_t] = None,
+        managed_memory: bool = False
     ) -> None:
         """
         Parameters
@@ -90,7 +97,7 @@ class Domain:
             top of the domain. In other words, the coordinate system is supposed
             fully terrain-following.
         horizontal_boundary_type : `str`, optional
-            The type of lateral boundary conditions. Defaults to 'periodic'.
+            The type of lateral boundary conditions. Defaults to ``'periodic'``.
             See :class:`tasmania.HorizontalBoundary` for all available options.
         nb : `int`, optional
             Number of boundary layers. Defaults to 3.
@@ -98,17 +105,32 @@ class Domain:
             Keyword arguments to be broadcast to
             :meth:`tasmania.HorizontalBoundary.factory`.
         topography_type : `str`, optional
-            Topography type. Defaults to 'flat_terrain'.
+            Topography type. Defaults to ``'flat'``.
             See :class:`tasmania.Topography` for available options.
         topography_kwargs : `dict`, optional
             Keyword arguments to be forwarded to the constructor of
             :class:`tasmania.Topography`.
         gt_powered : bool
-            `True` to harness GT4Py, `False` for a vanilla Numpy implementation.
+            ``True`` to harness GT4Py, ``False`` for a vanilla Numpy implementation.
         backend : `str`, optional
             The GT4Py backend.
+        backend_opts : `dict`, optional
+            Dictionary of backend-specific options.
+        build_info : `dict`, optional
+            Dictionary of building options.
         dtype : `data-type`, optional
-            Data type of the storages.
+            The data type of the storages.
+        exec_info : `dict`, optional
+            Dictionary which will store statistics and diagnostics gathered at run time.
+        default_origin : `tuple[int]`, optional
+            Storage default origin.
+        rebuild : `bool`, optional
+            ``True`` to trigger the stencils compilation at any class instantiation,
+            ``False`` to rely on the caching mechanism implemented by GT4Py.
+        storage_shape : `tuple[int]`, optional
+            The shape of the storages allocated within this class.
+        managed_memory : `bool`, optional
+            ``True`` to allocate the storages as managed memory, ``False`` otherwise.
         """
         # the physical grid
         topo_kwargs = (
@@ -145,7 +167,14 @@ class Domain:
             nb,
             gt_powered=gt_powered,
             backend=backend,
+            backend_opts=backend_opts,
+            build_info=build_info,
             dtype=dtype,
+            exec_info=exec_info,
+            default_origin=default_origin,
+            rebuild=rebuild,
+            storage_shape=storage_shape,
+            managed_memory=managed_memory,
             **hb_kwargs
         )
 

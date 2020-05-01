@@ -31,6 +31,7 @@ from gt4py import gtscript
 # from gt4py.__gtscript__ import computation, interval, PARALLEL
 
 from tasmania.python.utils import taz_types
+from tasmania.python.utils.gtscript_utils import stencil_copy_defs
 from tasmania.python.utils.storage_utils import zeros
 from tasmania.python.utils.utils import greater_or_equal_than as ge
 
@@ -129,6 +130,7 @@ class VerticalDamping(abc.ABC):
         self._rmat[...] = r[np.newaxis, np.newaxis, :]
 
         # instantiate the underlying stencil
+        self._gt_powered = gt_powered
         if gt_powered:
             self._stencil = gtscript.stencil(
                 definition=self._stencil_gt_defs,
@@ -325,6 +327,15 @@ class Rayleigh(VerticalDamping):
             storage_shape,
             managed_memory,
         )
+        if gt_powered:
+            self._stencil_copy = gtscript.stencil(
+                definition=stencil_copy_defs,
+                backend=backend,
+                build_info=build_info,
+                rebuild=rebuild,
+                dtypes={"dtype": dtype},
+                **(backend_opts or {})
+            )
 
     def __call__(self, dt, field_now, field_new, field_ref, field_out):
         # shortcuts
@@ -350,7 +361,12 @@ class Rayleigh(VerticalDamping):
             )
 
         # set the lowermost layers, outside of the damping region
-        field_out[:, :, dnk:] = field_new[:, :, dnk:]
+        if not self._gt_powered:
+            field_out[:, :, dnk:] = field_new[:, :, dnk:]
+        else:
+            self._stencil_copy(
+                field_new, field_out, origin=(0, 0, dnk), domain=(ni, nj, nk - dnk)
+            )
 
     @staticmethod
     def _stencil_numpy(

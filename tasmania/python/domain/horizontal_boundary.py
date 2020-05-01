@@ -42,8 +42,15 @@ class HorizontalBoundary(abc.ABC):
         ny: int,
         nb: int,
         gt_powered: bool,
-        backend: str,
-        dtype: taz_types.dtype_t,
+        backend: str = "numpy",
+        backend_opts: Optional[taz_types.options_dict_t] = None,
+        build_info: Optional[taz_types.options_dict_t] = None,
+        dtype: taz_types.dtype_t = np.float64,
+        exec_info: Optional[taz_types.mutable_options_dict_t] = None,
+        default_origin: Optional[taz_types.triplet_int_t] = None,
+        rebuild: bool = False,
+        storage_shape: Optional[taz_types.triplet_int_t] = None,
+        managed_memory: bool = False,
     ) -> None:
         """
         Parameters
@@ -58,10 +65,25 @@ class HorizontalBoundary(abc.ABC):
             Number of boundary layers.
         gt_powered : bool
             ``True`` to harness GT4Py, ``False`` for a vanilla NumPy implementation.
-        backend : str
+        backend : `str`, optional
             The GT4Py backend.
-        dtype : data-type
+        backend_opts : `dict`, optional
+            Dictionary of backend-specific options.
+        build_info : `dict`, optional
+            Dictionary of building options.
+        dtype : `data-type`, optional
             The data type of the storages.
+        exec_info : `dict`, optional
+            Dictionary which will store statistics and diagnostics gathered at run time.
+        default_origin : `tuple[int]`, optional
+            Storage default origin.
+        rebuild : `bool`, optional
+            ``True`` to trigger the stencils compilation at any class instantiation,
+            ``False`` to rely on the caching mechanism implemented by GT4Py.
+        storage_shape : `tuple[int]`, optional
+            The shape of the storages allocated within this class.
+        managed_memory : `bool`, optional
+            ``True`` to allocate the storages as managed memory, ``False`` otherwise.
         """
         self._nx = nx
         self._ny = ny
@@ -69,7 +91,14 @@ class HorizontalBoundary(abc.ABC):
 
         self._gt_powered = gt_powered
         self._backend = backend
+        self._backend_opt = backend_opts
+        self._build_info = build_info
         self._dtype = dtype
+        self._exec_info = exec_info
+        self._default_origin = default_origin
+        self._rebuild = rebuild
+        self._storage_shape = storage_shape
+        self._managed_memory = managed_memory
 
         self._type = ""
         self._kwargs = {}
@@ -482,7 +511,14 @@ class HorizontalBoundary(abc.ABC):
         gt_powered: bool = True,
         *,
         backend: str = "numpy",
+        backend_opts: Optional[taz_types.options_dict_t] = None,
+        build_info: Optional[taz_types.options_dict_t] = None,
         dtype: taz_types.dtype_t = np.float64,
+        exec_info: Optional[taz_types.mutable_options_dict_t] = None,
+        default_origin: Optional[taz_types.triplet_int_t] = None,
+        rebuild: bool = False,
+        storage_shape: Optional[taz_types.triplet_int_t] = None,
+        managed_memory: bool = False,
         **kwargs
     ) -> "HorizontalBoundary":
         """ Get an instance of a derived class.
@@ -504,8 +540,23 @@ class HorizontalBoundary(abc.ABC):
             ``True`` to harness GT4Py, ``False`` for a vanilla NumPy implementation.
         backend : `str`, optional
             The GT4Py backend.
+        backend_opts : `dict`, optional
+            Dictionary of backend-specific options.
+        build_info : `dict`, optional
+            Dictionary of building options.
         dtype : `data-type`, optional
             The data type of the storages.
+        exec_info : `dict`, optional
+            Dictionary which will store statistics and diagnostics gathered at run time.
+        default_origin : `tuple[int]`, optional
+            Storage default origin.
+        rebuild : `bool`, optional
+            ``True`` to trigger the stencils compilation at any class instantiation,
+            ``False`` to rely on the caching mechanism implemented by GT4Py.
+        storage_shape : `tuple[int]`, optional
+            The shape of the storages allocated within this class.
+        managed_memory : `bool`, optional
+            ``True`` to allocate the storages as managed memory, ``False`` otherwise.
         kwargs :
             Keyword arguments to be directly forwarded to the
             constructor of the child class.
@@ -516,7 +567,17 @@ class HorizontalBoundary(abc.ABC):
             An object of the suitable child class.
         """
         args = (nx, ny, nb, gt_powered)
-        child_kwargs = {"backend": backend, "dtype": dtype}
+        child_kwargs = {
+            "backend": backend,
+            "backend_opts": backend_opts or {},
+            "build_info": build_info or {},
+            "dtype": dtype,
+            "exec_info": exec_info or {},
+            "default_origin": default_origin,
+            "rebuild": rebuild,
+            "storage_shape": storage_shape,
+            "managed_memory": managed_memory,
+        }
         child_kwargs.update(kwargs)
 
         obj = factorize(boundary_type, HorizontalBoundary, args, child_kwargs)

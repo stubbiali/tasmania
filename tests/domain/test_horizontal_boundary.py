@@ -62,7 +62,7 @@ from tasmania.python.utils.storage_utils import (
     deepcopy_dataarray_dict,
 )
 
-from tests.conf import backend as conf_backend
+from tests.conf import backend as conf_backend, datatype as conf_dtype
 from tests.strategies import (
     st_horizontal_boundary,
     st_one_of,
@@ -139,12 +139,23 @@ def test_enforce_raw(data):
     # ========================================
     gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
     backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
 
     if gt_powered:
         gt.storage.prepare_numpy()
 
-    pgrid = data.draw(st_physical_grid(), label="grid")
-    hb = data.draw(st_horizontal_boundary(pgrid.nx, pgrid.ny), label="hb")
+    pgrid = data.draw(st_physical_grid(dtype=dtype), label="grid")
+    hb = data.draw(
+        st_horizontal_boundary(
+            pgrid.nx,
+            pgrid.ny,
+            nz=pgrid.nz,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+        ),
+        label="hb",
+    )
     ngrid = NumericalGrid(pgrid, hb)
 
     state = data.draw(st_state(ngrid, gt_powered=gt_powered, backend=backend))
@@ -160,7 +171,7 @@ def test_enforce_raw(data):
     hb.reference_state = state
 
     raw_state = {"time": state["time"]}
-    raw_state.update({key: state[key].values for key in state if key is not "time"})
+    raw_state.update({key: state[key].data for key in state if key is not "time"})
     raw_state_dc = deepcopy_array_dict(raw_state)
 
     hb.enforce_raw(raw_state, field_properties, ngrid)
@@ -193,12 +204,23 @@ def test_enforce(data):
     # ========================================
     gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
     backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
 
     if gt_powered:
         gt.storage.prepare_numpy()
 
-    pgrid = data.draw(st_physical_grid(), label="grid")
-    hb = data.draw(st_horizontal_boundary(pgrid.nx, pgrid.ny), label="hb")
+    pgrid = data.draw(st_physical_grid(dtype=dtype), label="grid")
+    hb = data.draw(
+        st_horizontal_boundary(
+            pgrid.nx,
+            pgrid.ny,
+            nz=pgrid.nz,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+        ),
+        label="hb",
+    )
     ngrid = NumericalGrid(pgrid, hb)
 
     state = data.draw(st_state(ngrid, gt_powered=gt_powered, backend=backend))
@@ -231,4 +253,5 @@ def test_enforce(data):
 
 
 if __name__ == "__main__":
-    pytest.main([__file__])
+    # pytest.main([__file__])
+    test_enforce_raw()

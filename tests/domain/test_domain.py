@@ -99,8 +99,6 @@ def test(data, subtests):
     topo_kwargs = data.draw(st_topography_kwargs(domain_x, domain_y), label="kwargs")
     topo_type = topo_kwargs.pop("type")
 
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
-
     # ========================================
     # test bed
     # ========================================
