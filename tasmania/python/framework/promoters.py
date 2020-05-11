@@ -40,7 +40,7 @@ allowed_grid_types = ("physical", "numerical")
 
 
 class Diagnostic2Tendency(BaseDiagnostic2Tendency):
-    """ Promote a diagnostic variable to a tendency. """
+    """ Promote a variable from a diagnostic dict to a tendency dict. """
 
     __metaclass__ = abc.ABCMeta
 
@@ -49,13 +49,10 @@ class Diagnostic2Tendency(BaseDiagnostic2Tendency):
         Parameters
         ----------
         domain : tasmania.Domain
-            The underlying domain.
+            The :class:`~tasmania.Domain` holding the grid underneath.
         grid_type : `str`, optional
-            The type of grid over which instantiating the class. Either:
-
-                * 'physical';
-                * 'numerical' (default).
-
+            The type of grid over which instantiating the class.
+            Either "physical" or "numerical" (default).
         """
         assert (
             grid_type in allowed_grid_types
@@ -69,41 +66,56 @@ class Diagnostic2Tendency(BaseDiagnostic2Tendency):
 
         self._input_checker = InputChecker(self)
 
-        self.tendency_properties = {}
-        for name, props in self.input_properties.items():
-            tend_name = props.get("tendency_name", name.replace("tendency_of_", ""))
-            self.tendency_properties[tend_name] = {
-                "dims": props["dims"],
-                "units": props["units"],
-            }
-
-        # compliance with DiagnosticComponent
-        self.diagnostic_properties = {}
-
     @property
     def grid_type(self) -> str:
-        """
-        Returns
-        -------
-        str :
-            The grid type, either 'physical' or 'numerical'.
-        """
+        """ The grid type, either "physical" or "numerical". """
         return self._grid_type
 
     @property
     def grid(self) -> "Grid":
-        """
-        Returns
-        -------
-        tasmania.Grid :
-            The underlying grid.
-        """
+        """ The underlying :class:`~tasmania.Grid`. """
         return self._grid
 
     @property
     @abc.abstractmethod
     def input_properties(self) -> taz_types.properties_dict_t:
+        """
+        Dictionary whose keys are strings identifying the fields to promote,
+        and whose values are dictionaries specifying the following properties
+        of those fields:
+
+        * "dims": the field dimensions;
+        * "units": the field units;
+        * "tendency_name": the key associated to the field in the \
+            dictionary of tendencies;
+        * "remove_from_diagnostics": ``True`` to pop the field out of the \
+            dictionary of diagnostics.
+        """
         pass
+
+    @property
+    def tendency_properties(self) -> taz_types.properties_dict_t:
+        """
+        Dictionary whose keys are strings identifying the quantities returned when
+        the object is called, and whose values are dictionaries specifying the
+        dimensions ('dims') and units ('units') for those quantities.
+        """
+        return_dict = {}
+        for name, props in self.input_properties.items():
+            tend_name = props.get("tendency_name", name.replace("tendency_of_", ""))
+            return_dict[tend_name] = {
+                "dims": props["dims"],
+                "units": props["units"],
+            }
+        return return_dict
+
+    @property
+    def diagnostic_properties(self) -> taz_types.properties_dict_t:
+        """
+        An empty dictionary. This property is provided only for compliance with
+        :class:`~sympl.DiagnosticComponent.`
+        """
+        return {}
 
     def __call__(
         self, diagnostics: taz_types.mutable_dataarray_dict_t
@@ -112,12 +124,12 @@ class Diagnostic2Tendency(BaseDiagnostic2Tendency):
         Parameters
         ----------
         diagnostics : dict[str, sympl.DataArray]
-            The dictionary of diagnostics.
+            A dictionary of diagnostics.
 
         Return
         ------
         dict[str, sympl.DataArray] :
-            The dictionary of promoted diagnostics.
+            A dictionary containing the promoted diagnostics.
         """
         self._input_checker.check_inputs(diagnostics)
 
@@ -143,7 +155,7 @@ class Diagnostic2Tendency(BaseDiagnostic2Tendency):
 
 
 class Tendency2Diagnostic(BaseTendency2Diagnostic):
-    """ Promote a tendency to a (diagnostic) state variable. """
+    """ Promote a variable from a tendency dict to a diagnostic dict. """
 
     __metaclass__ = abc.ABCMeta
 
@@ -152,13 +164,10 @@ class Tendency2Diagnostic(BaseTendency2Diagnostic):
         Parameters
         ----------
         domain : tasmania.Domain
-            The underlying domain.
+            The :class:`~tasmania.Domain` holding the grid underneath.
         grid_type : `str`, optional
-            The type of grid over which instantiating the class. Either:
-
-                * 'physical';
-                * 'numerical' (default).
-
+            The type of grid over which instantiating the class.
+            Either "physical" or "numerical" (default).
         """
         assert (
             grid_type in allowed_grid_types
@@ -172,41 +181,56 @@ class Tendency2Diagnostic(BaseTendency2Diagnostic):
 
         self._input_checker = InputChecker(self)
 
-        self.diagnostic_properties = {}
-        for name, props in self.input_properties.items():
-            diag_name = props.get("diagnostic_name", "tendency_of_" + name)
-            self.diagnostic_properties[diag_name] = {
-                "dims": props["dims"],
-                "units": props["units"],
-            }
-
-        # compliance with TendencyComponent
-        self.tendency_properties = {}
-
     @property
     def grid_type(self) -> str:
-        """
-        Returns
-        -------
-        str :
-            The grid type, either 'physical' or 'numerical'.
-        """
+        """ The grid type, either "physical" or "numerical". """
         return self._grid_type
 
     @property
     def grid(self) -> "Grid":
-        """
-        Returns
-        -------
-        tasmania.Grid :
-            The underlying grid.
-        """
+        """ The underlying :class:`~tasmania.Grid`. """
         return self._grid
 
     @property
     @abc.abstractmethod
     def input_properties(self) -> taz_types.properties_dict_t:
+        """
+        Dictionary whose keys are strings identifying the fields to promote,
+        and whose values are dictionaries specifying the following properties
+        of those fields:
+
+        * "dims": the field dimensions;
+        * "units": the field units;
+        * "diagnostic_name": the key associated to the field in the \
+            dictionary of diagnostics;
+        * "remove_from_tendencies": ``True`` to pop the field out of the \
+            dictionary of tendencies.
+        """
         pass
+
+    @property
+    def tendency_properties(self):
+        """
+        An empty dictionary. This property is provided only for compliance with
+        :class:`~sympl.TendencyComponent.`
+        """
+        return {}
+
+    @property
+    def diagnostic_properties(self) -> taz_types.properties_dict_t:
+        """
+        Dictionary whose keys are strings identifying the quantities returned when
+        the object is called, and whose values are dictionaries specifying the
+        dimensions ('dims') and units ('units') for those quantities.
+        """
+        return_dict = {}
+        for name, props in self.input_properties.items():
+            diag_name = props.get("diagnostic_name", "tendency_of_" + name)
+            return_dict[diag_name] = {
+                "dims": props["dims"],
+                "units": props["units"],
+            }
+        return return_dict
 
     def __call__(
         self, tendencies: taz_types.mutable_dataarray_dict_t
@@ -215,12 +239,12 @@ class Tendency2Diagnostic(BaseTendency2Diagnostic):
         Parameters
         ----------
         tendencies : dict[str, sympl.DataArray]
-            The dictionary of tendencies.
+            A dictionary of tendencies.
 
         Return
         ------
         dict[str, sympl.DataArray] :
-            The dictionary of promoted tendencies.
+            A dictionary containing the promoted tendencies.
         """
         self._input_checker.check_inputs(tendencies)
 

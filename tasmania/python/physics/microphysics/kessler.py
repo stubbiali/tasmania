@@ -112,24 +112,21 @@ class KesslerMicrophysics(TendencyComponent):
         Parameters
         ----------
         domain : tasmania.Domain
-            The underlying domain.
+            The :class:`~tasmania.Domain` holding the grid underneath.
         grid_type : `str`, optional
-            The type of grid over which instantiating the class. Either:
-
-                * 'physical';
-                * 'numerical' (default).
-
+            The type of grid over which instantiating the class.
+            Either "physical" or "numerical" (default).
         air_pressure_on_interface_levels : `bool`, optional
-            `True` (respectively, `False`) if the input pressure
+            ``True`` (respectively, ``False``) if the input pressure
             field is defined at the interface (resp., main) levels.
-            Defaults to `True`.
+            Defaults to ``True``.
         tendency_of_air_potential_temperature_in_diagnostics : `bool`, optional
-            `True` to include the tendency for the potential
+            ``True`` to include the tendency for the potential
             temperature in the output dictionary collecting the diagnostics,
-            `False` otherwise. Defaults to `False`.
+            ``False`` otherwise. Defaults to ``False``.
         rain_evaporation : `bool`, optional
-            `True` if the evaporation of raindrops should be taken
-            into account, `False` otherwise. Defaults to `True`.
+            ``True`` if the evaporation of raindrops should be taken
+            into account, ``False`` otherwise. Defaults to ``True``.
         autoconversion_threshold : `sympl.DataArray`, optional
             Autoconversion threshold, in units compatible with [g g^-1].
         autoconversion_rate : `sympl.DataArray`, optional
@@ -169,12 +166,12 @@ class KesslerMicrophysics(TendencyComponent):
         default_origin : `tuple[int]`, optional
             Storage default origin.
         rebuild : `bool`, optional
-            `True` to trigger the stencils compilation at any class instantiation,
-            `False` to rely on the caching mechanism implemented by GT4Py.
+            ``True`` to trigger the stencils compilation at any class instantiation,
+            ``False`` to rely on the caching mechanism implemented by GT4Py.
         storage_shape : `tuple[int]`, optional
             Shape of the storages.
         managed_memory : `bool`, optional
-            `True` to allocate the storages as managed memory, `False` otherwise.
+            ``True`` to allocate the storages as managed memory, ``False`` otherwise.
         **kwargs :
             Additional keyword arguments to be directly forwarded to the parent
             :class:`tasmania.TendencyComponent`.
@@ -588,17 +585,14 @@ class KesslerSaturationAdjustmentDiagnostic(ImplicitTendencyComponent):
         Parameters
         ----------
         domain : tasmania.Domain
-            The underlying domain.
+            The :class:`~tasmania.Domain` holding the grid underneath.
         grid_type : `str`, optional
-            The type of grid over which instantiating the class. Either:
-
-                * 'physical';
-                * 'numerical' (default).
-
+            The type of grid over which instantiating the class.
+            Either "physical" or "numerical" (default).
         air_pressure_on_interface_levels : `bool`, optional
-            `True` (respectively, `False`) if the input pressure
+            ``True`` (respectively, ``False``) if the input pressure
             field is defined at the interface (resp., main) levels.
-            Defaults to `True`.
+            Defaults to ``True``.
         saturation_vapor_pressure_formula : `str`, optional
             The formula giving the saturation water vapor pressure. Available options are:
 
@@ -634,12 +628,12 @@ class KesslerSaturationAdjustmentDiagnostic(ImplicitTendencyComponent):
         default_origin : `tuple[int]`, optional
             Storage default origin.
         rebuild : `bool`, optional
-            `True` to trigger the stencils compilation at any class instantiation,
-            `False` to rely on the caching mechanism implemented by GT4Py.
+            ``True`` to trigger the stencils compilation at any class instantiation,
+            ``False`` to rely on the caching mechanism implemented by GT4Py.
         storage_shape : `tuple[int]`, optional
             Shape of the storages.
         managed_memory : `bool`, optional
-            `True` to allocate the storages as managed memory, `False` otherwise.
+            ``True`` to allocate the storages as managed memory, ``False`` otherwise.
         """
         # keep track of input arguments needed at run-time
         self._apoil = air_pressure_on_interface_levels
@@ -984,17 +978,14 @@ class KesslerSaturationAdjustmentPrognostic(TendencyComponent):
         Parameters
         ----------
         domain : tasmania.Domain
-            The underlying domain.
+            The :class:`~tasmania.Domain` holding the grid underneath.
         grid_type : `str`, optional
-            The type of grid over which instantiating the class. Either:
-
-                * 'physical';
-                * 'numerical' (default).
-
+            The type of grid over which instantiating the class.
+            Either "physical" or "numerical" (default).
         air_pressure_on_interface_levels : `bool`, optional
-            `True` (respectively, `False`) if the input pressure
+            ``True`` (respectively, ``False``) if the input pressure
             field is defined at the interface (resp., main) levels.
-            Defaults to `True`.
+            Defaults to ``True``.
         saturation_vapor_pressure_formula : `str`, optional
             The formula giving the saturation water vapor pressure. Available options are:
 
@@ -1030,12 +1021,12 @@ class KesslerSaturationAdjustmentPrognostic(TendencyComponent):
         default_origin : `tuple[int]`, optional
             Storage default origin.
         rebuild : `bool`, optional
-            `True` to trigger the stencils compilation at any class instantiation,
-            `False` to rely on the caching mechanism implemented by GT4Py.
+            ``True`` to trigger the stencils compilation at any class instantiation,
+            ``False`` to rely on the caching mechanism implemented by GT4Py.
         storage_shape : `tuple[int]`, optional
             Shape of the storages.
         managed_memory : `bool`, optional
-            `True` to allocate the storages as managed memory, `False` otherwise.
+            ``True`` to allocate the storages as managed memory, ``False`` otherwise.
         """
         # keep track of input arguments needed at run-time
         self._apoil = air_pressure_on_interface_levels
@@ -1344,13 +1335,10 @@ class KesslerFallVelocity(DiagnosticComponent):
         Parameters
         ----------
         domain : tasmania.Domain
-            The underlying domain.
+            The :class:`~tasmania.Domain` holding the grid underneath.
         grid_type : `str`, optional
-            The type of grid over which instantiating the class. Either:
-
-                * 'physical';
-                * 'numerical' (default).
-
+            The type of grid over which instantiating the class.
+            Either "physical" or "numerical" (default).
         gt_powered : `bool`, optional
             TODO
         backend : `str`, optional
@@ -1366,12 +1354,12 @@ class KesslerFallVelocity(DiagnosticComponent):
         default_origin : `tuple[int]`, optional
             Storage default origin.
         rebuild : `bool`, optional
-            `True` to trigger the stencils compilation at any class instantiation,
-            `False` to rely on the caching mechanism implemented by GT4Py.
+            ``True`` to trigger the stencils compilation at any class instantiation,
+            ``False`` to rely on the caching mechanism implemented by GT4Py.
         storage_shape : `tuple[int]`, optional
             Shape of the storages.
         managed_memory : `bool`, optional
-            `True` to allocate the storages as managed memory, `False` otherwise.
+            ``True`` to allocate the storages as managed memory, ``False`` otherwise.
         """
         super().__init__(domain, grid_type)
 
@@ -1521,13 +1509,10 @@ class KesslerSedimentation(ImplicitTendencyComponent):
         Parameters
         ----------
         domain : tasmania.Domain
-            The underlying domain.
+            The :class:`~tasmania.Domain` holding the grid underneath.
         grid_type : `str`, optional
-            The type of grid over which instantiating the class. Either:
-
-                * 'physical';
-                * 'numerical' (default).
-
+            The type of grid over which instantiating the class.
+            Either "physical" or "numerical" (default).
         sedimentation_flux_scheme : `str`, optional
             The numerical sedimentation flux scheme. Please refer to
             :class:`~tasmania.SedimentationFlux` for the available options.
@@ -1549,12 +1534,12 @@ class KesslerSedimentation(ImplicitTendencyComponent):
         default_origin : `tuple[int]`, optional
             Storage default origin.
         rebuild : `bool`, optional
-            `True` to trigger the stencils compilation at any class instantiation,
-            `False` to rely on the caching mechanism implemented by GT4Py.
+            ``True`` to trigger the stencils compilation at any class instantiation,
+            ``False`` to rely on the caching mechanism implemented by GT4Py.
         storage_shape : `tuple[int]`, optional
             Shape of the storages.
         managed_memory : `bool`, optional
-            `True` to allocate the storages as managed memory, `False` otherwise.
+            ``True`` to allocate the storages as managed memory, ``False`` otherwise.
         **kwargs :
             Additional keyword arguments to be directly forwarded to the parent class.
         """

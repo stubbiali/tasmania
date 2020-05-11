@@ -62,13 +62,10 @@ class IsentropicSmagorinsky(Smagorinsky2d):
         Parameters
         ----------
         domain : tasmania.Domain
-            The underlying domain.
+            The :class:`~tasmania.Domain` holding the grid underneath.
         grid_type : `str`, optional
-            The type of grid over which instantiating the class. Either:
-
-                * 'physical';
-                * 'numerical' (default).
-
+            The type of grid over which instantiating the class.
+            Either "physical" or "numerical" (default).
         smagorinsky_constant : `float`, optional
             The Smagorinsky constant. Defaults to 0.18.
         gt_powered : `bool`, optional
@@ -86,12 +83,12 @@ class IsentropicSmagorinsky(Smagorinsky2d):
         default_origin : `tuple[int]`, optional
             Storage default origin.
         rebuild : `bool`, optional
-            `True` to trigger the stencils compilation at any class instantiation,
-            `False` to rely on the caching mechanism implemented by GT4Py.
+            ``True`` to trigger the stencils compilation at any class instantiation,
+            ``False`` to rely on the caching mechanism implemented by GT4Py.
         storage_shape : `tuple[int]`, optional
             Shape of the storages.
         managed_memory : `bool`, optional
-            `True` to allocate the storages as managed memory, `False` otherwise.
+            ``True`` to allocate the storages as managed memory, ``False`` otherwise.
         **kwargs :
             Keyword arguments to be directly forwarded to the parent's constructor.
         """

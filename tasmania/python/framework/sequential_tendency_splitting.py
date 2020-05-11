@@ -143,7 +143,7 @@ class SequentialTendencySplitting:
 
                     'gt_powered' specifies if all the time-intensive math
                     operations performed inside 'time_integrator' should harness
-                    GT4Py. Defaults to `False`.
+                    GT4Py. Defaults to ``False``.
 
                 * if 'component' is a
 
@@ -164,8 +164,8 @@ class SequentialTendencySplitting:
                         - exec_info (dict): Dictionary which will store statistics
                             and diagnostics gathered at run time;
                         - default_origin (tuple): Storage default origin;
-                        - rebuild (bool): `True` to trigger the stencils compilation
-                            at any class instantiation, `False` to rely on the caching
+                        - rebuild (bool): ``True`` to trigger the stencils compilation
+                            at any class instantiation, ``False`` to rely on the caching
                             mechanism implemented by GT4Py.
 
                 * if 'component' is either an instance of or wraps objects of class
@@ -174,10 +174,10 @@ class SequentialTendencySplitting:
                         - :class:`tasmania.ImplicitTendencyComponent`, or
                         - :class:`tasmania.ConcurrentCoupling`,
 
-                    'enforce_horizontal_boundary' is either `True` if the
+                    'enforce_horizontal_boundary' is either ``True`` if the
                     boundary conditions should be enforced after each stage of
-                    the time integrator, or `False` not to apply the boundary
-                    constraints at all. Defaults to `False`;
+                    the time integrator, or ``False`` not to apply the boundary
+                    constraints at all. Defaults to ``False``;
 
                 * if 'component' is a
 

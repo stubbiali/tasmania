@@ -61,13 +61,10 @@ class BurgersHorizontalDiffusion(TendencyComponent):
         Parameters
         ----------
         domain : tasmania.Domain
-            The underlying domain.
+            The :class:`~tasmania.Domain` holding the grid underneath.
         grid_type : str
-            The type of grid over which instantiating the class. Either:
-
-                * 'physical';
-                * 'numerical'.
-
+            The type of grid over which instantiating the class.
+            Either "physical" or "numerical".
         diffusion_type : str
             String specifying the desired type of horizontal diffusion.
             See :class:`tasmania.HorizontalDiffusion` for all available options.
@@ -75,7 +72,7 @@ class BurgersHorizontalDiffusion(TendencyComponent):
             1-item :class:`sympl.DataArray` representing the diffusion
             coefficient. The units should be compatible with 'm^2 s^-1'.
         gt_powered : `bool`, optional
-            `True` to harness GT4Py, `False` for a vanilla Numpy implementation.
+            ``True`` to harness GT4Py, ``False`` for a vanilla Numpy implementation.
         backend : `str`, optional
             The GT4Py backend.
         backend_opts : `dict`, optional
@@ -89,10 +86,10 @@ class BurgersHorizontalDiffusion(TendencyComponent):
         default_origin : `tuple[int]`, optional
             Storage default origin.
         rebuild : `bool`, optional
-            `True` to trigger the stencils compilation at any class instantiation,
-            `False` to rely on the caching mechanism implemented by GT4Py.
+            ``True`` to trigger the stencils compilation at any class instantiation,
+            ``False`` to rely on the caching mechanism implemented by GT4Py.
         managed_memory : `bool`, optional
-            `True` to allocate the storages as managed memory, `False` otherwise.
+            ``True`` to allocate the storages as managed memory, ``False`` otherwise.
         kwargs :
             Keyword arguments to be broadcast to :class:`sympl.TendencyComponent`.
         """

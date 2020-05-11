@@ -70,7 +70,7 @@ def get_dataarray_2d(
         of the passed buffer. If not specified, it is assumed that it coincides
         with the shape of the buffer.
     set_coordinates : `bool`, optional
-        `True` to set the coordinates of the grid points, `False` otherwise.
+        ``True`` to set the coordinates of the grid points, ``False`` otherwise.
 
     Return
     ------
@@ -153,7 +153,7 @@ def get_dataarray_3d(
         of the passed buffer. If not specified, it is assumed that it coincides
         with the shape of the buffer.
     set_coordinates : `bool`, optional
-        `True` to set the coordinates of the grid points, `False` otherwise.
+        ``True`` to set the coordinates of the grid points, ``False`` otherwise.
 
     Return
     ------

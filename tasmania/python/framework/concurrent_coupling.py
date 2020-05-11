@@ -144,8 +144,8 @@ class ConcurrentCoupling(BaseConcurrentCoupling):
                     a component are not usable by any other component.
 
         gt_powered : `bool`, optional
-            `True` to add the tendencies using GT4Py (leveraging field versioning),
-            `False` to perform the summation in plain Python.
+            ``True`` to add the tendencies using GT4Py (leveraging field versioning),
+            ``False`` to perform the summation in plain Python.
         backend : `str`, optional
             The GT4Py backend.
         backend_opts : `dict`, optional
@@ -155,8 +155,8 @@ class ConcurrentCoupling(BaseConcurrentCoupling):
         dtype : `data-type`, optional
             Data type of the storages passed to the stencil.
         rebuild : `bool`, optional
-            `True` to trigger the stencils compilation at any class instantiation,
-            `False` to rely on the caching mechanism implemented by GT4Py.
+            ``True`` to trigger the stencils compilation at any class instantiation,
+            ``False`` to rely on the caching mechanism implemented by GT4Py.
         **kwargs:
             Catch-all for unused keyword arguments.
         """
@@ -225,7 +225,7 @@ class ConcurrentCoupling(BaseConcurrentCoupling):
 
     @property
     def component_list(
-        self
+        self,
     ) -> Tuple[
         Union[
             taz_types.diagnostic_component_t,

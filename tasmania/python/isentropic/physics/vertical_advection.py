@@ -105,18 +105,18 @@ class IsentropicVerticalAdvection(TendencyComponent):
         Parameters
         ----------
         domain : tasmania.Domain
-            The underlying domain.
+            The :class:`~tasmania.Domain` holding the grid underneath.
         flux_scheme : `str`, optional
             The numerical flux scheme to implement. Defaults to 'upwind'.
             See :class:`~tasmania.IsentropicMinimalVerticalFlux` for all
             available options.
         moist : `bool`, optional
-            `True` if water species are included in the model,
-            `False` otherwise. Defaults to `False`.
+            ``True`` if water species are included in the model,
+            ``False`` otherwise. Defaults to ``False``.
         tendency_of_air_potential_temperature_on_interface_levels : `bool`, optional
-            `True` if the input tendency of air potential temperature
-            is defined at the interface levels, `False` otherwise.
-            Defaults to `False`.
+            ``True`` if the input tendency of air potential temperature
+            is defined at the interface levels, ``False`` otherwise.
+            Defaults to ``False``.
         gt_powered : `bool`, optional
             TODO
         backend : `str`, optional
@@ -132,12 +132,12 @@ class IsentropicVerticalAdvection(TendencyComponent):
         default_origin : `tuple[int]`, optional
             Storage default origin.
         rebuild : `bool`, optional
-            `True` to trigger the stencils compilation at any class instantiation,
-            `False` to rely on the caching mechanism implemented by GT4Py.
+            ``True`` to trigger the stencils compilation at any class instantiation,
+            ``False`` to rely on the caching mechanism implemented by GT4Py.
         storage_shape : `tuple[int]`, optional
             Shape of the storages.
         managed_memory : `bool`, optional
-            `True` to allocate the storages as managed memory, `False` otherwise.
+            ``True`` to allocate the storages as managed memory, ``False`` otherwise.
         **kwargs :
             Additional keyword arguments to be directly forwarded to the parent class.
         """
@@ -641,20 +641,20 @@ class PrescribedSurfaceHeating(TendencyComponent):
         Parameters
         ----------
         domain : tasmania.Domain
-            The underlying domain.
+            The :class:`~tasmania.Domain` holding the grid underneath.
         tendency_of_air_potential_temperature_in_diagnostics : `bool`, optional
-            `True` to place the calculated tendency of air
+            ``True`` to place the calculated tendency of air
             potential temperature in the ``diagnostics`` output
-            dictionary, `False` to regularly place it in the
-            `tendencies` dictionary. Defaults to `False`.
+            dictionary, ``False`` to regularly place it in the
+            `tendencies` dictionary. Defaults to ``False``.
         tendency_of_air_potential_temperature_on_interface_levels : `bool`, optional
-            `True` (respectively, `False`) if the tendency
+            ``True`` (respectively, ``False``) if the tendency
             of air potential temperature should be calculated at the
-            interface (resp., main) vertical levels. Defaults to `False`.
+            interface (resp., main) vertical levels. Defaults to ``False``.
         air_pressure_on_interface_levels : `bool`, optional
-            `True` (respectively, `False`) if the input
+            ``True`` (respectively, ``False``) if the input
             air potential pressure is defined at the interface
-            (resp., main) vertical levels. Defaults to `True`.
+            (resp., main) vertical levels. Defaults to ``True``.
         amplitude_at_day_sw : `sympl.DataArray`, optional
             1-item :class:`~sympl.DataArray` representing :math:`F_0^{sw}` at day,
             in units compatible with [W m^-2].

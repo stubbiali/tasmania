@@ -97,7 +97,7 @@ class IsentropicDynamicalCore(DynamicalCore):
         Parameters
         ----------
         domain : tasmania.Domain
-            The underlying domain.
+            The :class:`~tasmania.Domain` holding the grid underneath.
         intermediate_tendencies : `obj`, optional
             An instance of either
 
@@ -148,8 +148,8 @@ class IsentropicDynamicalCore(DynamicalCore):
             of the dynamical core.
             This parameter is ignored if `substeps` argument is not positive.
         moist : bool
-            `True` for a moist dynamical core, `False` otherwise.
-            Defaults to `False`.
+            ``True`` for a moist dynamical core, ``False`` otherwise.
+            Defaults to ``False``.
         time_integration_scheme : str
             String specifying the time stepping method to implement.
             See :class:`tasmania.IsentropiPrognostic`
@@ -162,12 +162,12 @@ class IsentropicDynamicalCore(DynamicalCore):
             Additional properties to be passed to the constructor of
             :class:`tasmania.IsentropicPrognostic` as keyword arguments.
         damp : `bool`, optional
-            `True` to enable vertical damping, `False` otherwise.
-            Defaults to `True`.
+            ``True`` to enable vertical damping, ``False`` otherwise.
+            Defaults to ``True``.
         damp_at_every_stage : `bool`, optional
-            `True` to carry out the damping at each stage of the multi-stage
-            time-integrator, `False` to carry out the damping only at the end
-            of each timestep. Defaults to `True`.
+            ``True`` to carry out the damping at each stage of the multi-stage
+            time-integrator, ``False`` to carry out the damping only at the end
+            of each timestep. Defaults to ``True``.
         damp_type : `str`, optional
             String specifying the vertical damping scheme to implement.
             See :class:`tasmania.VerticalDamping` for all available options.
@@ -177,12 +177,12 @@ class IsentropicDynamicalCore(DynamicalCore):
         damp_max : `float`, optional
             Maximum value for the damping coefficient. Defaults to 0.0002.
         smooth : `bool`, optional
-            `True` to enable horizontal numerical smoothing, `False` otherwise.
-            Defaults to `True`.
+            ``True`` to enable horizontal numerical smoothing, ``False`` otherwise.
+            Defaults to ``True``.
         smooth_at_every_stage : `bool`, optional
-            `True` to apply numerical smoothing at each stage of the time-
-            integrator, `False` to apply numerical smoothing only at the end
-            of each timestep. Defaults to `True`.
+            ``True`` to apply numerical smoothing at each stage of the time-
+            integrator, ``False`` to apply numerical smoothing only at the end
+            of each timestep. Defaults to ``True``.
         smooth_type: `str`, optional
             String specifying the smoothing technique to implement.
             See :class:`tasmania.HorizontalSmoothing` for all available options.
@@ -196,12 +196,12 @@ class IsentropicDynamicalCore(DynamicalCore):
         smooth_damp_depth : `int`, optional
             Number of vertical layers in the smoothing damping region. Defaults to 10.
         smooth_moist : `bool`, optional
-            `True` to enable horizontal numerical smoothing on the water constituents,
-            `False` otherwise. Defaults to `True`.
+            ``True`` to enable horizontal numerical smoothing on the water constituents,
+            ``False`` otherwise. Defaults to ``True``.
         smooth_moist_at_every_stage : `bool`, optional
-            `True` to apply numerical smoothing on the water constituents
-            at each stage of the time-integrator, `False` to apply numerical
-            smoothing only at the end of each timestep. Defaults to `True`.
+            ``True`` to apply numerical smoothing on the water constituents
+            at each stage of the time-integrator, ``False`` to apply numerical
+            smoothing only at the end of each timestep. Defaults to ``True``.
         smooth_moist_type: `str`, optional
             String specifying the smoothing technique to apply on the water constituents.
             See :class:`tasmania.HorizontalSmoothing` for all available options.
@@ -216,7 +216,7 @@ class IsentropicDynamicalCore(DynamicalCore):
             Number of vertical layers in the smoothing damping region for the
             water constituents. Defaults to 10.
         gt_powered : `bool`, optional
-            `True` to harness GT4Py, `False` for a vanilla Numpy implementation.
+            ``True`` to harness GT4Py, ``False`` for a vanilla Numpy implementation.
         backend : `str`, optional
             The GT4Py backend.
         backend_opts : `dict`, optional
@@ -230,12 +230,12 @@ class IsentropicDynamicalCore(DynamicalCore):
         default_origin : `tuple[int]`, optional
             Storage default origin.
         rebuild : `bool`, optional
-            `True` to trigger the stencils compilation at any class instantiation,
-            `False` to rely on the caching mechanism implemented by GT4Py.
+            ``True`` to trigger the stencils compilation at any class instantiation,
+            ``False`` to rely on the caching mechanism implemented by GT4Py.
         storage_shape : `tuple[int]`, optional
             Shape of the storages.
         managed_memory : `bool`, optional
-            `True` to allocate the storages as managed memory, `False` otherwise.
+            ``True`` to allocate the storages as managed memory, ``False`` otherwise.
         """
         #
         # set storage shape

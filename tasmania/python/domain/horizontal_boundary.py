@@ -527,7 +527,13 @@ class HorizontalBoundary(abc.ABC):
         ----------
         boundary_type : str
             The boundary type, i.e. the string used to register the subclass
-            which should be instantiated.
+            which should be instantiated. Available options are:
+
+            * "dirichlet";
+            * "identity";
+            * "periodic";
+            * "relaxed".
+
         nx : int
             Number of points featured by the physical grid
             along the first horizontal dimension.

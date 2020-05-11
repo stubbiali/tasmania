@@ -33,8 +33,8 @@ allowed_grid_types = ("physical", "numerical")
 
 class DiagnosticComponent(sympl.DiagnosticComponent):
     """
-    Customized version of :class:`sympl.DiagnosticComponent` which keeps track
-    of the grid over which the component is instantiated.
+    Customized version of :class:`sympl.DiagnosticComponent` which is aware
+    of the spatial domain over which the component is instantiated.
     """
 
     __metaclass__ = abc.ABCMeta
@@ -44,12 +44,10 @@ class DiagnosticComponent(sympl.DiagnosticComponent):
         Parameters
         ----------
         domain : tasmania.Domain
-            The underlying domain.
+            The :class:`~tasmania.Domain` holding the grid underneath.
         grid_type : `str`, optional
-            The type of grid over which instantiating the class. Either:
-
-                * 'physical';
-                * 'numerical' (default).
+            The type of grid over which instantiating the class.
+            Either "physical" or "numerical" (default).
         """
         assert (
             grid_type in allowed_grid_types
@@ -65,39 +63,27 @@ class DiagnosticComponent(sympl.DiagnosticComponent):
 
     @property
     def grid_type(self) -> str:
-        """
-        Returns
-        -------
-        str :
-            The grid type, either 'physical' or 'numerical'.
-        """
+        """ The grid type, either "physical" or "numerical". """
         return self._grid_type
 
     @property
     def grid(self) -> Grid:
-        """
-        Returns
-        -------
-        tasmania.Grid :
-            The underlying grid.
-        """
+        """ The underlying :class:`~tasmania.Grid`. """
         return self._grid
 
     @property
     def horizontal_boundary(self) -> HorizontalBoundary:
         """
-        Returns
-        -------
-        tasmania.HorizontalBoundary :
-            The object handling the lateral boundary conditions.
+        The :class:`~tasmania.HorizontalBoundary` object handling the lateral
+        boundary conditions.
         """
         return self._hb
 
 
 class ImplicitTendencyComponent(sympl.ImplicitTendencyComponent):
     """
-    Customized version of :class:`sympl.ImplicitTendencyComponent` which keeps track
-    of the grid over which the component is instantiated.
+    Customized version of :class:`sympl.ImplicitTendencyComponent` which is
+    aware of the grid over which the component is instantiated.
     """
 
     __metaclass__ = abc.ABCMeta
@@ -113,13 +99,10 @@ class ImplicitTendencyComponent(sympl.ImplicitTendencyComponent):
         Parameters
         ----------
         domain : tasmania.Domain
-            The underlying domain.
+            The :class:`~tasmania.Domain` holding the grid underneath.
         grid_type : `str`, optional
-            The type of grid over which instantiating the class. Either:
-
-                * 'physical';
-                * 'numerical' (default).
-
+            The type of grid over which instantiating the class.
+            Either "physical" or "numerical" (default).
         tendencies_in_diagnostics : `bool`, optional
             A boolean indicating whether this object will put tendencies of
             quantities in its diagnostic output.
@@ -142,38 +125,26 @@ class ImplicitTendencyComponent(sympl.ImplicitTendencyComponent):
 
     @property
     def grid_type(self) -> str:
-        """
-        Returns
-        -------
-        str :
-            The grid type, either 'physical' or 'numerical'.
-        """
+        """ The grid type, either "physical" or "numerical". """
         return self._grid_type
 
     @property
     def grid(self) -> Grid:
-        """
-        Returns
-        -------
-        tasmania.Grid :
-            The underlying grid.
-        """
+        """ The underlying :class:`~tasmania.Grid`. """
         return self._grid
 
     @property
     def horizontal_boundary(self) -> HorizontalBoundary:
         """
-        Returns
-        -------
-        tasmania.HorizontalBoundary :
-            The object handling the lateral boundary conditions.
+        The :class:`~tasmania.HorizontalBoundary` object handling the lateral
+        boundary conditions.
         """
         return self._hb
 
 
 class Stepper(sympl.Stepper):
     """
-    Customized version of :class:`sympl.Stepper` which keeps track
+    Customized version of :class:`sympl.Stepper` which is aware
     of the grid over which the component is instantiated.
     """
 
@@ -190,13 +161,10 @@ class Stepper(sympl.Stepper):
         Parameters
         ----------
         domain : tasmania.Domain
-            The underlying domain.
+            The :class:`~tasmania.Domain` holding the grid underneath.
         grid_type : `str`, optional
-            The type of grid over which instantiating the class. Either:
-
-                * 'physical';
-                * 'numerical' (default).
-
+            The type of grid over which instantiating the class.
+            Either "physical" or "numerical" (default).
         tendencies_in_diagnostics : `bool`, optional
             A boolean indicating whether this object will put tendencies of
             quantities in its diagnostic output.
@@ -219,38 +187,26 @@ class Stepper(sympl.Stepper):
 
     @property
     def grid_type(self) -> str:
-        """
-        Returns
-        -------
-        str :
-            The grid type, either 'physical' or 'numerical'.
-        """
+        """ The grid type, either "physical" or "numerical". """
         return self._grid_type
 
     @property
     def grid(self) -> Grid:
-        """
-        Returns
-        -------
-        tasmania.Grid :
-            The underlying grid.
-        """
+        """ The underlying :class:`~tasmania.Grid`. """
         return self._grid
 
     @property
     def horizontal_boundary(self) -> HorizontalBoundary:
         """
-        Returns
-        -------
-        tasmania.HorizontalBoundary :
-            The object handling the lateral boundary conditions.
+        The :class:`~tasmania.HorizontalBoundary` object handling the lateral
+        boundary conditions.
         """
         return self._hb
 
 
 class TendencyComponent(sympl.TendencyComponent):
     """
-    Customized version of :class:`sympl.TendencyComponent` which keeps track
+    Customized version of :class:`sympl.TendencyComponent` which is aware
     of the grid over which the component is instantiated.
     """
 
@@ -267,13 +223,10 @@ class TendencyComponent(sympl.TendencyComponent):
         Parameters
         ----------
         domain : tasmania.Domain
-            The underlying domain.
+            The :class:`~tasmania.Domain` holding the grid underneath.
         grid_type : `str`, optional
-            The type of grid over which instantiating the class. Either:
-
-                * 'physical';
-                * 'numerical' (default).
-
+            The type of grid over which instantiating the class.
+            Either "physical" or "numerical" (default).
         tendencies_in_diagnostics : `bool`, optional
             A boolean indicating whether this object will put tendencies of
             quantities in its diagnostic output.
@@ -296,30 +249,18 @@ class TendencyComponent(sympl.TendencyComponent):
 
     @property
     def grid_type(self) -> str:
-        """
-        Returns
-        -------
-        str :
-            The grid type, either 'physical' or 'numerical'.
-        """
+        """ The grid type, either "physical" or "numerical". """
         return self._grid_type
 
     @property
     def grid(self) -> Grid:
-        """
-        Returns
-        -------
-        tasmania.Grid :
-            The underlying grid.
-        """
+        """ The underlying :class:`~tasmania.Grid`. """
         return self._grid
 
     @property
     def horizontal_boundary(self) -> HorizontalBoundary:
         """
-        Returns
-        -------
-        tasmania.HorizontalBoundary :
-            The object handling the lateral boundary conditions.
+        The :class:`~tasmania.HorizontalBoundary` object handling the lateral
+        boundary conditions.
         """
         return self._hb

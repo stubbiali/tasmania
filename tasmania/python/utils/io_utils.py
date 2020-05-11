@@ -62,14 +62,10 @@ class NetCDFMonitor(sympl.NetCDFMonitor):
         filename : str
             The path where the NetCDF file will be written.
         domain : tasmania.Domain
-            The underlying domain.
+            The :class:`~tasmania.Domain` holding the grid underneath.
         grid_type : str
-            String specifying the type of grid over which the states should be saved.
-            Either:
-
-                * 'physical';
-                * 'numerical'.
-
+            String specifying the type of grid over which the saved states
+            should be defined. Either "physical" or "numerical".
         time_units : `str`, optional
             The units in which time will be
             stored in the NetCDF file. Time is stored as an integer
@@ -77,7 +73,7 @@ class NetCDFMonitor(sympl.NetCDFMonitor):
         store_names : `Sequence[str]`, optional
             Names of quantities to store. If not given, all quantities are stored.
         write_on_store : `bool`, optional
-            If `True`, stored changes are immediately written to file.
+            If ``True``, stored changes are immediately written to file.
             This can result in many file open/close operations.
             Default is to write only when the write() method is called directly.
         aliases : `dict[str, str]`, optional
@@ -306,10 +302,10 @@ def load_netcdf_dataset(
     Returns
     -------
     domain : tasmania.Domain
-        The underlying domain.
+        The :class:`~tasmania.Domain` holding the grid underneath.
     grid_type : str
         The type of the underlying grid over which the states are defined.
-        Either 'physical' or 'numerical'.
+        Either "physical" or "numerical".
     states : list[dict[str, sympl.DataArray]]
         The list of state dictionaries stored in the NetCDF file.
     """

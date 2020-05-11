@@ -125,94 +125,66 @@ class HorizontalGrid:
     @property
     def x(self) -> DataArray:
         """
-        Returns
-        -------
-        sympl.DataArray :
-            1-D :class:`~sympl.DataArray` collecting the coordinates of the mass
-            grid points along the first horizontal dimension.
+        1-D :class:`~sympl.DataArray` collecting the coordinates of the mass
+        grid points along the first horizontal dimension.
         """
         return self._x
 
     @property
     def x_at_u_locations(self) -> DataArray:
         """
-        Returns
-        -------
-        sympl.DataArray :
-            1-D :class:`~sympl.DataArray` collecting the coordinates of the
-            staggered grid points along the first horizontal dimension.
+        1-D :class:`~sympl.DataArray` collecting the coordinates of the
+        staggered grid points along the first horizontal dimension.
         """
         return self._xu
 
     @property
     def nx(self) -> int:
-        """
-        Returns
-        -------
-        int :
-            Number of mass grid points along the first horizontal dimension.
-        """
+        """ Number of mass grid points along the first horizontal dimension. """
         return self._nx
 
     @property
     def dx(self) -> DataArray:
         """
-        Returns
-        -------
-        sympl.DataArray :
-            1-item :class:`~sympl.DataArray` representing the grid spacing
-            along the first horizontal dimension. In case of a non-uniform
-            spacing, this should be intended as the average grid spacing.
+        1-item :class:`~sympl.DataArray` representing the grid spacing
+        along the first horizontal dimension. In case of a non-uniform
+        spacing, this should be intended as the average grid spacing.
         """
         return self._dx
 
     @property
     def y(self) -> DataArray:
         """
-        Returns
-        -------
-        sympl.DataArray :
-            1-D :class:`~sympl.DataArray` collecting the coordinates of the mass
-            grid points along the second horizontal dimension.
+        1-D :class:`~sympl.DataArray` collecting the coordinates of the mass
+        grid points along the second horizontal dimension.
         """
         return self._y
 
     @property
     def y_at_v_locations(self) -> DataArray:
         """
-        Returns
-        -------
-        sympl.DataArray :
-            1-D :class:`~sympl.DataArray` collecting the coordinates of the
-            staggered grid points along the second horizontal dimension.
+        1-D :class:`~sympl.DataArray` collecting the coordinates of the
+        staggered grid points along the second horizontal dimension.
         """
         return self._yv
 
     @property
     def ny(self) -> int:
-        """
-        Returns
-        -------
-        int :
-            Number of mass grid points along the second horizontal dimension.
-        """
+        """ Number of mass grid points along the second horizontal dimension. """
         return self._ny
 
     @property
     def dy(self) -> DataArray:
         """
-        Returns
-        -------
-        sympl.DataArray :
-            1-item :class:`~sympl.DataArray` representing the grid spacing
-            along the second horizontal dimension. In case of a non-uniform
-            spacing, this should be intended as the average grid spacing.
+        1-item :class:`~sympl.DataArray` representing the grid spacing
+        along the second horizontal dimension. In case of a non-uniform
+        spacing, this should be intended as the average grid spacing.
         """
         return self._dy
 
 
 class PhysicalHorizontalGrid(HorizontalGrid):
-    """ A two-dimensional regular grid covering a *physical* domain. """
+    """ A two-dimensional regular grid covering a physical domain. """
 
     def __init__(
         self,
@@ -279,7 +251,7 @@ class PhysicalHorizontalGrid(HorizontalGrid):
 
 
 class NumericalHorizontalGrid(HorizontalGrid):
-    """ A two-dimensional regular grid covering a *numerical* domain. """
+    """ A two-dimensional regular grid covering a numerical domain. """
 
     def __init__(
         self, phys_grid: HorizontalGrid, boundary: "HorizontalBoundary"

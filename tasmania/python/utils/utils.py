@@ -50,8 +50,8 @@ def equal_to(a, b, tol=d_tol):
     Return
     ------
     bool :
-        `True` if `a` is equal to `b` up to `tol`,
-        `False` otherwise.
+        ``True`` if `a` is equal to `b` up to `tol`,
+        ``False`` otherwise.
     """
     return math.fabs(a - b) <= tol
 
@@ -73,8 +73,8 @@ def smaller_than(a, b, tol=d_tol):
     Return
     ------
     bool :
-        `True` if `a` is smaller than `b` up to `tol`,
-        `False` otherwise.
+        ``True`` if `a` is smaller than `b` up to `tol`,
+        ``False`` otherwise.
     """
     return a < (b - tol)
 
@@ -96,8 +96,8 @@ def smaller_or_equal_than(a, b, tol=d_tol):
     Return
     ------
     bool :
-        `True` if `a` is smaller than or equal to `b`
-        up to `tol`, `False` otherwise.
+        ``True`` if `a` is smaller than or equal to `b`
+        up to `tol`, ``False`` otherwise.
     """
     return a <= (b + tol)
 
@@ -119,8 +119,8 @@ def greater_than(a, b, tol=d_tol):
     Return
     ------
     bool :
-        `True` if `a` is greater than `b` up to `tol`,
-        `False` otherwise.
+        ``True`` if `a` is greater than `b` up to `tol`,
+        ``False`` otherwise.
     """
     return a > (b + tol)
 
@@ -142,8 +142,8 @@ def greater_or_equal_than(a, b, tol=d_tol):
     Return
     ------
     bool :
-        `True` if `a` is greater than or equal to `b`
-        up to `tol`, `False` otherwise.
+        ``True`` if `a` is greater than or equal to `b`
+        up to `tol`, ``False`` otherwise.
     """
     return a >= (b - tol)
 
@@ -295,7 +295,9 @@ def thomas_numpy(
     beta = deepcopy(b)
     delta = deepcopy(d)
     for k in range(kstart + 1, kstop):
-        w = np.where(beta[i, j, k - 1] != 0.0, a[i, j, k] / beta[i, j, k - 1], a[i, j, k])
+        w = np.where(
+            beta[i, j, k - 1] != 0.0, a[i, j, k] / beta[i, j, k - 1], a[i, j, k]
+        )
         beta[i, j, k] -= w * c[i, j, k - 1]
         delta[i, j, k] -= w * delta[i, j, k - 1]
 

@@ -199,7 +199,7 @@ class IsentropicHorizontalFlux(abc.ABC):
         moist : bool
             TODO
         gt_powered : `bool`, optional
-            `True` to harness GT4Py, `False` for a vanilla Numpy implementation.
+            ``True`` to harness GT4Py, ``False`` for a vanilla Numpy implementation.
 
         Return
         ------
@@ -231,7 +231,9 @@ class IsentropicHorizontalFlux(abc.ABC):
         elif scheme == "fifth_order_upwind":
             return FifthOrderUpwind(moist, gt_powered)
         else:
-            raise ValueError("Unsupported horizontal flux scheme " "{}" "".format(scheme))
+            raise ValueError(
+                "Unsupported horizontal flux scheme " "{}" "".format(scheme)
+            )
 
 
 class IsentropicNonconservativeHorizontalFlux(abc.ABC):
@@ -512,7 +514,7 @@ class IsentropicMinimalHorizontalFlux(abc.ABC):
         moist : bool
             TODO
         gt_powered : `bool`, optional
-            `True` to harness GT4Py, `False` for a vanilla Numpy implementation.
+            ``True`` to harness GT4Py, ``False`` for a vanilla Numpy implementation.
 
         Return
         ------
@@ -544,7 +546,9 @@ class IsentropicMinimalHorizontalFlux(abc.ABC):
         elif scheme == "fifth_order_upwind":
             return FifthOrderUpwind(moist, gt_powered)
         else:
-            raise ValueError("Unsupported horizontal flux scheme " "{}" "".format(scheme))
+            raise ValueError(
+                "Unsupported horizontal flux scheme " "{}" "".format(scheme)
+            )
 
 
 class IsentropicBoussinesqMinimalHorizontalFlux(abc.ABC):
@@ -716,4 +720,6 @@ class IsentropicBoussinesqMinimalHorizontalFlux(abc.ABC):
         elif scheme == "fifth_order_upwind":
             return FifthOrderUpwind()
         else:
-            raise ValueError("Unsupported horizontal flux scheme " "{}" "".format(scheme))
+            raise ValueError(
+                "Unsupported horizontal flux scheme " "{}" "".format(scheme)
+            )

@@ -177,8 +177,8 @@ class ParallelSplitting:
                         - exec_info (dict): Dictionary which will store statistics
                             and diagnostics gathered at run time;
                         - default_origin (tuple): Storage default origin;
-                        - rebuild (bool): `True` to trigger the stencils compilation
-                            at any class instantiation, `False` to rely on the caching
+                        - rebuild (bool): ``True`` to trigger the stencils compilation
+                            at any class instantiation, ``False`` to rely on the caching
                             mechanism implemented by GT4Py.
 
                 * if 'component' is either an instance of or wraps objects of class
@@ -187,10 +187,10 @@ class ParallelSplitting:
                         - :class:`tasmania.ImplicitTendencyComponent`, or
                         - :class:`tasmania.ConcurrentCoupling`,
 
-                    'enforce_horizontal_boundary' is either `True` if the
+                    'enforce_horizontal_boundary' is either ``True`` if the
                     boundary conditions should be enforced after each stage of
-                    the time integrator, or `False` not to apply the boundary
-                    constraints at all. Defaults to `False`;
+                    the time integrator, or ``False`` not to apply the boundary
+                    constraints at all. Defaults to ``False``;
 
                 * if 'component' is a
 
@@ -228,14 +228,14 @@ class ParallelSplitting:
                     to the current state in a single step just before returning.
 
         retrieve_diagnostics_from_provisional_state : `bool`, optional
-            `True` (respectively, `False`) to feed the
+            ``True`` (respectively, ``False``) to feed the
             :class:`sympl.DiagnosticComponent` objects with the provisional
             (resp., current) state, and add the so-retrieved diagnostics
             to the provisional (resp., current) state dictionary.
-            Defaults to `False`.
+            Defaults to ``False``.
         gt_powered : `bool`, optional
-            `True` to perform additions and subtractions using GT4Py (leveraging
-            field versioning), `False` to perform the operations in plain Python.
+            ``True`` to perform additions and subtractions using GT4Py (leveraging
+            field versioning), ``False`` to perform the operations in plain Python.
         backend : `str`, optional
             The GT4Py backend.
         backend_opts : `dict`, optional
@@ -247,8 +247,8 @@ class ParallelSplitting:
         exec_info : `dict`, optional
             Dictionary which will store statistics and diagnostics gathered at run time.
         rebuild : `bool`, optional
-            `True` to trigger the stencils compilation at any class instantiation,
-            `False` to rely on the caching mechanism implemented by GT4Py.
+            ``True`` to trigger the stencils compilation at any class instantiation,
+            ``False`` to rely on the caching mechanism implemented by GT4Py.
         **kwargs:
             Catch-all for unused keyword arguments.
         """

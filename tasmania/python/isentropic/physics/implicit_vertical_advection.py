@@ -125,14 +125,14 @@ class IsentropicImplicitVerticalAdvectionDiagnostic(ImplicitTendencyComponent):
         Parameters
         ----------
         domain : tasmania.Domain
-            The underlying domain.
+            The :class:`~tasmania.Domain` holding the grid underneath.
         moist : `bool`, optional
-            `True` if water species are included in the model,
-            `False` otherwise. Defaults to `False`.
+            ``True`` if water species are included in the model,
+            ``False`` otherwise. Defaults to ``False``.
         tendency_of_air_potential_temperature_on_interface_levels : `bool`, optional
-            `True` if the input tendency of air potential temperature
-            is defined at the interface levels, `False` otherwise.
-            Defaults to `False`.
+            ``True`` if the input tendency of air potential temperature
+            is defined at the interface levels, ``False`` otherwise.
+            Defaults to ``False``.
         gt_powered : `bool`, optional
             TODO
         backend : `str`, optional
@@ -148,12 +148,12 @@ class IsentropicImplicitVerticalAdvectionDiagnostic(ImplicitTendencyComponent):
         default_origin : `tuple[int]`, optional
             Storage default origin.
         rebuild : `bool`, optional
-            `True` to trigger the stencils compilation at any class instantiation,
-            `False` to rely on the caching mechanism implemented by GT4Py.
+            ``True`` to trigger the stencils compilation at any class instantiation,
+            ``False`` to rely on the caching mechanism implemented by GT4Py.
         storage_shape : `tuple[int]`, optional
             Shape of the storages.
         managed_memory : `bool`, optional
-            `True` to allocate the storages as managed memory, `False` otherwise.
+            ``True`` to allocate the storages as managed memory, ``False`` otherwise.
         **kwargs :
             Additional keyword arguments to be directly forwarded to the parent class.
         """
@@ -824,14 +824,14 @@ class IsentropicImplicitVerticalAdvectionPrognostic(ImplicitTendencyComponent):
         Parameters
         ----------
         domain : tasmania.Domain
-            The underlying domain.
+            The :class:`~tasmania.Domain` holding the grid underneath.
         moist : `bool`, optional
-            `True` if water species are included in the model,
-            `False` otherwise. Defaults to `False`.
+            ``True`` if water species are included in the model,
+            ``False`` otherwise. Defaults to ``False``.
         tendency_of_air_potential_temperature_on_interface_levels : `bool`, optional
-            `True` if the input tendency of air potential temperature
-            is defined at the interface levels, `False` otherwise.
-            Defaults to `False`.
+            ``True`` if the input tendency of air potential temperature
+            is defined at the interface levels, ``False`` otherwise.
+            Defaults to ``False``.
         gt_powered : `bool`, optional
             TODO
         backend : `str`, optional
@@ -847,12 +847,12 @@ class IsentropicImplicitVerticalAdvectionPrognostic(ImplicitTendencyComponent):
         default_origin : `tuple[int]`, optional
             Storage default origin.
         rebuild : `bool`, optional
-            `True` to trigger the stencils compilation at any class instantiation,
-            `False` to rely on the caching mechanism implemented by GT4Py.
+            ``True`` to trigger the stencils compilation at any class instantiation,
+            ``False`` to rely on the caching mechanism implemented by GT4Py.
         storage_shape : `tuple[int]`, optional
             Shape of the storages.
         managed_memory : `bool`, optional
-            `True` to allocate the storages as managed memory, `False` otherwise.
+            ``True`` to allocate the storages as managed memory, ``False`` otherwise.
         **kwargs :
             Additional keyword arguments to be directly forwarded to the parent class.
         """

@@ -62,7 +62,7 @@ class DataArrayDictOperator:
         Parameters
         ----------
         gt_powered : `bool`, optional
-            `True` to perform all the intensive math operations harnessing GT4Py.
+            ``True`` to perform all the intensive math operations harnessing GT4Py.
         backend : `str`, optional
             The GT4Py backend.
         backend_opts : `dict`, optional
@@ -72,8 +72,8 @@ class DataArrayDictOperator:
         dtype : `data-type`, optional
             Data type of the storages.
         rebuild : `bool`, optional
-            `True` to trigger the stencils compilation at any class instantiation,
-            `False` to rely on the caching mechanism implemented by GT4Py.
+            ``True`` to trigger the stencils compilation at any class instantiation,
+            ``False`` to rely on the caching mechanism implemented by GT4Py.
         **kwargs :
             Catch-all for unused keyword arguments.
         """
@@ -118,7 +118,7 @@ class DataArrayDictOperator:
         src : dict[str, sympl.DataArray]
             The source dictionary.
         unshared_variables_in_output : `bool`, optional
-            `True` to include in the destination dictionary the variables not
+            ``True`` to include in the destination dictionary the variables not
             originally shared with the source dictionary.
         """
         if "time" in src:
@@ -178,7 +178,7 @@ class DataArrayDictOperator:
             in the same units used in the first input dictionary, or the second
             dictionary if the variable is not present in the first one.
         unshared_variables_in_output : `bool`, optional
-            `True` if the output dictionary should contain those variables
+            ``True`` if the output dictionary should contain those variables
             included in only one of the two input dictionaries.
 
         Return
@@ -282,7 +282,7 @@ class DataArrayDictOperator:
             in the same units used in the first input dictionary, or the second
             dictionary if the variable is not present in the first one.
         unshared_variables_in_output : `bool`, optional
-            `True` if the output dictionary should contain those variables
+            ``True`` if the output dictionary should contain those variables
             included in only one of the two input dictionaries.
         deepcopy_unshared_variables : `bool`, optional
         """
@@ -352,7 +352,7 @@ class DataArrayDictOperator:
             in the same units used in the first input dictionary, or the second
             dictionary if the variable is not present in the first one.
         unshared_variables_in_output : `bool`, optional
-            `True` if the output dictionary should contain those variables
+            ``True`` if the output dictionary should contain those variables
             included in only one of the two input dictionaries.
 
         Return
@@ -479,7 +479,7 @@ class DataArrayDictOperator:
             in the same units used in the first input dictionary, or the second
             dictionary if the variable is not present in the first one.
         unshared_variables_in_output : `bool`, optional
-            `True` if the output dictionary should contain those variables
+            ``True`` if the output dictionary should contain those variables
             included in only one of the two input dictionaries.
         """
         field_properties = field_properties or {}

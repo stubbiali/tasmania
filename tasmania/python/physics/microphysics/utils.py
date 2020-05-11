@@ -71,13 +71,10 @@ class Clipping(DiagnosticComponent):
         Parameters
         ----------
         domain : tasmania.Domain
-            The underlying domain.
+            The :class:`~tasmania.Domain` holding the grid underneath.
         grid_type : str
-            The type of grid over which instantiating the class. Either:
-
-                * 'physical';
-                * 'numerical'.
-
+            The type of grid over which instantiating the class.
+            Either "physical" or "numerical".
         water_species_names : `tuple`, optional
             The names of the water species to clip.
         gt_powered : `bool`, optional
@@ -95,12 +92,12 @@ class Clipping(DiagnosticComponent):
         default_origin : `tuple[int]`, optional
             Storage default origin.
         rebuild : `bool`, optional
-            `True` to trigger the stencils compilation at any class instantiation,
-            `False` to rely on the caching mechanism implemented by GT4Py.
+            ``True`` to trigger the stencils compilation at any class instantiation,
+            ``False`` to rely on the caching mechanism implemented by GT4Py.
         storage_shape : `tuple[int]`, optional
             Shape of the storages.
         managed_memory : `bool`, optional
-            `True` to allocate the storages as managed memory, `False` otherwise.
+            ``True`` to allocate the storages as managed memory, ``False`` otherwise.
         """
         self._names = water_species_names
         super().__init__(domain, grid_type)
@@ -210,13 +207,10 @@ class Precipitation(ImplicitTendencyComponent):
         Parameters
         ----------
         domain : tasmania.Domain
-            The underlying domain.
+            The :class:`~tasmania.Domain` holding the grid underneath.
         grid_type : `str`, optional
-            The type of grid over which instantiating the class. Either:
-
-                * 'physical';
-                * 'numerical' (default).
-
+            The type of grid over which instantiating the class.
+            Either "physical" or "numerical" (default).
         physical_constants : `dict[str, sympl.DataArray]`, optional
             Dictionary whose keys are strings indicating physical constants used
             within this object, and whose values are :class:`sympl.DataArray`\s
@@ -239,12 +233,12 @@ class Precipitation(ImplicitTendencyComponent):
         default_origin : `tuple[int]`, optional
             Storage default origin.
         rebuild : `bool`, optional
-            `True` to trigger the stencils compilation at any class instantiation,
-            `False` to rely on the caching mechanism implemented by GT4Py.
+            ``True`` to trigger the stencils compilation at any class instantiation,
+            ``False`` to rely on the caching mechanism implemented by GT4Py.
         storage_shape : `tuple[int]`, optional
             Shape of the storages.
         managed_memory : `bool`, optional
-            `True` to allocate the storages as managed memory, `False` otherwise.
+            ``True`` to allocate the storages as managed memory, ``False`` otherwise.
         **kwargs :
             Additional keyword arguments to be directly forwarded to the parent
             :class:`~tasmania.ImplicitTendencyComponent`.
@@ -628,13 +622,10 @@ class Sedimentation(ImplicitTendencyComponent):
         Parameters
         ----------
         domain : tasmania.Domain
-            The underlying domain.
+            The :class:`~tasmania.Domain` holding the grid underneath.
         grid_type : str
-            The type of grid over which instantiating the class. Either:
-
-                * 'physical';
-                * 'numerical'.
-
+            The type of grid over which instantiating the class.
+            Either "physical" or "numerical".
         tracers : dict[str, dict]
             Dictionary whose keys are the names of the precipitating tracers to
             consider, and whose values are dictionaries specifying 'units' and

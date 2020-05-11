@@ -86,9 +86,9 @@ class IsentropicPrognostic(abc.ABC):
         hb : tasmania.HorizontalBoundary
             The object handling the lateral boundary conditions.
         moist : bool
-            `True` for a moist dynamical core, `False` otherwise.
+            ``True`` for a moist dynamical core, ``False`` otherwise.
         gt_powered : bool
-            `True` to harness GT4Py, `False` for a vanilla Numpy implementation.
+            ``True`` to harness GT4Py, ``False`` for a vanilla Numpy implementation.
         backend : str
             The GT4Py backend.
         backend_opts : dict
@@ -102,12 +102,12 @@ class IsentropicPrognostic(abc.ABC):
         default_origin : `tuple[int]
             Storage default origin.
         rebuild : bool
-            `True` to trigger the stencils compilation at any class instantiation,
-            `False` to rely on the caching mechanism implemented by GT4Py.
+            ``True`` to trigger the stencils compilation at any class instantiation,
+            ``False`` to rely on the caching mechanism implemented by GT4Py.
         storage_shape : tuple[int]
             Shape of the storages.
         managed_memory : bool
-            `True` to allocate the storages as managed memory, `False` otherwise.
+            ``True`` to allocate the storages as managed memory, ``False`` otherwise.
         """
         # store input arguments needed at compile- and run-time
         self._grid = grid
@@ -250,10 +250,10 @@ class IsentropicPrognostic(abc.ABC):
         hb : tasmania.HorizontalBoundary
             The object handling the lateral boundary conditions.
         moist : `bool`, optional
-            `True` for a moist dynamical core, `False` otherwise.
-            Defaults to `False`.
+            ``True`` for a moist dynamical core, ``False`` otherwise.
+            Defaults to ``False``.
         gt_powered : `bool`, optional
-            `True` to harness GT4Py, `False` for a vanilla Numpy implementation.
+            ``True`` to harness GT4Py, ``False`` for a vanilla Numpy implementation.
         backend : `str`, optional
             The GT4Py backend.
         backend_opts : `dict`, optional
@@ -267,12 +267,12 @@ class IsentropicPrognostic(abc.ABC):
         default_origin : `tuple[int]`, optional
             Storage default origin.
         rebuild : `bool`, optional
-            `True` to trigger the stencils compilation at any class instantiation,
-            `False` to rely on the caching mechanism implemented by GT4Py.
+            ``True`` to trigger the stencils compilation at any class instantiation,
+            ``False`` to rely on the caching mechanism implemented by GT4Py.
         storage_shape : `tuple[int]`, optional
             Shape of the storages.
         managed_memory : `bool`, optional
-            `True` to allocate the storages as managed memory, `False` otherwise.
+            ``True`` to allocate the storages as managed memory, ``False`` otherwise.
 
         Return
         ------

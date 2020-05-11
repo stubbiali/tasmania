@@ -79,11 +79,11 @@ def get_isothermal_isentropic_analytical_solution(
         One-item :class:`sympl.DataArray` representing the mountain half-width
         at half-height.
     x_staggered : `bool`, optional
-        `True` if the solution should be staggered in the :math:`x`-direction,
-        `False` otherwise. Default is `True`.
+        ``True`` if the solution should be staggered in the :math:`x`-direction,
+        ``False`` otherwise. Default is ``True``.
     z_staggered : `bool`, optional
-        `True` if the solution should be staggered in the vertical direction,
-        `False` otherwise. Default is `False`.
+        ``True`` if the solution should be staggered in the vertical direction,
+        ``False`` otherwise. Default is ``False``.
     physical_constants : `dict_like`, optional
         Dictionary whose keys are strings indicating physical constants used
         within this object, and whose values are :class:`sympl.DataArray`\s

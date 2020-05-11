@@ -82,8 +82,8 @@ class TimeSeries(Drawer):
             Units for time. Defaults to 's' (seconds).
             Only effective if `time_mode` set on 'elapsed'.
         time_on_xaxis : `bool`, optional
-            `True` to place time on the plot x-axis, `False` otherwise.
-            Defaults to `True`.
+            ``True`` to place time on the plot x-axis, ``False`` otherwise.
+            Defaults to ``True``.
         properties : `dict`, optional
             Dictionary whose keys are strings denoting plot-specific
             settings, and whose values specify values for those settings.

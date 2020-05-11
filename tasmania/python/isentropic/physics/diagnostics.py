@@ -84,16 +84,13 @@ class IsentropicDiagnostics(DiagnosticComponent):
         Parameters
         ----------
         domain : tasmania.Domain
-            The underlying domain.
+            The :class:`~tasmania.Domain` holding the grid underneath.
         grid_type : str
-            The type of grid over which instantiating the class. Either:
-
-                * 'physical';
-                * 'numerical'.
-
+            The type of grid over which instantiating the class.
+            Either "physical" or "numerical".
         moist : bool
-            `True` if water species are included in the model,
-            `False` otherwise.
+            ``True`` if water species are included in the model,
+            ``False`` otherwise.
         pt : sympl.DataArray
             One-item :class:`sympl.DataArray` representing the air pressure
             at the top edge of the domain.
@@ -128,16 +125,16 @@ class IsentropicDiagnostics(DiagnosticComponent):
         default_origin : `tuple[int]`, optional
             Storage default origin.
         rebuild : `bool`, optional
-            `True` to trigger the stencils compilation at any class instantiation,
-            `False` to rely on the caching mechanism implemented by GT4Py.
+            ``True`` to trigger the stencils compilation at any class instantiation,
+            ``False`` to rely on the caching mechanism implemented by GT4Py.
         storage_shape : `tuple[int]`, optional
             Shape of the storages.
         managed_memory : `bool`, optional
-            `True` to allocate the storages as managed memory, `False` otherwise.
+            ``True`` to allocate the storages as managed memory, ``False`` otherwise.
         """
         # store input parameters needed at run-time
         self._moist = moist
-        self._pt = pt.to_units("Pa").values.item()
+        self._pt = pt.to_units("Pa").data.item()
 
         # call parent's constructor
         super().__init__(domain, grid_type)
@@ -291,7 +288,7 @@ class IsentropicVelocityComponents(DiagnosticComponent):
         Parameters
         ----------
         domain : tasmania.Domain
-            The underlying domain.
+            The :class:`~tasmania.Domain` holding the grid underneath.
         gt_powered : `bool`, optional
             TODO
         backend : `str`, optional
@@ -307,12 +304,12 @@ class IsentropicVelocityComponents(DiagnosticComponent):
         default_origin : `tuple[int]`, optional
             Storage default origin.
         rebuild : `bool`, optional
-            `True` to trigger the stencils compilation at any class instantiation,
-            `False` to rely on the caching mechanism implemented by GT4Py.
+            ``True`` to trigger the stencils compilation at any class instantiation,
+            ``False`` to rely on the caching mechanism implemented by GT4Py.
         storage_shape : `tuple[int]`, optional
             Shape of the storages.
         managed_memory : `bool`, optional
-            `True` to allocate the storages as managed memory, `False` otherwise.
+            ``True`` to allocate the storages as managed memory, ``False`` otherwise.
         """
         # call the parent's constructor
         super().__init__(domain, "numerical")

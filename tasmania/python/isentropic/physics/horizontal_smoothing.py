@@ -71,7 +71,7 @@ class IsentropicHorizontalSmoothing(DiagnosticComponent):
         Parameters
         ----------
         domain : tasmania.Domain
-            The underlying domain.
+            The :class:`~tasmania.Domain` holding the grid underneath.
         smooth_type : str
             The type of numerical smoothing to implement.
             See :class:`~tasmania.HorizontalSmoothing` for all available options.
@@ -83,8 +83,8 @@ class IsentropicHorizontalSmoothing(DiagnosticComponent):
         smooth_damp_depth : int
             Depth of the damping region.
         moist : `bool`, optional
-            `True` if water species are included in the model and should
-            be smoothed, `False` otherwise. Defaults to `False`.
+            ``True`` if water species are included in the model and should
+            be smoothed, ``False`` otherwise. Defaults to ``False``.
         smooth_moist_coeff : `float`, optional
             The smoothing coefficient for the water species.
         smooth_moist_coeff_max : `float`, optional
@@ -107,10 +107,10 @@ class IsentropicHorizontalSmoothing(DiagnosticComponent):
         default_origin : `tuple[int]`, optional
             Storage default origin.
         rebuild : `bool`, optional
-            `True` to trigger the stencils compilation at any class instantiation,
-            `False` to rely on the caching mechanism implemented by GT4Py.
+            ``True`` to trigger the stencils compilation at any class instantiation,
+            ``False`` to rely on the caching mechanism implemented by GT4Py.
         managed_memory : `bool`, optional
-            `True` to allocate the storages as managed memory, `False` otherwise.
+            ``True`` to allocate the storages as managed memory, ``False`` otherwise.
         storage_shape : `tuple[int]`, optional
             Shape of the storages.
         """

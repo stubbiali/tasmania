@@ -73,8 +73,8 @@ class Plot(Monitor):
     Attributes
     ----------
     interactive : bool
-        `True` if interactive plotting is enabled,
-        `False` otherwise.
+        ``True`` if interactive plotting is enabled,
+        ``False`` otherwise.
     figure_properties : dict
         Keyword arguments specifying settings for the
         :class:`~matplotlib.figure.Figure` containing the plot.
@@ -98,8 +98,8 @@ class Plot(Monitor):
         drawers : tasmania.Drawer
             The drawer(s) actually drawing the plot(s).
         interactive : `bool`, optional
-            `True` to enable interactive plotting, `False` otherwise.
-            Defaults to `True`.
+            ``True`` to enable interactive plotting, ``False`` otherwise.
+            Defaults to ``True``.
         print_time : `str`, optional
             String specifying if time should be printed above the plot,
             flush with the right edge. Available options are:
@@ -187,8 +187,8 @@ class Plot(Monitor):
             If `None` or empty, the plot will not be saved.
         show : `bool`, optional
             When the non-interactive mode is switched on,
-            `True` to show the figure, `False` otherwise.
-            Defaults to `False`.
+            ``True`` to show the figure, ``False`` otherwise.
+            Defaults to ``False``.
 
         Return
         ------
@@ -322,8 +322,8 @@ class PlotComposite:
         ncols : `int`, optional
             Number of columns of the subplot grid. Defaults to 1.
         interactive : `bool`, optional
-            `True` to enable interactive plotting, :obj:`False` otherwise.
-            Defaults to :obj:`True`.
+            ``True`` to enable interactive plotting, :obj:``False`` otherwise.
+            Defaults to :obj:``True``.
         print_time : `str`, optional
             String specifying if time should be printed as suptitle.
             Available options are:
@@ -387,7 +387,7 @@ class PlotComposite:
         Returns
         -------
         bool :
-            :obj:`True` if interactive model is enabled, :obj:`False` otherwise.
+            :obj:``True`` if interactive model is enabled, :obj:``False`` otherwise.
         """
         return self._interactive
 
@@ -399,7 +399,7 @@ class PlotComposite:
         Parameters
         ----------
         value : bool
-            :obj:`True` to enable interactive plotting, :obj:`False` otherwise.
+            :obj:``True`` to enable interactive plotting, :obj:``False`` otherwise.
         """
         self._interactive = value
         for artist in self.artists:
@@ -431,8 +431,8 @@ class PlotComposite:
             If :obj:`None` or empty, the plot will not be saved.
         show : `bool`, optional
             When the non-interactive mode is switched on,
-            :obj:`True` to show the figure, :obj:`False` otherwise.
-            Defaults :obj:`False`.
+            :obj:``True`` to show the figure, :obj:``False`` otherwise.
+            Defaults :obj:``False``.
 
         Return
         ------

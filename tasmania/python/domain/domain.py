@@ -33,12 +33,12 @@ from tasmania.python.utils import taz_types
 class Domain:
     """ Discrete spatial domain.
 
-    This class consists of:
+    This class instantiates, maintains and exposes:
 
-        * the :class:`~tasmania.PhysicalGrid` covering the physical domain;
-        * the associated :class:`~tasmania.NumericalGrid`;
-        * the proper :class:`~tasmania.HorizontalBoundary` object handling the \
-            lateral boundary conditions.
+    * the :class:`~tasmania.PhysicalGrid` covering the physical domain;
+    * the associated :class:`~tasmania.NumericalGrid`;
+    * the proper :class:`~tasmania.HorizontalBoundary` handling the \
+        lateral boundary conditions.
     """
 
     def __init__(
@@ -123,7 +123,7 @@ class Domain:
         exec_info : `dict`, optional
             Dictionary which will store statistics and diagnostics gathered at run time.
         default_origin : `tuple[int]`, optional
-            Storage default origin.
+            The default origin of the storages.
         rebuild : `bool`, optional
             ``True`` to trigger the stencils compilation at any class instantiation,
             ``False`` to rely on the caching mechanism implemented by GT4Py.
@@ -183,16 +183,12 @@ class Domain:
 
     @property
     def physical_grid(self) -> PhysicalGrid:
-        """
-        The :class:`~tasmania.PhysicalGrid`.
-        """
+        """ The :class:`~tasmania.PhysicalGrid`. """
         return self._pgrid
 
     @property
     def numerical_grid(self) -> NumericalGrid:
-        """
-        The :class:`~tasmania.NumericalGrid`.
-        """
+        """ The :class:`~tasmania.NumericalGrid`. """
         return self._cgrid
 
     @property
@@ -203,11 +199,11 @@ class Domain:
 
         This object is enriched with the following new methods:
 
-            * ``dmn_enforce_field``,
-            * ``dmn_enforce_raw``,
-            * ``dmn_enforce``,
-            * ``dmn_set_outermost_layers_x``, and
-            * ``dmn_set_outermost_layers_y``.
+        * ``dmn_enforce_field``,
+        * ``dmn_enforce_raw``,
+        * ``dmn_enforce``,
+        * ``dmn_set_outermost_layers_x``, and
+        * ``dmn_set_outermost_layers_y``.
         """
         hb = self._hb
 

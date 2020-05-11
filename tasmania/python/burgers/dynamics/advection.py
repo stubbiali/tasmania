@@ -42,8 +42,9 @@ class BurgersAdvection(abc.ABC):
     def call_numpy(
         dx: float, dy: float, u: np.ndarray, v: np.ndarray
     ) -> "Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]":
-        """
-        Compute the accelerations due to advection. Vanilla NumPy implementation.
+        """ Compute the accelerations due to advection.
+
+        Vanilla NumPy implementation.
 
         Parameters
         ----------

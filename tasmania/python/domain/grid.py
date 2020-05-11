@@ -44,8 +44,8 @@ class Grid:
 
     The grid is embedded in a reference system whose coordinates are:
 
-        * two horizontal coordinates :math:`x` and :math:`y`;
-        * a vertical (terrain-following) coordinate :math:`z`.
+    * two horizontal coordinates :math:`x` and :math:`y`;
+    * a vertical (terrain-following) coordinate :math:`z`.
 
     The vertical coordinate :math:`z` may be formulated to define a hybrid
     terrain-following coordinate system with terrain-following coordinate
@@ -57,9 +57,9 @@ class Grid:
 
     This class stores:
 
-        * the :class:`~tasmania.HorizontalGrid` covering the horizontal domain;
-        * the vertical discretization;
-        * the underlying :class:`~tasmania.Topography`.
+    * the :class:`~tasmania.HorizontalGrid` covering the horizontal domain;
+    * the vertical discretization;
+    * the underlying :class:`~tasmania.Topography`.
 
     Note
     ----
@@ -105,9 +105,7 @@ class Grid:
 
     @property
     def grid_xy(self) -> "HorizontalGrid":
-        """
-        The underlying :class:`~tasmania.HorizontalGrid`.
-        """
+        """ The underlying :class:`~tasmania.HorizontalGrid`. """
         return self._grid_xy
 
     @property
@@ -192,9 +190,7 @@ class Grid:
 
     @property
     def nz(self) -> int:
-        """
-        Number of vertical main levels.
-        """
+        """ Number of vertical main levels. """
         return self._nz
 
     @property
@@ -234,7 +230,7 @@ class Grid:
 
 
 class PhysicalGrid(Grid):
-    """ Three-dimensional rectilinear grid covering a *physical* domain. """
+    """ Three-dimensional rectilinear grid covering a physical domain. """
 
     def __init__(
         self,
@@ -351,7 +347,7 @@ class PhysicalGrid(Grid):
 
 
 class NumericalGrid(Grid):
-    """ Three-dimensional rectilinear grid covering a *numerical* domain. """
+    """ Three-dimensional rectilinear grid covering a numerical domain. """
 
     def __init__(self, phys_grid: PhysicalGrid, boundary: "HorizontalBoundary") -> None:
         """

@@ -74,7 +74,7 @@ class VerticalDamping(abc.ABC):
         time_units : str
             Time units to be used throughout the class.
         gt_powered : bool
-            `True` to harness GT4Py, `False` for a vanilla Numpy implementation.
+            ``True`` to harness GT4Py, ``False`` for a vanilla Numpy implementation.
         backend : str
             The GT4Py backend.
         backend_opts : dict
@@ -88,10 +88,10 @@ class VerticalDamping(abc.ABC):
         default_origin : tuple[int]
             Storage default origin.
         rebuild : bool
-            `True` to trigger the stencils compilation at any class instantiation,
-            `False` to rely on the caching mechanism implemented by GT4Py.
+            ``True`` to trigger the stencils compilation at any class instantiation,
+            ``False`` to rely on the caching mechanism implemented by GT4Py.
         managed_memory : `bool`, optional
-            `True` to allocate the storages as managed memory, `False` otherwise.
+            ``True`` to allocate the storages as managed memory, ``False`` otherwise.
         """
         # safety-guard checks
         assert damp_depth <= grid.nz, (
@@ -212,7 +212,7 @@ class VerticalDamping(abc.ABC):
         time_units : `str`, optional
             Time units to be used throughout the class. Defaults to 's'.
         gt_powered : `bool`, optional
-            `True` to harness GT4Py, `False` for a vanilla Numpy implementation.
+            ``True`` to harness GT4Py, ``False`` for a vanilla Numpy implementation.
         backend : `str`, optional
             The GT4Py backend.
         backend_opts : `dict`, optional
@@ -226,10 +226,10 @@ class VerticalDamping(abc.ABC):
         default_origin : `tuple[int]`, optional
             Storage default origin.
         rebuild : `bool`, optional
-            `True` to trigger the stencils compilation at any class instantiation,
-            `False` to rely on the caching mechanism implemented by GT4Py.
+            ``True`` to trigger the stencils compilation at any class instantiation,
+            ``False`` to rely on the caching mechanism implemented by GT4Py.
         managed_memory : `bool`, optional
-            `True` to allocate the storages as managed memory, `False` otherwise.
+            ``True`` to allocate the storages as managed memory, ``False`` otherwise.
 
         Return
         ------

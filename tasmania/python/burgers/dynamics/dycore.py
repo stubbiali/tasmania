@@ -56,7 +56,7 @@ class BurgersDynamicalCore(DynamicalCore):
         Parameters
         ----------
         domain : tasmania.Domain
-            The underlying domain.
+            The :class:`~tasmania.Domain` holding the grid underneath.
         intermediate_tendencies : `obj`, optional
             An instance of either
 
@@ -79,7 +79,7 @@ class BurgersDynamicalCore(DynamicalCore):
             Defaults to 'upwind'. See :class:`tasmania.BurgersAdvection`
             for all available options.
         gt_powered : `bool`, optional
-            `True` to perform all the intensive math operations harnessing GT4Py.
+            ``True`` to perform all the intensive math operations harnessing GT4Py.
         backend : `str`, optional
             The GT4Py backend.
         backend_opts : `dict`, optional
@@ -93,10 +93,10 @@ class BurgersDynamicalCore(DynamicalCore):
         default_origin : `tuple[int]`, optional
             Storage default origin.
         rebuild : `bool`, optional
-            `True` to trigger the stencils compilation at any class instantiation,
-            `False` to rely on the caching mechanism implemented by GT4Py.
+            ``True`` to trigger the stencils compilation at any class instantiation,
+            ``False`` to rely on the caching mechanism implemented by GT4Py.
         managed_memory : `bool`, optional
-            `True` to allocate the storages as managed memory, `False` otherwise.
+            ``True`` to allocate the storages as managed memory, ``False`` otherwise.
         """
         self._backend = backend
         self._dtype = dtype

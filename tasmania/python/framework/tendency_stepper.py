@@ -86,9 +86,9 @@ class TendencyStepper(abc.ABC):
             String specifying the runtime mode in which parameterizations
             should be invoked. See :class:`tasmania.ConcurrentCoupling`.
         enforce_horizontal_boundary : `bool`, optional
-            `True` if the class should enforce the lateral boundary
+            ``True`` if the class should enforce the lateral boundary
             conditions after each stage of the time integrator,
-            `False` otherwise. Defaults to `False`.
+            ``False`` otherwise. Defaults to ``False``.
             This argument is considered only if at least one of the wrapped
             objects is an instance of
 
@@ -96,7 +96,7 @@ class TendencyStepper(abc.ABC):
                 * :class:`tasmania.ImplicitTendencyComponent`.
 
         gt_powered : `bool`, optional
-            `True` to perform all the intensive math operations harnessing GT4Py.
+            ``True`` to perform all the intensive math operations harnessing GT4Py.
         backend : `str`, optional
             The GT4Py backend.
         backend_opts : `dict`, optional
@@ -106,8 +106,8 @@ class TendencyStepper(abc.ABC):
         dtype : `data-type`, optional
             Data type of the storages.
         rebuild : `bool`, optional
-            `True` to trigger the stencils compilation at any class instantiation,
-            `False` to rely on the caching mechanism implemented by GT4Py.
+            ``True`` to trigger the stencils compilation at any class instantiation,
+            ``False`` to rely on the caching mechanism implemented by GT4Py.
         """
         assert_sequence(args, reftype=self.__class__.allowed_component_type)
 
@@ -338,9 +338,9 @@ class TendencyStepper(abc.ABC):
             String specifying the runtime mode in which parameterizations
             should be invoked. See :class:`tasmania.ConcurrentCoupling`.
         enforce_horizontal_boundary : `bool`, optional
-            `True` if the class should enforce the lateral boundary
+            ``True`` if the class should enforce the lateral boundary
             conditions after each stage of the time integrator,
-            `False` otherwise. Defaults to `False`.
+            ``False`` otherwise. Defaults to ``False``.
             This argument is considered only if at least one of the wrapped
             objects is an instance of
 
@@ -348,7 +348,7 @@ class TendencyStepper(abc.ABC):
                 * :class:`tasmania.ImplicitTendencyComponent`.
 
         gt_powered : `bool`, optional
-            `True` to perform all the intensive math operations harnessing GT4Py.
+            ``True`` to perform all the intensive math operations harnessing GT4Py.
         backend : `str`, optional
             The GT4Py backend.
         backend_opts : `dict`, optional
@@ -358,8 +358,8 @@ class TendencyStepper(abc.ABC):
         dtype : `data-type`, optional
             Data type of the storages.
         rebuild : `bool`, optional
-            `True` to trigger the stencils compilation at any class instantiation,
-            `False` to rely on the caching mechanism implemented by GT4Py.
+            ``True`` to trigger the stencils compilation at any class instantiation,
+            ``False`` to rely on the caching mechanism implemented by GT4Py.
         **kwargs :
             Scheme-specific arguments.
 

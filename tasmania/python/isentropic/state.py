@@ -98,11 +98,11 @@ def get_isentropic_state_from_brunt_vaisala_frequency(
         1-item :class:`sympl.DataArray` representing the uniform
         Brunt-Vaisala frequency, in units compatible with [s^-1].
     moist : `bool`, optional
-        `True` to include some water species in the model state,
-        `False` for a fully dry configuration. Defaults to `False`.
+        ``True`` to include some water species in the model state,
+        ``False`` for a fully dry configuration. Defaults to ``False``.
     precipitation : `bool`, optional
-        `True` if the model takes care of precipitation,
-        `False` otherwise. Defaults to `False`.
+        ``True`` if the model takes care of precipitation,
+        ``False`` otherwise. Defaults to ``False``.
     relative_humidity : `float`, optional
         The relative humidity in decimals. Defaults to 0.5.
     physical_constants : `dict[str, sympl.DataArray]`, optional
@@ -127,7 +127,7 @@ def get_isentropic_state_from_brunt_vaisala_frequency(
     storage_shape : `tuple[int]`, optional
         Shape of the storages.
     managed_memory : `bool`, optional
-        `True` to allocate the storages as managed memory, `False` otherwise.
+        ``True`` to allocate the storages as managed memory, ``False`` otherwise.
 
     Return
     ------
@@ -447,11 +447,11 @@ def get_isentropic_state_from_temperature(
         perturbation in the center of the warm/cool bubble with respect
         to the ambient conditions.
     moist : `bool`, optional
-        `True` to include some water species in the model state,
-        `False` for a fully dry configuration. Defaults to `False`.
+        ``True`` to include some water species in the model state,
+        ``False`` for a fully dry configuration. Defaults to ``False``.
     precipitation : `bool`, optional
-        `True` if the model takes care of precipitation,
-        `False` otherwise. Defaults to `False`.
+        ``True`` if the model takes care of precipitation,
+        ``False`` otherwise. Defaults to ``False``.
     physical_constants : `dict[str, sympl.DataArray]`, optional
         Dictionary whose keys are strings indicating physical constants used
         within this object, and whose values are :class:`sympl.DataArray`\s
@@ -474,7 +474,7 @@ def get_isentropic_state_from_temperature(
     storage_shape : `tuple[int]`, optional
         Shape of the storages.
     managed_memory : `bool`, optional
-        `True` to allocate the storages as managed memory, `False` otherwise.
+        ``True`` to allocate the storages as managed memory, ``False`` otherwise.
 
     Return
     ------

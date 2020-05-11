@@ -74,7 +74,7 @@ class IsentropicHorizontalDiffusion(TendencyComponent):
         Parameters
         ----------
         domain : tasmania.Domain
-            The underlying domain.
+            The :class:`~tasmania.Domain` holding the grid underneath.
         diffusion_type : str
             The type of numerical diffusion to implement.
             See :class:`~tasmania.HorizontalDiffusion` for all available options.
@@ -88,8 +88,8 @@ class IsentropicHorizontalDiffusion(TendencyComponent):
         diffusion_damp_depth : int
             Depth of the damping region.
         moist : `bool`, optional
-            `True` if water species are included in the model and should
-            be diffused, `False` otherwise. Defaults to `False`.
+            ``True`` if water species are included in the model and should
+            be diffused, ``False`` otherwise. Defaults to ``False``.
         diffusion_moist_coeff : `sympl.DataArray`, optional
             1-item array representing the diffusion coefficient for the
             water species; in units compatible with [s^-1].
@@ -114,12 +114,12 @@ class IsentropicHorizontalDiffusion(TendencyComponent):
         default_origin : `tuple[int]`, optional
             Storage default origin.
         rebuild : `bool`, optional
-            `True` to trigger the stencils compilation at any class instantiation,
-            `False` to rely on the caching mechanism implemented by GT4Py.
+            ``True`` to trigger the stencils compilation at any class instantiation,
+            ``False`` to rely on the caching mechanism implemented by GT4Py.
         storage_shape : `tuple[int]`, optional
             Shape of the storages.
         managed_memory : `bool`, optional
-            `True` to allocate the storages as managed memory, `False` otherwise.
+            ``True`` to allocate the storages as managed memory, ``False`` otherwise.
         **kwargs :
             Keyword arguments to be directly forwarded to the parent's constructor.
         """

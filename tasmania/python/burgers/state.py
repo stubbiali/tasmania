@@ -176,7 +176,7 @@ class ZhaoStateFactory:
             1-item :class:`sympl.DataArray` representing the diffusivity.
             The units should be compatible with 'm s^-2'.
         gt_powered : bool
-            `True` to harness GT4Py, `False` for a vanilla Numpy implementation.
+            ``True`` to harness GT4Py, ``False`` for a vanilla Numpy implementation.
         backend : `str`, optional
             The GT4Py backend.
         dtype : `data-type`, optional
@@ -184,7 +184,7 @@ class ZhaoStateFactory:
         default_origin : `tuple[int]`, optional
             Storage default origin.
         managed_memory : `bool`, optional
-            `True` to allocate the storages as managed memory, `False` otherwise.
+            ``True`` to allocate the storages as managed memory, ``False`` otherwise.
         """
         self._solution_factory = ZhaoSolutionFactory(initial_time, eps)
         self._gt_powered = gt_powered

@@ -96,8 +96,7 @@ class Topography:
         return self._time
 
     def update(self, time: taz_types.datetime_t) -> None:
-        """
-        Update the topography at current simulation time.
+        """ Update the topography at current simulation time.
 
         Parameters
         ----------
@@ -198,13 +197,19 @@ class PhysicalTopography(abc.ABC, Topography):
         smooth: bool = False,
         **kwargs
     ):
-        """ Get an instance of a derived class.
+        """ Get an instance of a registered derived class.
 
         Parameters
         ----------
         topography_type : str
             The topography type, i.e. the string used to register the subclass
-            which should be instantiated.
+            which should be instantiated. Available options are:
+
+            * "flat";
+            * "gaussian";
+            * "schaer";
+            * "user_defined".
+
         time : `datetime.timedelta`, optional
             The elapsed simulation time after which the topography should stop
             increasing. If not specified, a time-invariant terrain surface-height

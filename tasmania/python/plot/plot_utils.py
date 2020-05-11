@@ -227,8 +227,8 @@ def set_figure_properties(fig: plt.Figure, **kwargs) -> None:
         Font size to use for the plot titles, and axes ticks and labels.
         Defaults to 12.
     tight_layout : bool
-        `True` to fit the whole subplots into the figure area,
-        `False` otherwise. Defaults to `True`.
+        ``True`` to fit the whole subplots into the figure area,
+        ``False`` otherwise. Defaults to ``True``.
     tight_layout_rect : Sequence[float]
         A rectangle (left, bottom, right, top) in the normalized figure
         coordinate that the whole subplots area (including labels) will
@@ -333,8 +333,8 @@ def set_axes_properties(ax: plt.Axes, **kwargs) -> None:
         Data limits for the x-axis. Defaults to `None`, i.e., the data limits
         will be left unchanged.
     invert_xaxis : bool
-        `True` to make to invert the x-axis, `False` otherwise.
-        Defaults to `False`.
+        ``True`` to make to invert the x-axis, ``False`` otherwise.
+        Defaults to ``False``.
     x_scale : str
         The x-axis scale. Defaults to 'linear'.
     x_ticks : sequence[float]
@@ -346,10 +346,10 @@ def set_axes_properties(ax: plt.Axes, **kwargs) -> None:
     x_ticklabels_rotation : float
         Rotation angle of the x-axis ticks labels. Defaults to 0.
     xaxis_minor_ticks_visible : bool
-        `True` to show all ticks, either labelled or unlabelled,
-        `False` to show only the labelled ticks. Defaults to `False`.
+        ``True`` to show all ticks, either labelled or unlabelled,
+        ``False`` to show only the labelled ticks. Defaults to ``False``.
     xaxis_visible : bool
-        `False` to make the x-axis invisible. Defaults to `True`.
+        ``False`` to make the x-axis invisible. Defaults to ``True``.
     y_label : str
         The y-axis label. Defaults to an empty string.
     y_labelcolor : str
@@ -358,8 +358,8 @@ def set_axes_properties(ax: plt.Axes, **kwargs) -> None:
         Data limits for the y-axis. Defaults to `None`, i.e., the data limits
         will be left unchanged.
     invert_yaxis : bool
-        `True` to make to invert the y-axis, `False` otherwise.
-        Defaults to `False`.
+        ``True`` to make to invert the y-axis, ``False`` otherwise.
+        Defaults to ``False``.
     y_scale : str
         The y-axis scale. Defaults to 'linear'.
     y_ticks : sequence[float]
@@ -371,10 +371,10 @@ def set_axes_properties(ax: plt.Axes, **kwargs) -> None:
     y_ticklabels_rotation : float
         Rotation angle of the y-axis ticks labels. Defaults to 0.
     yaxis_minor_ticks_visible : bool
-        `True` to show all ticks, either labelled or unlabelled,
-        `False` to show only the labelled ticks. Defaults to :obj:`False`.
+        ``True`` to show all ticks, either labelled or unlabelled,
+        ``False`` to show only the labelled ticks. Defaults to :obj:``False``.
     yaxis_visible : bool
-        :obj:`False` to make the y-axis invisible. Defaults to :obj:`True`.
+        :obj:``False`` to make the y-axis invisible. Defaults to :obj:``True``.
     z_label : str
         The z-axis label. Defaults to an empty string.
     z_labelcolor : str
@@ -383,8 +383,8 @@ def set_axes_properties(ax: plt.Axes, **kwargs) -> None:
         Data limits for the z-axis. Defaults to :obj:`None`, i.e., the data limits
         will be left unchanged.
     invert_zaxis : bool
-        :obj:`True` to make to invert the z-axis, :obj:`False` otherwise.
-        Defaults to :obj:`False`.
+        :obj:``True`` to make to invert the z-axis, :obj:``False`` otherwise.
+        Defaults to :obj:``False``.
     z_scale : str
         The z-axis scale. Defaults to 'linear'.
     z_ticks : sequence[float]
@@ -396,12 +396,12 @@ def set_axes_properties(ax: plt.Axes, **kwargs) -> None:
     z_ticklabels_rotation : float
         Color for the z-axis ticks labels. Defaults to 'black'.
     zaxis_minor_ticks_visible : bool
-        :obj:`True` to show all ticks, either labelled or unlabelled,
-        :obj:`False` to show only the labelled ticks. Defaults to :obj:`False`.
+        :obj:``True`` to show all ticks, either labelled or unlabelled,
+        :obj:``False`` to show only the labelled ticks. Defaults to :obj:``False``.
     zaxis_visible : bool
-        :obj:`False` to make the z-axis invisible. Defaults to :obj:`True`.
+        :obj:``False`` to make the z-axis invisible. Defaults to :obj:``True``.
     legend_on : bool
-        :obj:`True` to show the legend, :obj:`False` otherwise. Defaults to :obj:`False`.
+        :obj:``True`` to show the legend, :obj:``False`` otherwise. Defaults to :obj:``False``.
     legend_loc : str
         String specifying the location where the legend should be placed.
         Defaults to 'best'; please see :func:`matplotlib.pyplot.legend` for all
@@ -422,8 +422,8 @@ def set_axes_properties(ax: plt.Axes, **kwargs) -> None:
         Defaults to 'upper right'; please see :class:`matplotlib.offsetbox.AnchoredText`
         for all the available options.
     grid_on : bool
-        :obj:`True` to show the plot grid, :obj:`False` otherwise.
-        Defaults to :obj:`False`.
+        :obj:``True`` to show the plot grid, :obj:``False`` otherwise.
+        Defaults to :obj:``False``.
     grid_properties : dict
         Keyword arguments specifying various settings of the plot grid.
     """
@@ -1060,8 +1060,8 @@ def make_contour(
     colors : str, sequence[str]
         Contour lines colors. Defaults to 'black'.
     draw_vertical_levels : bool
-        :obj:`True` to draw the underlying vertical levels, :obj:`False` otherwise.
-        Defaults to :obj:`False`.
+        :obj:``True`` to draw the underlying vertical levels, :obj:``False`` otherwise.
+        Defaults to :obj:``False``.
     """
     # shortcuts
     ni, nk = field.shape
@@ -1145,8 +1145,8 @@ def make_contourf(
         Name of the Matplotlib's color map to be used. All the color maps provided
         by Matplotlib, as well as the corresponding inverted versions, are available.
     cbar_on : bool
-        :obj:`True` to show the colorbar, :obj:`False` otherwise.
-        Defaults to :obj:`True`.
+        :obj:``True`` to show the colorbar, :obj:``False`` otherwise.
+        Defaults to :obj:``True``.
     cbar_levels : int
         Number of levels for the colorbar. Defaults to 14.
     cbar_ticks_step : int
@@ -1177,11 +1177,11 @@ def make_contourf(
     cbar_format : str
         Format for colorbar tick labels.
     cbar_extend : bool
-        :obj:`False` to set to white all values outside the range of the colorbar,
-        :obj:`True` to more nicely extends the colorbar. Defaults to :obj:`True`.
+        :obj:``False`` to set to white all values outside the range of the colorbar,
+        :obj:``True`` to more nicely extends the colorbar. Defaults to :obj:``True``.
     draw_vertical_levels : bool
-        :obj:`True` to draw the underlying vertical levels, :obj:`False` otherwise.
-        Defaults to :obj:`False`.
+        :obj:``True`` to draw the underlying vertical levels, :obj:``False`` otherwise.
+        Defaults to :obj:``False``.
     """
     # get keyword arguments
     fontsize = kwargs.get("fontsize", 12)
@@ -1346,8 +1346,8 @@ def make_quiver(
         are available. If not specified, no color map will be used, and the
         arrows will draw black.
     cbar_on : bool
-        :obj:`True` to show the colorbar, :obj:`False` otherwise.
-        Defaults to :obj:`True`.
+        :obj:``True`` to show the colorbar, :obj:``False`` otherwise.
+        Defaults to :obj:``True``.
     cbar_levels : int
         Number of levels for the colorbar. Defaults to 14.
     cbar_ticks_step : int
@@ -1378,8 +1378,8 @@ def make_quiver(
     cbar_format : str
         Format for colorbar tick labels.
     quiverkey_on : bool
-        :obj:`True` to show the quiver key box, :obj:`False` otherwise.
-        Defaults to :obj:`False`.
+        :obj:``True`` to show the quiver key box, :obj:``False`` otherwise.
+        Defaults to :obj:``False``.
     quiverkey_loc : Sequence[float]
         2-item tuple specifying the location in normalized figure coordinates
         of the quiver key box.
@@ -1394,8 +1394,8 @@ def make_quiver(
     quiverkey_fontproperties : dict
         Dictionary specifying font settings for the quiver key label.
     draw_vertical_levels : bool
-        :obj:`True` to draw the underlying vertical levels, :obj:`False` otherwise.
-        Defaults to :obj:`False`.
+        :obj:``True`` to draw the underlying vertical levels, :obj:``False`` otherwise.
+        Defaults to :obj:``False``.
     """
     # get keyword arguments
     fontsize = kwargs.get("fontsize", 12)
@@ -1640,9 +1640,9 @@ def make_cdf(data: np.ndarray, ax: plt.Axes, **kwargs) -> None:
     fontsize : int
         The fontsize to be used. Defaults to 16.
     data_on_xaxis : bool
-        :obj:`True` to place the data values on the x-axis,
-        :obj:`False` to place the data values on the y-axis.
-        Defaults to :obj:`False`.
+        :obj:``True`` to place the data values on the x-axis,
+        :obj:``False`` to place the data values on the y-axis.
+        Defaults to :obj:``False``.
     number_of_bins : int
         Number of bins to be used to compute the CDF. Defaults to 1000.
     threshold : float

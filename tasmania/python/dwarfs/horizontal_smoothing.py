@@ -71,7 +71,7 @@ class HorizontalSmoothing(abc.ABC):
         nb : int
             Number of boundary layers.
         gt_powered : bool
-            `True` to harness GT4Py, `False` for a vanilla Numpy implementation.
+            ``True`` to harness GT4Py, ``False`` for a vanilla Numpy implementation.
         backend : str
             The GT4Py backend.
         backend_opts : dict
@@ -85,14 +85,15 @@ class HorizontalSmoothing(abc.ABC):
         default_origin : tuple[int]
             Storage default origin.
         rebuild : bool
-            `True` to trigger the stencils compilation at any class instantiation,
-            `False` to rely on the caching mechanism implemented by GT4Py.
+            ``True`` to trigger the stencils compilation at any class instantiation,
+            ``False`` to rely on the caching mechanism implemented by GT4Py.
         managed_memory : `bool`, optional
-            `True` to allocate the storages as managed memory, `False` otherwise.
+            ``True`` to allocate the storages as managed memory, ``False`` otherwise.
         """
         # store input arguments needed at run-time
         self._shape = shape
         self._nb = nb
+        self._gt_powered = gt_powered
         self._exec_info = exec_info
 
         # initialize the diffusivity
@@ -199,7 +200,7 @@ class HorizontalSmoothing(abc.ABC):
         nb : `int`, optional
             Number of boundary layers.
         gt_powered : `bool`, optional
-            `True` to harness GT4Py, `False` for a vanilla Numpy implementation.
+            ``True`` to harness GT4Py, ``False`` for a vanilla Numpy implementation.
         backend : `str`, optional
             The GT4Py backend.
         backend_opts : `dict`, optional
@@ -213,10 +214,10 @@ class HorizontalSmoothing(abc.ABC):
         default_origin : `tuple[int]`, optional
             Storage default origin.
         rebuild : `bool`, optional
-            `True` to trigger the stencils compilation at any class instantiation,
-            `False` to rely on the caching mechanism implemented by GT4Py.
+            ``True`` to trigger the stencils compilation at any class instantiation,
+            ``False`` to rely on the caching mechanism implemented by GT4Py.
         managed_memory : `bool`, optional
-            `True` to allocate the storages as managed memory, `False` otherwise.
+            ``True`` to allocate the storages as managed memory, ``False`` otherwise.
 
         Return
         ------

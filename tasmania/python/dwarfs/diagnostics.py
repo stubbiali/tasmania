@@ -60,11 +60,11 @@ class HorizontalVelocity:
         grid : tasmania.Grid
             The underlying grid.
         staggering : `bool`, optional
-            `True` if the velocity components should be computed
-            on the staggered grid, `False` to collocate the velocity
+            ``True`` if the velocity components should be computed
+            on the staggered grid, ``False`` to collocate the velocity
             components in the mass points.
         gt_powered : `bool`, optional
-            `True` to harness GT4Py, `False` for a vanilla Numpy implementation.
+            ``True`` to harness GT4Py, ``False`` for a vanilla Numpy implementation.
         backend : `str`, optional
             The GT4Py backend.
         backend_opts : `dict`, optional
@@ -76,8 +76,8 @@ class HorizontalVelocity:
         exec_info : `dict`, optional
             Dictionary which will store statistics and diagnostics gathered at run time.
         rebuild : `bool`, optional
-            `True` to trigger the stencils compilation at any class instantiation,
-            `False` to rely on the caching mechanism implemented by GT4Py.
+            ``True`` to trigger the stencils compilation at any class instantiation,
+            ``False`` to rely on the caching mechanism implemented by GT4Py.
         """
         # store input arguments needed at run-time
         self._grid = grid
@@ -358,10 +358,10 @@ class WaterConstituent:
         grid : tasmania.Grid
             The underlying grid.
         clipping : `bool`, optional
-            `True` to clip the negative values of the output fields,
-            `False` otherwise. Defaults to `False`.
+            ``True`` to clip the negative values of the output fields,
+            ``False`` otherwise. Defaults to ``False``.
         gt_powered : `bool`, optional
-            `True` to harness GT4Py, `False` for a vanilla Numpy implementation.
+            ``True`` to harness GT4Py, ``False`` for a vanilla Numpy implementation.
         backend : `str`, optional
             The GT4Py backend.
         backend_opts : `dict`, optional
@@ -371,8 +371,8 @@ class WaterConstituent:
         exec_info : `dict`, optional
             Dictionary which will store statistics and diagnostics gathered at run time.
         rebuild : `bool`, optional
-            `True` to trigger the stencils compilation at any class instantiation,
-            `False` to rely on the caching mechanism implemented by GT4Py.
+            ``True`` to trigger the stencils compilation at any class instantiation,
+            ``False`` to rely on the caching mechanism implemented by GT4Py.
         """
         # store input arguments needed at run-time
         self._grid = grid
