@@ -33,6 +33,7 @@ from tasmania.python.utils import taz_types
 from tasmania.python.utils.data_utils import get_physical_constants
 from tasmania.python.utils.meteo_utils import convert_relative_humidity_to_water_vapor
 from tasmania.python.utils.storage_utils import (
+    get_asarray_function,
     get_dataarray_3d,
     get_storage_shape,
     ones,
@@ -159,6 +160,8 @@ def get_isentropic_state_from_brunt_vaisala_frequency(
             managed_memory=managed_memory,
         )
 
+    asarray = get_asarray_function(gt_powered, backend)
+
     # initialize the velocity components
     u = allocate()
     u[: nx + 1, :ny, :nz] = x_velocity.to_units("m s^-1").values.item()
@@ -166,12 +169,13 @@ def get_isentropic_state_from_brunt_vaisala_frequency(
     v[:nx, : ny + 1, :nz] = y_velocity.to_units("m s^-1").values.item()
 
     # compute the geometric height of the half levels
-    theta1d = grid.z.to_units("K").values[np.newaxis, np.newaxis, :]
+    theta1d = allocate()
+    theta1d[:, :, :nz] = asarray(grid.z.to_units("K").values[np.newaxis, np.newaxis, :])
     h = allocate()
-    h[:nx, :ny, nz] = hs
+    h[:nx, :ny, nz] = asarray(hs)
     for k in range(nz - 1, -1, -1):
         h[:nx, :ny, k : k + 1] = h[:nx, :ny, k + 1 : k + 2] + g * dz / (
-            (bv ** 2) * theta1d[:, :, k : k + 1]
+            (bv ** 2) * theta1d[:nx, :ny, k : k + 1]
         )
 
     # initialize the Exner function
@@ -179,7 +183,7 @@ def get_isentropic_state_from_brunt_vaisala_frequency(
     exn[:nx, :ny, nz] = cp
     for k in range(nz - 1, -1, -1):
         exn[:nx, :ny, k : k + 1] = exn[:nx, :ny, k + 1 : k + 2] - dz * (g ** 2) / (
-            (bv ** 2) * (theta1d[:, :, k : k + 1] ** 2)
+            (bv ** 2) * (theta1d[:nx, :ny, k : k + 1] ** 2)
         )
 
     # diagnose the air pressure
@@ -301,7 +305,10 @@ def get_isentropic_state_from_brunt_vaisala_frequency(
         )
         temp = allocate()
         temp[:nx, :ny, :nz] = (
-            0.5 * (exn[:nx, :ny, :nz] + exn[:nx, :ny, 1 : nz + 1]) * theta1d / cp
+            0.5
+            * (exn[:nx, :ny, :nz] + exn[:nx, :ny, 1 : nz + 1])
+            * theta1d[:nx, :ny, :nz]
+            / cp
         )
         state["air_temperature"] = get_dataarray_3d(
             temp,
@@ -330,9 +337,10 @@ def get_isentropic_state_from_brunt_vaisala_frequency(
         )
 
         # diagnose the mass fraction of water vapor
-        qv = convert_relative_humidity_to_water_vapor(
-            "tetens", p_unstg_, state["air_temperature"], rh_
-        )
+        # qv = convert_relative_humidity_to_water_vapor(
+        #     "tetens", p_unstg_, state["air_temperature"], rh_
+        # )
+        qv = allocate()
         state[mfwv] = get_dataarray_3d(
             qv, grid, "g g^-1", name=mfwv, grid_shape=(nx, ny, nz), set_coordinates=False
         )

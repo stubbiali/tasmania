@@ -237,13 +237,16 @@ class Relaxed(HorizontalBoundary):
         k = slice(0, mk)
 
         # the boundary values
-        field_ref = self.reference_state[field_name].to_units(field_units).values
+        field_ref = self.reference_state[field_name].to_units(field_units).data
         # xneg = np.repeat(field_ref[0:1, :], nr, axis=0)
         # xpos = np.repeat(field_ref[-1:, :], nr, axis=0)
         # yneg = np.repeat(field_ref[:, 0:1], nr, axis=1)
         # ypos = np.repeat(field_ref[:, -1:], nr, axis=1)
 
         if not self._gt_powered:
+            # field[:mi, :mj, :mk] -= g[:mi, :mj] * (
+            #     field[:mi, :mj, :mk] - field_ref[:mi, :mj, :mk]
+            # )
 
             # set the outermost layers
             field[:nb, :mj, k] = field_ref[:nb, :mj, k]
@@ -299,7 +302,7 @@ class Relaxed(HorizontalBoundary):
             if "at_v_locations" in field_name or "at_uv_locations" in field_name
             else self.nj
         )
-        field_ref = self.reference_state[field_name].to_units(field_units).values
+        field_ref = self.reference_state[field_name].to_units(field_units).data
         field[0, :mj] = field_ref[0, :mj]
         field[mi - 1, :mj] = field_ref[mi - 1, :mj]
 
@@ -317,7 +320,7 @@ class Relaxed(HorizontalBoundary):
             if "at_v_locations" in field_name or "at_uv_locations" in field_name
             else self.nj
         )
-        field_ref = self.reference_state[field_name].to_units(field_units).values
+        field_ref = self.reference_state[field_name].to_units(field_units).data
         field[:mi, 0] = field_ref[:mi, 0]
         field[:mi, mj - 1] = field_ref[:mi, mj - 1]
 
@@ -607,7 +610,7 @@ class Relaxed1DX(HorizontalBoundary):
         k = slice(0, mk)
 
         # the boundary values
-        field_ref = self.reference_state[field_name].to_units(field_units).values
+        field_ref = self.reference_state[field_name].to_units(field_units).data
         # xneg = np.repeat(field_ref[0:1, nb:-nb], nr, axis=0)
         # xpos = np.repeat(field_ref[-1:, nb:-nb], nr, axis=0)
 
@@ -652,7 +655,7 @@ class Relaxed1DX(HorizontalBoundary):
             if "at_v_locations" in field_name or "at_uv_locations" in field_name
             else self.nj
         )
-        field_ref = self.reference_state[field_name].to_units(field_units).values
+        field_ref = self.reference_state[field_name].to_units(field_units).data
         field[0, :mj] = field_ref[0, :mj]
         field[mi - 1, :mj] = field_ref[mi - 1, :mj]
 
@@ -670,7 +673,7 @@ class Relaxed1DX(HorizontalBoundary):
             if "at_v_locations" in field_name or "at_uv_locations" in field_name
             else self.nj
         )
-        field_ref = self.reference_state[field_name].to_units(field_units).values
+        field_ref = self.reference_state[field_name].to_units(field_units).data
         field[:mi, 0] = field_ref[:mi, 0]
         field[:mi, mj - 1] = field_ref[:mi, mj - 1]
 
@@ -941,7 +944,7 @@ class Relaxed1DY(HorizontalBoundary):
         k = slice(0, mk)
 
         # the boundary values
-        field_ref = self.reference_state[field_name].to_units(field_units).values
+        field_ref = self.reference_state[field_name].to_units(field_units).data
         # yneg = np.repeat(field_ref[nb:-nb, 0:1], nr, axis=1)
         # ypos = np.repeat(field_ref[nb:-nb, -1:], nr, axis=1)
 
@@ -986,7 +989,7 @@ class Relaxed1DY(HorizontalBoundary):
             if "at_v_locations" in field_name or "at_uv_locations" in field_name
             else self.nj
         )
-        field_ref = self.reference_state[field_name].to_units(field_units).values
+        field_ref = self.reference_state[field_name].to_units(field_units).data
         field[0, :mj] = field_ref[0, :mj]
         field[mi - 1, :mj] = field_ref[mi - 1, :mj]
 
@@ -1004,7 +1007,7 @@ class Relaxed1DY(HorizontalBoundary):
             if "at_v_locations" in field_name or "at_uv_locations" in field_name
             else self.nj
         )
-        field_ref = self.reference_state[field_name].to_units(field_units).values
+        field_ref = self.reference_state[field_name].to_units(field_units).data
         field[:mi, 0] = field_ref[:mi, 0]
         field[:mi, mj - 1] = field_ref[:mi, mj - 1]
 

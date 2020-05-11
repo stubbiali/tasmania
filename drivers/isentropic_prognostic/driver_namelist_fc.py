@@ -30,8 +30,6 @@ from drivers.isentropic_prognostic import namelist_fc
 from drivers.isentropic_prognostic.utils import print_info
 
 
-gt.storage.prepare_numpy()
-
 # ============================================================
 # The namelist
 # ============================================================
@@ -52,6 +50,12 @@ nl = locals()["namelist"]
 taz.feed_module(target=nl, source=namelist_fc)
 
 # ============================================================
+# Prepare NumPy
+# ============================================================
+if nl.gt_powered:
+    gt.storage.prepare_numpy()
+
+# ============================================================
 # The underlying domain
 # ============================================================
 domain = taz.Domain(
@@ -67,8 +71,7 @@ domain = taz.Domain(
     topography_type=nl.topo_type,
     topography_kwargs=nl.topo_kwargs,
     gt_powered=nl.gt_powered,
-    backend=nl.gt_kwargs["backend"],
-    dtype=nl.gt_kwargs["dtype"],
+    **nl.gt_kwargs
 )
 pgrid = domain.physical_grid
 cgrid = domain.numerical_grid

@@ -437,7 +437,7 @@ class HorizontalBoundary(abc.ABC):
             except KeyError:
                 raise KeyError("Field {} misses units attribute.".format(field_name))
             self.enforce_field(
-                state[field_name].values,
+                state[field_name].data,
                 field_name=field_name,
                 field_units=field_units,
                 time=time,

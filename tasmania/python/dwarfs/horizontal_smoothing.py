@@ -30,7 +30,8 @@ from gt4py import gtscript
 # from gt4py.__gtscript__ import computation, interval, PARALLEL
 
 from tasmania.python.utils import taz_types
-from tasmania.python.utils.storage_utils import zeros
+from tasmania.python.utils.storage_utils import get_asarray_function, zeros
+from tasmania.python.utils.dict_utils import stencil_copy_defs
 
 
 class HorizontalSmoothing(abc.ABC):
@@ -114,13 +115,22 @@ class HorizontalSmoothing(abc.ABC):
             mask=(True, True, True),
             managed_memory=managed_memory,
         )
-        self._gamma[...] = gamma
+        asarray = get_asarray_function(gt_powered, backend)
+        self._gamma[...] = asarray(gamma)
 
         # initialize the underlying stencil
         if gt_powered:
             self._stencil = gtscript.stencil(
                 definition=self._stencil_gt_defs,
                 name=self.__class__.__name__,
+                backend=backend,
+                build_info=build_info,
+                rebuild=rebuild,
+                dtypes={"dtype": dtype},
+                **(backend_opts or {})
+            )
+            self._stencil_copy = gtscript.stencil(
+                definition=stencil_copy_defs,
                 backend=backend,
                 build_info=build_info,
                 rebuild=rebuild,
@@ -491,9 +501,9 @@ class FirstOrder1DX(HorizontalSmoothing):
         out_phi: gtscript.Field["dtype"],
     ) -> None:
         with computation(PARALLEL), interval(...):
-            out_phi = (1.0 - 0.5 * in_gamma[0, 0, 0]) * in_phi[0, 0, 0] + 0.25 * in_gamma[
+            out_phi = (1.0 - 0.5 * in_gamma[0, 0, 0]) * in_phi[
                 0, 0, 0
-            ] * (in_phi[-1, 0, 0] + in_phi[1, 0, 0])
+            ] + 0.25 * in_gamma[0, 0, 0] * (in_phi[-1, 0, 0] + in_phi[1, 0, 0])
 
 
 class FirstOrder1DY(HorizontalSmoothing):
@@ -591,9 +601,9 @@ class FirstOrder1DY(HorizontalSmoothing):
         out_phi: gtscript.Field["dtype"],
     ) -> None:
         with computation(PARALLEL), interval(...):
-            out_phi = (1.0 - 0.5 * in_gamma[0, 0, 0]) * in_phi[0, 0, 0] + 0.25 * in_gamma[
+            out_phi = (1.0 - 0.5 * in_gamma[0, 0, 0]) * in_phi[
                 0, 0, 0
-            ] * (in_phi[0, -1, 0] + in_phi[0, 1, 0])
+            ] + 0.25 * in_gamma[0, 0, 0] * (in_phi[0, -1, 0] + in_phi[0, 1, 0])
 
 
 class SecondOrder(HorizontalSmoothing):
@@ -661,10 +671,27 @@ class SecondOrder(HorizontalSmoothing):
 
         # set the outermost lateral layers of the output field,
         # not affected by the stencil
-        phi_out[:nb, :] = phi[:nb, :]
-        phi_out[-nb:, :] = phi[-nb:, :]
-        phi_out[nb:-nb, :nb] = phi[nb:-nb, :nb]
-        phi_out[nb:-nb, -nb:] = phi[nb:-nb, -nb:]
+        if not self._gt_powered:
+            phi_out[:nb, :] = phi[:nb, :]
+            phi_out[-nb:, :] = phi[-nb:, :]
+            phi_out[nb:-nb, :nb] = phi[nb:-nb, :nb]
+            phi_out[nb:-nb, -nb:] = phi[nb:-nb, -nb:]
+        else:
+            self._stencil_copy(
+                src=phi, dst=phi_out, origin=(0, 0, 0), domain=(nb, ny, nz)
+            )
+            self._stencil_copy(
+                src=phi, dst=phi_out, origin=(nx - nb, 0, 0), domain=(nb, ny, nz)
+            )
+            self._stencil_copy(
+                src=phi, dst=phi_out, origin=(nb, 0, 0), domain=(nx - 2 * nb, nb, nz)
+            )
+            self._stencil_copy(
+                src=phi,
+                dst=phi_out,
+                origin=(nb, ny - nb, 0),
+                domain=(nx - 2 * nb, nb, nz),
+            )
 
     @staticmethod
     def _stencil_numpy(

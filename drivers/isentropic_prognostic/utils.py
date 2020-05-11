@@ -25,25 +25,25 @@ def print_info(dt, i, nl, pgrid, state):
         u = (
             state["x_momentum_isentropic"]
             .to_units("kg m^-1 K^-1 s^-1")
-            .values[3:-4, 3:-4, :-1]
+            .data[3:-4, 3:-4, :-1]
             / state["air_isentropic_density"]
             .to_units("kg m^-2 K^-1")
-            .values[3:-4, 3:-4, :-1]
+            .data[3:-4, 3:-4, :-1]
         )
         v = (
             state["y_momentum_isentropic"]
             .to_units("kg m^-1 K^-1 s^-1")
-            .values[3:-4, 3:-4, :-1]
+            .data[3:-4, 3:-4, :-1]
             / state["air_isentropic_density"]
             .to_units("kg m^-2 K^-1")
-            .values[3:-4, 3:-4, :-1]
+            .data[3:-4, 3:-4, :-1]
         )
 
         umax, umin = u.max().item(), u.min().item()
         vmax, vmin = v.max().item(), v.min().item()
         cfl = max(
-            umax * dt.total_seconds() / pgrid.dx.to_units("m").values.item(),
-            vmax * dt.total_seconds() / pgrid.dy.to_units("m").values.item(),
+            umax * dt.total_seconds() / pgrid.dx.to_units("m").data.item(),
+            vmax * dt.total_seconds() / pgrid.dy.to_units("m").data.item(),
         )
 
         # print useful info
@@ -57,33 +57,31 @@ def print_info(dt, i, nl, pgrid, state):
     if (nl.print_moist_frequency > 0) and ((i + 1) % nl.print_moist_frequency == 0):
         qv_max = (
             state["mass_fraction_of_water_vapor_in_air"]
-            .values[3:-4, 3:-4, :-1]
+            .data[3:-4, 3:-4, :-1]
             .max()
             .item()
             * 1e3
         )
         qc_max = (
             state["mass_fraction_of_cloud_liquid_water_in_air"]
-            .values[3:-4, 3:-4, :-1]
+            .data[3:-4, 3:-4, :-1]
             .max()
             .item()
             * 1e3
         )
         qr_max = (
             state["mass_fraction_of_precipitation_water_in_air"]
-            .values[3:-4, 3:-4, :-1]
+            .data[3:-4, 3:-4, :-1]
             .max()
             .item()
             * 1e3
         )
         if "precipitation" in state:
-            prec_max = (
-                state["precipitation"].to_units("mm hr^-1").values[3:-4, 3:-4].max()
-            )
+            prec_max = state["precipitation"].to_units("mm hr^-1").data[3:-4, 3:-4].max()
             accprec_max = (
                 state["accumulated_precipitation"]
                 .to_units("mm")
-                .values[3:-4, 3:-4]
+                .data[3:-4, 3:-4]
                 .max()
                 .item()
             )

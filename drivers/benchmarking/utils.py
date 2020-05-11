@@ -25,18 +25,18 @@ def print_info(dt, i, nl, pgrid, state):
         u = (
             state["x_momentum_isentropic"]
             .to_units("kg m^-1 K^-1 s^-1")
-            .values[3:-4, 3:-4, :-1]
+            .data[3:-4, 3:-4, :-1]
             / state["air_isentropic_density"]
             .to_units("kg m^-2 K^-1")
-            .values[3:-4, 3:-4, :-1]
+            .data[3:-4, 3:-4, :-1]
         )
         v = (
             state["y_momentum_isentropic"]
             .to_units("kg m^-1 K^-1 s^-1")
-            .values[3:-4, 3:-4, :-1]
+            .data[3:-4, 3:-4, :-1]
             / state["air_isentropic_density"]
             .to_units("kg m^-2 K^-1")
-            .values[3:-4, 3:-4, :-1]
+            .data[3:-4, 3:-4, :-1]
         )
 
         umax, umin = u.max().item(), u.min().item()

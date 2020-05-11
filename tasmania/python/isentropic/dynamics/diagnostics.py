@@ -31,7 +31,7 @@ from gt4py import gtscript, __externals__
 
 from tasmania.python.utils import taz_types
 from tasmania.python.utils.data_utils import get_physical_constants
-from tasmania.python.utils.storage_utils import zeros
+from tasmania.python.utils.storage_utils import get_asarray_function, zeros
 
 if TYPE_CHECKING:
     from tasmania.python.domain.grid import Grid
@@ -134,6 +134,9 @@ class IsentropicDiagnostics:
         assert storage_shape[1] >= ny, error_msg
         assert storage_shape[2] >= nz + 1, error_msg
 
+        # get proper asarray function
+        self._asarray = get_asarray_function(gt_powered, backend)
+
         # allocate auxiliary fields
         self._theta = zeros(
             storage_shape,
@@ -144,9 +147,9 @@ class IsentropicDiagnostics:
             mask=[True, True, True],
             managed_memory=managed_memory,
         )
-        self._theta[:nx, :ny, : nz + 1] = grid.z_on_interface_levels.to_units(
-            "K"
-        ).values[np.newaxis, np.newaxis, :]
+        self._theta[:nx, :ny, : nz + 1] = self._asarray(
+            grid.z_on_interface_levels.to_units("K").values[np.newaxis, np.newaxis, :]
+        )
         self._topo = zeros(
             storage_shape,
             gt_powered=gt_powered,
@@ -248,7 +251,9 @@ class IsentropicDiagnostics:
         dz = self._grid.dz.to_units("K").values.item()
 
         # set the topography
-        self._topo[:nx, :ny, nz] = self._grid.topography.profile.to_units("m").values
+        self._topo[:nx, :ny, nz] = self._asarray(
+            self._grid.topography.profile.to_units("m").values
+        )
 
         # retrieve all the diagnostic variables
         self._stencil_diagnostic_variables(
@@ -290,7 +295,9 @@ class IsentropicDiagnostics:
         theta_s = self._grid.z_on_interface_levels.to_units("K").values[-1]
 
         # set the topography
-        self._topo[:nx, :ny, nz] = self._grid.topography.profile.to_units("m").values
+        self._topo[:nx, :ny, nz] = self._asarray(
+            self._grid.topography.profile.to_units("m").values
+        )
 
         # run the stencil
         self._stencil_montgomery(
@@ -329,7 +336,9 @@ class IsentropicDiagnostics:
         dz = self._grid.dz.to_units("K").values.item()
 
         # set the topography
-        self._topo[:nx, :ny, nz] = self._grid.topography.profile.to_units("m").values
+        self._topo[:nx, :ny, nz] = self._asarray(
+            self._grid.topography.profile.to_units("m").values
+        )
 
         # run the stencil
         self._stencil_height(

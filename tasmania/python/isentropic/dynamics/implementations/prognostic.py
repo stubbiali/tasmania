@@ -261,7 +261,20 @@ def step_forward_euler_gt(
                 dy=dy,
             )
         else:
-            flux_s_x, flux_s_y, _, _, _, _, flux_sqv_x, flux_sqv_y, flux_sqc_x, flux_sqc_y, flux_sqr_x, flux_sqr_y = fluxer(
+            (
+                flux_s_x,
+                flux_s_y,
+                _,
+                _,
+                _,
+                _,
+                flux_sqv_x,
+                flux_sqv_y,
+                flux_sqc_x,
+                flux_sqc_y,
+                flux_sqr_x,
+                flux_sqr_y,
+            ) = fluxer(
                 s=s_int,
                 u=u_int,
                 v=v_int,
@@ -759,7 +772,7 @@ class RK3WSSI(IsentropicPrognostic):
 
         # extract the upper boundary conditions on the pressure field and
         # the off-centering parameter for the semi-implicit integrator
-        self._pt = kwargs["pt"].to_units("Pa").values.item() if "pt" in kwargs else 0.0
+        self._pt = kwargs["pt"].to_units("Pa").data.item() if "pt" in kwargs else 0.0
         self._eps = kwargs.get("eps", 0.5)
         assert (
             0.0 <= self._eps <= 1.0

@@ -31,8 +31,6 @@ import time
 from drivers.burgers import namelist_fc
 
 
-gt.storage.prepare_numpy()
-
 # ============================================================
 # The namelist
 # ============================================================
@@ -53,6 +51,12 @@ nl = locals()["namelist"]
 taz.feed_module(target=nl, source=namelist_fc)
 
 # ============================================================
+# Prepare NumPy
+# ============================================================
+if nl.gt_powered:
+    gt.storage.prepare_numpy()
+
+# ============================================================
 # The underlying domain
 # ============================================================
 domain = taz.Domain(
@@ -67,8 +71,7 @@ domain = taz.Domain(
     horizontal_boundary_kwargs=nl.hb_kwargs,
     topography_type="flat",
     gt_powered=nl.gt_powered,
-    backend=nl.gt_kwargs["backend"],
-    dtype=nl.gt_kwargs["dtype"],
+    **nl.gt_kwargs
 )
 pgrid = domain.physical_grid
 cgrid = domain.numerical_grid
@@ -150,11 +153,11 @@ for i in range(nt):
     compute_time += time.time() - compute_time_start
 
     if (nl.print_frequency > 0) and ((i + 1) % nl.print_frequency == 0) or i + 1 == nt:
-        dx = pgrid.dx.to_units("m").values.item()
-        dy = pgrid.dy.to_units("m").values.item()
+        dx = pgrid.dx.to_units("m").data.item()
+        dy = pgrid.dy.to_units("m").data.item()
 
-        u = state["x_velocity"].to_units("m s^-1").values[3:-3, 3:-3, :]
-        v = state["y_velocity"].to_units("m s^-1").values[3:-3, 3:-3, :]
+        u = state["x_velocity"].to_units("m s^-1").data[3:-3, 3:-3, :]
+        v = state["y_velocity"].to_units("m s^-1").data[3:-3, 3:-3, :]
 
         max_u = u.max()
         max_v = v.max()
@@ -189,9 +192,15 @@ if nl.save and nl.filename is not None:
 # stop the timer
 wall_time = time.time() - wall_time_start
 
+# restore numpy
+if nl.gt_powered:
+    gt.storage.restore_numpy()
+
 # compute the error
-gt.storage.restore_numpy()
-u = np.asarray(state["x_velocity"].values)
+try:
+    u = np.asarray(state["x_velocity"].data)
+except ValueError:
+    u = state["x_velocity"].data.get()
 uex = zsof(state["time"], cgrid, field_name="x_velocity", field_units="m s^-1")
 print("RMSE(u) = {:.5E} m/s".format(np.linalg.norm(u - uex) / np.sqrt(u.size)))
 

@@ -32,7 +32,7 @@ from gt4py import gtscript
 
 from tasmania.python.utils import taz_types
 from tasmania.python.utils.gtscript_utils import stencil_copy_defs
-from tasmania.python.utils.storage_utils import zeros
+from tasmania.python.utils.storage_utils import get_asarray_function, zeros
 from tasmania.python.utils.utils import greater_or_equal_than as ge
 
 if TYPE_CHECKING:
@@ -127,7 +127,8 @@ class VerticalDamping(abc.ABC):
             mask=(True, True, True),
             managed_memory=managed_memory,
         )
-        self._rmat[...] = r[np.newaxis, np.newaxis, :]
+        asarray = get_asarray_function(gt_powered, backend)
+        self._rmat[...] = asarray(r[np.newaxis, np.newaxis, :])
 
         # instantiate the underlying stencil
         self._gt_powered = gt_powered
