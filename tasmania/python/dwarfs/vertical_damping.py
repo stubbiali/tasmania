@@ -328,15 +328,6 @@ class Rayleigh(VerticalDamping):
             storage_shape,
             managed_memory,
         )
-        if gt_powered:
-            self._stencil_copy = gtscript.stencil(
-                definition=stencil_copy_defs,
-                backend=backend,
-                build_info=build_info,
-                rebuild=rebuild,
-                dtypes={"dtype": dtype},
-                **(backend_opts or {})
-            )
 
     def __call__(self, dt, field_now, field_new, field_ref, field_out):
         # shortcuts
@@ -361,13 +352,10 @@ class Rayleigh(VerticalDamping):
                 exec_info=self._exec_info,
             )
 
-        # set the lowermost layers, outside of the damping region
-        if not self._gt_powered:
-            field_out[:, :, dnk:] = field_new[:, :, dnk:]
-        else:
-            self._stencil_copy(
-                field_new, field_out, origin=(0, 0, dnk), domain=(ni, nj, nk - dnk)
-            )
+        if nk > dnk:
+            # set the lowermost layers, outside of the damping region
+            if not self._gt_powered:
+                field_out[:, :, dnk:nk] = field_new[:, :, dnk:nk]
 
     @staticmethod
     def _stencil_numpy(
@@ -401,4 +389,7 @@ class Rayleigh(VerticalDamping):
         dt: float
     ) -> None:
         with computation(PARALLEL), interval(...):
-            out_phi = in_phi_new - dt * in_rmat * (in_phi_now - in_phi_ref)
+            if in_rmat > 0.0:
+                out_phi = in_phi_new - dt * in_rmat * (in_phi_now - in_phi_ref)
+            else:
+                out_phi = in_phi_new

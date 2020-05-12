@@ -241,7 +241,12 @@ def stencil_relax_defs(
     out_phi: gtscript.Field["dtype"],
 ) -> None:
     with computation(PARALLEL), interval(...):
-        out_phi = in_phi - in_gamma * (in_phi - in_phi_ref)
+        if in_gamma == 0.0:
+            out_phi = in_phi
+        elif in_gamma == 1.0:
+            out_phi = in_phi_ref
+        else:
+            out_phi = in_phi - in_gamma * (in_phi - in_phi_ref)
 
 
 def stencil_irelax_defs(
@@ -250,4 +255,9 @@ def stencil_irelax_defs(
     inout_phi: gtscript.Field["dtype"],
 ) -> None:
     with computation(PARALLEL), interval(...):
-        inout_phi = inout_phi - in_gamma * (inout_phi - in_phi_ref)
+        if in_gamma == 0.0:
+            inout_phi = inout_phi
+        elif in_gamma == 1.0:
+            inout_phi = in_phi_ref
+        else:
+            inout_phi = inout_phi - in_gamma * (inout_phi - in_phi_ref)
