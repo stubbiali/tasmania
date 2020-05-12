@@ -38,7 +38,7 @@ class BurgersDynamicalCore(DynamicalCore):
     def __init__(
         self,
         domain: "Domain",
-        intermediate_tendencies: Optional[taz_types.tendency_component_t] = None,
+        intermediate_tendency_component: Optional[taz_types.tendency_component_t] = None,
         time_integration_scheme: str = "forward_euler",
         flux_scheme: str = "upwind",
         gt_powered: bool = False,
@@ -57,29 +57,28 @@ class BurgersDynamicalCore(DynamicalCore):
         ----------
         domain : tasmania.Domain
             The :class:`~tasmania.Domain` holding the grid underneath.
-        intermediate_tendencies : `obj`, optional
+        intermediate_tendency_component : `obj`, optional
             An instance of either
 
-                * :class:`sympl.TendencyComponent`,
-                * :class:`sympl.TendencyComponentComposite`,
-                * :class:`sympl.ImplicitTendencyComponent`,
-                * :class:`sympl.ImplicitTendencyComponentComposite`, or
-                * :class:`tasmania.ConcurrentCoupling`
+            * :class:`~sympl.TendencyComponent`,
+            * :class:`~sympl.TendencyComponentComposite`,
+            * :class:`~sympl.ImplicitTendencyComponent`,
+            * :class:`~sympl.ImplicitTendencyComponentComposite`, or
+            * :class:`~tasmania.ConcurrentCoupling`
 
-            calculating the intermediate physical tendencies.
-            Here, *intermediate* refers to the fact that these physical
-            packages are called *before* each stage of the dynamical core
-            to calculate the physical tendencies.
+            prescribing physics tendencies and retrieving diagnostic quantities.
+            This object is called at the beginning of each stage on the latest
+            provisional state.
         time_integration_scheme : `str`, optional
             String specifying the time integration scheme to be used.
-            Defaults to 'forward_euler'. See :class:`tasmania.BurgersStepper`
+            Defaults to "forward_euler". See :class:`~tasmania.BurgersStepper`
             for all available options.
         flux_scheme : `str`, optional
             String specifying the advective flux scheme to be used.
-            Defaults to 'upwind'. See :class:`tasmania.BurgersAdvection`
+            Defaults to "upwind". See :class:`~tasmania.BurgersAdvection`
             for all available options.
         gt_powered : `bool`, optional
-            ``True`` to perform all the intensive math operations harnessing GT4Py.
+            ``True`` to harness GT4Py, ``False`` for a vanilla NumPy implementation.
         backend : `str`, optional
             The GT4Py backend.
         backend_opts : `dict`, optional
@@ -91,7 +90,7 @@ class BurgersDynamicalCore(DynamicalCore):
         exec_info : `dict`, optional
             Dictionary which will store statistics and diagnostics gathered at run time.
         default_origin : `tuple[int]`, optional
-            Storage default origin.
+            Default origin of the storages.
         rebuild : `bool`, optional
             ``True`` to trigger the stencils compilation at any class instantiation,
             ``False`` to rely on the caching mechanism implemented by GT4Py.
@@ -106,11 +105,11 @@ class BurgersDynamicalCore(DynamicalCore):
         super().__init__(
             domain,
             grid_type="numerical",
-            intermediate_tendencies=intermediate_tendencies,
-            intermediate_diagnostics=None,
+            intermediate_tendency_component=intermediate_tendency_component,
+            intermediate_diagnostic_component=None,
             substeps=0,
-            fast_tendencies=None,
-            fast_diagnostics=None,
+            fast_tendency_component=None,
+            fast_diagnostic_component=None,
             gt_powered=gt_powered,
             backend=backend,
             backend_opts=backend_opts,
@@ -140,7 +139,7 @@ class BurgersDynamicalCore(DynamicalCore):
         )
 
     @property
-    def _input_properties(self) -> taz_types.properties_dict_t:
+    def stage_input_properties(self) -> taz_types.properties_dict_t:
         g = self.grid
         dims = (g.grid_xy.x.dims[0], g.grid_xy.y.dims[0], g.z.dims[0])
         return {
@@ -149,11 +148,11 @@ class BurgersDynamicalCore(DynamicalCore):
         }
 
     @property
-    def _substep_input_properties(self) -> taz_types.properties_dict_t:
+    def substep_input_properties(self) -> taz_types.properties_dict_t:
         return {}
 
     @property
-    def _tendency_properties(self) -> taz_types.properties_dict_t:
+    def stage_tendency_properties(self) -> taz_types.properties_dict_t:
         g = self.grid
         dims = (g.grid_xy.x.dims[0], g.grid_xy.y.dims[0], g.z.dims[0])
         return {
@@ -162,11 +161,11 @@ class BurgersDynamicalCore(DynamicalCore):
         }
 
     @property
-    def _substep_tendency_properties(self) -> taz_types.properties_dict_t:
+    def substep_tendency_properties(self) -> taz_types.properties_dict_t:
         return {}
 
     @property
-    def _output_properties(self) -> taz_types.properties_dict_t:
+    def stage_output_properties(self) -> taz_types.properties_dict_t:
         g = self.grid
         dims = (g.grid_xy.x.dims[0], g.grid_xy.y.dims[0], g.z.dims[0])
         return {
@@ -175,7 +174,7 @@ class BurgersDynamicalCore(DynamicalCore):
         }
 
     @property
-    def _substep_output_properties(self) -> taz_types.properties_dict_t:
+    def substep_output_properties(self) -> taz_types.properties_dict_t:
         return {}
 
     @property
@@ -185,7 +184,7 @@ class BurgersDynamicalCore(DynamicalCore):
     def substep_fractions(self) -> int:
         return 1
 
-    def _allocate_output_state(self):
+    def allocate_output_state(self):
         grid = self.grid
         nx, ny = grid.nx, grid.ny
         gt_powered = self._gt_powered
@@ -219,7 +218,7 @@ class BurgersDynamicalCore(DynamicalCore):
 
         return {"x_velocity": u_da, "y_velocity": v_da}
 
-    def array_call(
+    def stage_array_call(
         self,
         stage: int,
         raw_state: taz_types.array_dict_t,

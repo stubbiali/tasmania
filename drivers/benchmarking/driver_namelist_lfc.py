@@ -30,8 +30,6 @@ from drivers.benchmarking import namelist_lfc
 from drivers.benchmarking.utils import print_info
 
 
-gt.storage.prepare_numpy()
-
 # ============================================================
 # The namelist
 # ============================================================
@@ -52,6 +50,12 @@ nl = locals()["namelist"]
 taz.feed_module(target=nl, source=namelist_lfc)
 
 # ============================================================
+# Prepare NumPy
+# ============================================================
+if nl.gt_powered:
+    gt.storage.prepare_numpy()
+
+# ============================================================
 # The underlying domain
 # ============================================================
 domain = taz.Domain(
@@ -66,8 +70,8 @@ domain = taz.Domain(
     horizontal_boundary_kwargs=nl.hb_kwargs,
     topography_type=nl.topo_type,
     topography_kwargs=nl.topo_kwargs,
-    backend=nl.gt_kwargs["backend"],
-    dtype=nl.gt_kwargs["dtype"],
+    gt_powered=nl.gt_powered,
+    **nl.gt_kwargs
 )
 pgrid = domain.physical_grid
 cgrid = domain.numerical_grid
@@ -85,6 +89,7 @@ if nl.isothermal:
         nl.y_velocity,
         nl.temperature,
         moist=False,
+        gt_powered=nl.gt_powered,
         backend=nl.gt_kwargs["backend"],
         dtype=nl.gt_kwargs["dtype"],
         default_origin=nl.gt_kwargs["default_origin"],
@@ -99,6 +104,7 @@ else:
         nl.y_velocity,
         nl.brunt_vaisala,
         moist=False,
+        gt_powered=nl.gt_powered,
         backend=nl.gt_kwargs["backend"],
         dtype=nl.gt_kwargs["dtype"],
         default_origin=nl.gt_kwargs["default_origin"],
@@ -108,7 +114,7 @@ else:
 domain.horizontal_boundary.reference_state = state
 
 # ============================================================
-# The slow tendencies
+# The slow tendency components
 # ============================================================
 args = []
 
@@ -118,6 +124,7 @@ if nl.coriolis:
         domain,
         grid_type="numerical",
         coriolis_parameter=nl.coriolis_parameter,
+        gt_powered=nl.gt_powered,
         **nl.gt_kwargs
     )
     args.append(cf)
@@ -131,6 +138,7 @@ if nl.diff:
         nl.diff_coeff_max,
         nl.diff_damp_depth,
         moist=False,
+        gt_powered=nl.gt_powered,
         **nl.gt_kwargs
     )
     args.append(diff)
@@ -138,24 +146,32 @@ if nl.diff:
 if nl.turbulence:
     # component implementing the Smagorinsky turbulence model
     turb = taz.IsentropicSmagorinsky(
-        domain, smagorinsky_constant=nl.smagorinsky_constant, **nl.gt_kwargs
+        domain,
+        smagorinsky_constant=nl.smagorinsky_constant,
+        gt_powered=nl.gt_powered,
+        **nl.gt_kwargs
     )
     args.append(turb)
 
 # wrap the components in a ConcurrentCoupling object
-slow_tends = taz.ConcurrentCoupling(
+slow_tendendy_component = taz.ConcurrentCoupling(
     *args, execution_policy="serial", gt_powered=nl.gt_powered, **nl.gt_kwargs
 )
 
 # ============================================================
-# The slow diagnostics
+# The slow diagnostic components
 # ============================================================
 args = []
 
 # component retrieving the diagnostic variables
 pt = state["air_pressure_on_interface_levels"][0, 0, 0]
 idv = taz.IsentropicDiagnostics(
-    domain, grid_type="numerical", moist=False, pt=pt, **nl.gt_kwargs
+    domain,
+    grid_type="numerical",
+    moist=False,
+    pt=pt,
+    gt_powered=nl.gt_powered,
+    **nl.gt_kwargs
 )
 args.append(idv)
 
@@ -167,16 +183,21 @@ if nl.smooth:
         nl.smooth_coeff,
         nl.smooth_coeff_max,
         nl.smooth_damp_depth,
+        gt_powered=nl.gt_powered,
         **nl.gt_kwargs
     )
     args.append(hs)
 
     # component calculating the velocity components
-    vc = taz.IsentropicVelocityComponents(domain, **nl.gt_kwargs)
+    vc = taz.IsentropicVelocityComponents(
+        domain, gt_powered=nl.gt_powered, **nl.gt_kwargs
+    )
     args.append(vc)
 
 # wrap the components in a DiagnosticComponentComposite object
-slow_diags = taz.DiagnosticComponentComposite(*args, execution_policy="serial")
+slow_diagnostic_component = taz.DiagnosticComponentComposite(
+    *args, execution_policy="serial"
+)
 
 # ============================================================
 # The dynamical core
@@ -185,11 +206,11 @@ dycore = taz.IsentropicDynamicalCore(
     domain,
     moist=False,
     # parameterizations
-    intermediate_tendencies=None,
-    intermediate_diagnostics=None,
+    intermediate_tendency_component=None,
+    intermediate_diagnostic_component=None,
     substeps=nl.substeps,
-    fast_tendencies=None,
-    fast_diagnostics=None,
+    fast_tendency_component=None,
+    fast_diagnostic_component=None,
     # numerical scheme
     time_integration_scheme=nl.time_integration_scheme,
     horizontal_flux_scheme=nl.horizontal_flux_scheme,
@@ -245,7 +266,7 @@ for i in range(nt):
     dycore.update_topography((i + 1) * dt)
 
     # calculate the slow tendencies
-    slow_tendencies, diagnostics = slow_tends(state, dt)
+    slow_tendencies, diagnostics = slow_tendendy_component(state, dt)
     state.update(diagnostics)
 
     # step the solution
@@ -255,7 +276,7 @@ for i in range(nt):
     dict_op.copy(state, state_new)
 
     # retrieve the slow diagnostics
-    diagnostics = slow_diags(state, dt)
+    diagnostics = slow_diagnostic_component(state, dt)
     state.update(diagnostics)
 
     compute_time += time.time() - compute_time_start
@@ -291,4 +312,8 @@ wall_time = time.time() - wall_time_start
 
 # print logs
 print("Total wall time: {}.".format(taz.get_time_string(wall_time)))
-print("Compute time: {}.".format(taz.get_time_string(compute_time)))
+print(
+    "Compute time: {}.".format(
+        taz.get_time_string(compute_time, print_milliseconds=True)
+    )
+)

@@ -30,8 +30,6 @@ from drivers.benchmarking import namelist_sus
 from drivers.benchmarking.utils import print_info
 
 
-gt.storage.prepare_numpy()
-
 # ============================================================
 # The namelist
 # ============================================================
@@ -52,6 +50,12 @@ nl = locals()["namelist"]
 taz.feed_module(target=nl, source=namelist_sus)
 
 # ============================================================
+# Prepare NumPy
+# ============================================================
+if nl.gt_powered:
+    gt.storage.prepare_numpy()
+
+# ============================================================
 # The underlying domain
 # ============================================================
 domain = taz.Domain(
@@ -67,8 +71,7 @@ domain = taz.Domain(
     topography_type=nl.topo_type,
     topography_kwargs=nl.topo_kwargs,
     gt_powered=nl.gt_powered,
-    backend=nl.gt_kwargs["backend"],
-    dtype=nl.gt_kwargs["dtype"],
+    **nl.gt_kwargs
 )
 pgrid = domain.physical_grid
 cgrid = domain.numerical_grid
@@ -118,11 +121,11 @@ dycore = taz.IsentropicDynamicalCore(
     domain,
     moist=False,
     # parameterizations
-    intermediate_tendencies=None,
-    intermediate_diagnostics=None,
+    intermediate_tendency_component=None,
+    intermediate_diagnostic_component=None,
     substeps=nl.substeps,
-    fast_tendencies=None,
-    fast_diagnostics=None,
+    fast_tendency_component=None,
+    fast_diagnostic_component=None,
     # numerical scheme
     time_integration_scheme=nl.time_integration_scheme,
     horizontal_flux_scheme=nl.horizontal_flux_scheme,
@@ -320,4 +323,8 @@ wall_time = time.time() - wall_time_start
 
 # print logs
 print("Total wall time: {}.".format(taz.get_time_string(wall_time)))
-print("Compute time: {}.".format(taz.get_time_string(compute_time)))
+print(
+    "Compute time: {}.".format(
+        taz.get_time_string(compute_time, print_milliseconds=True)
+    )
+)

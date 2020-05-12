@@ -53,13 +53,13 @@ class IsentropicDynamicalCore(DynamicalCore):
     def __init__(
         self,
         domain: "Domain",
-        intermediate_tendencies: Optional[taz_types.tendency_component_t] = None,
-        intermediate_diagnostics: Optional[
+        intermediate_tendency_component: Optional[taz_types.tendency_component_t] = None,
+        intermediate_diagnostic_component: Optional[
             Union[taz_types.diagnostic_component_t, taz_types.tendency_component_t]
         ] = None,
         substeps: int = 0,
-        fast_tendencies: Optional[taz_types.tendency_component_t] = None,
-        fast_diagnostics: Optional[taz_types.diagnostic_component_t] = None,
+        fast_tendency_component: Optional[taz_types.tendency_component_t] = None,
+        fast_diagnostic_component: Optional[taz_types.diagnostic_component_t] = None,
         moist: bool = False,
         time_integration_scheme: str = "forward_euler_si",
         horizontal_flux_scheme: str = "upwind",
@@ -98,69 +98,73 @@ class IsentropicDynamicalCore(DynamicalCore):
         ----------
         domain : tasmania.Domain
             The :class:`~tasmania.Domain` holding the grid underneath.
-        intermediate_tendencies : `obj`, optional
+        intermediate_tendency_component : `obj`, optional
             An instance of either
 
-                * :class:`sympl.TendencyComponent`,
-                * :class:`sympl.TendencyComponentComposite`,
-                * :class:`sympl.ImplicitTendencyComponent`,
-                * :class:`sympl.ImplicitTendencyComponentComposite`, or
-                * :class:`tasmania.ConcurrentCoupling`
+            * :class:`~sympl.TendencyComponent`,
+            * :class:`~sympl.TendencyComponentComposite`,
+            * :class:`~sympl.ImplicitTendencyComponent`,
+            * :class:`~sympl.ImplicitTendencyComponentComposite`, or
+            * :class:`~tasmania.ConcurrentCoupling`
 
-            calculating the intermediate physical tendencies.
-            Here, *intermediate* refers to the fact that these physical
-            packages are called *before* each stage of the dynamical core
-            to calculate the physical tendencies.
-        intermediate_diagnostics : `obj`, optional
+            prescribing physics tendencies and retrieving diagnostic quantities.
+            This object is called at the beginning of each stage on the latest
+            provisional state.
+        intermediate_diagnostic_component : `obj`, optional
             An instance of either
 
-                * :class:`sympl.DiagnosticComponent`,
-                * :class:`sympl.DiagnosticComponentComposite`, or
-                * :class:`tasmania.DiagnosticComponentComposite`
+            * :class:`sympl.TendencyComponent`,
+            * :class:`sympl.TendencyComponentComposite`,
+            * :class:`sympl.ImplicitTendencyComponent`,
+            * :class:`sympl.ImplicitTendencyComponentComposite`,
+            * :class:`tasmania.ConcurrentCoupling`,
+            * :class:`sympl.DiagnosticComponent`,
+            * :class:`sympl.DiagnosticComponentComposite`, or
+            * :class:`tasmania.DiagnosticComponentComposite`
 
-            retrieving diagnostics at the end of each stage, once the
-            sub-timestepping routine is over.
+            prescribing physics tendencies and retrieving diagnostic quantities.
+            This object is called at the end of each stage on the latest
+            provisional state, once the substepping routine is over.
         substeps : `int`, optional
-            Number of sub-steps to perform. Defaults to 0, meaning that no
-            sub-stepping technique is implemented.
-        fast_tendencies : `obj`, optional
+            Number of substeps to perform. Defaults to 0, meaning that no
+            form of substepping is carried out.
+        fast_tendency_component : `obj`, optional
             An instance of either
 
-                * :class:`sympl.TendencyComponent`,
-                * :class:`sympl.TendencyComponentComposite`,
-                * :class:`sympl.ImplicitTendencyComponent`,
-                * :class:`sympl.ImplicitTendencyComponentComposite`, or
-                * :class:`tasmania.ConcurrentCoupling`
+            * :class:`sympl.TendencyComponent`,
+            * :class:`sympl.TendencyComponentComposite`,
+            * :class:`sympl.ImplicitTendencyComponent`,
+            * :class:`sympl.ImplicitTendencyComponentComposite`, or
+            * :class:`tasmania.ConcurrentCoupling`
 
-            calculating the fast physical tendencies.
-            Here, *fast* refers to the fact that these physical packages are
-            called *before* each sub-step of any stage of the dynamical core
-            to calculate the physical tendencies.
-            This parameter is ignored if `substeps` argument is not positive.
-        fast_diagnostics : `obj`, optional
+            prescribing physics tendencies and retrieving diagnostic quantities.
+            This object is called at the beginning of each substep on the
+            latest provisional state. This parameter is ignored if ``substeps``
+            is not positive.
+        fast_diagnostic_component : `obj`, optional
             An instance of either
 
-                * :class:`sympl.DiagnosticComponent`,
-                * :class:`sympl.DiagnosticComponentComposite`, or
-                * :class:`tasmania.DiagnosticComponentComposite`
+            * :class:`sympl.DiagnosticComponent`,
+            * :class:`sympl.DiagnosticComponentComposite`, or
+            * :class:`tasmania.DiagnosticComponentComposite`
 
-            retrieving diagnostics at the end of each sub-step of any stage
-            of the dynamical core.
-            This parameter is ignored if `substeps` argument is not positive.
+            prescribing physics tendencies and retrieving diagnostic quantities.
+            This object is called at the end of each substep on the latest
+            provisional state.
         moist : bool
             ``True`` for a moist dynamical core, ``False`` otherwise.
             Defaults to ``False``.
         time_integration_scheme : str
             String specifying the time stepping method to implement.
-            See :class:`tasmania.IsentropiPrognostic`
-            for all available options. Defaults to 'forward_euler'.
+            See :class:`~tasmania.IsentropiPrognostic`
+            for all available options. Defaults to "forward_euler".
         horizontal_flux_scheme : str
             String specifying the numerical horizontal flux to use.
-            See :class:`tasmania.HorizontalIsentropicFlux`
-            for all available options. Defaults to 'upwind'.
+            See :class:`~tasmania.IsentropicHorizontalFlux`
+            for all available options. Defaults to "upwind".
         time_integration_properties : dict
             Additional properties to be passed to the constructor of
-            :class:`tasmania.IsentropicPrognostic` as keyword arguments.
+            :class:`~tasmania.IsentropicPrognostic` as keyword arguments.
         damp : `bool`, optional
             ``True`` to enable vertical damping, ``False`` otherwise.
             Defaults to ``True``.
@@ -170,8 +174,8 @@ class IsentropicDynamicalCore(DynamicalCore):
             of each timestep. Defaults to ``True``.
         damp_type : `str`, optional
             String specifying the vertical damping scheme to implement.
-            See :class:`tasmania.VerticalDamping` for all available options.
-            Defaults to 'rayleigh'.
+            See :class:`~tasmania.VerticalDamping` for all available options.
+            Defaults to "rayleigh".
         damp_depth : `int`, optional
             Number of vertical layers in the damping region. Defaults to 15.
         damp_max : `float`, optional
@@ -185,13 +189,13 @@ class IsentropicDynamicalCore(DynamicalCore):
             of each timestep. Defaults to ``True``.
         smooth_type: `str`, optional
             String specifying the smoothing technique to implement.
-            See :class:`tasmania.HorizontalSmoothing` for all available options.
-            Defaults to 'first_order'.
+            See :class:`~tasmania.HorizontalSmoothing` for all available options.
+            Defaults to "first_order".
         smooth_coeff : `float`, optional
             Smoothing coefficient. Defaults to 0.03.
         smooth_coeff_max : `float`, optional
             Maximum value for the smoothing coefficient.
-            See :class:`tasmania.HorizontalSmoothing` for further details.
+            See :class:`~tasmania.HorizontalSmoothing` for further details.
             Defaults to 0.24.
         smooth_damp_depth : `int`, optional
             Number of vertical layers in the smoothing damping region. Defaults to 10.
@@ -204,8 +208,8 @@ class IsentropicDynamicalCore(DynamicalCore):
             smoothing only at the end of each timestep. Defaults to ``True``.
         smooth_moist_type: `str`, optional
             String specifying the smoothing technique to apply on the water constituents.
-            See :class:`tasmania.HorizontalSmoothing` for all available options.
-            Defaults to 'first-order'.
+            See :class:`~tasmania.HorizontalSmoothing` for all available options.
+            Defaults to "first-order".
         smooth_moist_coeff : `float`, optional
             Smoothing coefficient for the water constituents. Defaults to 0.03.
         smooth_moist_coeff_max : `float`, optional
@@ -216,7 +220,7 @@ class IsentropicDynamicalCore(DynamicalCore):
             Number of vertical layers in the smoothing damping region for the
             water constituents. Defaults to 10.
         gt_powered : `bool`, optional
-            ``True`` to harness GT4Py, ``False`` for a vanilla Numpy implementation.
+            ``True`` to harness GT4Py, ``False`` for a vanilla NumPy implementation.
         backend : `str`, optional
             The GT4Py backend.
         backend_opts : `dict`, optional
@@ -228,7 +232,7 @@ class IsentropicDynamicalCore(DynamicalCore):
         exec_info : `dict`, optional
             Dictionary which will store statistics and diagnostics gathered at run time.
         default_origin : `tuple[int]`, optional
-            Storage default origin.
+            Default origin of the storages.
         rebuild : `bool`, optional
             ``True`` to trigger the stencils compilation at any class instantiation,
             ``False`` to rely on the caching mechanism implemented by GT4Py.
@@ -274,11 +278,11 @@ class IsentropicDynamicalCore(DynamicalCore):
         super().__init__(
             domain,
             "numerical",
-            intermediate_tendencies,
-            intermediate_diagnostics,
+            intermediate_tendency_component,
+            intermediate_diagnostic_component,
             substeps,
-            fast_tendencies,
-            fast_diagnostics,
+            fast_tendency_component,
+            fast_diagnostic_component,
             gt_powered=gt_powered,
             backend=backend,
             backend_opts=backend_opts,
@@ -401,7 +405,9 @@ class IsentropicDynamicalCore(DynamicalCore):
         #
         # the method implementing each stage
         #
-        self._array_call = self._array_call_dry if not moist else self._array_call_moist
+        self._stage_array_call = (
+            self.stage_array_call_dry if not moist else self.stage_array_call_moist
+        )
 
         #
         # temporary and output arrays
@@ -456,7 +462,7 @@ class IsentropicDynamicalCore(DynamicalCore):
         self._v_out = allocate()
 
     @property
-    def _input_properties(self) -> taz_types.properties_dict_t:
+    def stage_input_properties(self) -> taz_types.properties_dict_t:
         g = self.grid
         dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
         dims_stg_x = (g.x_at_u_locations.dims[0], g.y.dims[0], g.z.dims[0])
@@ -479,9 +485,9 @@ class IsentropicDynamicalCore(DynamicalCore):
         return return_dict
 
     @property
-    def _substep_input_properties(self) -> taz_types.properties_dict_t:
+    def substep_input_properties(self) -> taz_types.properties_dict_t:
         dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])
-        ftends, fdiags = self._fast_tends, self._fast_diags
+        ftends, fdiags = self._fast_tc, self._fast_dc
 
         return_dict = {}
 
@@ -567,7 +573,7 @@ class IsentropicDynamicalCore(DynamicalCore):
         return return_dict
 
     @property
-    def _tendency_properties(self) -> taz_types.properties_dict_t:
+    def stage_tendency_properties(self) -> taz_types.properties_dict_t:
         dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])
 
         return_dict = {
@@ -584,11 +590,11 @@ class IsentropicDynamicalCore(DynamicalCore):
         return return_dict
 
     @property
-    def _substep_tendency_properties(self) -> taz_types.properties_dict_t:
-        return self._tendency_properties
+    def substep_tendency_properties(self) -> taz_types.properties_dict_t:
+        return self.stage_tendency_properties
 
     @property
-    def _output_properties(self) -> taz_types.properties_dict_t:
+    def stage_output_properties(self) -> taz_types.properties_dict_t:
         g = self.grid
         dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
         dims_stg_x = (g.x_at_u_locations.dims[0], g.y.dims[0], g.z.dims[0])
@@ -633,28 +639,28 @@ class IsentropicDynamicalCore(DynamicalCore):
         return return_dict
 
     @property
-    def _substep_output_properties(self) -> taz_types.properties_dict_t:
+    def substep_output_properties(self) -> taz_types.properties_dict_t:
         if not hasattr(self, "__substep_output_properties"):
             dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])
             g_shape = (self.grid.nx, self.grid.ny, self.grid.nz)
 
             self.__substep_output_properties = {}
 
-            if "air_isentropic_density" in self._substep_input_properties:
+            if "air_isentropic_density" in self.substep_input_properties:
                 self.__substep_output_properties["air_isentropic_density"] = {
                     "dims": dims,
                     "units": "kg m^-2 K^-1",
                     "grid_shape": g_shape,
                 }
 
-            if "x_momentum_isentropic" in self._substep_input_properties:
+            if "x_momentum_isentropic" in self.substep_input_properties:
                 self.__substep_output_properties["x_momentum_isentropic"] = {
                     "dims": dims,
                     "units": "kg m^-1 K^-1 s^-1",
                     "grid_shape": g_shape,
                 }
 
-            if "y_momentum_isentropic" in self._substep_input_properties:
+            if "y_momentum_isentropic" in self.substep_input_properties:
                 self.__substep_output_properties["y_momentum_isentropic"] = {
                     "dims": dims,
                     "units": "kg m^-1 K^-1 s^-1",
@@ -662,28 +668,28 @@ class IsentropicDynamicalCore(DynamicalCore):
                 }
 
             if self._moist:
-                if mfwv in self._substep_input_properties:
+                if mfwv in self.substep_input_properties:
                     self.__substep_output_properties[mfwv] = {
                         "dims": dims,
                         "units": "g g^-1",
                         "grid_shape": g_shape,
                     }
 
-                if mfcw in self._substep_input_properties:
+                if mfcw in self.substep_input_properties:
                     self.__substep_output_properties[mfcw] = {
                         "dims": dims,
                         "units": "g g^-1",
                         "grid_shape": g_shape,
                     }
 
-                if mfpw in self._substep_input_properties:
+                if mfpw in self.substep_input_properties:
                     self.__substep_output_properties[mfpw] = {
                         "dims": dims,
                         "units": "g g^-1",
                         "grid_shape": g_shape,
                     }
 
-                if "precipitation" in self._substep_input_properties:
+                if "precipitation" in self.substep_input_properties:
                     dims2d = (self.grid.x.dims[0], self.grid.y.dims[0], 1)
                     g_shape_2d = (self.grid.nx, self.grid.ny, 1)
                     self.__substep_output_properties["accumulated_precipitation"] = {
@@ -702,7 +708,7 @@ class IsentropicDynamicalCore(DynamicalCore):
     def substep_fractions(self) -> Union[float, Tuple[float, ...]]:
         return self._prognostic.substep_fractions
 
-    def _allocate_output_state(self) -> taz_types.gtstorage_dict_t:
+    def allocate_output_state(self) -> taz_types.gtstorage_dict_t:
         """ Allocate memory only for the prognostic fields. """
         g = self.grid
         nx, ny, nz = g.nx, g.ny, g.nz
@@ -755,23 +761,23 @@ class IsentropicDynamicalCore(DynamicalCore):
 
         return out_state
 
-    def array_call(
+    def stage_array_call(
         self,
         stage: int,
         raw_state: taz_types.array_dict_t,
         raw_tendencies: taz_types.array_dict_t,
         timestep: taz_types.timedelta_t,
     ) -> taz_types.array_dict_t:
-        return self._array_call(stage, raw_state, raw_tendencies, timestep)
+        return self._stage_array_call(stage, raw_state, raw_tendencies, timestep)
 
-    def _array_call_dry(
+    def stage_array_call_dry(
         self,
         stage: int,
         raw_state: taz_types.array_dict_t,
         raw_tendencies: taz_types.array_dict_t,
         timestep: taz_types.timedelta_t,
     ) -> taz_types.array_dict_t:
-        """ Perform a stage of the dry dynamical core. """
+        """ Integrate the state over a stage of the dry dynamical core. """
         # shortcuts
         hb = self.horizontal_boundary
         out_properties = self.output_properties
@@ -879,14 +885,14 @@ class IsentropicDynamicalCore(DynamicalCore):
 
         return raw_state_out
 
-    def _array_call_moist(
+    def stage_array_call_moist(
         self,
         stage: int,
         raw_state: taz_types.array_dict_t,
         raw_tendencies: taz_types.array_dict_t,
         timestep: taz_types.timedelta_t,
     ) -> taz_types.array_dict_t:
-        """	Perform a stage of the moist dynamical core. """
+        """	Integrate the state over a stage of the moist dynamical core. """
         # shortcuts
         hb = self.horizontal_boundary
         out_properties = self.output_properties

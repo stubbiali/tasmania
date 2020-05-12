@@ -114,7 +114,7 @@ else:
 domain.horizontal_boundary.reference_state = state
 
 # ============================================================
-# The intermediate tendencies
+# The intermediate tendency components
 # ============================================================
 args = []
 
@@ -151,12 +151,12 @@ if nl.turbulence:
     args.append(turb)
 
 # wrap the components in a ConcurrentCoupling object
-inter_tends = taz.ConcurrentCoupling(
+inter_tendency_component = taz.ConcurrentCoupling(
     *args, execution_policy="serial", gt_powered=nl.gt_powered, **nl.gt_kwargs
 )
 
 # ============================================================
-# The intermediate diagnostics
+# The intermediate diagnostic components
 # ============================================================
 # component retrieving the diagnostic variables
 pt = state["air_pressure_on_interface_levels"][0, 0, 0]
@@ -170,7 +170,7 @@ dv = taz.IsentropicDiagnostics(
 )
 
 # ============================================================
-# The slow diagnostics
+# The slow diagnostic components
 # ============================================================
 args = []
 
@@ -195,9 +195,11 @@ if nl.smooth:
 
 if len(args) > 0:
     # wrap the components in a ConcurrentCoupling object
-    slow_diags = taz.DiagnosticComponentComposite(*args, execution_policy="serial")
+    slow_diagnostic_component = taz.DiagnosticComponentComposite(
+        *args, execution_policy="serial"
+    )
 else:
-    slow_diags = None
+    slow_diagnostic_component = None
 
 # ============================================================
 # The dynamical core
@@ -206,11 +208,11 @@ dycore = taz.IsentropicDynamicalCore(
     domain,
     moist=False,
     # parameterizations
-    intermediate_tendencies=inter_tends,
-    intermediate_diagnostics=dv,
+    intermediate_tendency_component=inter_tendency_component,
+    intermediate_diagnostic_component=dv,
     substeps=nl.substeps,
-    fast_tendencies=None,
-    fast_diagnostics=None,
+    fast_tendency_component=None,
+    fast_diagnostic_component=None,
     # numerical scheme
     time_integration_scheme=nl.time_integration_scheme,
     horizontal_flux_scheme=nl.horizontal_flux_scheme,
@@ -272,8 +274,8 @@ for i in range(nt):
     dict_op.copy(state, state_new)
 
     # calculate the slow physics
-    if slow_diags is not None:
-        diagnostics = slow_diags(state, dt)
+    if slow_diagnostic_component is not None:
+        diagnostics = slow_diagnostic_component(state, dt)
         # state.update(diagnostics)
         dict_op.copy(state, diagnostics, unshared_variables_in_output=True)
 

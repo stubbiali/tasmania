@@ -30,8 +30,6 @@ from drivers.benchmarking import namelist_sts
 from drivers.benchmarking.utils import print_info
 
 
-gt.storage.prepare_numpy()
-
 # ============================================================
 # The namelist
 # ============================================================
@@ -52,6 +50,12 @@ nl = locals()["namelist"]
 taz.feed_module(target=nl, source=namelist_sts)
 
 # ============================================================
+# Prepare NumPy
+# ============================================================
+if nl.gt_powered:
+    gt.storage.prepare_numpy()
+
+# ============================================================
 # The underlying domain
 # ============================================================
 domain = taz.Domain(
@@ -66,8 +70,8 @@ domain = taz.Domain(
     horizontal_boundary_kwargs=nl.hb_kwargs,
     topography_type=nl.topo_type,
     topography_kwargs=nl.topo_kwargs,
-    backend=nl.gt_kwargs["backend"],
-    dtype=nl.gt_kwargs["dtype"],
+    gt_powered=nl.gt_powered,
+    **nl.gt_kwargs
 )
 pgrid = domain.physical_grid
 cgrid = domain.numerical_grid
@@ -85,6 +89,7 @@ if nl.isothermal:
         nl.y_velocity,
         nl.temperature,
         moist=False,
+        gt_powered=nl.gt_powered,
         backend=nl.gt_kwargs["backend"],
         dtype=nl.gt_kwargs["dtype"],
         default_origin=nl.gt_kwargs["default_origin"],
@@ -99,6 +104,7 @@ else:
         nl.y_velocity,
         nl.brunt_vaisala,
         moist=False,
+        gt_powered=nl.gt_powered,
         backend=nl.gt_kwargs["backend"],
         dtype=nl.gt_kwargs["dtype"],
         default_origin=nl.gt_kwargs["default_origin"],
@@ -115,11 +121,11 @@ dycore = taz.IsentropicDynamicalCore(
     domain,
     moist=False,
     # parameterizations
-    intermediate_tendencies=None,
-    intermediate_diagnostics=None,
+    intermediate_tendency_component=None,
+    intermediate_diagnostic_component=None,
     substeps=nl.substeps,
-    fast_tendencies=None,
-    fast_diagnostics=None,
+    fast_tendency_component=None,
+    fast_diagnostic_component=None,
     # numerical scheme
     time_integration_scheme=nl.time_integration_scheme,
     horizontal_flux_scheme=nl.horizontal_flux_scheme,
@@ -152,7 +158,12 @@ ptis = nl.physics_time_integration_scheme
 
 # component retrieving the diagnostic variables
 idv = taz.IsentropicDiagnostics(
-    domain, grid_type="numerical", moist=False, pt=pt, **nl.gt_kwargs
+    domain,
+    grid_type="numerical",
+    moist=False,
+    pt=pt,
+    gt_powered=nl.gt_powered,
+    **nl.gt_kwargs
 )
 args.append({"component": idv})
 
@@ -162,6 +173,7 @@ if nl.coriolis:
         domain,
         grid_type="numerical",
         coriolis_parameter=nl.coriolis_parameter,
+        gt_powered=nl.gt_powered,
         **nl.gt_kwargs
     )
     args.append(
@@ -183,6 +195,7 @@ if nl.smooth:
         nl.smooth_coeff_max,
         nl.smooth_damp_depth,
         moist=False,
+        gt_powered=nl.gt_powered,
         **nl.gt_kwargs
     )
     args.append({"component": hs})
@@ -196,6 +209,7 @@ if nl.diff:
         nl.diff_coeff_max,
         nl.diff_damp_depth,
         moist=False,
+        gt_powered=nl.gt_powered,
         **nl.gt_kwargs
     )
     args.append(
@@ -210,7 +224,9 @@ if nl.diff:
 
 if nl.turbulence:
     # component implementing the Smagorinsky turbulence model
-    turb = taz.IsentropicSmagorinsky(domain, nl.smagorinsky_constant, **nl.gt_kwargs)
+    turb = taz.IsentropicSmagorinsky(
+        domain, nl.smagorinsky_constant, gt_powered=nl.gt_powered, **nl.gt_kwargs
+    )
     args.append(
         {
             "component": turb,
@@ -223,7 +239,9 @@ if nl.turbulence:
 
 if nl.coriolis or nl.smooth or nl.diff or nl.turbulence:
     # component retrieving the velocity components
-    ivc = taz.IsentropicVelocityComponents(domain, **nl.gt_kwargs)
+    ivc = taz.IsentropicVelocityComponents(
+        domain, gt_powered=nl.gt_powered, **nl.gt_kwargs
+    )
     args.append({"component": ivc})
 
 # wrap the components in a SequentialTendencySplitting object
@@ -304,4 +322,8 @@ wall_time = time.time() - wall_time_start
 
 # print logs
 print("Total wall time: {}.".format(taz.get_time_string(wall_time)))
-print("Compute time: {}.".format(taz.get_time_string(compute_time)))
+print(
+    "Compute time: {}.".format(
+        taz.get_time_string(compute_time, print_milliseconds=True)
+    )
+)

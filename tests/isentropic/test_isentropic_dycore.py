@@ -707,10 +707,10 @@ def test1(data, subtests):
 
     dycore = IsentropicDynamicalCore(
         domain,
-        intermediate_tendencies=None,
-        intermediate_diagnostics=None,
-        fast_tendencies=None,
-        fast_diagnostics=None,
+        intermediate_tendency_component=None,
+        intermediate_diagnostic_component=None,
+        fast_tendency_component=None,
+        fast_diagnostic_component=None,
         moist=moist,
         time_integration_scheme="rk3ws_si",
         horizontal_flux_scheme="fifth_order_upwind",
@@ -983,10 +983,10 @@ def test2(data, subtests):
 
     dycore = IsentropicDynamicalCore(
         domain,
-        intermediate_tendencies=None,
-        intermediate_diagnostics=None,
-        fast_tendencies=None,
-        fast_diagnostics=None,
+        intermediate_tendency_component=None,
+        intermediate_diagnostic_component=None,
+        fast_tendency_component=None,
+        fast_diagnostic_component=None,
         moist=moist,
         time_integration_scheme="rk3ws_si",
         horizontal_flux_scheme="fifth_order_upwind",
@@ -1275,10 +1275,10 @@ def test3(data, subtests):
 
     dycore = IsentropicDynamicalCore(
         domain,
-        intermediate_tendencies=cf,
-        intermediate_diagnostics=None,
-        fast_tendencies=None,
-        fast_diagnostics=None,
+        intermediate_tendency_component=cf,
+        intermediate_diagnostic_component=None,
+        fast_tendency_component=None,
+        fast_diagnostic_component=None,
         moist=moist,
         time_integration_scheme="rk3ws_si",
         horizontal_flux_scheme="fifth_order_upwind",
@@ -1744,10 +1744,10 @@ def test4(data, subtests):
 
     dycore = IsentropicDynamicalCore(
         domain,
-        intermediate_tendencies=cf,
-        intermediate_diagnostics=dv,
-        fast_tendencies=None,
-        fast_diagnostics=None,
+        intermediate_tendency_component=cf,
+        intermediate_diagnostic_component=dv,
+        fast_tendency_component=None,
+        fast_diagnostic_component=None,
         moist=moist,
         time_integration_scheme="rk3ws_si",
         horizontal_flux_scheme="fifth_order_upwind",
@@ -2293,10 +2293,10 @@ def test5(data, subtests):
 
     dycore = IsentropicDynamicalCore(
         domain,
-        intermediate_tendencies=cf,
-        intermediate_diagnostics=foo,
-        fast_tendencies=None,
-        fast_diagnostics=None,
+        intermediate_tendency_component=cf,
+        intermediate_diagnostic_component=foo,
+        fast_tendency_component=None,
+        fast_diagnostic_component=None,
         moist=moist,
         time_integration_scheme="rk3ws_si",
         horizontal_flux_scheme="fifth_order_upwind",

@@ -97,7 +97,7 @@ domain.horizontal_boundary.reference_state = state
 # ============================================================
 dycore = taz.BurgersDynamicalCore(
     domain,
-    intermediate_tendencies=None,
+    intermediate_tendency_component=None,
     time_integration_scheme=nl.time_integration_scheme,
     flux_scheme=nl.flux_scheme,
     gt_powered=nl.gt_powered,

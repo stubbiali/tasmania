@@ -81,7 +81,8 @@ def test_forward_euler(data):
         ),
         label="domain",
     )
-    assume(domain.horizontal_boundary.type != "identity")
+    if domain.horizontal_boundary.type == "relaxed":
+        assume(gt_powered is False)
     grid = domain.numerical_grid
 
     state = data.draw(
@@ -105,7 +106,7 @@ def test_forward_euler(data):
     # ========================================
     dycore = BurgersDynamicalCore(
         domain,
-        intermediate_tendencies=None,
+        intermediate_tendency_component=None,
         time_integration_scheme="forward_euler",
         flux_scheme="first_order",
         gt_powered=gt_powered,
@@ -191,7 +192,8 @@ def test_rk2(data):
         ),
         label="domain",
     )
-    assume(domain.horizontal_boundary.type != "identity")
+    if domain.horizontal_boundary.type == "relaxed":
+        assume(gt_powered is False)
     grid = domain.numerical_grid
 
     state = data.draw(
@@ -215,7 +217,7 @@ def test_rk2(data):
     # ========================================
     dycore = BurgersDynamicalCore(
         domain,
-        intermediate_tendencies=None,
+        intermediate_tendency_component=None,
         time_integration_scheme="rk2",
         flux_scheme="third_order",
         gt_powered=gt_powered,
@@ -322,7 +324,8 @@ def test_rk3ws(data):
         ),
         label="domain",
     )
-    assume(domain.horizontal_boundary.type != "identity")
+    if domain.horizontal_boundary.type == "relaxed":
+        assume(gt_powered is False)
     grid = domain.numerical_grid
 
     state = data.draw(
@@ -346,7 +349,7 @@ def test_rk3ws(data):
     # ========================================
     dycore = BurgersDynamicalCore(
         domain,
-        intermediate_tendencies=None,
+        intermediate_tendency_component=None,
         time_integration_scheme="rk3ws",
         flux_scheme="fifth_order",
         gt_powered=gt_powered,

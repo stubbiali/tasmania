@@ -36,10 +36,10 @@ nz = 60
 # horizontal boundary
 hb_type = "relaxed"
 nb = 3
-hb_kwargs = {"nr": 6}
+hb_kwargs = {"nr": 6, "nz": nz}
 
 # gt4py settings
-gt_powered = True
+gt_powered = False
 gt_kwargs = {
     "backend": "numpy",
     "build_info": None,
@@ -115,7 +115,7 @@ coriolis_parameter = None  # DataArray(1e-3, attrs={'units': 'rad s^-1'})
 
 # simulation length
 timestep = timedelta(seconds=10)
-niter = 100  # int(1 * 60 * 60 / timestep.total_seconds())
+niter = 10  # int(1 * 60 * 60 / timestep.total_seconds())
 
 # output
 save = False

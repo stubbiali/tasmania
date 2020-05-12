@@ -31,8 +31,6 @@ import time
 from drivers.burgers import namelist_lfc
 
 
-gt.storage.prepare_numpy()
-
 # ============================================================
 # The namelist
 # ============================================================
@@ -53,6 +51,12 @@ nl = locals()["namelist"]
 taz.feed_module(target=nl, source=namelist_lfc)
 
 # ============================================================
+# Prepare NumPy
+# ============================================================
+if nl.gt_powered:
+    gt.storage.prepare_numpy()
+
+# ============================================================
 # The underlying domain
 # ============================================================
 domain = taz.Domain(
@@ -67,8 +71,7 @@ domain = taz.Domain(
     horizontal_boundary_kwargs=nl.hb_kwargs,
     topography_type="flat",
     gt_powered=nl.gt_powered,
-    backend=nl.gt_kwargs["backend"],
-    dtype=nl.gt_kwargs["dtype"],
+    **nl.gt_kwargs
 )
 pgrid = domain.physical_grid
 cgrid = domain.numerical_grid
@@ -93,7 +96,7 @@ state = zsf(nl.init_time, cgrid)
 domain.horizontal_boundary.reference_state = state
 
 # ============================================================
-# The slow tendencies
+# The slow tendency components
 # ============================================================
 # component calculating the Laplacian of the velocity
 diff = taz.BurgersHorizontalDiffusion(
@@ -110,7 +113,7 @@ diff = taz.BurgersHorizontalDiffusion(
 # ============================================================
 dycore = taz.BurgersDynamicalCore(
     domain,
-    intermediate_tendencies=None,
+    intermediate_tendency_component=None,
     time_integration_scheme=nl.time_integration_scheme,
     flux_scheme=nl.flux_scheme,
     gt_powered=nl.gt_powered,
@@ -153,21 +156,22 @@ for i in range(nt):
     compute_time += time.time() - compute_time_start
 
     if (nl.print_frequency > 0) and ((i + 1) % nl.print_frequency == 0) or i + 1 == nt:
-        dx = pgrid.dx.to_units("m").values.item()
-        dy = pgrid.dy.to_units("m").values.item()
-
-        u = state["x_velocity"].to_units("m s^-1").values[3:-3, 3:-3, :]
-        v = state["y_velocity"].to_units("m s^-1").values[3:-3, 3:-3, :]
-
-        max_u = u.max()
-        max_v = v.max()
-
-        # print useful info
-        print(
-            "Iteration {:6d}: max(u) = {:12.10E} m/s, max(v) = {:12.10E} m/s".format(
-                i + 1, max_u.item(), max_v.item()
-            )
-        )
+        # dx = pgrid.dx.to_units("m").values.item()
+        # dy = pgrid.dy.to_units("m").values.item()
+        #
+        # u = state["x_velocity"].to_units("m s^-1").values[3:-3, 3:-3, :]
+        # v = state["y_velocity"].to_units("m s^-1").values[3:-3, 3:-3, :]
+        #
+        # max_u = u.max()
+        # max_v = v.max()
+        #
+        # # print useful info
+        # print(
+        #     "Iteration {:6d}: max(u) = {:12.10E} m/s, max(v) = {:12.10E} m/s".format(
+        #         i + 1, max_u.item(), max_v.item()
+        #     )
+        # )
+        pass
 
     # shortcuts
     to_save = (
@@ -193,10 +197,10 @@ if nl.save and nl.filename is not None:
 wall_time = time.time() - wall_time_start
 
 # compute the error
-gt.storage.restore_numpy()
-u = np.asarray(state["x_velocity"].values)
-uex = zsof(state["time"], cgrid, field_name="x_velocity", field_units="m s^-1")
-print("RMSE(u) = {:.5E} m/s".format(np.linalg.norm(u - uex) / np.sqrt(u.size)))
+# gt.storage.restore_numpy()
+# u = np.asarray(state["x_velocity"].values)
+# uex = zsof(state["time"], cgrid, field_name="x_velocity", field_units="m s^-1")
+# print("RMSE(u) = {:.5E} m/s".format(np.linalg.norm(u - uex) / np.sqrt(u.size)))
 
 # print logs
 print("Total wall time: {}.".format(taz.get_time_string(wall_time, False)))

@@ -49,7 +49,7 @@ hb_kwargs = {"core": zsof}
 # gt4py settings
 gt_powered = True
 gt_kwargs = {
-    "backend": "gtcuda",
+    "backend": "numpy",
     "build_info": None,
     "dtype": np.float64,
     "exec_info": None,
@@ -68,7 +68,7 @@ flux_scheme = "fifth_order"
 # simulation time
 cfl = 1.0
 timestep = pd.Timedelta(cfl / (nx - 1) ** 2, unit="s")
-niter = 100  # 4 ** factor * 100
+niter = 10  # 4 ** factor * 100
 
 # output
 save = False

@@ -36,7 +36,7 @@ nz = 60
 # horizontal boundary
 hb_type = "relaxed"
 nb = 3
-hb_kwargs = {"nr": 6}
+hb_kwargs = {"nr": 6, "nz": nz}
 
 # gt4py settings
 gt_powered = True
