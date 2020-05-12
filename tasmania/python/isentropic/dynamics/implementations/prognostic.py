@@ -511,6 +511,10 @@ class ForwardEulerSI(IsentropicPrognostic):
     def stages(self):
         return 1
 
+    @property
+    def substep_fractions(self):
+        return 1.0
+
     def stage_call(self, stage, timestep, state, tendencies=None):
         nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
         nb = self._hb.nb
@@ -810,6 +814,10 @@ class RK3WSSI(IsentropicPrognostic):
     @property
     def stages(self):
         return 3
+
+    @property
+    def substep_fractions(self):
+        return 1.0 / 3.0, 0.5, 1.0
 
     def stage_call(self, stage, timestep, state, tendencies=None):
         nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
@@ -1113,6 +1121,10 @@ class SIL3(IsentropicPrognostic):
     @property
     def stages(self):
         return 3
+
+    @property
+    def substep_fractions(self):
+        return 1.0 / 3.0, 0.5, 1.0
 
     def stage_call(self, stage, timestep, state, tendencies=None):
         tendencies = {} if tendencies is None else tendencies

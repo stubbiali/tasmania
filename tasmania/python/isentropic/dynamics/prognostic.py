@@ -22,7 +22,7 @@
 #
 import abc
 import numpy as np
-from typing import Optional, TYPE_CHECKING, Type, Union
+from typing import Optional, Sequence, TYPE_CHECKING, Type, Union
 
 from tasmania.python.utils import taz_types
 from tasmania.python.utils.storage_utils import zeros
@@ -175,6 +175,11 @@ class IsentropicPrognostic(abc.ABC):
         int :
             The number of stages performed by the time-integration scheme.
         """
+        pass
+
+    @property
+    @abc.abstractmethod
+    def substep_fractions(self) -> Union[float, Sequence[float]]:
         pass
 
     @abc.abstractmethod

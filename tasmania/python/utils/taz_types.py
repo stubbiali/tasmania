@@ -32,7 +32,21 @@ from sympl import (
     TendencyComponent,
     TendencyComponentComposite,
 )
-from typing import Any, Dict, Mapping, MutableMapping, Sequence, TYPE_CHECKING, Tuple, Union
+from typing import (
+    Any,
+    Dict,
+    Mapping,
+    MutableMapping,
+    Sequence,
+    TYPE_CHECKING,
+    Tuple,
+    Union,
+)
+
+try:
+    import cupy as cp
+except ImportError:
+    cp = np
 
 from gt4py import gtscript
 from gt4py.storage.storage import Storage
@@ -46,7 +60,7 @@ if TYPE_CHECKING:
     )
 
 
-array_t = Union[np.ndarray, Storage]
+array_t = Union[np.ndarray, cp.ndarray, Storage]
 dataarray_t = DataArray
 gtstorage_t = Storage
 timedelta_t = Union[dt.timedelta, pd.Timedelta]
