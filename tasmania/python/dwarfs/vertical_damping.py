@@ -109,15 +109,7 @@ class VerticalDamping(abc.ABC):
         assert grid.nz <= storage_shape[2] <= grid.nz + 1
         self._shape = storage_shape
 
-        # compute the damping matrix
-        z = (
-            np.concatenate((grid.z.values, np.array([0])), axis=0)
-            if storage_shape[2] == grid.nz + 1
-            else grid.z.values
-        )
-        zt = grid.z_on_interface_levels.values[0]
-        za = z[damp_depth - 1]
-        r = ge(z, za) * damp_coeff_max * (1 - np.cos(math.pi * (z - za) / (zt - za)))
+        # allocate the damping matrix
         self._rmat = zeros(
             storage_shape,
             gt_powered=gt_powered,
@@ -127,8 +119,18 @@ class VerticalDamping(abc.ABC):
             mask=(True, True, True),
             managed_memory=managed_memory,
         )
-        asarray = get_asarray_function(gt_powered, backend)
-        self._rmat[...] = asarray(r[np.newaxis, np.newaxis, :])
+        if damp_depth > 0:
+            # fill the damping matrix
+            z = (
+                np.concatenate((grid.z.values, np.array([0])), axis=0)
+                if storage_shape[2] == grid.nz + 1
+                else grid.z.values
+            )
+            zt = grid.z_on_interface_levels.values[0]
+            za = z[damp_depth - 1]
+            r = ge(z, za) * damp_coeff_max * (1 - np.cos(math.pi * (z - za) / (zt - za)))
+            asarray = get_asarray_function(gt_powered, backend)
+            self._rmat[...] = asarray(r[np.newaxis, np.newaxis, :])
 
         # instantiate the underlying stencil
         self._gt_powered = gt_powered
@@ -338,24 +340,23 @@ class Rayleigh(VerticalDamping):
         dt_da = DataArray(dt.total_seconds(), attrs={"units": "s"})
         dt_raw = dt_da.to_units(self._tunits).values.item()
 
-        if dnk > 0:
-            # run the stencil
-            self._stencil(
-                in_phi_now=field_now,
-                in_phi_new=field_new,
-                in_phi_ref=field_ref,
-                in_rmat=self._rmat,
-                out_phi=field_out,
-                dt=dt_raw,
-                origin=(0, 0, 0),
-                domain=(ni, nj, dnk),
-                exec_info=self._exec_info,
-            )
+        # run the stencil
+        self._stencil(
+            in_phi_now=field_now,
+            in_phi_new=field_new,
+            in_phi_ref=field_ref,
+            in_rmat=self._rmat,
+            out_phi=field_out,
+            dt=dt_raw,
+            origin=(0, 0, 0),
+            domain=(ni, nj, nk),
+            exec_info=self._exec_info,
+        )
 
-        if nk > dnk:
-            # set the lowermost layers, outside of the damping region
-            if not self._gt_powered:
-                field_out[:, :, dnk:nk] = field_new[:, :, dnk:nk]
+        # if nk > dnk:
+        #     # set the lowermost layers, outside of the damping region
+        #     if not self._gt_powered:
+        #         field_out[:, :, dnk:nk] = field_new[:, :, dnk:nk]
 
     @staticmethod
     def _stencil_numpy(
