@@ -266,7 +266,6 @@ def test_forward_euler_si(data, subtests):
         label="domain",
     )
     hb = domain.horizontal_boundary
-    assume(hb.type != "dirichlet")
     grid = domain.numerical_grid
 
     moist = data.draw(hyp_st.booleans(), label="moist")
@@ -535,7 +534,6 @@ def test_rk3ws_si(data, subtests):
         label="domain",
     )
     hb = domain.horizontal_boundary
-    assume(hb.type != "dirichlet")
     grid = domain.numerical_grid
 
     moist = data.draw(hyp_st.booleans(), label="moist")
@@ -1084,7 +1082,6 @@ def _test_sil3(data):
         st_domain(xaxis_length=(7, 50), yaxis_length=(7, 50), nb=nb), label="domain"
     )
     hb = domain.horizontal_boundary
-    assume(hb.type != "dirichlet")
     grid = domain.numerical_grid
     moist = data.draw(hyp_st.booleans(), label="moist")
     state = data.draw(st_isentropic_state_f(grid, moist=moist), label="state")

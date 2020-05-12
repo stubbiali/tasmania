@@ -185,7 +185,6 @@ def test_forward_euler(
     )
     grid = domain.numerical_grid
     hb = domain.horizontal_boundary
-    assume(hb.type != "dirichlet")
 
     dnx = data.draw(hyp_st.integers(min_value=0, max_value=3), label="dnx")
     dny = data.draw(hyp_st.integers(min_value=0, max_value=3), label="dny")
@@ -309,7 +308,6 @@ def test_rk2(data, make_fake_tendency_component_1, make_fake_tendency_component_
     )
     grid = domain.numerical_grid
     hb = domain.horizontal_boundary
-    assume(hb.type != "dirichlet")
 
     dnx = data.draw(hyp_st.integers(min_value=0, max_value=3), label="dnx")
     dny = data.draw(hyp_st.integers(min_value=0, max_value=3), label="dny")

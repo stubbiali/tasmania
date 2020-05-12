@@ -179,7 +179,6 @@ def test_forward_euler_hb(data, make_fake_tendency_component_1):
         st_domain(gt_powered=gt_powered, backend=backend, dtype=dtype), label="domain"
     )
     hb = domain.horizontal_boundary
-    assume(hb.type != "dirichlet")
 
     cgrid = domain.numerical_grid
     nx, ny, nz = cgrid.nx, cgrid.ny, cgrid.nz

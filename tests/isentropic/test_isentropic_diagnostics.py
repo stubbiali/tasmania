@@ -758,7 +758,6 @@ def test_horizontal_velocity(data):
 
     domain = data.draw(st_domain(), label="domain")
     hb = domain.horizontal_boundary
-    assume(hb.type != "dirichlet")
     grid = domain.numerical_grid
 
     nx, ny, nz = grid.nx, grid.ny, grid.nz

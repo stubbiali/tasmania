@@ -639,7 +639,6 @@ def test1(data, subtests):
     )
     grid = domain.numerical_grid
     hb = domain.horizontal_boundary
-    assume(hb.type != "dirichlet")
 
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     storage_shape = (nx + 1, ny + 1, nz + 1)
@@ -888,7 +887,6 @@ def test2(data, subtests):
     )
     grid = domain.numerical_grid
     hb = domain.horizontal_boundary
-    assume(hb.type != "dirichlet")
 
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     storage_shape = (nx + 1, ny + 1, nz + 1)
@@ -1169,7 +1167,6 @@ def test3(data, subtests):
     )
     grid = domain.numerical_grid
     hb = domain.horizontal_boundary
-    assume(hb.type != "dirichlet")
 
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     storage_shape = (nx + 1, ny + 1, nz + 1)
@@ -1618,7 +1615,6 @@ def test4(data, subtests):
     )
     grid = domain.numerical_grid
     hb = domain.horizontal_boundary
-    assume(hb.type != "dirichlet")
 
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     storage_shape = (nx + 1, ny + 1, nz + 1)
@@ -2152,7 +2148,7 @@ class FooTendencyComponent(TendencyComponent):
     deadline=None,
 )
 @given(data=hyp_st.data())
-def test5(data, subtests):
+def _test5(data, subtests):
     """
     - Slow tendencies: yes
     - Intermediate tendencies: yes
@@ -2185,7 +2181,6 @@ def test5(data, subtests):
     )
     grid = domain.numerical_grid
     hb = domain.horizontal_boundary
-    assume(hb.type != "dirichlet")
 
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     storage_shape = (nx + 1, ny + 1, nz + 1)

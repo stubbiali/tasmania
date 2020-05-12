@@ -20,27 +20,11 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from hypothesis import assume, strategies as hyp_st
-from hypothesis.extra.numpy import arrays as st_arrays
 import numpy as np
-from pandas import Timedelta
 from pint import UnitRegistry
 from sympl import DataArray
-from sympl._core.units import clean_units
 
 import gt4py as gt
-
-import tasmania as taz
-from tasmania.python.utils.data_utils import get_physical_constants
-from tasmania.python.utils.storage_utils import (
-    get_dataarray_2d,
-    get_dataarray_3d,
-    get_default_origin,
-    zeros,
-)
-from tasmania.python.utils.utils import equal_to
-
-from tests import conf
 
 
 mfwv = "mass_fraction_of_water_vapor_in_air"
@@ -233,3 +217,11 @@ def pi_function(time, grid, slice_x, slice_y, field_name, field_units):
     out = np.pi * np.ones((li, lj, 1), dtype=grid.x.dtype)
 
     return out
+
+
+def get_grid_shape(name, grid):
+    return (
+        grid.nx + int("at_u_locations" in name or "at_uv_locations" in name),
+        grid.ny + int("at_v_locations" in name or "at_uv_locations" in name),
+        grid.nz + int("on_interface_levels" in name),
+    )

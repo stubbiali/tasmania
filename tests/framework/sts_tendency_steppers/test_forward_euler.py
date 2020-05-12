@@ -209,7 +209,6 @@ def test_forward_euler_hb(data, make_fake_tendency_component_1):
     dnz = data.draw(hyp_st.integers(min_value=0, max_value=3), label="dnz")
     storage_shape = (cgrid.nx + dnx, cgrid.ny + dny, cgrid.nz + dnz)
     hb = domain.horizontal_boundary
-    assume(hb.type != "dirichlet")
 
     state = data.draw(
         st_isentropic_state_f(

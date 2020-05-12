@@ -38,7 +38,7 @@ from tasmania.python.utils.storage_utils import deepcopy_dataarray_dict, get_dat
 
 from tests.conf import backend as conf_backend, default_origin as conf_dorigin
 from tests.strategies import st_domain, st_floats, st_isentropic_state_f, st_one_of
-from tests.utilities import compare_dataarrays
+from tests.utilities import compare_dataarrays, get_grid_shape
 
 
 __field_properties = {
@@ -54,14 +54,6 @@ __field_properties = {
 }
 
 
-def get_grid_shape(name, nx, ny, nz):
-    return (
-        nx + int("_at_u_locations" in name),
-        ny + int("_at_v_locations" in name),
-        nz + int("_on_interface_levels" in name),
-    )
-
-
 @settings(
     suppress_health_check=(
         HealthCheck.too_slow,
@@ -72,8 +64,6 @@ def get_grid_shape(name, nx, ny, nz):
 )
 @given(data=hyp_st.data())
 def test_copy(data, subtests):
-    gt_storage.prepare_numpy()
-
     # ========================================
     # random data generation
     # ========================================
@@ -83,9 +73,13 @@ def test_copy(data, subtests):
     )
     grid = domain.physical_grid
 
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
     backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = grid.x.dtype
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    if gt_powered:
+        gt_storage.prepare_numpy()
 
     src = data.draw(
         st_isentropic_state_f(
@@ -102,12 +96,10 @@ def test_copy(data, subtests):
 
     keys = tuple(key for key in src.keys() if key != "time")
     for key in keys:
-        if data.draw(hyp_st.booleans()):
+        if not data.draw(hyp_st.booleans(), label=f"{key}_in_dict1"):
             src.pop(key, None)
-        if data.draw(hyp_st.booleans()):
+        if not data.draw(hyp_st.booleans(), label=f"{key}_in_dict2"):
             dst.pop(key, None)
-
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
 
     # ========================================
     # test bed
@@ -153,8 +145,6 @@ def test_copy(data, subtests):
 )
 @given(data=hyp_st.data())
 def test_add(data, subtests):
-    gt_storage.prepare_numpy()
-
     # ========================================
     # random data generation
     # ========================================
@@ -164,9 +154,13 @@ def test_add(data, subtests):
     )
     grid = domain.physical_grid
 
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
     backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = grid.x.dtype
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    if gt_powered:
+        gt_storage.prepare_numpy()
 
     dict1 = data.draw(
         st_isentropic_state_f(
@@ -186,15 +180,15 @@ def test_add(data, subtests):
 
     keys = tuple(key for key in out_a.keys() if key != "time")
     for key in keys:
-        if data.draw(hyp_st.booleans()):
+        if not data.draw(hyp_st.booleans(), label=f"{key}_in_dict1"):
             dict1.pop(key, None)
-        if data.draw(hyp_st.booleans()):
+        if not data.draw(hyp_st.booleans(), label=f"{key}_in_dict2"):
             dict2.pop(key, None)
 
     field_properties = {}
     field_properties_passed = {}
     for key in keys:
-        if data.draw(hyp_st.booleans()):
+        if data.draw(hyp_st.booleans(), label=f"{key}_in_field_properties_passed"):
             field_properties[key] = __field_properties[key]
             field_properties_passed[key] = field_properties[key]
         elif key in dict1:
@@ -202,7 +196,8 @@ def test_add(data, subtests):
         elif key in dict2:
             field_properties[key] = {"units": dict2[key].attrs["units"]}
 
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+        if key in field_properties:
+            field_properties[key]["grid_shape"] = get_grid_shape(key, grid)
 
     # ========================================
     # test bed
@@ -229,7 +224,10 @@ def test_add(data, subtests):
         units = field_properties[key]["units"]
         field1 = dict1[key].to_units(units).values
         field2 = dict2[key].to_units(units).values
-        out_val = get_dataarray_3d(field1 + field2, grid, units, set_coordinates=False)
+        grid_shape = field_properties[key]["grid_shape"]
+        out_val = get_dataarray_3d(
+            field1 + field2, grid, units, grid_shape=grid_shape, set_coordinates=False
+        )
         compare_dataarrays(out[key], out_val, compare_coordinate_values=False)
 
     #
@@ -246,7 +244,10 @@ def test_add(data, subtests):
         units = field_properties[key]["units"]
         field1 = dict1[key].to_units(units).values
         field2 = dict2[key].to_units(units).values
-        out_val = get_dataarray_3d(field1 + field2, grid, units, set_coordinates=False)
+        grid_shape = field_properties[key]["grid_shape"]
+        out_val = get_dataarray_3d(
+            field1 + field2, grid, units, grid_shape=grid_shape, set_coordinates=False
+        )
         compare_dataarrays(out[key], out_val, compare_coordinate_values=False)
     for key in unshared_keys:
         # with subtests.test(key=key):
@@ -270,7 +271,10 @@ def test_add(data, subtests):
         units = field_properties[key]["units"]
         field1 = dict1[key].to_units(units).values
         field2 = dict2[key].to_units(units).values
-        out_val = get_dataarray_3d(field1 + field2, grid, units, set_coordinates=False)
+        grid_shape = field_properties[key]["grid_shape"]
+        out_val = get_dataarray_3d(
+            field1 + field2, grid, units, grid_shape=grid_shape, set_coordinates=False
+        )
         compare_dataarrays(out_a[key], out_val, compare_coordinate_values=False)
 
     #
@@ -288,7 +292,10 @@ def test_add(data, subtests):
         units = field_properties[key]["units"]
         field1 = dict1[key].to_units(units).values
         field2 = dict2[key].to_units(units).values
-        out_val = get_dataarray_3d(field1 + field2, grid, units, set_coordinates=False)
+        grid_shape = field_properties[key]["grid_shape"]
+        out_val = get_dataarray_3d(
+            field1 + field2, grid, units, grid_shape=grid_shape, set_coordinates=False
+        )
         compare_dataarrays(out_b[key], out_val, compare_coordinate_values=False)
     for key in unshared_keys:
         # with subtests.test(key=key):
@@ -308,8 +315,6 @@ def test_add(data, subtests):
 )
 @given(data=hyp_st.data())
 def test_iadd(data, subtests):
-    gt_storage.prepare_numpy()
-
     # ========================================
     # random data generation
     # ========================================
@@ -319,9 +324,13 @@ def test_iadd(data, subtests):
     )
     grid = domain.physical_grid
 
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
     backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = grid.x.dtype
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    if gt_powered:
+        gt_storage.prepare_numpy()
 
     dict1 = data.draw(
         st_isentropic_state_f(
@@ -338,9 +347,9 @@ def test_iadd(data, subtests):
 
     keys = tuple(key for key in dict1.keys() if key != "time")
     for key in keys:
-        if data.draw(hyp_st.booleans()):
+        if not data.draw(hyp_st.booleans(), label=f"{key}_in_dict1"):
             dict1.pop(key, None)
-        if data.draw(hyp_st.booleans()):
+        if not data.draw(hyp_st.booleans(), label=f"{key}_in_dict2"):
             dict2.pop(key, None)
 
     dict1_a = deepcopy_dataarray_dict(dict1)
@@ -349,7 +358,7 @@ def test_iadd(data, subtests):
     field_properties = {}
     field_properties_passed = {}
     for key in keys:
-        if data.draw(hyp_st.booleans()):
+        if data.draw(hyp_st.booleans(), label=f"{key}_in_field_properties_passed"):
             field_properties[key] = __field_properties[key]
             field_properties_passed[key] = field_properties[key]
         elif key in dict1:
@@ -357,7 +366,8 @@ def test_iadd(data, subtests):
         elif key in dict2:
             field_properties[key] = {"units": dict2[key].attrs["units"]}
 
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+        if key in field_properties:
+            field_properties[key]["grid_shape"] = get_grid_shape(key, grid)
 
     # ========================================
     # test bed
@@ -384,7 +394,10 @@ def test_iadd(data, subtests):
         units = field_properties[key]["units"]
         field1 = dict1_a[key].to_units(units).values
         field2 = dict2[key].to_units(units).values
-        out_val = get_dataarray_3d(field1 + field2, grid, units, set_coordinates=False)
+        grid_shape = field_properties[key]["grid_shape"]
+        out_val = get_dataarray_3d(
+            field1 + field2, grid, units, grid_shape=grid_shape, set_coordinates=False
+        )
         compare_dataarrays(dict1[key], out_val, compare_coordinate_values=False)
 
     #
@@ -401,7 +414,10 @@ def test_iadd(data, subtests):
         units = field_properties[key]["units"]
         field1 = dict1_b[key].to_units(units).values
         field2 = dict2[key].to_units(units).values
-        out_val = get_dataarray_3d(field1 + field2, grid, units, set_coordinates=False)
+        grid_shape = field_properties[key]["grid_shape"]
+        out_val = get_dataarray_3d(
+            field1 + field2, grid, units, grid_shape=grid_shape, set_coordinates=False
+        )
         compare_dataarrays(dict1_a[key], out_val, compare_coordinate_values=False)
     for key in unshared_keys:
         # with subtests.test(key=key):
@@ -421,8 +437,6 @@ def test_iadd(data, subtests):
 )
 @given(data=hyp_st.data())
 def test_sub(data, subtests):
-    gt_storage.prepare_numpy()
-
     # ========================================
     # random data generation
     # ========================================
@@ -432,9 +446,13 @@ def test_sub(data, subtests):
     )
     grid = domain.physical_grid
 
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
     backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = grid.x.dtype
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    if gt_powered:
+        gt_storage.prepare_numpy()
 
     dict1 = data.draw(
         st_isentropic_state_f(
@@ -454,15 +472,15 @@ def test_sub(data, subtests):
 
     keys = tuple(key for key in out_a.keys() if key != "time")
     for key in keys:
-        if data.draw(hyp_st.booleans()):
+        if not data.draw(hyp_st.booleans(), label=f"{key}_in_dict1"):
             dict1.pop(key, None)
-        if data.draw(hyp_st.booleans()):
+        if not data.draw(hyp_st.booleans(), label=f"{key}_in_dict2"):
             dict2.pop(key, None)
 
     field_properties = {}
     field_properties_passed = {}
     for key in keys:
-        if data.draw(hyp_st.booleans()):
+        if data.draw(hyp_st.booleans(), label=f"{key}_in_field_properties_passed"):
             field_properties[key] = __field_properties[key]
             field_properties_passed[key] = field_properties[key]
         elif key in dict1:
@@ -470,7 +488,8 @@ def test_sub(data, subtests):
         elif key in dict2:
             field_properties[key] = {"units": dict2[key].attrs["units"]}
 
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+        if key in field_properties:
+            field_properties[key]["grid_shape"] = get_grid_shape(key, grid)
 
     # ========================================
     # test bed
@@ -497,7 +516,10 @@ def test_sub(data, subtests):
         units = field_properties[key]["units"]
         field1 = dict1[key].to_units(units).values
         field2 = dict2[key].to_units(units).values
-        out_val = get_dataarray_3d(field1 - field2, grid, units, set_coordinates=False)
+        grid_shape = field_properties[key]["grid_shape"]
+        out_val = get_dataarray_3d(
+            field1 - field2, grid, units, grid_shape=grid_shape, set_coordinates=False
+        )
         compare_dataarrays(out[key], out_val, compare_coordinate_values=False)
 
     #
@@ -514,7 +536,10 @@ def test_sub(data, subtests):
         units = field_properties[key]["units"]
         field1 = dict1[key].to_units(units).values
         field2 = dict2[key].to_units(units).values
-        out_val = get_dataarray_3d(field1 - field2, grid, units, set_coordinates=False)
+        grid_shape = field_properties[key]["grid_shape"]
+        out_val = get_dataarray_3d(
+            field1 - field2, grid, units, grid_shape=grid_shape, set_coordinates=False
+        )
         compare_dataarrays(out[key], out_val, compare_coordinate_values=False)
     for key in unshared_keys:
         # with subtests.test(key=key):
@@ -542,7 +567,10 @@ def test_sub(data, subtests):
         units = field_properties[key]["units"]
         field1 = dict1[key].to_units(units).values
         field2 = dict2[key].to_units(units).values
-        out_val = get_dataarray_3d(field1 - field2, grid, units, set_coordinates=False)
+        grid_shape = field_properties[key]["grid_shape"]
+        out_val = get_dataarray_3d(
+            field1 - field2, grid, units, grid_shape=grid_shape, set_coordinates=False
+        )
         compare_dataarrays(out_a[key], out_val, compare_coordinate_values=False)
 
     #
@@ -560,7 +588,10 @@ def test_sub(data, subtests):
         units = field_properties[key]["units"]
         field1 = dict1[key].to_units(units).values
         field2 = dict2[key].to_units(units).values
-        out_val = get_dataarray_3d(field1 - field2, grid, units, set_coordinates=False)
+        grid_shape = field_properties[key]["grid_shape"]
+        out_val = get_dataarray_3d(
+            field1 - field2, grid, units, grid_shape=grid_shape, set_coordinates=False
+        )
         compare_dataarrays(out_b[key], out_val, compare_coordinate_values=False)
     for key in unshared_keys:
         # with subtests.test(key=key):
@@ -584,8 +615,6 @@ def test_sub(data, subtests):
 )
 @given(data=hyp_st.data())
 def test_isub(data, subtests):
-    gt_storage.prepare_numpy()
-
     # ========================================
     # random data generation
     # ========================================
@@ -595,9 +624,13 @@ def test_isub(data, subtests):
     )
     grid = domain.physical_grid
 
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
     backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = grid.x.dtype
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    if gt_powered:
+        gt_storage.prepare_numpy()
 
     dict1 = data.draw(
         st_isentropic_state_f(
@@ -614,9 +647,9 @@ def test_isub(data, subtests):
 
     keys = tuple(key for key in dict1.keys() if key != "time")
     for key in keys:
-        if data.draw(hyp_st.booleans()):
+        if not data.draw(hyp_st.booleans(), label=f"{key}_in_dict1"):
             dict1.pop(key, None)
-        if data.draw(hyp_st.booleans()):
+        if not data.draw(hyp_st.booleans(), label=f"{key}_in_dict2"):
             dict2.pop(key, None)
 
     dict1_a = deepcopy_dataarray_dict(dict1)
@@ -625,7 +658,7 @@ def test_isub(data, subtests):
     field_properties = {}
     field_properties_passed = {}
     for key in keys:
-        if data.draw(hyp_st.booleans()):
+        if data.draw(hyp_st.booleans(), label=f"{key}_in_field_properties_passed"):
             field_properties[key] = __field_properties[key]
             field_properties_passed[key] = field_properties[key]
         elif key in dict1:
@@ -633,7 +666,8 @@ def test_isub(data, subtests):
         elif key in dict2:
             field_properties[key] = {"units": dict2[key].attrs["units"]}
 
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+        if key in field_properties:
+            field_properties[key]["grid_shape"] = get_grid_shape(key, grid)
 
     # ========================================
     # test bed
@@ -660,7 +694,10 @@ def test_isub(data, subtests):
         units = field_properties[key]["units"]
         field1 = dict1_a[key].to_units(units).values
         field2 = dict2[key].to_units(units).values
-        out_val = get_dataarray_3d(field1 - field2, grid, units, set_coordinates=False)
+        grid_shape = field_properties[key]["grid_shape"]
+        out_val = get_dataarray_3d(
+            field1 - field2, grid, units, grid_shape=grid_shape, set_coordinates=False
+        )
         compare_dataarrays(dict1[key], out_val, compare_coordinate_values=False)
 
     #
@@ -677,7 +714,10 @@ def test_isub(data, subtests):
         units = field_properties[key]["units"]
         field1 = dict1_b[key].to_units(units).values
         field2 = dict2[key].to_units(units).values
-        out_val = get_dataarray_3d(field1 - field2, grid, units, set_coordinates=False)
+        grid_shape = field_properties[key]["grid_shape"]
+        out_val = get_dataarray_3d(
+            field1 - field2, grid, units, grid_shape=grid_shape, set_coordinates=False
+        )
         compare_dataarrays(dict1_a[key], out_val, compare_coordinate_values=False)
     for key in unshared_keys:
         # with subtests.test(key=key):
@@ -701,8 +741,6 @@ def test_isub(data, subtests):
 )
 @given(data=hyp_st.data())
 def test_scale(data, subtests):
-    gt_storage.prepare_numpy()
-
     # ========================================
     # random data generation
     # ========================================
@@ -712,9 +750,13 @@ def test_scale(data, subtests):
     )
     grid = domain.physical_grid
 
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
     backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = grid.x.dtype
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    if gt_powered:
+        gt_storage.prepare_numpy()
 
     dict1 = data.draw(
         st_isentropic_state_f(
@@ -730,13 +772,12 @@ def test_scale(data, subtests):
     field_properties_passed = {}
     for key in dict1.keys():
         if key != "time":
-            if data.draw(hyp_st.booleans()):
+            if data.draw(hyp_st.booleans(), label=f"{key}_in_field_properties_passed"):
                 field_properties[key] = __field_properties[key]
                 field_properties_passed[key] = field_properties[key]
             else:
                 field_properties[key] = {"units": dict1[key].attrs["units"]}
-
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+            field_properties[key]["grid_shape"] = get_grid_shape(key, grid)
 
     # ========================================
     # test bed
@@ -754,7 +795,10 @@ def test_scale(data, subtests):
         if key != "time":
             units = field_properties[key]["units"]
             field = dict1[key].to_units(units).values
-            out_val = get_dataarray_3d(f * field, grid, units, set_coordinates=False)
+            grid_shape = field_properties[key]["grid_shape"]
+            out_val = get_dataarray_3d(
+                f * field, grid, units, grid_shape=grid_shape, set_coordinates=False
+            )
             compare_dataarrays(out[key], out_val, compare_coordinate_values=False)
 
     #
@@ -766,7 +810,10 @@ def test_scale(data, subtests):
         if key != "time":
             units = field_properties[key]["units"]
             field = dict1[key].to_units(units).values
-            out_val = get_dataarray_3d(f * field, grid, units, set_coordinates=False)
+            grid_shape = field_properties[key]["grid_shape"]
+            out_val = get_dataarray_3d(
+                f * field, grid, units, grid_shape=grid_shape, set_coordinates=False
+            )
             compare_dataarrays(out_a[key], out_val, compare_coordinate_values=False)
 
 
@@ -780,8 +827,6 @@ def test_scale(data, subtests):
 )
 @given(data=hyp_st.data())
 def test_iscale(data, subtests):
-    gt_storage.prepare_numpy()
-
     # ========================================
     # random data generation
     # ========================================
@@ -791,9 +836,13 @@ def test_iscale(data, subtests):
     )
     grid = domain.physical_grid
 
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
     backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = grid.x.dtype
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    if gt_powered:
+        gt_storage.prepare_numpy()
 
     dict1 = data.draw(
         st_isentropic_state_f(
@@ -809,13 +858,12 @@ def test_iscale(data, subtests):
     field_properties_passed = {}
     for key in dict1.keys():
         if key != "time":
-            if data.draw(hyp_st.booleans()):
+            if data.draw(hyp_st.booleans(), label=f"{key}_in_field_properties_passed"):
                 field_properties[key] = __field_properties[key]
                 field_properties_passed[key] = field_properties[key]
             else:
                 field_properties[key] = {"units": dict1[key].attrs["units"]}
-
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+            field_properties[key]["grid_shape"] = get_grid_shape(key, grid)
 
     # ========================================
     # test bed
@@ -831,7 +879,10 @@ def test_iscale(data, subtests):
         if key != "time":
             units = field_properties[key]["units"]
             field = dict1_dc[key].to_units(units).values
-            out_val = get_dataarray_3d(f * field, grid, units, set_coordinates=False)
+            grid_shape = field_properties[key]["grid_shape"]
+            out_val = get_dataarray_3d(
+                f * field, grid, units, grid_shape=grid_shape, set_coordinates=False
+            )
             compare_dataarrays(dict1[key], out_val, compare_coordinate_values=False)
 
 
@@ -845,8 +896,6 @@ def test_iscale(data, subtests):
 )
 @given(data=hyp_st.data())
 def test_addsub(data, subtests):
-    gt_storage.prepare_numpy()
-
     # ========================================
     # random data generation
     # ========================================
@@ -856,9 +905,13 @@ def test_addsub(data, subtests):
     )
     grid = domain.physical_grid
 
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
     backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = grid.x.dtype
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    if gt_powered:
+        gt_storage.prepare_numpy()
 
     dict1 = data.draw(
         st_isentropic_state_f(
@@ -883,24 +936,25 @@ def test_addsub(data, subtests):
 
     keys = tuple(key for key in dict1.keys() if key != "time")
     for key in keys:
-        if data.draw(hyp_st.booleans()):
+        if not data.draw(hyp_st.booleans(), label=f"{key}_in_dict1"):
             dict1.pop(key, None)
-        if data.draw(hyp_st.booleans()):
+        if not data.draw(hyp_st.booleans(), label=f"{key}_in_dict2"):
             dict2.pop(key, None)
-        if data.draw(hyp_st.booleans()):
+        if not data.draw(hyp_st.booleans(), label=f"{key}_in_dict3"):
             dict3.pop(key, None)
 
     field_properties = {}
     field_properties_passed = {}
     for key in keys:
-        if data.draw(hyp_st.booleans()):
+        if data.draw(hyp_st.booleans(), label=f"{key}_in_field_properties_passed"):
             field_properties[key] = __field_properties[key]
             field_properties_passed[key] = field_properties[key]
         else:
             if key in dict1:
                 field_properties[key] = {"units": dict1[key].attrs["units"]}
 
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+        if key in field_properties:
+            field_properties[key]["grid_shape"] = get_grid_shape(key, grid)
 
     # ========================================
     # test bed
@@ -922,8 +976,13 @@ def test_addsub(data, subtests):
         field1 = dict1[key].to_units(units).values
         field2 = dict2[key].to_units(units).values
         field3 = dict3[key].to_units(units).values
+        grid_shape = field_properties[key]["grid_shape"]
         out_val = get_dataarray_3d(
-            field1 + field2 - field3, grid, units, set_coordinates=False
+            field1 + field2 - field3,
+            grid,
+            units,
+            grid_shape=grid_shape,
+            set_coordinates=False,
         )
         compare_dataarrays(out[key], out_val, compare_coordinate_values=False)
     assert len(out) == len(shared_keys) + 1
@@ -938,8 +997,13 @@ def test_addsub(data, subtests):
         field1 = dict1[key].to_units(units).values
         field2 = dict2[key].to_units(units).values
         field3 = dict3[key].to_units(units).values
+        grid_shape = field_properties[key]["grid_shape"]
         out_val = get_dataarray_3d(
-            field1 + field2 - field3, grid, units, set_coordinates=False
+            field1 + field2 - field3,
+            grid,
+            units,
+            grid_shape=grid_shape,
+            set_coordinates=False,
         )
         compare_dataarrays(out_a[key], out_val, compare_coordinate_values=False)
 
@@ -954,8 +1018,6 @@ def test_addsub(data, subtests):
 )
 @given(data=hyp_st.data())
 def test_iaddsub(data, subtests):
-    gt_storage.prepare_numpy()
-
     # ========================================
     # random data generation
     # ========================================
@@ -965,9 +1027,13 @@ def test_iaddsub(data, subtests):
     )
     grid = domain.physical_grid
 
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
     backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = grid.x.dtype
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    if gt_powered:
+        gt_storage.prepare_numpy()
 
     dict1 = data.draw(
         st_isentropic_state_f(
@@ -992,24 +1058,25 @@ def test_iaddsub(data, subtests):
 
     keys = tuple(key for key in dict1.keys() if key != "time")
     for key in keys:
-        if data.draw(hyp_st.booleans()):
+        if not data.draw(hyp_st.booleans(), label=f"{key}_in_dict1"):
             dict1.pop(key, None)
-        if data.draw(hyp_st.booleans()):
+        if not data.draw(hyp_st.booleans(), label=f"{key}_in_dict2"):
             dict2.pop(key, None)
-        if data.draw(hyp_st.booleans()):
+        if not data.draw(hyp_st.booleans(), label=f"{key}_in_dict3"):
             dict3.pop(key, None)
 
     field_properties = {}
     field_properties_passed = {}
     for key in keys:
-        if data.draw(hyp_st.booleans()):
+        if data.draw(hyp_st.booleans(), label=f"{key}_in_field_properties_passed"):
             field_properties[key] = __field_properties[key]
             field_properties_passed[key] = field_properties[key]
         else:
             if key in dict1:
                 field_properties[key] = {"units": dict1[key].attrs["units"]}
 
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+        if key in field_properties:
+            field_properties[key]["grid_shape"] = get_grid_shape(key, grid)
 
     # ========================================
     # test bed
@@ -1028,8 +1095,13 @@ def test_iaddsub(data, subtests):
         field1 = dict1_a[key].to_units(units).values
         field2 = dict2[key].to_units(units).values
         field3 = dict3[key].to_units(units).values
+        grid_shape = field_properties[key]["grid_shape"]
         out_val = get_dataarray_3d(
-            field1 + field2 - field3, grid, units, set_coordinates=False
+            field1 + field2 - field3,
+            grid,
+            units,
+            grid_shape=grid_shape,
+            set_coordinates=False,
         )
         compare_dataarrays(dict1[key], out_val, compare_coordinate_values=False)
 
@@ -1044,8 +1116,6 @@ def test_iaddsub(data, subtests):
 )
 @given(data=hyp_st.data())
 def test_fma(data, subtests):
-    gt_storage.prepare_numpy()
-
     # ========================================
     # random data generation
     # ========================================
@@ -1055,9 +1125,13 @@ def test_fma(data, subtests):
     )
     grid = domain.physical_grid
 
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
     backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = grid.x.dtype
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    if gt_powered:
+        gt_storage.prepare_numpy()
 
     dict1 = data.draw(
         st_isentropic_state_f(
@@ -1077,15 +1151,15 @@ def test_fma(data, subtests):
 
     keys = tuple(key for key in out_a.keys() if key != "time")
     for key in keys:
-        if data.draw(hyp_st.booleans()):
+        if not data.draw(hyp_st.booleans(), label=f"{key}_in_dict1"):
             dict1.pop(key, None)
-        if data.draw(hyp_st.booleans()):
+        if not data.draw(hyp_st.booleans(), label=f"{key}_in_dict2"):
             dict2.pop(key, None)
 
     field_properties = {}
     field_properties_passed = {}
     for key in keys:
-        if data.draw(hyp_st.booleans()):
+        if data.draw(hyp_st.booleans(), label=f"{key}_in_field_properties_passed"):
             field_properties[key] = __field_properties[key]
             field_properties_passed[key] = field_properties[key]
         elif key in dict1:
@@ -1093,7 +1167,8 @@ def test_fma(data, subtests):
         elif key in dict2:
             field_properties[key] = {"units": dict2[key].attrs["units"]}
 
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+        if key in field_properties:
+            field_properties[key]["grid_shape"] = get_grid_shape(key, grid)
 
     # ========================================
     # test bed
@@ -1113,8 +1188,13 @@ def test_fma(data, subtests):
         units = field_properties[key]["units"]
         field1 = dict1[key].to_units(units).values
         field2 = dict2[key].to_units(units).values
+        grid_shape = field_properties[key]["grid_shape"]
         out_val = get_dataarray_3d(
-            field1 + f * field2, grid, units, set_coordinates=False
+            field1 + f * field2,
+            grid,
+            units,
+            grid_shape=grid_shape,
+            set_coordinates=False,
         )
         compare_dataarrays(out[key], out_val, compare_coordinate_values=False)
     assert len(out) == len(shared_keys) + 1
@@ -1128,8 +1208,13 @@ def test_fma(data, subtests):
         units = field_properties[key]["units"]
         field1 = dict1[key].to_units(units).values
         field2 = dict2[key].to_units(units).values
+        grid_shape = field_properties[key]["grid_shape"]
         out_val = get_dataarray_3d(
-            field1 + f * field2, grid, units, set_coordinates=False
+            field1 + f * field2,
+            grid,
+            units,
+            grid_shape=grid_shape,
+            set_coordinates=False,
         )
         compare_dataarrays(out_a[key], out_val, compare_coordinate_values=False)
 
@@ -1144,8 +1229,6 @@ def test_fma(data, subtests):
 )
 @given(data=hyp_st.data())
 def test_sts_rk2_0(data, subtests):
-    gt_storage.prepare_numpy()
-
     # ========================================
     # random data generation
     # ========================================
@@ -1155,9 +1238,13 @@ def test_sts_rk2_0(data, subtests):
     )
     grid = domain.physical_grid
 
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
     backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = grid.x.dtype
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    if gt_powered:
+        gt_storage.prepare_numpy()
 
     dict1 = data.draw(
         st_isentropic_state_f(
@@ -1186,15 +1273,15 @@ def test_sts_rk2_0(data, subtests):
 
     keys = tuple(key for key in out_a.keys() if key != "time")
     for key in keys:
-        if data.draw(hyp_st.booleans()):
+        if not data.draw(hyp_st.booleans(), label=f"{key}_in_dict1"):
             dict1.pop(key, None)
-        if data.draw(hyp_st.booleans()):
+        if not data.draw(hyp_st.booleans(), label=f"{key}_in_dict2"):
             dict2.pop(key, None)
 
     field_properties = {}
     field_properties_passed = {}
     for key in keys:
-        if data.draw(hyp_st.booleans()):
+        if data.draw(hyp_st.booleans(), label=f"{key}_in_field_properties_passed"):
             field_properties[key] = __field_properties[key]
             field_properties_passed[key] = field_properties[key]
         elif key in dict1:
@@ -1202,7 +1289,8 @@ def test_sts_rk2_0(data, subtests):
         elif key in dict2:
             field_properties[key] = {"units": dict2[key].attrs["units"]}
 
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+        if key in field_properties:
+            field_properties[key]["grid_shape"] = get_grid_shape(key, grid)
 
     # ========================================
     # test bed
@@ -1225,8 +1313,13 @@ def test_sts_rk2_0(data, subtests):
         field1 = dict1[key].to_units(units).values
         field2 = dict2[key].to_units(units).values
         field3 = dict3[key].to_units(units).values
+        grid_shape = field_properties[key]["grid_shape"]
         out_val = get_dataarray_3d(
-            0.5 * (field1 + field2 + dt * field3), grid, units, set_coordinates=False
+            0.5 * (field1 + field2 + dt * field3),
+            grid,
+            units,
+            grid_shape=grid_shape,
+            set_coordinates=False,
         )
         compare_dataarrays(out[key], out_val, compare_coordinate_values=False)
     assert len(out) == len(shared_keys) + 1
@@ -1243,8 +1336,13 @@ def test_sts_rk2_0(data, subtests):
         field1 = dict1[key].to_units(units).values
         field2 = dict2[key].to_units(units).values
         field3 = dict3[key].to_units(units).values
+        grid_shape = field_properties[key]["grid_shape"]
         out_val = get_dataarray_3d(
-            0.5 * (field1 + field2 + dt * field3), grid, units, set_coordinates=False
+            0.5 * (field1 + field2 + dt * field3),
+            grid,
+            units,
+            grid_shape=grid_shape,
+            set_coordinates=False,
         )
         compare_dataarrays(out_a[key], out_val, compare_coordinate_values=False)
 
@@ -1259,8 +1357,6 @@ def test_sts_rk2_0(data, subtests):
 )
 @given(data=hyp_st.data())
 def test_sts_rk3ws_0(data, subtests):
-    gt_storage.prepare_numpy()
-
     # ========================================
     # random data generation
     # ========================================
@@ -1270,9 +1366,13 @@ def test_sts_rk3ws_0(data, subtests):
     )
     grid = domain.physical_grid
 
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
     backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = grid.x.dtype
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    if gt_powered:
+        gt_storage.prepare_numpy()
 
     dict1 = data.draw(
         st_isentropic_state_f(
@@ -1301,15 +1401,15 @@ def test_sts_rk3ws_0(data, subtests):
 
     keys = tuple(key for key in out_a.keys() if key != "time")
     for key in keys:
-        if data.draw(hyp_st.booleans()):
+        if not data.draw(hyp_st.booleans(), label=f"{key}_in_dict1"):
             dict1.pop(key, None)
-        if data.draw(hyp_st.booleans()):
+        if not data.draw(hyp_st.booleans(), label=f"{key}_in_dict2"):
             dict2.pop(key, None)
 
     field_properties = {}
     field_properties_passed = {}
     for key in keys:
-        if data.draw(hyp_st.booleans()):
+        if data.draw(hyp_st.booleans(), label=f"{key}_in_field_properties_passed"):
             field_properties[key] = __field_properties[key]
             field_properties_passed[key] = field_properties[key]
         elif key in dict1:
@@ -1317,7 +1417,8 @@ def test_sts_rk3ws_0(data, subtests):
         elif key in dict2:
             field_properties[key] = {"units": dict2[key].attrs["units"]}
 
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+        if key in field_properties:
+            field_properties[key]["grid_shape"] = get_grid_shape(key, grid)
 
     # ========================================
     # test bed
@@ -1342,10 +1443,12 @@ def test_sts_rk3ws_0(data, subtests):
         field1 = dict1[key].to_units(units).values
         field2 = dict2[key].to_units(units).values
         field3 = dict3[key].to_units(units).values
+        grid_shape = field_properties[key]["grid_shape"]
         out_val = get_dataarray_3d(
             (2.0 * field1 + field2 + dt * field3) / 3.0,
             grid,
             units,
+            grid_shape=grid_shape,
             set_coordinates=False,
         )
         compare_dataarrays(out[key], out_val, compare_coordinate_values=False)
@@ -1363,10 +1466,12 @@ def test_sts_rk3ws_0(data, subtests):
         field1 = dict1[key].to_units(units).values
         field2 = dict2[key].to_units(units).values
         field3 = dict3[key].to_units(units).values
+        grid_shape = field_properties[key]["grid_shape"]
         out_val = get_dataarray_3d(
             (2.0 * field1 + field2 + dt * field3) / 3.0,
             grid,
             units,
+            grid_shape=grid_shape,
             set_coordinates=False,
         )
         compare_dataarrays(out_a[key], out_val, compare_coordinate_values=False)
