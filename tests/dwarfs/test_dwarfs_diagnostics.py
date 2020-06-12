@@ -61,8 +61,8 @@ def test_horizontal_velocity_staggered(data):
     dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
-    if gt_powered:
-        gt.storage.prepare_numpy()
+    # if gt_powered:
+    #     gt.storage.prepare_numpy()
 
     domain = data.draw(
         st_domain(
@@ -186,9 +186,9 @@ def test_horizontal_velocity(data):
     dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
-    if gt_powered:
-        # comment the following line to prevent segfault
-        gt.storage.prepare_numpy()
+    # if gt_powered:
+    #     # comment the following line to prevent segfault
+    #     gt.storage.prepare_numpy()
 
     domain = data.draw(
         st_domain(
@@ -312,9 +312,9 @@ def test_water_constituent(data):
     dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
-    if gt_powered:
-        # comment the following line to prevent segfault
-        gt.storage.prepare_numpy()
+    # if gt_powered:
+    #     # comment the following line to prevent segfault
+    #     gt.storage.prepare_numpy()
 
     domain = data.draw(
         st_domain(

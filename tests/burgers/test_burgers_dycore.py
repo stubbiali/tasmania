@@ -65,8 +65,8 @@ def test_forward_euler(data):
     dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
-    if gt_powered:
-        gt.storage.prepare_numpy()
+    # if gt_powered:
+    #     gt.storage.prepare_numpy()
 
     nb = data.draw(hyp_st.integers(min_value=1, max_value=max(1, conf_nb)), label="nb")
     domain = data.draw(
@@ -128,10 +128,10 @@ def test_forward_euler(data):
     assert new_state["time"] == state["time"] + timestep
 
     dt = timestep.total_seconds()
-    dx = grid.dx.to_units("m").values.item()
-    dy = grid.dy.to_units("m").values.item()
-    u0 = state["x_velocity"].to_units("m s^-1").values
-    v0 = state["y_velocity"].to_units("m s^-1").values
+    dx = grid.dx.to_units("m").data.item()
+    dy = grid.dy.to_units("m").data.item()
+    u0 = state["x_velocity"].to_units("m s^-1").data
+    v0 = state["y_velocity"].to_units("m s^-1").data
 
     adv_u_x, adv_u_y = first_order_advection(dx, dy, u0, v0, u0)
     adv_v_x, adv_v_y = first_order_advection(dx, dy, u0, v0, v0)
@@ -176,8 +176,8 @@ def test_rk2(data):
     dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
-    if gt_powered:
-        gt.storage.prepare_numpy()
+    # if gt_powered:
+    #     gt.storage.prepare_numpy()
 
     nb = data.draw(hyp_st.integers(min_value=2, max_value=max(2, conf_nb)), label="nb")
     domain = data.draw(
@@ -239,10 +239,10 @@ def test_rk2(data):
     assert new_state["time"] == state["time"] + timestep
 
     dt = timestep.total_seconds()
-    dx = grid.dx.to_units("m").values.item()
-    dy = grid.dy.to_units("m").values.item()
-    u0 = state["x_velocity"].to_units("m s^-1").values
-    v0 = state["y_velocity"].to_units("m s^-1").values
+    dx = grid.dx.to_units("m").data.item()
+    dy = grid.dy.to_units("m").data.item()
+    u0 = state["x_velocity"].to_units("m s^-1").data
+    v0 = state["y_velocity"].to_units("m s^-1").data
 
     adv_u_x, adv_u_y = third_order_advection(dx, dy, u0, v0, u0)
     adv_v_x, adv_v_y = third_order_advection(dx, dy, u0, v0, v0)
@@ -308,8 +308,8 @@ def test_rk3ws(data):
     dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
-    if gt_powered:
-        gt.storage.prepare_numpy()
+    # if gt_powered:
+    #     gt.storage.prepare_numpy()
 
     nb = data.draw(hyp_st.integers(min_value=3, max_value=max(3, conf_nb)), label="nb")
     domain = data.draw(
@@ -371,10 +371,10 @@ def test_rk3ws(data):
     assert new_state["time"] == state["time"] + timestep
 
     dt = timestep.total_seconds()
-    dx = grid.dx.to_units("m").values.item()
-    dy = grid.dy.to_units("m").values.item()
-    u0 = state["x_velocity"].to_units("m s^-1").values
-    v0 = state["y_velocity"].to_units("m s^-1").values
+    dx = grid.dx.to_units("m").data.item()
+    dy = grid.dy.to_units("m").data.item()
+    u0 = state["x_velocity"].to_units("m s^-1").data
+    v0 = state["y_velocity"].to_units("m s^-1").data
 
     adv_u_x, adv_u_y = fifth_order_advection(dx, dy, u0, v0, u0)
     adv_v_x, adv_v_y = fifth_order_advection(dx, dy, u0, v0, v0)

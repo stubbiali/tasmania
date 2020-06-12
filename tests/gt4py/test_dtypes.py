@@ -67,13 +67,13 @@ def stencil_defs(
 )
 @given(hyp_st.data())
 def test(data):
-    gt_storage.prepare_numpy()
+    # gt_storage.prepare_numpy()
 
     # ========================================
     # random data generation
     # ========================================
     gt_powered = True
-    backend = "numpy"
+    backend = "gtmc"
     dtype = np.float64
     default_origin = data.draw(st_one_of(conf_dorigin))
 

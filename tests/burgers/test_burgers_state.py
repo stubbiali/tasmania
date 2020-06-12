@@ -131,8 +131,8 @@ def test_zhao_state_factory(data):
     dtype = grid.x.dtype
     default_origin = data.draw(st_one_of(conf_dorigin))
 
-    if gt_powered:
-        gt.storage.prepare_numpy()
+    # if gt_powered:
+    #     gt.storage.prepare_numpy()
 
     # ========================================
     # test
@@ -155,12 +155,12 @@ def test_zhao_state_factory(data):
 
     assert state["time"] == init_time
 
-    x = grid.x.to_units("m").values
+    x = grid.x.to_units("m").data
     x = np.tile(x[:, np.newaxis, np.newaxis], (1, grid.ny, grid.nz))
-    y = grid.y.to_units("m").values
+    y = grid.y.to_units("m").data
     y = np.tile(y[np.newaxis, :, np.newaxis], (grid.nx, 1, grid.nz))
 
-    e = eps.to_units("m^2 s^-1").values.item()
+    e = eps.to_units("m^2 s^-1").data.item()
 
     u = (
         -4.0
@@ -170,7 +170,7 @@ def test_zhao_state_factory(data):
         * np.sin(np.pi * y)
         / (2.0 + np.sin(2.0 * np.pi * x) * np.sin(np.pi * y))
     )
-    compare_arrays(u, state["x_velocity"].values)
+    compare_arrays(u, state["x_velocity"].data)
 
     v = (
         -2.0
@@ -180,7 +180,7 @@ def test_zhao_state_factory(data):
         * np.cos(np.pi * y)
         / (2.0 + np.sin(2.0 * np.pi * x) * np.sin(np.pi * y))
     )
-    compare_arrays(v, state["y_velocity"].values)
+    compare_arrays(v, state["y_velocity"].data)
 
 
 if __name__ == "__main__":

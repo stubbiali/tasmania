@@ -58,7 +58,7 @@ def stencil_avg_defs(in_a: gtscript.Field["dtype"], out_a: gtscript.Field["dtype
 )
 @given(hyp_st.data())
 def test_avg(data):
-    gt_storage.prepare_numpy()
+    # gt_storage.prepare_numpy()
 
     # ========================================
     # random data generation
@@ -115,8 +115,8 @@ def test_avg(data):
         dtype=dtype,
         default_origin=default_origin,
     )
-    c[: ni - offi, : nj - offj] = 0.5 * (
-        a[: ni - offi, : nj - offj] + a[offi:ni, offj:nj]
+    c[: ni - offi, : nj - offj, :] = 0.5 * (
+        a[: ni - offi, : nj - offj, :] + a[offi:ni, offj:nj, :]
     )
 
     compare_arrays(c, out_a)

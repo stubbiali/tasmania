@@ -57,7 +57,7 @@ def stencil_sum_defs(inout_a: gtscript.Field["dtype"], in_b: gtscript.Field["dty
 )
 @given(hyp_st.data())
 def test_sum(data):
-    gt_storage.prepare_numpy()
+    # gt_storage.prepare_numpy()
 
     # ========================================
     # random data generation

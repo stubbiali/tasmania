@@ -522,12 +522,7 @@ def empty(
 
     if gt_powered:
         storage = gt.storage.empty(
-            backend,
-            default_origin,
-            storage_shape,
-            dtype,
-            mask=mask,
-            managed_memory=managed_memory,
+            backend, default_origin, storage_shape, dtype, managed=managed_memory,
         )
     else:
         _empty = cp.empty if backend == "cupy" else np.empty
@@ -550,12 +545,7 @@ def zeros(
 
     if gt_powered:
         storage = gt.storage.zeros(
-            backend,
-            default_origin,
-            storage_shape,
-            dtype,
-            mask=mask,
-            managed_memory=managed_memory,
+            backend, default_origin, storage_shape, dtype, managed=managed_memory,
         )
     else:
         _zeros = cp.zeros if backend == "cupy" else np.zeros
@@ -578,12 +568,7 @@ def ones(
 
     if gt_powered:
         storage = gt.storage.ones(
-            backend,
-            default_origin,
-            storage_shape,
-            dtype,
-            mask=mask,
-            managed_memory=managed_memory,
+            backend, default_origin, storage_shape, dtype, managed=managed_memory,
         )
     else:
         _ones = cp.ones if backend == "cupy" else np.ones

@@ -102,8 +102,8 @@ def test_rayleigh(data):
     dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
-    if gt_powered:
-        gt.storage.prepare_numpy()
+    # if gt_powered:
+    #     gt.storage.prepare_numpy()
 
     domain = data.draw(
         st_domain(

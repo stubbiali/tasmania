@@ -51,22 +51,26 @@ def compare_datetimes(td1, td2):
 
 def compare_arrays(field_a, field_b, atol=1e-8, rtol=1e-5):
     # to prevent segfaults
-    gt.storage.restore_numpy()
+    # gt.storage.restore_numpy()
 
     # field_a[np.isinf(field_a)] = np.nan
     # field_b[np.isinf(field_b)] = np.nan
 
     try:
         assert np.allclose(field_a, field_b, equal_nan=True, atol=atol, rtol=rtol)
-    except RuntimeError:
+    except (NotImplementedError, RuntimeError):
         try:
             assert np.allclose(
-                field_a.data, field_b.data, equal_nan=True, atol=atol, rtol=rtol
+                np.asarray(field_a),
+                np.asarray(field_b),
+                equal_nan=True,
+                atol=atol,
+                rtol=rtol,
             )
         except AttributeError:
             assert False
 
-    gt.storage.prepare_numpy()
+    # gt.storage.prepare_numpy()
 
 
 def compare_dataarrays(da1, da2, compare_coordinate_values=True):

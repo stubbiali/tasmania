@@ -58,8 +58,8 @@ from tests.strategies import st_burgers_state, st_domain, st_floats, st_one_of
 
 def second_order_validation(grid, smooth_coeff, phi, phi_tnd, nb):
     nx, ny = grid.nx, grid.ny
-    dx = grid.dx.to_units("m").values.item()
-    dy = grid.dy.to_units("m").values.item()
+    dx = grid.dx.to_units("m").data.item()
+    dy = grid.dy.to_units("m").data.item()
 
     if nx < 3:
         phi_tnd_assert = smooth_coeff * second_order_diffusion_yz(dy, phi)
@@ -86,8 +86,8 @@ def test_second_order(data):
     dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
-    if gt_powered:
-        gt.storage.prepare_numpy()
+    # if gt_powered:
+    #     gt.storage.prepare_numpy()
 
     nb = data.draw(hyp_st.integers(min_value=1, max_value=max(1, conf_nb)), label="nb")
     domain = data.draw(
@@ -150,8 +150,8 @@ def test_second_order(data):
     second_order_validation(
         pgrid,
         smooth_coeff,
-        pstate["x_velocity"].to_units("m s^-1").values,
-        tendencies["x_velocity"].values,
+        pstate["x_velocity"].to_units("m s^-1").data,
+        tendencies["x_velocity"].data,
         nb,
     )
 
@@ -159,8 +159,8 @@ def test_second_order(data):
     second_order_validation(
         pgrid,
         smooth_coeff,
-        pstate["y_velocity"].to_units("m s^-1").values,
-        tendencies["y_velocity"].values,
+        pstate["y_velocity"].to_units("m s^-1").data,
+        tendencies["y_velocity"].data,
         nb,
     )
 
@@ -176,7 +176,7 @@ def test_second_order(data):
         backend=backend,
         dtype=cgrid.x.dtype,
         default_origin=default_origin,
-        rebuild=True,
+        rebuild=False,
     )
 
     tendencies, diagnostics = cbhd(cstate)
@@ -191,8 +191,8 @@ def test_second_order(data):
     second_order_validation(
         cgrid,
         smooth_coeff,
-        cstate["x_velocity"].to_units("m s^-1").values,
-        tendencies["x_velocity"].values,
+        cstate["x_velocity"].to_units("m s^-1").data,
+        tendencies["x_velocity"].data,
         nb,
     )
 
@@ -200,16 +200,16 @@ def test_second_order(data):
     second_order_validation(
         cgrid,
         smooth_coeff,
-        cstate["y_velocity"].to_units("m s^-1").values,
-        tendencies["y_velocity"].values,
+        cstate["y_velocity"].to_units("m s^-1").data,
+        tendencies["y_velocity"].data,
         nb,
     )
 
 
 def fourth_order_validation(grid, smooth_coeff, phi, phi_tnd, nb):
     nx, ny = grid.nx, grid.ny
-    dx = grid.dx.to_units("m").values.item()
-    dy = grid.dy.to_units("m").values.item()
+    dx = grid.dx.to_units("m").data.item()
+    dy = grid.dy.to_units("m").data.item()
 
     if nx < 5:
         phi_tnd_assert = smooth_coeff * fourth_order_diffusion_yz(dy, phi)
@@ -236,8 +236,8 @@ def test_fourth_order(data):
     dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
-    if gt_powered:
-        gt.storage.prepare_numpy()
+    # if gt_powered:
+    #     gt.storage.prepare_numpy()
 
     nb = data.draw(hyp_st.integers(min_value=2, max_value=max(2, conf_nb)))
     domain = data.draw(
@@ -300,8 +300,8 @@ def test_fourth_order(data):
     fourth_order_validation(
         pgrid,
         smooth_coeff,
-        pstate["x_velocity"].to_units("m s^-1").values,
-        tendencies["x_velocity"].values,
+        pstate["x_velocity"].to_units("m s^-1").data,
+        tendencies["x_velocity"].data,
         nb,
     )
 
@@ -309,8 +309,8 @@ def test_fourth_order(data):
     fourth_order_validation(
         pgrid,
         smooth_coeff,
-        pstate["y_velocity"].to_units("m s^-1").values,
-        tendencies["y_velocity"].values,
+        pstate["y_velocity"].to_units("m s^-1").data,
+        tendencies["y_velocity"].data,
         nb,
     )
 
@@ -326,7 +326,7 @@ def test_fourth_order(data):
         backend=backend,
         dtype=cgrid.x.dtype,
         default_origin=default_origin,
-        rebuild=True,
+        rebuild=False,
     )
 
     tendencies, diagnostics = cbhd(cstate)
@@ -341,8 +341,8 @@ def test_fourth_order(data):
     fourth_order_validation(
         cgrid,
         smooth_coeff,
-        cstate["x_velocity"].to_units("m s^-1").values,
-        tendencies["x_velocity"].values,
+        cstate["x_velocity"].to_units("m s^-1").data,
+        tendencies["x_velocity"].data,
         nb,
     )
 
@@ -350,8 +350,8 @@ def test_fourth_order(data):
     fourth_order_validation(
         cgrid,
         smooth_coeff,
-        cstate["y_velocity"].to_units("m s^-1").values,
-        tendencies["y_velocity"].values,
+        cstate["y_velocity"].to_units("m s^-1").data,
+        tendencies["y_velocity"].data,
         nb,
     )
 

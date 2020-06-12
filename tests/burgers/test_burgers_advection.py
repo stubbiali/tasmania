@@ -136,10 +136,10 @@ def test_first_order_numpy(data):
     # ========================================
     # test test
     # ========================================
-    dx = grid.grid_xy.dx.to_units("m").values.item()
-    dy = grid.grid_xy.dy.to_units("m").values.item()
-    u = state["x_velocity"].to_units("m s^-1").values
-    v = state["y_velocity"].to_units("m s^-1").values
+    dx = grid.grid_xy.dx.to_units("m").data.item()
+    dy = grid.grid_xy.dy.to_units("m").data.item()
+    u = state["x_velocity"].to_units("m s^-1").data
+    v = state["y_velocity"].to_units("m s^-1").data
 
     advection = BurgersAdvection.factory("first_order", gt_powered=False)
 
@@ -160,7 +160,7 @@ def test_first_order_numpy(data):
 )
 @given(hyp_st.data())
 def test_first_order_gt(data):
-    gt_storage.prepare_numpy()
+    # gt_storage.prepare_numpy()
 
     # ========================================
     # random data generation
@@ -189,10 +189,10 @@ def test_first_order_gt(data):
     # ========================================
     # test test
     # ========================================
-    dx = grid.grid_xy.dx.to_units("m").values.item()
-    dy = grid.grid_xy.dy.to_units("m").values.item()
-    u = state["x_velocity"].to_units("m s^-1").values
-    v = state["y_velocity"].to_units("m s^-1").values
+    dx = grid.grid_xy.dx.to_units("m").data.item()
+    dy = grid.grid_xy.dy.to_units("m").data.item()
+    u = state["x_velocity"].to_units("m s^-1").data
+    v = state["y_velocity"].to_units("m s^-1").data
 
     grid_shape = u.shape
     adv_u_x = zeros(
@@ -272,10 +272,10 @@ def test_second_order_numpy(data):
     # ========================================
     # test test
     # ========================================
-    dx = grid.grid_xy.dx.to_units("m").values.item()
-    dy = grid.grid_xy.dy.to_units("m").values.item()
-    u = state["x_velocity"].to_units("m s^-1").values
-    v = state["y_velocity"].to_units("m s^-1").values
+    dx = grid.grid_xy.dx.to_units("m").data.item()
+    dy = grid.grid_xy.dy.to_units("m").data.item()
+    u = state["x_velocity"].to_units("m s^-1").data
+    v = state["y_velocity"].to_units("m s^-1").data
 
     advection = BurgersAdvection.factory("second_order", gt_powered=False)
     adv_u_x, adv_u_y, adv_v_x, adv_v_y = advection.call(dx, dy, u, v)
@@ -295,7 +295,7 @@ def test_second_order_numpy(data):
 )
 @given(hyp_st.data())
 def test_second_order_gt(data):
-    gt_storage.prepare_numpy()
+    # gt_storage.prepare_numpy()
 
     # ========================================
     # random data generation
@@ -325,10 +325,10 @@ def test_second_order_gt(data):
     # ========================================
     # test test
     # ========================================
-    dx = grid.grid_xy.dx.to_units("m").values.item()
-    dy = grid.grid_xy.dy.to_units("m").values.item()
-    u = state["x_velocity"].to_units("m s^-1").values
-    v = state["y_velocity"].to_units("m s^-1").values
+    dx = grid.grid_xy.dx.to_units("m").data.item()
+    dy = grid.grid_xy.dy.to_units("m").data.item()
+    u = state["x_velocity"].to_units("m s^-1").data
+    v = state["y_velocity"].to_units("m s^-1").data
 
     grid_shape = u.shape
     adv_u_x = zeros(
@@ -420,10 +420,10 @@ def test_third_order_numpy(data):
     # ========================================
     # test test
     # ========================================
-    dx = grid.grid_xy.dx.to_units("m").values.item()
-    dy = grid.grid_xy.dy.to_units("m").values.item()
-    u = state["x_velocity"].to_units("m s^-1").values
-    v = state["y_velocity"].to_units("m s^-1").values
+    dx = grid.grid_xy.dx.to_units("m").data.item()
+    dy = grid.grid_xy.dy.to_units("m").data.item()
+    u = state["x_velocity"].to_units("m s^-1").data
+    v = state["y_velocity"].to_units("m s^-1").data
 
     advection = BurgersAdvection.factory("third_order", gt_powered=False)
     adv_u_x, adv_u_y, adv_v_x, adv_v_y = advection.call(dx, dy, u, v)
@@ -443,7 +443,7 @@ def test_third_order_numpy(data):
 )
 @given(hyp_st.data())
 def test_third_order_gt(data):
-    gt_storage.prepare_numpy()
+    # gt_storage.prepare_numpy()
 
     # ========================================
     # random data generation
@@ -473,10 +473,10 @@ def test_third_order_gt(data):
     # ========================================
     # test test
     # ========================================
-    dx = grid.grid_xy.dx.to_units("m").values.item()
-    dy = grid.grid_xy.dy.to_units("m").values.item()
-    u = state["x_velocity"].to_units("m s^-1").values
-    v = state["y_velocity"].to_units("m s^-1").values
+    dx = grid.grid_xy.dx.to_units("m").data.item()
+    dy = grid.grid_xy.dy.to_units("m").data.item()
+    u = state["x_velocity"].to_units("m s^-1").data
+    v = state["y_velocity"].to_units("m s^-1").data
 
     grid_shape = u.shape
     adv_u_x = zeros(
@@ -564,10 +564,10 @@ def test_fourth_order_numpy(data):
     # ========================================
     # test test
     # ========================================
-    dx = grid.grid_xy.dx.to_units("m").values.item()
-    dy = grid.grid_xy.dy.to_units("m").values.item()
-    u = state["x_velocity"].to_units("m s^-1").values
-    v = state["y_velocity"].to_units("m s^-1").values
+    dx = grid.grid_xy.dx.to_units("m").data.item()
+    dy = grid.grid_xy.dy.to_units("m").data.item()
+    u = state["x_velocity"].to_units("m s^-1").data
+    v = state["y_velocity"].to_units("m s^-1").data
 
     advection = BurgersAdvection.factory("fourth_order", gt_powered=False)
     adv_u_x, adv_u_y, adv_v_x, adv_v_y = advection.call(dx, dy, u, v)
@@ -587,7 +587,7 @@ def test_fourth_order_numpy(data):
 )
 @given(hyp_st.data())
 def test_fourth_order_gt(data):
-    gt_storage.prepare_numpy()
+    # gt_storage.prepare_numpy()
 
     # ========================================
     # random data generation
@@ -617,10 +617,10 @@ def test_fourth_order_gt(data):
     # ========================================
     # test test
     # ========================================
-    dx = grid.grid_xy.dx.to_units("m").values.item()
-    dy = grid.grid_xy.dy.to_units("m").values.item()
-    u = state["x_velocity"].to_units("m s^-1").values
-    v = state["y_velocity"].to_units("m s^-1").values
+    dx = grid.grid_xy.dx.to_units("m").data.item()
+    dy = grid.grid_xy.dy.to_units("m").data.item()
+    u = state["x_velocity"].to_units("m s^-1").data
+    v = state["y_velocity"].to_units("m s^-1").data
 
     grid_shape = u.shape
     adv_u_x = zeros(
@@ -718,10 +718,10 @@ def test_fifth_order_numpy(data):
     # ========================================
     # test test
     # ========================================
-    dx = grid.grid_xy.dx.to_units("m").values.item()
-    dy = grid.grid_xy.dy.to_units("m").values.item()
-    u = state["x_velocity"].to_units("m s^-1").values
-    v = state["y_velocity"].to_units("m s^-1").values
+    dx = grid.grid_xy.dx.to_units("m").data.item()
+    dy = grid.grid_xy.dy.to_units("m").data.item()
+    u = state["x_velocity"].to_units("m s^-1").data
+    v = state["y_velocity"].to_units("m s^-1").data
 
     advection = BurgersAdvection.factory("fifth_order", gt_powered=False)
     adv_u_x, adv_u_y, adv_v_x, adv_v_y = advection.call(dx, dy, u, v)
@@ -741,7 +741,7 @@ def test_fifth_order_numpy(data):
 )
 @given(hyp_st.data())
 def test_fifth_order_gt(data):
-    gt_storage.prepare_numpy()
+    # gt_storage.prepare_numpy()
 
     # ========================================
     # random data generation
@@ -770,10 +770,10 @@ def test_fifth_order_gt(data):
     # ========================================
     # test test
     # ========================================
-    dx = grid.grid_xy.dx.to_units("m").values.item()
-    dy = grid.grid_xy.dy.to_units("m").values.item()
-    u = state["x_velocity"].to_units("m s^-1").values
-    v = state["y_velocity"].to_units("m s^-1").values
+    dx = grid.grid_xy.dx.to_units("m").data.item()
+    dy = grid.grid_xy.dy.to_units("m").data.item()
+    u = state["x_velocity"].to_units("m s^-1").data
+    v = state["y_velocity"].to_units("m s^-1").data
 
     grid_shape = u.shape
     adv_u_x = zeros(
@@ -871,10 +871,10 @@ def test_sixth_order_numpy(data):
     # ========================================
     # test test
     # ========================================
-    dx = grid.grid_xy.dx.to_units("m").values.item()
-    dy = grid.grid_xy.dy.to_units("m").values.item()
-    u = state["x_velocity"].to_units("m s^-1").values
-    v = state["y_velocity"].to_units("m s^-1").values
+    dx = grid.grid_xy.dx.to_units("m").data.item()
+    dy = grid.grid_xy.dy.to_units("m").data.item()
+    u = state["x_velocity"].to_units("m s^-1").data
+    v = state["y_velocity"].to_units("m s^-1").data
 
     advection = BurgersAdvection.factory("sixth_order", gt_powered=False)
     adv_u_x, adv_u_y, adv_v_x, adv_v_y = advection.call(dx, dy, u, v)
@@ -894,7 +894,7 @@ def test_sixth_order_numpy(data):
 )
 @given(hyp_st.data())
 def test_sixth_order_gt(data):
-    gt_storage.prepare_numpy()
+    # gt_storage.prepare_numpy()
 
     # ========================================
     # random data generation
@@ -923,10 +923,10 @@ def test_sixth_order_gt(data):
     # ========================================
     # test test
     # ========================================
-    dx = grid.grid_xy.dx.to_units("m").values.item()
-    dy = grid.grid_xy.dy.to_units("m").values.item()
-    u = state["x_velocity"].to_units("m s^-1").values
-    v = state["y_velocity"].to_units("m s^-1").values
+    dx = grid.grid_xy.dx.to_units("m").data.item()
+    dy = grid.grid_xy.dy.to_units("m").data.item()
+    u = state["x_velocity"].to_units("m s^-1").data
+    v = state["y_velocity"].to_units("m s^-1").data
 
     grid_shape = u.shape
     adv_u_x = zeros(
