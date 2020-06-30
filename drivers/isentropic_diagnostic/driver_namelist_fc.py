@@ -302,11 +302,11 @@ dycore = taz.IsentropicDynamicalCore(
     domain,
     moist=True,
     # parameterizations
-    intermediate_tendencies=inter_tends,
-    intermediate_diagnostics=inter_diags,
+    intermediate_tendency_component=inter_tends,
+    intermediate_diagnostic_component=inter_diags,
     substeps=nl.substeps,
-    fast_tendencies=None,
-    fast_diagnostics=None,
+    fast_tendency_component=None,
+    fast_diagnostic_component=None,
     # numerical scheme
     time_integration_scheme=nl.time_integration_scheme,
     horizontal_flux_scheme=nl.horizontal_flux_scheme,

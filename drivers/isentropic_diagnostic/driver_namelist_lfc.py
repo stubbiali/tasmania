@@ -40,7 +40,7 @@ parser.add_argument(
     "-n",
     metavar="NAMELIST",
     type=str,
-    default="namelist_lfc_0.py",
+    default="namelist_lfc.py",
     help="The namelist file.",
     dest="namelist",
 )
@@ -181,16 +181,27 @@ t2d = taz.AirPotentialTemperature2Diagnostic(domain, "numerical")
 args.append(t2d)
 
 if nl.vertical_advection:
-    # component integrating the vertical flux
-    vf = taz.IsentropicVerticalAdvection(
-        domain,
-        flux_scheme=nl.vertical_flux_scheme,
-        moist=True,
-        tendency_of_air_potential_temperature_on_interface_levels=False,
-        gt_powered=nl.gt_powered,
-        **nl.gt_kwargs
-    )
-    args.append(vf)
+    if nl.implicit_vertical_advection:
+        # component integrating the vertical flux
+        vf = taz.IsentropicImplicitVerticalAdvectionPrognostic(
+            domain,
+            moist=True,
+            tendency_of_air_potential_temperature_on_interface_levels=False,
+            gt_powered=nl.gt_powered,
+            **nl.gt_kwargs
+        )
+        args.append(vf)
+    else:
+        # component integrating the vertical flux
+        vf = taz.IsentropicVerticalAdvection(
+            domain,
+            flux_scheme=nl.vertical_flux_scheme,
+            moist=True,
+            tendency_of_air_potential_temperature_on_interface_levels=False,
+            gt_powered=nl.gt_powered,
+            **nl.gt_kwargs
+        )
+        args.append(vf)
 
 if nl.sedimentation:
     # component estimating the raindrop fall velocity
@@ -281,11 +292,11 @@ dycore = taz.IsentropicDynamicalCore(
     domain,
     moist=True,
     # parameterizations
-    intermediate_tendencies=None,
-    intermediate_diagnostics=None,
+    intermediate_tendency_component=None,
+    intermediate_diagnostic_component=None,
     substeps=nl.substeps,
-    fast_tendencies=None,
-    fast_diagnostics=None,
+    fast_tendency_component=None,
+    fast_diagnostic_component=None,
     # numerical scheme
     time_integration_scheme=nl.time_integration_scheme,
     horizontal_flux_scheme=nl.horizontal_flux_scheme,
