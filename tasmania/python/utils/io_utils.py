@@ -367,22 +367,26 @@ def load_domain(dataset: xr.Dataset) -> Domain:
 
     # topography type
     topo_type = dataset.data_vars["topography_type"].values.item()
+    topo_type = "flat" if topo_type == "flat_terrain" else topo_type
 
     # topography keyword arguments
     keys = dataset.data_vars["topography_kwargs"].values[:]
     topo_kwargs = {}
     for topo_key in keys:
-        val = dataset.data_vars[topo_key]
-        key = topo_key[5:]
+        if topo_key in dataset.data_vars:
+            val = dataset.data_vars[topo_key]
+            key = topo_key[5:]
 
-        if isinstance(val.values.item(), (str, bool)):
-            topo_kwargs[key] = val.values.item()
-        elif isinstance(val.values.item(), int):
-            topo_kwargs[key] = bool(val.values.item())
-        elif val.dims[0] == "timedelta_dim":
-            topo_kwargs[key] = Timedelta(seconds=val.values.item())
-        else:
-            topo_kwargs[key] = sympl.DataArray(val, attrs={"units": val.attrs["units"]})
+            if isinstance(val.values.item(), (str, bool)):
+                topo_kwargs[key] = val.values.item()
+            elif isinstance(val.values.item(), int):
+                topo_kwargs[key] = bool(val.values.item())
+            elif val.dims[0] == "timedelta_dim":
+                topo_kwargs[key] = Timedelta(seconds=val.values.item())
+            else:
+                topo_kwargs[key] = sympl.DataArray(
+                    val, attrs={"units": val.attrs["units"]}
+                )
 
     return Domain(
         domain_x,

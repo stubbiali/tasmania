@@ -157,7 +157,15 @@ class PhysicalTopography(abc.ABC, Topography):
             attrs={"units": "m"},
         )
 
+        # store keyword arguments
+        self._kwargs = kwargs
+
         super().__init__(topo_steady, time=time)
+
+    @property
+    def kwargs(self) -> Dict[str, Any]:
+        """ Keyword arguments used to initialize the object. """
+        return self._kwargs
 
     @property
     def type(self) -> str:
@@ -252,6 +260,7 @@ class NumericalTopography(Topography):
             The :class:`~tasmania.HorizontalBoundary` handling the horizontal
             boundary conditions.
         """
+        self._kwargs = phys_topography.kwargs
         self._type = phys_topography.type
         topo_time = phys_topography.time
 
@@ -265,6 +274,14 @@ class NumericalTopography(Topography):
         )
 
         super().__init__(ctopo_steady, ctopo, topo_time)
+
+    @property
+    def kwargs(self) -> Dict[str, Any]:
+        """
+        The keyword arguments used to initialize the corresponding
+        physical topography.
+        """
+        return self._kwargs
 
     @property
     def type(self) -> str:
