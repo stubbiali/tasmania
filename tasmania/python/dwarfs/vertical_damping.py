@@ -31,7 +31,7 @@ from gt4py import gtscript
 # from gt4py.__gtscript__ import computation, interval, PARALLEL
 
 from tasmania.python.utils import taz_types
-from tasmania.python.utils.gtscript_utils import stencil_copy_defs
+from tasmania.python.utils.framework_utils import factorize
 from tasmania.python.utils.storage_utils import get_asarray_function, zeros
 from tasmania.python.utils.utils import greater_or_equal_than as ge
 
@@ -42,8 +42,10 @@ if TYPE_CHECKING:
 class VerticalDamping(abc.ABC):
     """
     Abstract base class whose derived classes implement different
-    vertical damping, i.e., wave absorbing, techniques.
+    vertical damping, i.e. wave absorbing, techniques.
     """
+
+    registry = {}
 
     def __init__(
         self,
@@ -155,8 +157,8 @@ class VerticalDamping(abc.ABC):
         field_ref: taz_types.gtstorage_t,
         field_out: taz_types.gtstorage_t,
     ) -> None:
-        """
-        Apply vertical damping to a generic field.
+        """ Apply vertical damping to a generic field.
+
         As this method is marked as abstract, its implementation
         is delegated to the derived classes.
 
@@ -238,7 +240,7 @@ class VerticalDamping(abc.ABC):
         obj :
             An instance of the appropriate derived class.
         """
-        args = [
+        args = (
             grid,
             damp_depth,
             damp_coeff_max,
@@ -253,13 +255,9 @@ class VerticalDamping(abc.ABC):
             rebuild,
             storage_shape,
             managed_memory,
-        ]
-        if damp_type == "rayleigh":
-            return Rayleigh(*args)
-        else:
-            raise ValueError(
-                "Unknown damping scheme. Available options: " "rayleigh" "."
-            )
+        )
+        obj = factorize(damp_type, VerticalDamping, args)
+        return obj
 
     @staticmethod
     @abc.abstractmethod
@@ -289,108 +287,3 @@ class VerticalDamping(abc.ABC):
         dt: float
     ) -> None:
         pass
-
-
-class Rayleigh(VerticalDamping):
-    """
-    This class inherits	:class:`tasmania.VerticalDamping`
-    to implement a Rayleigh absorber.
-    """
-
-    def __init__(
-        self,
-        grid,
-        damp_depth=15,
-        damp_coeff_max=0.0002,
-        time_units="s",
-        gt_powered=True,
-        backend="numpy",
-        backend_opts=None,
-        build_info=None,
-        dtype=np.float64,
-        exec_info=None,
-        default_origin=None,
-        rebuild=False,
-        storage_shape=None,
-        managed_memory=False,
-    ):
-        super().__init__(
-            grid,
-            damp_depth,
-            damp_coeff_max,
-            time_units,
-            gt_powered,
-            backend,
-            backend_opts,
-            build_info,
-            dtype,
-            exec_info,
-            default_origin,
-            rebuild,
-            storage_shape,
-            managed_memory,
-        )
-
-    def __call__(self, dt, field_now, field_new, field_ref, field_out):
-        # shortcuts
-        ni, nj, nk = self._shape
-        dnk = self._damp_depth
-
-        # convert the timestep to seconds
-        dt_da = DataArray(dt.total_seconds(), attrs={"units": "s"})
-        dt_raw = dt_da.to_units(self._tunits).values.item()
-
-        # run the stencil
-        self._stencil(
-            in_phi_now=field_now,
-            in_phi_new=field_new,
-            in_phi_ref=field_ref,
-            in_rmat=self._rmat,
-            out_phi=field_out,
-            dt=dt_raw,
-            origin=(0, 0, 0),
-            domain=(ni, nj, nk),
-            exec_info=self._exec_info,
-        )
-
-        # if nk > dnk:
-        #     # set the lowermost layers, outside of the damping region
-        #     if not self._gt_powered:
-        #         field_out[:, :, dnk:nk] = field_new[:, :, dnk:nk]
-
-    @staticmethod
-    def _stencil_numpy(
-        in_phi_now: np.ndarray,
-        in_phi_new: np.ndarray,
-        in_phi_ref: np.ndarray,
-        in_rmat: np.ndarray,
-        out_phi: np.ndarray,
-        *,
-        dt: float,
-        origin: taz_types.triplet_int_t,
-        domain: taz_types.triplet_int_t,
-        **kwargs  # catch-all
-    ) -> None:
-        i = slice(origin[0], origin[0] + domain[0])
-        j = slice(origin[1], origin[1] + domain[1])
-        k = slice(origin[2], origin[2] + domain[2])
-
-        out_phi[i, j, k] = in_phi_new[i, j, k] - dt * in_rmat[i, j, k] * (
-            in_phi_now[i, j, k] - in_phi_ref[i, j, k]
-        )
-
-    @staticmethod
-    def _stencil_gt_defs(
-        in_phi_now: gtscript.Field["dtype"],
-        in_phi_new: gtscript.Field["dtype"],
-        in_phi_ref: gtscript.Field["dtype"],
-        in_rmat: gtscript.Field["dtype"],
-        out_phi: gtscript.Field["dtype"],
-        *,
-        dt: float
-    ) -> None:
-        with computation(PARALLEL), interval(...):
-            if in_rmat > 0.0:
-                out_phi = in_phi_new - dt * in_rmat * (in_phi_now - in_phi_ref)
-            else:
-                out_phi = in_phi_new

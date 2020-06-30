@@ -20,7 +20,3 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from tasmania.python.dwarfs import horizontal_diffusers
-from tasmania.python.dwarfs import horizontal_hyperdiffusers
-from tasmania.python.dwarfs import horizontal_smoothers
-from tasmania.python.dwarfs import vertical_dampers

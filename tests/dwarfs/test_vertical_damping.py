@@ -33,6 +33,7 @@ import pytest
 import gt4py as gt
 
 from tasmania.python.dwarfs.vertical_damping import VerticalDamping as VD
+from tasmania.python.dwarfs.vertical_dampers import Rayleigh
 from tasmania.python.utils.storage_utils import zeros
 
 from tests.conf import (
@@ -40,48 +41,14 @@ from tests.conf import (
     datatype as conf_dtype,
     default_origin as conf_dorigin,
 )
-from tests.strategies import st_domain, st_one_of, st_raw_field, st_timedeltas
+from tests.strategies import st_domain, st_floats
 from tests.utilities import compare_arrays
 
 
-def assert_rayleigh(
-    grid,
-    depth,
-    gt_powered,
-    backend,
-    default_origin,
-    dt,
-    phi_now,
-    phi_new,
-    phi_ref,
-    phi_out,
-):
-    dtype = phi_now.dtype
-    ni, nj, nk = phi_now.shape
-
-    vd = VD.factory(
-        "rayleigh",
-        grid,
-        depth,
-        0.01,
-        time_units="s",
-        gt_powered=gt_powered,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-        rebuild=False,
-        storage_shape=phi_now.shape,
-    )
-
-    rmat = vd._rmat
-
-    vd(dt, phi_now, phi_new, phi_ref, phi_out)
-
-    phi_val = phi_new[:ni, :nj, :nk] - dt.total_seconds() * rmat[:ni, :nj, :nk] * (
-        phi_now[:ni, :nj, :nk] - phi_ref[:ni, :nj, :nk]
-    )
-    compare_arrays(phi_out[:, :, :depth], phi_val[:, :, :depth])
-    compare_arrays(phi_out[:, :, depth:], phi_new[:ni, :nj, depth:nk])
+def test_registry():
+    # rayleigh
+    assert "rayleigh" in VD.registry
+    assert VD.registry["rayleigh"] == Rayleigh
 
 
 @settings(
@@ -93,98 +60,24 @@ def assert_rayleigh(
     deadline=None,
 )
 @given(hyp_st.data())
-def test_rayleigh(data):
+def test_factory(data):
     # ========================================
     # random data generation
     # ========================================
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-
-    if gt_powered:
-        gt.storage.prepare_numpy()
-
     domain = data.draw(
-        st_domain(
-            xaxis_length=(1, 30),
-            yaxis_length=(1, 30),
-            zaxis_length=(1, 30),
-            gt_powered=gt_powered,
-            backend=backend,
-            dtype=dtype,
-        ),
+        st_domain(xaxis_length=(1, 30), yaxis_length=(1, 30), zaxis_length=(1, 30)),
         label="grid",
     )
     cgrid = domain.numerical_grid
-
-    dnx = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dnx")
-    dny = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dny")
-    dnz = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dnz")
-    shape = (cgrid.nx + dnx, cgrid.ny + dny, cgrid.nz + dnz)
-
-    phi_now = data.draw(
-        st_raw_field(
-            shape,
-            min_value=-1e10,
-            max_value=1e10,
-            gt_powered=gt_powered,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-        ),
-        label="phi_now",
-    )
-    phi_new = data.draw(
-        st_raw_field(
-            shape,
-            min_value=-1e10,
-            max_value=1e10,
-            gt_powered=gt_powered,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-        ),
-        label="phi_new",
-    )
-    phi_ref = data.draw(
-        st_raw_field(
-            shape,
-            min_value=-1e10,
-            max_value=1e10,
-            gt_powered=gt_powered,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-        ),
-        label="phi_ref",
-    )
-
-    dt = data.draw(
-        st_timedeltas(min_value=Timedelta(seconds=0), max_value=Timedelta(hours=1)),
-        label="dt",
-    )
-
     depth = data.draw(hyp_st.integers(min_value=0, max_value=cgrid.nz), label="depth")
+    coeff_max = data.draw(st_floats(min_value=0, max_value=1e4), label="coeff_max")
 
     # ========================================
     # test
     # ========================================
-    phi_out = zeros(
-        shape, gt_powered, backend=backend, dtype=dtype, default_origin=default_origin
-    )
-    assert_rayleigh(
-        cgrid,
-        depth,
-        gt_powered,
-        backend,
-        default_origin,
-        dt,
-        phi_now,
-        phi_new,
-        phi_ref,
-        phi_out,
-    )
+    # rayleigh
+    obj = VD.factory("rayleigh", cgrid, depth, coeff_max)
+    assert isinstance(obj, Rayleigh)
 
 
 if __name__ == "__main__":

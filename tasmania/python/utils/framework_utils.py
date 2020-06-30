@@ -417,7 +417,11 @@ def register(
 
 
 def factorize(
-    name: str, registry_class: Type[T], args, kwargs, registry_name: Optional[str] = None
+    name: str,
+    registry_class: Type[T],
+    args,
+    kwargs=None,
+    registry_name: Optional[str] = None,
 ) -> T:
     rcls = registry_class
     rname = registry_name or "registry"
@@ -429,6 +433,7 @@ def factorize(
     registry = getattr(rcls, rname)
 
     if name in registry:
+        kwargs = kwargs or {}
         obj = registry[name](*args, **kwargs)
         return obj
     else:

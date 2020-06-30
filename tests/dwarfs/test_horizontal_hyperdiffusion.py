@@ -31,114 +31,48 @@ from hypothesis import (
 )
 import pytest
 
-import gt4py as gt
-
 from tasmania.python.dwarfs.horizontal_hyperdiffusion import (
     HorizontalHyperDiffusion as HHD,
 )
-from tasmania.python.utils.storage_utils import zeros
-
-from tests.conf import (
-    backend as conf_backend,
-    datatype as conf_dtype,
-    default_origin as conf_dorigin,
-    nb as conf_nb,
+from tasmania.python.dwarfs.horizontal_hyperdiffusers import (
+    FirstOrder,
+    FirstOrder1DX,
+    FirstOrder1DY,
+    SecondOrder,
+    SecondOrder1DX,
+    SecondOrder1DY,
+    ThirdOrder,
+    ThirdOrder1DX,
+    ThirdOrder1DY,
 )
-from tests.strategies import st_domain, st_one_of, st_raw_field
-from tests.utilities import compare_arrays
+
+from tests.strategies import st_floats
 
 
-def assert_xyz(phi_tnd, phi_tnd_assert, nb):
-    compare_arrays(phi_tnd_assert[nb:-nb, nb:-nb, :], phi_tnd[nb:-nb, nb:-nb, :])
+def test_registry():
+    # first order
+    assert "first_order" in HHD.registry
+    assert HHD.registry["first_order"] == FirstOrder
+    assert "first_order_1dx" in HHD.registry
+    assert HHD.registry["first_order_1dx"] == FirstOrder1DX
+    assert "first_order_1dy" in HHD.registry
+    assert HHD.registry["first_order_1dy"] == FirstOrder1DY
 
+    # second order
+    assert "second_order" in HHD.registry
+    assert HHD.registry["second_order"] == SecondOrder
+    assert "second_order_1dx" in HHD.registry
+    assert HHD.registry["second_order_1dx"] == SecondOrder1DX
+    assert "second_order_1dy" in HHD.registry
+    assert HHD.registry["second_order_1dy"] == SecondOrder1DY
 
-def assert_xz(phi_tnd, phi_tnd_assert, nb):
-    compare_arrays(phi_tnd_assert[nb:-nb, :, :], phi_tnd[nb:-nb, :, :])
-
-
-def assert_yz(phi_tnd, phi_tnd_assert, nb):
-    compare_arrays(phi_tnd_assert[:, nb:-nb, :], phi_tnd[:, nb:-nb, :])
-
-
-def laplacian_x(dx, phi):
-    out = deepcopy(phi)
-    out[1:-1, :, :] = (phi[2:, :, :] - 2.0 * phi[1:-1, :, :] + phi[:-2, :, :]) / (
-        dx * dx
-    )
-    return out
-
-
-def laplacian_y(dy, phi):
-    out = deepcopy(phi)
-    out[:, 1:-1, :] = (phi[:, 2:, :] - 2.0 * phi[:, 1:-1, :] + phi[:, :-2, :]) / (
-        dy * dy
-    )
-    return out
-
-
-def laplacian2d(dx, dy, phi):
-    return laplacian_x(dx, phi) + laplacian_y(dy, phi)
-
-
-def first_order_diffusion_xyz(dx, dy, phi):
-    lap = laplacian2d(dx, dy, phi)
-    return lap
-
-
-def first_order_diffusion_xz(dx, phi):
-    lap = laplacian_x(dx, phi)
-    return lap
-
-
-def first_order_diffusion_yz(dy, phi):
-    lap = laplacian_y(dy, phi)
-    return lap
-
-
-def first_order_validation(
-    phi, grid, diffusion_depth, nb, gt_powered, backend, default_origin
-):
-    ni, nj, nk = phi.shape
-    dtype = phi.dtype
-    phi_tnd = zeros(
-        (ni, nj, nk),
-        gt_powered=gt_powered,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
-
-    dx = grid.dx.values.item()
-    dy = grid.dy.values.item()
-
-    hhd = HHD.factory(
-        "first_order",
-        (ni, nj, nk),
-        dx,
-        dy,
-        0.5,
-        1.0,
-        diffusion_depth,
-        nb=nb,
-        gt_powered=gt_powered,
-        backend=backend,
-        dtype=phi.dtype,
-        default_origin=default_origin,
-        rebuild=False,
-    )
-    hhd(phi, phi_tnd)
-
-    gamma = hhd._gamma  # np.tile(hd._gamma, (ni, nj, 1))
-
-    if ni < 3:
-        phi_tnd_assert = gamma * first_order_diffusion_yz(dy, phi)
-        assert_yz(phi_tnd, phi_tnd_assert, nb)
-    elif nj < 3:
-        phi_tnd_assert = gamma * first_order_diffusion_xz(dx, phi)
-        assert_xz(phi_tnd, phi_tnd_assert, nb)
-    else:
-        phi_tnd_assert = gamma * first_order_diffusion_xyz(dx, dy, phi)
-        assert_xyz(phi_tnd, phi_tnd_assert, nb)
+    # third order
+    assert "third_order" in HHD.registry
+    assert HHD.registry["third_order"] == ThirdOrder
+    assert "third_order_1dx" in HHD.registry
+    assert HHD.registry["third_order_1dx"] == ThirdOrder1DX
+    assert "third_order_1dy" in HHD.registry
+    assert HHD.registry["third_order_1dy"] == ThirdOrder1DY
 
 
 @settings(
@@ -150,315 +84,111 @@ def first_order_validation(
     deadline=None,
 )
 @given(hyp_st.data())
-def test_first_order(data):
+def test_factory(data):
     # ========================================
     # random data generation
     # ========================================
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-
-    if gt_powered:
-        # comment the following line to prevent segfault
-        gt.storage.prepare_numpy()
-
-    nb = data.draw(hyp_st.integers(min_value=1, max_value=max(1, conf_nb)))
-    domain = data.draw(
-        st_domain(
-            xaxis_length=(1, 30),
-            yaxis_length=(1, 30),
-            zaxis_length=(1, 30),
-            nb=nb,
-            gt_powered=gt_powered,
-            backend=backend,
-            dtype=dtype,
-        ),
-        label="grid",
-    )
-    grid = domain.numerical_grid
-
-    dnx = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dnx")
-    dny = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dny")
-    dnz = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dnz")
-    shape = (grid.nx + dnx, grid.ny + dny, grid.nz + dnz)
-
-    phi = data.draw(
-        st_raw_field(
-            shape,
-            min_value=-1e10,
-            max_value=1e10,
-            gt_powered=gt_powered,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-        ),
-        label="phi",
-    )
-
-    depth = data.draw(hyp_st.integers(min_value=0, max_value=grid.nz), label="depth")
+    ni = data.draw(hyp_st.integers(min_value=1, max_value=100), label="ni")
+    nj = data.draw(hyp_st.integers(min_value=1, max_value=100), label="nj")
+    nk = data.draw(hyp_st.integers(min_value=1, max_value=100), label="nk")
+    dx = data.draw(st_floats(min_value=0), label="dx")
+    dy = data.draw(st_floats(min_value=0), label="dy")
+    diff_coeff = data.draw(st_floats(min_value=0), label="diff_coeff")
+    diff_coeff_max = data.draw(st_floats(min_value=diff_coeff), label="diff_coeff_max")
+    diff_damp_depth = data.draw(hyp_st.integers(min_value=0, max_value=nk))
 
     # ========================================
-    # test
+    # test bed
     # ========================================
-    first_order_validation(phi, grid, depth, nb, gt_powered, backend, default_origin)
-
-
-def second_order_diffusion_xyz(dx, dy, phi):
-    lap0 = laplacian2d(dx, dy, phi)
-    lap1 = laplacian2d(dx, dy, lap0)
-    return lap1
-
-
-def second_order_diffusion_xz(dx, phi):
-    lap0 = laplacian_x(dx, phi)
-    lap1 = laplacian_x(dx, lap0)
-    return lap1
-
-
-def second_order_diffusion_yz(dy, phi):
-    lap0 = laplacian_y(dy, phi)
-    lap1 = laplacian_y(dy, lap0)
-    return lap1
-
-
-def second_order_validation(
-    phi, grid, diffusion_depth, nb, gt_powered, backend, default_origin
-):
-    ni, nj, nk = phi.shape
-    dtype = phi.dtype
-    phi_tnd = zeros(
-        (ni, nj, nk),
-        gt_powered=gt_powered,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
+    # first_order
+    obj = HHD.factory(
+        "first_order", (ni, nj, nk), dx, dy, diff_coeff, diff_coeff_max, diff_damp_depth
     )
+    assert isinstance(obj, FirstOrder)
 
-    dx = grid.dx.values.item()
-    dy = grid.dy.values.item()
-
-    hhd = HHD.factory(
-        "second_order",
+    # first_order_1dx
+    obj = HHD.factory(
+        "first_order_1dx",
         (ni, nj, nk),
         dx,
         dy,
-        0.5,
-        1.0,
-        diffusion_depth,
-        nb=nb,
-        gt_powered=gt_powered,
-        backend=backend,
-        dtype=phi.dtype,
-        default_origin=default_origin,
-        rebuild=False,
+        diff_coeff,
+        diff_coeff_max,
+        diff_damp_depth,
     )
-    hhd(phi, phi_tnd)
+    assert isinstance(obj, FirstOrder1DX)
 
-    gamma = hhd._gamma  # np.tile(hd._gamma, (ni, nj, 1))
-
-    if ni < 5:
-        phi_tnd_assert = gamma * second_order_diffusion_yz(dy, phi)
-        assert_yz(phi_tnd, phi_tnd_assert, nb)
-    elif nj < 5:
-        phi_tnd_assert = gamma * second_order_diffusion_xz(dx, phi)
-        assert_xz(phi_tnd, phi_tnd_assert, nb)
-    else:
-        phi_tnd_assert = gamma * second_order_diffusion_xyz(dx, dy, phi)
-        assert_xyz(phi_tnd, phi_tnd_assert, nb)
-
-
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
-@given(hyp_st.data())
-def test_second_order(data):
-    # ========================================
-    # random data generation
-    # ========================================
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-
-    if gt_powered:
-        # comment the following line to prevent segfault
-        gt.storage.prepare_numpy()
-
-    nb = data.draw(hyp_st.integers(min_value=2, max_value=max(2, conf_nb)))
-    domain = data.draw(
-        st_domain(
-            xaxis_length=(1, 30),
-            yaxis_length=(1, 30),
-            zaxis_length=(1, 30),
-            nb=nb,
-            gt_powered=gt_powered,
-            backend=backend,
-            dtype=dtype,
-        ),
-        label="grid",
-    )
-    grid = domain.numerical_grid
-
-    dnx = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dnx")
-    dny = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dny")
-    dnz = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dnz")
-    shape = (grid.nx + dnx, grid.ny + dny, grid.nz + dnz)
-
-    phi = data.draw(
-        st_raw_field(
-            shape,
-            min_value=-1e10,
-            max_value=1e10,
-            gt_powered=gt_powered,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-        ),
-        label="phi",
-    )
-
-    depth = data.draw(hyp_st.integers(min_value=0, max_value=grid.nz), label="depth")
-
-    # ========================================
-    # test
-    # ========================================
-    second_order_validation(phi, grid, depth, nb, gt_powered, backend, default_origin)
-
-
-def third_order_diffusion_xyz(dx, dy, phi):
-    lap0 = laplacian2d(dx, dy, phi)
-    lap1 = laplacian2d(dx, dy, lap0)
-    lap2 = laplacian2d(dx, dy, lap1)
-    return lap2
-
-
-def third_order_diffusion_xz(dx, phi):
-    lap0 = laplacian_x(dx, phi)
-    lap1 = laplacian_x(dx, lap0)
-    lap2 = laplacian_x(dx, lap1)
-    return lap2
-
-
-def third_order_diffusion_yz(dy, phi):
-    lap0 = laplacian_y(dy, phi)
-    lap1 = laplacian_y(dy, lap0)
-    lap2 = laplacian_y(dy, lap1)
-    return lap2
-
-
-def third_order_validation(
-    phi, grid, diffusion_depth, nb, gt_powered, backend, default_origin
-):
-    ni, nj, nk = phi.shape
-    dtype = phi.dtype
-    phi_tnd = zeros(
-        (ni, nj, nk),
-        gt_powered=gt_powered,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
-
-    dx = grid.dx.values.item()
-    dy = grid.dy.values.item()
-
-    hhd = HHD.factory(
-        "third_order",
+    # first_order_1dy
+    obj = HHD.factory(
+        "first_order_1dy",
         (ni, nj, nk),
         dx,
         dy,
-        0.5,
-        1.0,
-        diffusion_depth,
-        gt_powered=gt_powered,
-        nb=nb,
-        backend=backend,
-        dtype=phi.dtype,
-        default_origin=default_origin,
-        rebuild=False,
+        diff_coeff,
+        diff_coeff_max,
+        diff_damp_depth,
     )
-    hhd(phi, phi_tnd)
+    assert isinstance(obj, FirstOrder1DY)
 
-    gamma = hhd._gamma  # np.tile(hd._gamma, (ni, nj, 1))
-
-    if ni < 7:
-        phi_tnd_assert = gamma * third_order_diffusion_yz(dy, phi)
-        assert_yz(phi_tnd, phi_tnd_assert, nb)
-    elif nj < 7:
-        phi_tnd_assert = gamma * third_order_diffusion_xz(dx, phi)
-        assert_xz(phi_tnd, phi_tnd_assert, nb)
-    else:
-        phi_tnd_assert = gamma * third_order_diffusion_xyz(dx, dy, phi)
-        assert_xyz(phi_tnd, phi_tnd_assert, nb)
-
-
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
-@given(hyp_st.data())
-def test_third_order(data):
-    # ========================================
-    # random data generation
-    # ========================================
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-
-    if gt_powered:
-        # comment the following line to prevent segfault
-        gt.storage.prepare_numpy()
-
-    nb = data.draw(hyp_st.integers(min_value=3, max_value=max(3, conf_nb)))
-    domain = data.draw(
-        st_domain(
-            xaxis_length=(1, 30),
-            yaxis_length=(1, 30),
-            zaxis_length=(1, 30),
-            nb=nb,
-            gt_powered=gt_powered,
-            backend=backend,
-            dtype=dtype,
-        ),
-        label="grid",
+    # second_order
+    obj = HHD.factory(
+        "second_order", (ni, nj, nk), dx, dy, diff_coeff, diff_coeff_max, diff_damp_depth
     )
-    grid = domain.numerical_grid
+    assert isinstance(obj, SecondOrder)
 
-    dnx = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dnx")
-    dny = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dny")
-    dnz = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dnz")
-    shape = (grid.nx + dnx, grid.ny + dny, grid.nz + dnz)
-
-    phi = data.draw(
-        st_raw_field(
-            shape,
-            min_value=-1e10,
-            max_value=1e10,
-            gt_powered=gt_powered,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-        ),
-        label="phi",
+    # second_order_1dx
+    obj = HHD.factory(
+        "second_order_1dx",
+        (ni, nj, nk),
+        dx,
+        dy,
+        diff_coeff,
+        diff_coeff_max,
+        diff_damp_depth,
     )
+    assert isinstance(obj, SecondOrder1DX)
 
-    depth = data.draw(hyp_st.integers(min_value=0, max_value=grid.nz), label="depth")
+    # second_order_1dy
+    obj = HHD.factory(
+        "second_order_1dy",
+        (ni, nj, nk),
+        dx,
+        dy,
+        diff_coeff,
+        diff_coeff_max,
+        diff_damp_depth,
+    )
+    assert isinstance(obj, SecondOrder1DY)
 
-    # ========================================
-    # test
-    # ========================================
-    third_order_validation(phi, grid, depth, nb, gt_powered, backend, default_origin)
+    # third_order
+    obj = HHD.factory(
+        "third_order", (ni, nj, nk), dx, dy, diff_coeff, diff_coeff_max, diff_damp_depth
+    )
+    assert isinstance(obj, ThirdOrder)
+
+    # third_order_1dx
+    obj = HHD.factory(
+        "third_order_1dx",
+        (ni, nj, nk),
+        dx,
+        dy,
+        diff_coeff,
+        diff_coeff_max,
+        diff_damp_depth,
+    )
+    assert isinstance(obj, ThirdOrder1DX)
+
+    # third_order_1dy
+    obj = HHD.factory(
+        "third_order_1dy",
+        (ni, nj, nk),
+        dx,
+        dy,
+        diff_coeff,
+        diff_coeff_max,
+        diff_damp_depth,
+    )
+    assert isinstance(obj, ThirdOrder1DY)
 
 
 if __name__ == "__main__":
