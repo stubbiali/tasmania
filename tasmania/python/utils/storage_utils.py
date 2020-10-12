@@ -40,8 +40,6 @@ if TYPE_CHECKING:
     from tasmania.python.domain.horizontal_grid import HorizontalGrid
     from tasmania.python.domain.domain import Domain
 
-import timeit
-
 
 def get_dataarray_2d(
     array: taz_types.array_t,
@@ -342,7 +340,6 @@ def get_array_dict(
         `dataarray_dict`,  and values are :class:`numpy.ndarray`-like arrays
         containing the data for those variables.
     """
-    # TIC = timeit.default_timer()
     try:
         array_dict = {"time": dataarray_dict["time"]}
     except KeyError:
@@ -350,15 +347,10 @@ def get_array_dict(
 
     for key in dataarray_dict.keys():
         if key != "time":
-            tic = timeit.default_timer()
             props = properties.get(key, {})
             units = props.get("units", dataarray_dict[key].attrs.get("units"))
             assert units is not None, "Units not specified for {}.".format(key)
             array_dict[key] = dataarray_dict[key].to_units(units).data
-            toc = timeit.default_timer()
-            # print(f"array_dict: {1e3 * (toc - tic)} ms")
-    # TOC = timeit.default_timer()
-    # print(f"Validation: {1e3 * (TOC - TIC)} ms")
 
     return array_dict
 
