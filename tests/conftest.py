@@ -210,7 +210,6 @@ class FakeTendencyComponent2(TendencyComponent):
                 default_origin = s.default_origin
                 sv = zeros(
                     s.shape,
-                    gt_powered=True,
                     backend=backend,
                     dtype=dtype,
                     default_origin=default_origin,
