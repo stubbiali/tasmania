@@ -42,6 +42,7 @@ from tasmania.python.utils.gtscript_utils import (
     stencil_sts_rk3ws_0_defs,
 )
 from tasmania.python.utils.storage_utils import deepcopy_dataarray
+from tasmania.python.utils.utils import get_gt_backend, is_gt
 
 
 class DataArrayDictOperator:
@@ -49,7 +50,6 @@ class DataArrayDictOperator:
 
     def __init__(
         self,
-        gt_powered: bool = False,
         *,
         backend: str = "numpy",
         backend_opts: Optional[taz_types.options_dict_t] = None,
@@ -61,30 +61,33 @@ class DataArrayDictOperator:
         """
         Parameters
         ----------
-        gt_powered : `bool`, optional
-            ``True`` to perform all the intensive math operations harnessing GT4Py.
         backend : `str`, optional
-            The GT4Py backend.
+            The backend.
         backend_opts : `dict`, optional
             Dictionary of backend-specific options.
-        build_info : `dict`, optional
-            Dictionary of building options.
         dtype : `data-type`, optional
             Data type of the storages.
+        build_info : `dict`, optional
+            Dictionary of building options.
         rebuild : `bool`, optional
-            ``True`` to trigger the stencils compilation at any class instantiation,
-            ``False`` to rely on the caching mechanism implemented by GT4Py.
+            ``True`` to trigger the stencils compilation at any class
+            instantiation, ``False`` to rely on the caching mechanism
+            implemented by the backend.
         **kwargs :
             Catch-all for unused keyword arguments.
         """
-        self._gt_powered = gt_powered
+        self._gt_powered = is_gt(backend)
         self._dtype = dtype
-        self._gt_kwargs = {
-            "backend": backend,
-            "build_info": build_info,
-            "dtypes": {"dtype": dtype},
-            "rebuild": rebuild,
-        }
+        self._gt_kwargs = (
+            {
+                "backend": get_gt_backend(backend),
+                "build_info": build_info,
+                "dtypes": {"dtype": dtype},
+                "rebuild": rebuild,
+            }
+            if self._gt_powered
+            else {}
+        )
         self._gt_kwargs.update(backend_opts or {})
 
         self._stencil_copy = None
@@ -125,7 +128,9 @@ class DataArrayDictOperator:
             dst["time"] = src["time"]
 
         shared_keys = tuple(key for key in src if key in dst and key != "time")
-        unshared_keys = tuple(key for key in src if key not in dst and key != "time")
+        unshared_keys = tuple(
+            key for key in src if key not in dst and key != "time"
+        )
 
         if self._gt_powered:
             if self._stencil_copy is None:
@@ -142,11 +147,14 @@ class DataArrayDictOperator:
                     dst=dst_field,
                     origin=(0, 0, 0),
                     domain=src_field.shape,
+                    validate_args=True
                 )
         else:
             for key in shared_keys:
                 assert "units" in dst[key].attrs
-                dst[key].data[...] = src[key].to_units(dst[key].attrs["units"]).data
+                dst[key].data[...] = (
+                    src[key].to_units(dst[key].attrs["units"]).data
+                )
 
         if unshared_variables_in_output:
             for key in unshared_keys:
@@ -160,7 +168,7 @@ class DataArrayDictOperator:
         field_properties: Optional[taz_types.properties_dict_t] = None,
         unshared_variables_in_output: bool = False,
     ) -> taz_types.dataarray_dict_t:
-        """ Add up two dictionaries item-wise.
+        """Add up two dictionaries item-wise.
 
         Parameters
         ----------
@@ -222,6 +230,7 @@ class DataArrayDictOperator:
                     out_c=out_da.data,
                     origin=(0, 0, 0),
                     domain=field1.shape,
+                    validate_args=True
                 )
             else:
                 out_da.data[...] = field1 + field2
@@ -246,6 +255,7 @@ class DataArrayDictOperator:
                             dst=out[key].data,
                             origin=(0, 0, 0),
                             domain=_dict[key].shape,
+                            validate_args=True
                         )
                     else:
                         out[key].data[...] = _dict[key].to_units(units).data
@@ -264,7 +274,7 @@ class DataArrayDictOperator:
         unshared_variables_in_output: bool = False,
         deepcopy_unshared_variables: bool = False,
     ) -> None:
-        """ In-place variant of `add`.
+        """In-place variant of `add`.
 
         Parameters
         ----------
@@ -310,7 +320,11 @@ class DataArrayDictOperator:
 
             if self._gt_powered:
                 self._stencil_iadd(
-                    inout_a=field1, in_b=field2, origin=(0, 0, 0), domain=field1.shape
+                    inout_a=field1,
+                    in_b=field2,
+                    origin=(0, 0, 0),
+                    domain=field1.shape,
+                    validate_args=True
                 )
             else:
                 field1 += field2
@@ -334,7 +348,7 @@ class DataArrayDictOperator:
         field_properties: Optional[taz_types.properties_dict_t] = None,
         unshared_variables_in_output: bool = False,
     ) -> taz_types.dataarray_dict_t:
-        """ Compute the item-wise difference between two dictionaries.
+        """Compute the item-wise difference between two dictionaries.
 
         Parameters
         ----------
@@ -396,6 +410,7 @@ class DataArrayDictOperator:
                     out_c=out_da.data,
                     origin=(0, 0, 0),
                     domain=field1.shape,
+                    validate_args=True
                 )
             else:
                 out_da.data[...] = field1 - field2
@@ -426,9 +441,12 @@ class DataArrayDictOperator:
                                 dst=out[key].data,
                                 origin=(0, 0, 0),
                                 domain=dict1[key].shape,
+                                validate_args=True
                             )
                         else:
-                            out[key].data[...] = dict1[key].to_units(units).data
+                            out[key].data[...] = (
+                                dict1[key].to_units(units).data
+                            )
 
                         out[key].attrs["units"] = units
                     else:
@@ -443,9 +461,12 @@ class DataArrayDictOperator:
                                 dst=out[key].data,
                                 origin=(0, 0, 0),
                                 domain=dict2[key].shape,
+                                validate_args=True
                             )
                         else:
-                            out[key].data[...] = -dict2[key].to_units(units).data
+                            out[key].data[...] = (
+                                -dict2[key].to_units(units).data
+                            )
 
                         out[key].attrs["units"] = units
                     else:
@@ -461,7 +482,7 @@ class DataArrayDictOperator:
         field_properties: Optional[taz_types.properties_dict_t] = None,
         unshared_variables_in_output: bool = False,
     ) -> None:
-        """ In-place variant of `add`.
+        """In-place variant of `add`.
 
         Parameters
         ----------
@@ -503,7 +524,11 @@ class DataArrayDictOperator:
 
             if self._gt_powered:
                 self._stencil_isub(
-                    inout_a=field1, in_b=field2, origin=(0, 0, 0), domain=field1.shape
+                    inout_a=field1,
+                    in_b=field2,
+                    origin=(0, 0, 0),
+                    domain=field1.shape,
+                    validate_args=True
                 )
             else:
                 field1 -= field2
@@ -530,6 +555,7 @@ class DataArrayDictOperator:
                             f=-1.0,
                             origin=(0, 0, 0),
                             domain=dict1[key].shape,
+                            validate_args=True
                         )
                     else:
                         dict1[key].data *= -1
@@ -577,6 +603,7 @@ class DataArrayDictOperator:
                         f=factor,
                         origin=(0, 0, 0),
                         domain=rout.shape,
+                        validate_args=True
                     )
                 else:
                     rout[...] = factor * rfield
@@ -607,7 +634,11 @@ class DataArrayDictOperator:
 
                 if self._gt_powered:
                     self._stencil_iscale(
-                        inout_a=rfield, f=factor, origin=(0, 0, 0), domain=rfield.shape
+                        inout_a=rfield,
+                        f=factor,
+                        origin=(0, 0, 0),
+                        domain=rfield.shape,
+                        validate_args=True
                     )
                 else:
                     rfield[...] *= factor
@@ -626,7 +657,9 @@ class DataArrayDictOperator:
 
         out = out or {}
         if "time" in dict1 or "time" in dict2 or "time" in dict3:
-            out["time"] = dict1.get("time", dict2.get("time", dict3.get("time", None)))
+            out["time"] = dict1.get(
+                "time", dict2.get("time", dict3.get("time", None))
+            )
 
         shared_keys = set(dict1.keys()).intersection(dict2.keys())
         shared_keys = shared_keys.intersection(dict3.keys())
@@ -661,6 +694,7 @@ class DataArrayDictOperator:
                     out_d=rout,
                     origin=(0, 0, 0),
                     domain=rout.shape,
+                    validate_args=True
                 )
             else:
                 rout[...] = rfield1 + rfield2 - rfield3
@@ -703,6 +737,7 @@ class DataArrayDictOperator:
                     in_c=rfield3,
                     origin=(0, 0, 0),
                     domain=rfield1.shape,
+                    validate_args=True
                 )
             else:
                 rfield1 += rfield2 - rfield3
@@ -754,6 +789,7 @@ class DataArrayDictOperator:
                     f=factor,
                     origin=(0, 0, 0),
                     domain=rout.shape,
+                    validate_args=True
                 )
             else:
                 rout[...] = rfield1 + factor * rfield2
@@ -811,6 +847,7 @@ class DataArrayDictOperator:
                     dt=dt,
                     origin=(0, 0, 0),
                     domain=r_out.shape,
+                    validate_args=True
                 )
             else:
                 r_out[...] = 0.5 * (r_field + r_field_prv + dt * r_tnd)
@@ -868,6 +905,7 @@ class DataArrayDictOperator:
                     dt=dt,
                     origin=(0, 0, 0),
                     domain=r_out.shape,
+                    validate_args=True
                 )
             else:
                 r_out[...] = (2.0 * r_field + r_field_prv + dt * r_tnd) / 3.0

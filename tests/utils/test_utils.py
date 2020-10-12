@@ -22,21 +22,38 @@
 #
 from hypothesis import (
     given,
-    HealthCheck,
     reproduce_failure,
-    settings,
     strategies as hyp_st,
 )
 import numpy as np
 import pytest
 
 from tasmania.python.utils.storage_utils import zeros
-from tasmania.python.utils.utils import feed_module, thomas_numpy
+from tasmania.python.utils.utils import (
+    feed_module,
+    get_gt_backend,
+    is_gt,
+    thomas_numpy,
+)
 
-from tests.conf import datatype as conf_dtype
+from tests.conf import dtype as conf_dtype
 from tests.strategies import st_one_of, st_raw_field
-from tests.utilities import compare_arrays
+from tests.utilities import compare_arrays, hyp_settings
 from tests.utils.test_gtscript_utils import thomas_validation
+
+
+def test_is_gt():
+    assert is_gt("foo") is False
+    assert is_gt("gt4py:foo") is True
+
+
+@pytest.mark.xfail
+def test_get_gt_backend_xfail():
+    get_gt_backend("foo")
+
+
+def test_get_gt_backend():
+    assert get_gt_backend("gt4py:foo") == "foo"
 
 
 def test_feed_module():
@@ -57,14 +74,7 @@ def test_feed_module():
     assert namelist.ciccio == np.float64
 
 
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
+@hyp_settings
 @given(hyp_st.data())
 def test_thomas_numpy(data):
     # ========================================
@@ -81,7 +91,7 @@ def test_thomas_numpy(data):
             shape=(nx, ny, nz),
             min_value=-1e4,
             max_value=1e4,
-            gt_powered=False,
+            backend="numpy",
             dtype=dtype,
         ),
         label="a",
@@ -91,7 +101,7 @@ def test_thomas_numpy(data):
             shape=(nx, ny, nz),
             min_value=-1e4,
             max_value=1e4,
-            gt_powered=False,
+            backend="numpy",
             dtype=dtype,
         ),
         label="b",
@@ -102,7 +112,7 @@ def test_thomas_numpy(data):
             shape=(nx, ny, nz),
             min_value=-1e4,
             max_value=1e4,
-            gt_powered=False,
+            backend="numpy",
             dtype=dtype,
         ),
         label="c",
@@ -112,7 +122,7 @@ def test_thomas_numpy(data):
             shape=(nx, ny, nz),
             min_value=-1e4,
             max_value=1e4,
-            gt_powered=False,
+            backend="numpy",
             dtype=dtype,
         ),
         label="d",
@@ -121,10 +131,18 @@ def test_thomas_numpy(data):
     # ========================================
     # test bed
     # ========================================
-    x = zeros((nx, ny, nz), gt_powered=False, dtype=dtype)
+    x = zeros((nx, ny, nz), backend="numpy", dtype=dtype)
 
     thomas_numpy(
-        a=a, b=b, c=c, d=d, out=x, i=slice(0, nx), j=slice(0, ny), kstart=0, kstop=nz
+        a=a,
+        b=b,
+        c=c,
+        d=d,
+        out=x,
+        i=slice(0, nx),
+        j=slice(0, ny),
+        kstart=0,
+        kstop=nz,
     )
 
     x_val = thomas_validation(a, b, c, d)
@@ -134,8 +152,12 @@ def test_thomas_numpy(data):
     try:
         i = data.draw(hyp_st.integers(min_value=0, max_value=nx - 1))
         j = data.draw(hyp_st.integers(min_value=0, max_value=ny - 1))
-        m = np.diag(a[i, j, 1:], -1) + np.diag(b[i, j, :]) + np.diag(c[i, j, :-1], 1)
-        d_val = zeros((1, 1, nz), gt_powered=False, dtype=dtype)
+        m = (
+            np.diag(a[i, j, 1:], -1)
+            + np.diag(b[i, j, :])
+            + np.diag(c[i, j, :-1], 1)
+        )
+        d_val = zeros((1, 1, nz), backend="numpy", dtype=dtype)
         for k in range(nz):
             for p in range(nz):
                 d_val[0, 0, k] += m[k, p] * x_val[i, j, p]

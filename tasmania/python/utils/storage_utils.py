@@ -33,11 +33,14 @@ except ImportError:
 import gt4py as gt
 
 from tasmania.python.utils import taz_types
+from tasmania.python.utils.utils import get_gt_backend, is_gt
 
 if TYPE_CHECKING:
     from tasmania.python.domain.grid import Grid
     from tasmania.python.domain.horizontal_grid import HorizontalGrid
     from tasmania.python.domain.domain import Domain
+
+import timeit
 
 
 def get_dataarray_2d(
@@ -85,7 +88,9 @@ def get_dataarray_2d(
     try:
         ni, nj = grid_shape
     except ValueError:
-        raise ValueError("Expected a 2-D array, got a {}-D one.".format(len(grid_shape)))
+        raise ValueError(
+            "Expected a 2-D array, got a {}-D one.".format(len(grid_shape))
+        )
 
     if ni == nx:
         x = grid.x
@@ -119,7 +124,10 @@ def get_dataarray_2d(
         )
     else:
         return DataArray(
-            array, dims=[x.dims[0], y.dims[0]], name=name, attrs={"units": units}
+            array,
+            dims=[x.dims[0], y.dims[0]],
+            name=name,
+            attrs={"units": units},
         )
 
 
@@ -168,7 +176,9 @@ def get_dataarray_3d(
     try:
         ni, nj, nk = grid_shape
     except ValueError:
-        raise ValueError("Expected a 3-D array, got a {}-D one.".format(len(grid_shape)))
+        raise ValueError(
+            "Expected a 3-D array, got a {}-D one.".format(len(grid_shape))
+        )
 
     if ni == 1 and nx != 1:
         x = DataArray(
@@ -311,7 +321,8 @@ def get_dataarray_dict(
 
 
 def get_array_dict(
-    dataarray_dict: taz_types.dataarray_dict_t, properties: taz_types.properties_dict_t
+    dataarray_dict: taz_types.dataarray_dict_t,
+    properties: taz_types.properties_dict_t,
 ) -> taz_types.array_dict_t:
     """
     Parameters
@@ -331,6 +342,7 @@ def get_array_dict(
         `dataarray_dict`,  and values are :class:`numpy.ndarray`-like arrays
         containing the data for those variables.
     """
+    # TIC = timeit.default_timer()
     try:
         array_dict = {"time": dataarray_dict["time"]}
     except KeyError:
@@ -338,10 +350,15 @@ def get_array_dict(
 
     for key in dataarray_dict.keys():
         if key != "time":
+            tic = timeit.default_timer()
             props = properties.get(key, {})
             units = props.get("units", dataarray_dict[key].attrs.get("units"))
             assert units is not None, "Units not specified for {}.".format(key)
             array_dict[key] = dataarray_dict[key].to_units(units).data
+            toc = timeit.default_timer()
+            # print(f"array_dict: {1e3 * (toc - tic)} ms")
+    # TOC = timeit.default_timer()
+    # print(f"Validation: {1e3 * (TOC - TIC)} ms")
 
     return array_dict
 
@@ -381,7 +398,11 @@ def get_physical_state(
 
             if len(storage_shape) == 2:
                 pstate[name] = get_dataarray_2d(
-                    raw_pfield[:mx, :my], pgrid, units, name=name, set_coordinates=True
+                    raw_pfield[:mx, :my],
+                    pgrid,
+                    units,
+                    name=name,
+                    set_coordinates=True,
                 )
             else:
                 pstate[name] = get_dataarray_3d(
@@ -404,9 +425,8 @@ def get_numerical_state(
     Given a state defined over the physical grid, transpose that state
     over the corresponding numerical grid.
     """
-    cgrid = domain.numerical_grid
-    pgrid = domain.physical_grid
-    nx, ny, nz = pgrid.nx, pgrid.ny, pgrid.nz
+    ngrid = domain.numerical_grid
+    nx, ny, nz = ngrid.nx, ngrid.ny, ngrid.nz
     hb = domain.horizontal_boundary
 
     store_names = (
@@ -416,7 +436,7 @@ def get_numerical_state(
     )
     store_names = tuple(name for name in store_names if name in pstate)
 
-    cstate = {"time": pstate["time"]} if "time" in pstate else {}
+    nstate = {"time": pstate["time"]} if "time" in pstate else {}
 
     for name in store_names:
         if name != "time":
@@ -426,28 +446,28 @@ def get_numerical_state(
             units = pstate[name].attrs["units"]
 
             raw_pfield = pstate[name].data
-            raw_cfield = hb.get_numerical_field(raw_pfield, name)
+            raw_nfield = hb.get_numerical_field(raw_pfield, name)
 
-            if len(raw_cfield.shape) == 2:
-                cstate[name] = get_dataarray_2d(
-                    raw_cfield,
-                    cgrid,
+            if raw_nfield.ndim == 2:
+                nstate[name] = get_dataarray_2d(
+                    raw_nfield,
+                    ngrid,
                     units,
                     name,
                     grid_shape=(mx, my),
                     set_coordinates=True,
                 )
             else:
-                cstate[name] = get_dataarray_3d(
-                    raw_cfield,
-                    cgrid,
+                nstate[name] = get_dataarray_3d(
+                    raw_nfield,
+                    ngrid,
                     units,
                     name,
                     grid_shape=(mx, my, mz),
                     set_coordinates=True,
                 )
 
-    return cstate
+    return nstate
 
 
 def get_storage_shape(
@@ -458,7 +478,9 @@ def get_storage_shape(
     out_shape = in_shape or min_shape
 
     if max_shape is None:
-        error_msg = "storage shape must be larger or equal than {}.".format(min_shape)
+        error_msg = "storage shape must be larger or equal than {}.".format(
+            min_shape
+        )
         assert all(
             tuple(out_shape[i] >= min_shape[i] for i in range(len(min_shape)))
         ), error_msg
@@ -486,7 +508,9 @@ def get_default_origin(
 
     max_default_origin = max_default_origin or default_origin
     max_default_origin = tuple(
-        max_default_origin[i] if storage_shape[i] > 2 * max_default_origin[i] else 0
+        max_default_origin[i]
+        if storage_shape[i] > 2 * max_default_origin[i]
+        else 0
         for i in range(3)
     )
 
@@ -510,7 +534,6 @@ def get_default_origin(
 
 def empty(
     storage_shape: taz_types.triplet_int_t,
-    gt_powered: bool,
     *,
     backend: str = "numpy",
     dtype: taz_types.dtype_t = np.float64,
@@ -520,9 +543,9 @@ def empty(
 ) -> Union[np.ndarray, taz_types.gtstorage_t]:
     default_origin = default_origin or (0, 0, 0)
 
-    if gt_powered:
+    if is_gt(backend):
         storage = gt.storage.empty(
-            backend,
+            get_gt_backend(backend),
             default_origin,
             storage_shape,
             dtype,
@@ -538,7 +561,6 @@ def empty(
 
 def zeros(
     storage_shape: taz_types.triplet_int_t,
-    gt_powered: bool,
     *,
     backend: str = "numpy",
     dtype: taz_types.dtype_t = np.float64,
@@ -548,9 +570,9 @@ def zeros(
 ) -> Union[np.ndarray, taz_types.gtstorage_t]:
     default_origin = default_origin or (0, 0, 0)
 
-    if gt_powered:
+    if is_gt(backend):
         storage = gt.storage.zeros(
-            backend,
+            get_gt_backend(backend),
             default_origin,
             storage_shape,
             dtype,
@@ -566,7 +588,6 @@ def zeros(
 
 def ones(
     storage_shape: taz_types.triplet_int_t,
-    gt_powered: bool,
     *,
     backend: str = "numpy",
     dtype: taz_types.dtype_t = np.float64,
@@ -576,9 +597,9 @@ def ones(
 ) -> Union[np.ndarray, taz_types.gtstorage_t]:
     default_origin = default_origin or (0, 0, 0)
 
-    if gt_powered:
+    if is_gt(backend):
         storage = gt.storage.ones(
-            backend,
+            get_gt_backend(backend),
             default_origin,
             storage_shape,
             dtype,
@@ -621,9 +642,11 @@ def deepcopy_dataarray_dict(
     return dst
 
 
-def get_asarray_function(gt_powered: bool = True, backend: str = "numpy"):
-    if gt_powered:
-        device = gt.backend.from_name(backend).storage_info["device"]
+def get_asarray_function(backend: str = "numpy"):
+    if is_gt(backend):
+        device = gt.backend.from_name(get_gt_backend(backend)).storage_info[
+            "device"
+        ]
     else:
         device = "gpu" if backend == "cupy" else "cpu"
     return cp.asarray if device == "gpu" else np.asarray

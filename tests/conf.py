@@ -23,10 +23,30 @@
 from datetime import timedelta
 import numpy as np
 
+try:
+    import cupy as cp
+except ImportError:
+    cp = None
+
+try:
+    import dawn4py
+except ImportError:
+    dawn4py = None
+
 
 # backend settings
-backend = ("numpy", "gtx86")
-datatype = (float, np.float64)  # TODO: datatype = (np.float32, np.float64)
+backend = ["numpy", "gt4py:numpy", "gt4py:gtx86"]  # , "gt4py:gtmc"]
+if cp is not None:
+    backend += ["cupy", "gt4py:gtcuda"]
+if dawn4py is not None:
+    # backend += [
+    #     "gt4py:dawn:naive",
+    #     "gt4py:dawn:cxxopt",
+    #     "gt4py:dawn:gtx86",
+    #     "gt4py:dawn:gtmc",
+    # ]
+    pass
+dtype = (np.float64,)
 default_origin = ((0, 0, 0), (1, 1, 0), (3, 3, 0), (2, 0, 1))
 
 # x-axis
@@ -73,9 +93,18 @@ horizontal_boundary_types = (
 # isentropic_prognostic model
 isentropic_state = {
     "air_isentropic_density": {"kg m^-2 K^-1": (10, 1000)},
-    "x_velocity_at_u_locations": {"m s^-1": (-50, 50), "km hr^-1": (-150, 150)},
-    "y_velocity_at_v_locations": {"m s^-1": (-50, 50), "km hr^-1": (-150, 150)},
-    "mass_fraction_of_water_vapor_in_air": {"g g^-1": (0, 5), "g kg^-1": (0, 5000)},
+    "x_velocity_at_u_locations": {
+        "m s^-1": (-50, 50),
+        "km hr^-1": (-150, 150),
+    },
+    "y_velocity_at_v_locations": {
+        "m s^-1": (-50, 50),
+        "km hr^-1": (-150, 150),
+    },
+    "mass_fraction_of_water_vapor_in_air": {
+        "g g^-1": (0, 5),
+        "g kg^-1": (0, 5000),
+    },
     "mass_fraction_of_cloud_liquid_water_in_air": {
         "g g^-1": (0, 5),
         "g kg^-1": (0, 5000),
@@ -84,7 +113,10 @@ isentropic_state = {
         "g g^-1": (0, 5),
         "g kg^-1": (0, 5000),
     },
-    "number_density_of_precipitation_water": {"g^-1": (0, 1e3), "kg^-1": (0, 1e6)},
+    "number_density_of_precipitation_water": {
+        "g^-1": (0, 1e3),
+        "kg^-1": (0, 1e6),
+    },
     "precipitation": {"mm hr^-1": (0, 100)},
     "accumulated_precipitation": {"mm": (0, 100)},
 }

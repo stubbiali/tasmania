@@ -296,7 +296,9 @@ def thomas_numpy(
     delta = deepcopy(d)
     for k in range(kstart + 1, kstop):
         w = np.where(
-            beta[i, j, k - 1] != 0.0, a[i, j, k] / beta[i, j, k - 1], a[i, j, k]
+            beta[i, j, k - 1] != 0.0,
+            a[i, j, k] / beta[i, j, k - 1],
+            a[i, j, k],
         )
         beta[i, j, k] -= w * c[i, j, k - 1]
         delta[i, j, k] -= w * delta[i, j, k - 1]
@@ -312,3 +314,12 @@ def thomas_numpy(
             (delta[i, j, k] - c[i, j, k] * out[i, j, k + 1]) / beta[i, j, k],
             (delta[i, j, k] - c[i, j, k] * out[i, j, k + 1]) / b[i, j, k],
         )
+
+
+def is_gt(backend: str):
+    return len(backend) > 6 and backend[:6] == "gt4py:"
+
+
+def get_gt_backend(backend):
+    assert is_gt(backend), f"{backend} is not a GT4Py backend."
+    return backend[6:]
