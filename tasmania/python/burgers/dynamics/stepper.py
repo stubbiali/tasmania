@@ -24,12 +24,13 @@ import abc
 import numpy as np
 from typing import Optional, TYPE_CHECKING
 
-from gt4py import gtscript, __externals__
+from gt4py import gtscript
 from gt4py.gtscript import __INLINED, PARALLEL, computation, interval
 
 from tasmania.python.burgers.dynamics.advection import BurgersAdvection
 from tasmania.python.utils import taz_types
 from tasmania.python.utils.storage_utils import zeros
+from tasmania.python.utils.utils import get_gt_backend, is_gt
 
 if TYPE_CHECKING:
     from tasmania.python.domain.horizontal_grid import HorizontalGrid
@@ -73,12 +74,16 @@ class ForwardEulerStepNumpy:
         )
 
         if in_u_tnd is not None:
-            out_u[i, j, k] = in_u[i, j, k] - dt * (adv_u_x + adv_u_y - in_u_tnd[i, j, k])
+            out_u[i, j, k] = in_u[i, j, k] - dt * (
+                adv_u_x + adv_u_y - in_u_tnd[i, j, k]
+            )
         else:
             out_u[i, j, k] = in_u[i, j, k] - dt * (adv_u_x + adv_u_y)
 
         if in_v_tnd is not None:
-            out_v[i, j, k] = in_v[i, j, k] - dt * (adv_v_x + adv_v_y - in_v_tnd[i, j, k])
+            out_v[i, j, k] = in_v[i, j, k] - dt * (
+                adv_v_x + adv_v_y - in_v_tnd[i, j, k]
+            )
         else:
             out_v[i, j, k] = in_v[i, j, k] - dt * (adv_v_x + adv_v_y)
 
@@ -130,11 +135,10 @@ class BurgersStepper(abc.ABC):
         grid_xy: "HorizontalGrid",
         nb: int,
         flux_scheme: str,
-        gt_powered: bool,
         backend: str,
         backend_opts: taz_types.options_dict_t,
-        build_info: taz_types.options_dict_t,
         dtype: taz_types.dtype_t,
+        build_info: taz_types.options_dict_t,
         exec_info: taz_types.mutable_options_dict_t,
         default_origin: taz_types.triplet_int_t,
         rebuild: bool,
@@ -150,10 +154,8 @@ class BurgersStepper(abc.ABC):
         flux_scheme : str
             String specifying the advective flux scheme to be used.
             See :class:`tasmania.BurgersAdvection` for all available options.
-        gt_powered : bool
-            ``True`` to harness GT4Py, ``False`` for a vanilla Numpy implementation.
         backend : str
-            The GT4Py backend.
+            The backend.
         backend_opts : dict
             Dictionary of backend-specific options.
         build_info : dict
@@ -161,17 +163,19 @@ class BurgersStepper(abc.ABC):
         dtype : data-type
             Data type of the storages.
         exec_info : dict
-            Dictionary which will store statistics and diagnostics gathered at run time.
+            Dictionary which will store statistics and diagnostics gathered at
+            run time.
         default_origin : tuple[int]
             Storage default origin.
         rebuild : bool
-            ``True`` to trigger the stencils compilation at any class instantiation,
-            ``False`` to rely on the caching mechanism implemented by GT4Py.
+            ``True`` to trigger the stencils compilation at any class
+            instantiation, ``False`` to rely on the caching mechanism
+            implemented by the backend.
         managed_memory : bool
-            ``True`` to allocate the storages as managed memory, ``False`` otherwise.
+            ``True`` to allocate the storages as managed memory,
+            ``False`` otherwise.
         """
         self._grid_xy = grid_xy
-        self._gt_powered = gt_powered
         self._backend = backend
         self._backend_opts = backend_opts
         self._build_info = build_info
@@ -181,7 +185,7 @@ class BurgersStepper(abc.ABC):
         self._rebuild = rebuild
         self._managed_memory = managed_memory
 
-        self._advection = BurgersAdvection.factory(flux_scheme, gt_powered)
+        self._advection = BurgersAdvection.factory(flux_scheme, backend)
 
         assert nb >= self._advection.extent
         self._nb = nb
@@ -240,12 +244,11 @@ class BurgersStepper(abc.ABC):
         grid_xy: "HorizontalGrid",
         nb: int,
         flux_scheme: str,
-        gt_powered: bool,
         *,
         backend: str = "numpy",
         backend_opts: Optional[taz_types.options_dict_t] = None,
-        build_info: Optional[taz_types.options_dict_t] = None,
         dtype: taz_types.dtype_t = np.float64,
+        build_info: Optional[taz_types.options_dict_t] = None,
         exec_info: Optional[taz_types.mutable_options_dict_t] = None,
         default_origin: Optional[taz_types.triplet_int_t] = None,
         rebuild: bool = False,
@@ -270,25 +273,26 @@ class BurgersStepper(abc.ABC):
         flux_scheme : str
             String specifying the advective flux scheme to be used.
             See :class:`tasmania.BurgersAdvection` for all available options.
-        gt_powered : bool
-            ``True`` to harness GT4Py, ``False`` for a vanilla Numpy implementation.
         backend : `str`, optional
-            The GT4Py backend.
+            The backend.
         backend_opts : `dict`, optional
             Dictionary of backend-specific options.
-        build_info : `dict`, optional
-            Dictionary of building options.
         dtype : `data-type`, optional
             Data type of the storages.
+        build_info : `dict`, optional
+            Dictionary of building options.
         exec_info : `dict`, optional
-            Dictionary which will store statistics and diagnostics gathered at run time.
+            Dictionary which will store statistics and diagnostics gathered at
+            run time.
         default_origin : `tuple[int]`, optional
             Storage default origin.
         rebuild : `bool`, optional
-            ``True`` to trigger the stencils compilation at any class instantiation,
-            ``False`` to rely on the caching mechanism implemented by GT4Py.
+            ``True`` to trigger the stencils compilation at any class
+            instantiation, ``False`` to rely on the caching mechanism
+            implemented by the backend.
         managed_memory : `bool`, optional
-            ``True`` to allocate the storages as managed memory, ``False`` otherwise.
+            ``True`` to allocate the storages as managed memory,
+            ``False`` otherwise.
 
         Return
         ------
@@ -299,11 +303,10 @@ class BurgersStepper(abc.ABC):
             grid_xy,
             nb,
             flux_scheme,
-            gt_powered,
             backend,
             backend_opts,
-            build_info,
             dtype,
+            build_info,
             exec_info,
             default_origin,
             rebuild,
@@ -327,11 +330,10 @@ class ForwardEuler(BurgersStepper):
         grid_xy,
         nb,
         flux_scheme,
-        gt_powered,
         backend,
         backend_opts,
-        build_info,
         dtype,
+        build_info,
         exec_info,
         default_origin,
         rebuild,
@@ -341,11 +343,10 @@ class ForwardEuler(BurgersStepper):
             grid_xy,
             nb,
             flux_scheme,
-            gt_powered,
             backend,
             backend_opts,
-            build_info,
             dtype,
+            build_info,
             exec_info,
             default_origin,
             rebuild,
@@ -383,7 +384,8 @@ class ForwardEuler(BurgersStepper):
             dy=dy,
             origin=(nb, nb, 0),
             domain=(nx - 2 * nb, ny - 2 * nb, 1),
-            exec_info=self._exec_info
+            exec_info=self._exec_info,
+            validate_args=True
         )
 
         return {
@@ -393,7 +395,6 @@ class ForwardEuler(BurgersStepper):
         }
 
     def _stencil_initialize(self, tendencies):
-        gt_powered = self._gt_powered
         storage_shape = (self._grid_xy.nx, self._grid_xy.ny, 1)
         backend = self._backend
         dtype = self._dtype
@@ -403,7 +404,6 @@ class ForwardEuler(BurgersStepper):
         self._stencil_args = {
             "out_u": zeros(
                 storage_shape,
-                gt_powered,
                 backend=backend,
                 dtype=dtype,
                 default_origin=default_origin,
@@ -411,7 +411,6 @@ class ForwardEuler(BurgersStepper):
             ),
             "out_v": zeros(
                 storage_shape,
-                gt_powered,
                 backend=backend,
                 dtype=dtype,
                 default_origin=default_origin,
@@ -419,11 +418,11 @@ class ForwardEuler(BurgersStepper):
             ),
         }
 
-        if gt_powered:
+        if is_gt(backend):
             self._stencil = gtscript.stencil(
                 definition=forward_euler_step_gt,
                 name=self.__class__.__name__,
-                backend=backend,
+                backend=get_gt_backend(backend),
                 build_info=self._build_info,
                 rebuild=self._rebuild,
                 dtypes={"dtype": dtype},
@@ -446,11 +445,10 @@ class RK2(BurgersStepper):
         grid_xy,
         nb,
         flux_scheme,
-        gt_powered,
         backend,
         backend_opts,
-        build_info,
         dtype,
+        build_info,
         exec_info,
         default_origin,
         rebuild,
@@ -460,11 +458,10 @@ class RK2(BurgersStepper):
             grid_xy,
             nb,
             flux_scheme,
-            gt_powered,
             backend,
             backend_opts,
-            build_info,
             dtype,
+            build_info,
             exec_info,
             default_origin,
             rebuild,
@@ -506,7 +503,8 @@ class RK2(BurgersStepper):
             dy=dy,
             origin=(nb, nb, 0),
             domain=(nx - 2 * nb, ny - 2 * nb, 1),
-            exec_info=self._exec_info
+            exec_info=self._exec_info,
+            validate_args=True
         )
 
         return {
@@ -516,7 +514,6 @@ class RK2(BurgersStepper):
         }
 
     def _stencil_initialize(self, tendencies):
-        gt_powered = self._gt_powered
         storage_shape = (self._grid_xy.nx, self._grid_xy.ny, 1)
         backend = self._backend
         dtype = self._dtype
@@ -526,7 +523,6 @@ class RK2(BurgersStepper):
         self._stencil_args = {
             "out_u": zeros(
                 storage_shape,
-                gt_powered=gt_powered,
                 backend=backend,
                 dtype=dtype,
                 default_origin=default_origin,
@@ -534,7 +530,6 @@ class RK2(BurgersStepper):
             ),
             "out_v": zeros(
                 storage_shape,
-                gt_powered=gt_powered,
                 backend=backend,
                 dtype=dtype,
                 default_origin=default_origin,
@@ -542,11 +537,11 @@ class RK2(BurgersStepper):
             ),
         }
 
-        if gt_powered:
+        if is_gt(backend):
             self._stencil = gtscript.stencil(
                 definition=forward_euler_step_gt,
                 name=self.__class__.__name__,
-                backend=backend,
+                backend=get_gt_backend(backend),
                 build_info=self._build_info,
                 rebuild=self._rebuild,
                 dtypes={"dtype": dtype},
@@ -569,11 +564,10 @@ class RK3WS(RK2):
         grid_xy,
         nb,
         flux_scheme,
-        gt_powered,
         backend,
         backend_opts,
-        build_info,
         dtype,
+        build_info,
         exec_info,
         default_origin,
         rebuild,
@@ -583,11 +577,10 @@ class RK3WS(RK2):
             grid_xy,
             nb,
             flux_scheme,
-            gt_powered,
             backend,
             backend_opts,
-            build_info,
             dtype,
+            build_info,
             exec_info,
             default_origin,
             rebuild,
@@ -634,7 +627,8 @@ class RK3WS(RK2):
             dy=dy,
             origin=(nb, nb, 0),
             domain=(nx - 2 * nb, ny - 2 * nb, 1),
-            exec_info=self._exec_info
+            exec_info=self._exec_info,
+            validate_args=True
         )
 
         return {

@@ -45,12 +45,11 @@ class BurgersHorizontalDiffusion(TendencyComponent):
         grid_type: str,
         diffusion_type: str,
         diffusion_coeff: DataArray,
-        gt_powered: bool = True,
         *,
         backend: str = "numpy",
         backend_opts: Optional[taz_types.options_dict_t] = None,
-        build_info: Optional[taz_types.options_dict_t] = None,
         dtype: taz_types.dtype_t = np.float64,
+            build_info: Optional[taz_types.options_dict_t] = None,
         exec_info: Optional[taz_types.mutable_options_dict_t] = None,
         default_origin: Optional[taz_types.triplet_int_t] = None,
         rebuild: bool = False,
@@ -71,25 +70,26 @@ class BurgersHorizontalDiffusion(TendencyComponent):
         diffusion_coeff : sympl.DataArray
             1-item :class:`sympl.DataArray` representing the diffusion
             coefficient. The units should be compatible with 'm^2 s^-1'.
-        gt_powered : `bool`, optional
-            ``True`` to harness GT4Py, ``False`` for a vanilla Numpy implementation.
         backend : `str`, optional
-            The GT4Py backend.
+            The backend.
         backend_opts : `dict`, optional
             Dictionary of backend-specific options.
-        build_info : `dict`, optional
-            Dictionary of building options.
         dtype : `data-type`, optional
             Data type of the storages.
+        build_info : `dict`, optional
+            Dictionary of building options.
         exec_info : `dict`, optional
-            Dictionary which will store statistics and diagnostics gathered at run time.
+            Dictionary which will store statistics and diagnostics gathered at
+            run time.
         default_origin : `tuple[int]`, optional
             Storage default origin.
         rebuild : `bool`, optional
-            ``True`` to trigger the stencils compilation at any class instantiation,
-            ``False`` to rely on the caching mechanism implemented by GT4Py.
+            ``True`` to trigger the stencils compilation at any class
+            instantiation, ``False`` to rely on the caching mechanism
+            implemented by the backend.
         managed_memory : `bool`, optional
-            ``True`` to allocate the storages as managed memory, ``False`` otherwise.
+            ``True`` to allocate the storages as managed memory,
+            ``False`` otherwise.
         kwargs :
             Keyword arguments to be broadcast to :class:`sympl.TendencyComponent`.
         """
@@ -108,11 +108,10 @@ class BurgersHorizontalDiffusion(TendencyComponent):
             diffusion_coeff_max=diffusion_coeff.to_units("m^2 s^-1").values.item(),
             diffusion_damp_depth=0,
             nb=self.horizontal_boundary.nb,
-            gt_powered=gt_powered,
             backend=backend,
             backend_opts=backend_opts,
-            build_info=build_info,
             dtype=dtype,
+            build_info=build_info,
             exec_info=exec_info,
             default_origin=default_origin,
             rebuild=rebuild,
@@ -121,7 +120,6 @@ class BurgersHorizontalDiffusion(TendencyComponent):
 
         self._out_u_tnd = zeros(
             (nx, ny, 1),
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -129,7 +127,6 @@ class BurgersHorizontalDiffusion(TendencyComponent):
         )
         self._out_v_tnd = zeros(
             (nx, ny, 1),
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,

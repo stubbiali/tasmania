@@ -23,14 +23,11 @@
 from datetime import datetime, timedelta
 from hypothesis import (
     given,
-    HealthCheck,
     reproduce_failure,
-    settings,
     strategies as hyp_st,
 )
 import pytest
 
-import gt4py as gt
 from tasmania.python.burgers.dynamics.stepper import (
     BurgersStepper,
     ForwardEuler,
@@ -41,7 +38,7 @@ from tasmania.python.utils.storage_utils import deepcopy_array_dict
 
 from tests.conf import (
     backend as conf_backend,
-    datatype as conf_dtype,
+    dtype as conf_dtype,
     default_origin as conf_dorigin,
     nb as conf_nb,
 )
@@ -57,34 +54,28 @@ from tests.strategies import (
     st_one_of,
     st_timedeltas,
 )
-from tests.utilities import compare_arrays, compare_datetimes
+from tests.utilities import compare_arrays, compare_datetimes, hyp_settings
 
 
-@settings(
-    suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
-    deadline=None,
-)
-@given(hyp_st.data())
-def test_forward_euler(data):
+@hyp_settings
+@given(data=hyp_st.data())
+@pytest.mark.parametrize("backend", conf_backend)
+@pytest.mark.parametrize("dtype", conf_dtype)
+def test_forward_euler(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
-    if gt_powered:
-        gt.storage.prepare_numpy()
-
-    nb = data.draw(hyp_st.integers(min_value=1, max_value=max(1, conf_nb)), label="nb")
+    nb = data.draw(
+        hyp_st.integers(min_value=1, max_value=max(1, conf_nb)), label="nb"
+    )
     domain = data.draw(
         st_domain(
             xaxis_length=(1, 40),
             yaxis_length=(1, 40),
             zaxis_length=(1, 1),
             nb=nb,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
         ),
@@ -96,7 +87,6 @@ def test_forward_euler(data):
         st_burgers_state(
             grid,
             time=datetime(year=1992, month=2, day=20),
-            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
         ),
@@ -111,7 +101,6 @@ def test_forward_euler(data):
             st_burgers_tendency(
                 grid,
                 time=state["time"],
-                gt_powered=gt_powered,
                 backend=backend,
                 default_origin=default_origin,
             ),
@@ -120,7 +109,9 @@ def test_forward_euler(data):
     )
 
     timestep = data.draw(
-        st_timedeltas(min_value=timedelta(seconds=0), max_value=timedelta(seconds=120)),
+        st_timedeltas(
+            min_value=timedelta(seconds=0), max_value=timedelta(seconds=120)
+        ),
         label="timestep",
     )
 
@@ -132,7 +123,6 @@ def test_forward_euler(data):
         grid.grid_xy,
         nb,
         "first_order",
-        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -143,14 +133,14 @@ def test_forward_euler(data):
 
     raw_state = {
         "time": state["time"],
-        "x_velocity": state["x_velocity"].to_units("m s^-1").values,
-        "y_velocity": state["y_velocity"].to_units("m s^-1").values,
+        "x_velocity": state["x_velocity"].to_units("m s^-1").data,
+        "y_velocity": state["y_velocity"].to_units("m s^-1").data,
     }
     if if_tendency:
         raw_tendency = {
             "time": state["time"],
-            "x_velocity": tendency["x_velocity"].to_units("m s^-2").values,
-            "y_velocity": tendency["y_velocity"].to_units("m s^-2").values,
+            "x_velocity": tendency["x_velocity"].to_units("m s^-2").data,
+            "y_velocity": tendency["y_velocity"].to_units("m s^-2").data,
         }
     else:
         raw_tendency = {}
@@ -180,31 +170,25 @@ def test_forward_euler(data):
     compare_arrays(out_v, out_state["y_velocity"][nb:-nb, nb:-nb, :])
 
 
-@settings(
-    suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
-    deadline=None,
-)
-@given(hyp_st.data())
-def test_rk2(data):
+@hyp_settings
+@given(data=hyp_st.data())
+@pytest.mark.parametrize("backend", conf_backend)
+@pytest.mark.parametrize("dtype", conf_dtype)
+def test_rk2(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
-    if gt_powered:
-        gt.storage.prepare_numpy()
-
-    nb = data.draw(hyp_st.integers(min_value=2, max_value=max(2, conf_nb)), label="nb")
+    nb = data.draw(
+        hyp_st.integers(min_value=2, max_value=max(2, conf_nb)), label="nb"
+    )
     domain = data.draw(
         st_domain(
             xaxis_length=(1, 40),
             yaxis_length=(1, 40),
             zaxis_length=(1, 1),
             nb=nb,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
         ),
@@ -216,7 +200,6 @@ def test_rk2(data):
         st_burgers_state(
             grid,
             time=datetime(year=1992, month=2, day=20),
-            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
         ),
@@ -231,7 +214,6 @@ def test_rk2(data):
             st_burgers_tendency(
                 grid,
                 time=state["time"],
-                gt_powered=gt_powered,
                 backend=backend,
                 default_origin=default_origin,
             ),
@@ -240,7 +222,9 @@ def test_rk2(data):
     )
 
     timestep = data.draw(
-        st_timedeltas(min_value=timedelta(seconds=0), max_value=timedelta(seconds=120)),
+        st_timedeltas(
+            min_value=timedelta(seconds=0), max_value=timedelta(seconds=120)
+        ),
         label="timestep",
     )
 
@@ -252,7 +236,6 @@ def test_rk2(data):
         grid.grid_xy,
         nb,
         "third_order",
-        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -263,14 +246,14 @@ def test_rk2(data):
 
     raw_state_0 = {
         "time": state["time"],
-        "x_velocity": state["x_velocity"].to_units("m s^-1").values,
-        "y_velocity": state["y_velocity"].to_units("m s^-1").values,
+        "x_velocity": state["x_velocity"].to_units("m s^-1").data,
+        "y_velocity": state["y_velocity"].to_units("m s^-1").data,
     }
     if if_tendency:
         raw_tendency = {
             "time": state["time"],
-            "x_velocity": tendency["x_velocity"].to_units("m s^-2").values,
-            "y_velocity": tendency["y_velocity"].to_units("m s^-2").values,
+            "x_velocity": tendency["x_velocity"].to_units("m s^-2").data,
+            "y_velocity": tendency["y_velocity"].to_units("m s^-2").data,
         }
     else:
         raw_tendency = {}
@@ -327,31 +310,25 @@ def test_rk2(data):
     compare_arrays(v2, raw_state_2["y_velocity"][nb:-nb, nb:-nb, :])
 
 
-@settings(
-    suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
-    deadline=None,
-)
-@given(hyp_st.data())
-def test_rk3ws(data):
+@hyp_settings
+@given(data=hyp_st.data())
+@pytest.mark.parametrize("backend", conf_backend)
+@pytest.mark.parametrize("dtype", conf_dtype)
+def test_rk3ws(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
-    if gt_powered:
-        gt.storage.prepare_numpy()
-
-    nb = data.draw(hyp_st.integers(min_value=3, max_value=max(3, conf_nb)), label="nb")
+    nb = data.draw(
+        hyp_st.integers(min_value=3, max_value=max(3, conf_nb)), label="nb"
+    )
     domain = data.draw(
         st_domain(
             xaxis_length=(1, 40),
             yaxis_length=(1, 40),
             zaxis_length=(1, 1),
             nb=nb,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
         ),
@@ -363,7 +340,6 @@ def test_rk3ws(data):
         st_burgers_state(
             grid,
             time=datetime(year=1992, month=2, day=20),
-            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
         ),
@@ -378,7 +354,6 @@ def test_rk3ws(data):
             st_burgers_tendency(
                 grid,
                 time=state["time"],
-                gt_powered=gt_powered,
                 backend=backend,
                 default_origin=default_origin,
             ),
@@ -387,7 +362,9 @@ def test_rk3ws(data):
     )
 
     timestep = data.draw(
-        st_timedeltas(min_value=timedelta(seconds=0), max_value=timedelta(seconds=120)),
+        st_timedeltas(
+            min_value=timedelta(seconds=0), max_value=timedelta(seconds=120)
+        ),
         label="timestep",
     )
 
@@ -399,7 +376,6 @@ def test_rk3ws(data):
         grid.grid_xy,
         nb,
         "fifth_order",
-        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -411,14 +387,14 @@ def test_rk3ws(data):
 
     raw_state_0 = {
         "time": state["time"],
-        "x_velocity": state["x_velocity"].to_units("m s^-1").values,
-        "y_velocity": state["y_velocity"].to_units("m s^-1").values,
+        "x_velocity": state["x_velocity"].to_units("m s^-1").data,
+        "y_velocity": state["y_velocity"].to_units("m s^-1").data,
     }
     if if_tendency:
         raw_tendency = {
             "time": state["time"],
-            "x_velocity": tendency["x_velocity"].to_units("m s^-2").values,
-            "y_velocity": tendency["y_velocity"].to_units("m s^-2").values,
+            "x_velocity": tendency["x_velocity"].to_units("m s^-2").data,
+            "y_velocity": tendency["y_velocity"].to_units("m s^-2").data,
         }
     else:
         raw_tendency = {}
@@ -446,7 +422,9 @@ def test_rk3ws(data):
         u1 += 1.0 / 3.0 * timestep.total_seconds() * tnd_u[nb:-nb, nb:-nb, :]
         v1 += 1.0 / 3.0 * timestep.total_seconds() * tnd_v[nb:-nb, nb:-nb, :]
 
-    compare_datetimes(raw_state_1["time"], state["time"] + 1.0 / 3.0 * timestep)
+    compare_datetimes(
+        raw_state_1["time"], state["time"] + 1.0 / 3.0 * timestep
+    )
     compare_arrays(u1, raw_state_1["x_velocity"][nb:-nb, nb:-nb, :])
     compare_arrays(v1, raw_state_1["y_velocity"][nb:-nb, nb:-nb, :])
 

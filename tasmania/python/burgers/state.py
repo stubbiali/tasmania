@@ -44,7 +44,9 @@ if TYPE_CHECKING:
 class ZhaoSolutionFactory:
     """ Factory of valid velocity fields for the Zhao test case. """
 
-    def __init__(self, initial_time: taz_types.datetime_t, eps: DataArray) -> None:
+    def __init__(
+        self, initial_time: taz_types.datetime_t, eps: DataArray
+    ) -> None:
         """
         Parameters
         ----------
@@ -76,11 +78,13 @@ class ZhaoSolutionFactory:
         grid : tasmania.Grid
             The underlying grid.
         slice_x : `slice`, optional
-            The portion of the grid along the x-axis where the solution should be computed.
-            If not specified, the solution is calculated over all grid points in x-direction.
+            The portion of the grid along the x-axis where the solution should
+            be computed. If not specified, the solution is calculated over all
+            grid points in x-direction.
         slice_y : `slice`, optional
-            The portion of the grid along the y-axis where the solution should be computed.
-            If not specified, the solution is calculated over all grid points in y-direction.
+            The portion of the grid along the y-axis where the solution should
+            be computed. If not specified, the solution is calculated over all
+            grid points in y-direction.
         field_name : `str`, optional
             The field to calculate. Either:
 
@@ -160,7 +164,6 @@ class ZhaoStateFactory:
         self,
         initial_time: taz_types.datetime_t,
         eps: DataArray,
-        gt_powered: bool,
         *,
         backend: str = "numpy",
         dtype: taz_types.dtype_t = np.float64,
@@ -175,19 +178,17 @@ class ZhaoStateFactory:
         eps : sympl.DataArray
             1-item :class:`sympl.DataArray` representing the diffusivity.
             The units should be compatible with 'm s^-2'.
-        gt_powered : bool
-            ``True`` to harness GT4Py, ``False`` for a vanilla Numpy implementation.
         backend : `str`, optional
-            The GT4Py backend.
+            The backend.
         dtype : `data-type`, optional
             Data type of the storages.
         default_origin : `tuple[int]`, optional
             Storage default origin.
         managed_memory : `bool`, optional
-            ``True`` to allocate the storages as managed memory, ``False`` otherwise.
+            ``True`` to allocate the storages as managed memory,
+            ``False`` otherwise.
         """
         self._solution_factory = ZhaoSolutionFactory(initial_time, eps)
-        self._gt_powered = gt_powered
         self._backend = backend
         self._dtype = dtype
         self._default_origin = default_origin
@@ -210,37 +211,42 @@ class ZhaoStateFactory:
             The computed model state dictionary.
         """
         nx, ny = grid.nx, grid.ny
-        gt_powered = self._gt_powered
         backend = self._backend
         dtype = self._dtype
         default_origin = self._default_origin
         managed_memory = self._managed_memory
 
-        asarray = get_asarray_function(gt_powered, backend)
+        asarray = get_asarray_function(backend)
 
         u = zeros(
             (nx, ny, 1),
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
             managed_memory=managed_memory,
         )
-        u[...] = asarray(self._solution_factory(time, grid, field_name="x_velocity"))
-        u_da = get_dataarray_3d(u, grid, "m s^-1", "x_velocity", set_coordinates=False)
+        u[...] = asarray(
+            self._solution_factory(time, grid, field_name="x_velocity")
+        )
+        u_da = get_dataarray_3d(
+            u, grid, "m s^-1", "x_velocity", set_coordinates=False
+        )
         u_da.attrs["backend"] = backend
         u_da.attrs["default_origin"] = default_origin
 
         v = zeros(
             (nx, ny, 1),
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
             managed_memory=managed_memory,
         )
-        v[...] = asarray(self._solution_factory(time, grid, field_name="y_velocity"))
-        v_da = get_dataarray_3d(v, grid, "m s^-1", "y_velocity", set_coordinates=False)
+        v[...] = asarray(
+            self._solution_factory(time, grid, field_name="y_velocity")
+        )
+        v_da = get_dataarray_3d(
+            v, grid, "m s^-1", "y_velocity", set_coordinates=False
+        )
         v_da.attrs["backend"] = backend
         v_da.attrs["default_origin"] = default_origin
 

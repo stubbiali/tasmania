@@ -24,21 +24,17 @@ from datetime import datetime, timedelta
 from hypothesis import (
     assume,
     given,
-    HealthCheck,
     reproduce_failure,
-    settings,
     strategies as hyp_st,
 )
-import numpy as np
 import pytest
 
-import gt4py as gt
-
 from tasmania.python.burgers.dynamics.dycore import BurgersDynamicalCore
+from tasmania.python.utils.utils import is_gt
 
 from tests.conf import (
     backend as conf_backend,
-    datatype as conf_dtype,
+    dtype as conf_dtype,
     default_origin as conf_dorigin,
     nb as conf_nb,
 )
@@ -47,49 +43,46 @@ from tests.burgers.test_burgers_advection import (
     third_order_advection,
     fifth_order_advection,
 )
-from tests.strategies import st_burgers_state, st_domain, st_one_of, st_timedeltas
-from tests.utilities import compare_arrays
-
-
-@settings(
-    suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
-    deadline=None,
+from tests.strategies import (
+    st_burgers_state,
+    st_domain,
+    st_one_of,
+    st_timedeltas,
 )
-@given(hyp_st.data())
-def test_forward_euler(data):
+from tests.utilities import compare_arrays, hyp_settings
+
+
+@hyp_settings
+@given(data=hyp_st.data())
+@pytest.mark.parametrize("backend", conf_backend)
+@pytest.mark.parametrize("dtype", conf_dtype)
+def test_forward_euler(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
-    if gt_powered:
-        gt.storage.prepare_numpy()
-
-    nb = data.draw(hyp_st.integers(min_value=1, max_value=max(1, conf_nb)), label="nb")
+    nb = data.draw(
+        hyp_st.integers(min_value=1, max_value=max(1, conf_nb)), label="nb"
+    )
     domain = data.draw(
         st_domain(
             xaxis_length=(1, 40),
             yaxis_length=(1, 40),
             zaxis_length=(1, 1),
             nb=nb,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
         ),
         label="domain",
     )
-    if domain.horizontal_boundary.type == "relaxed":
-        assume(gt_powered is False)
+    assume(domain.horizontal_boundary.type != "relaxed" or not is_gt(backend))
     grid = domain.numerical_grid
 
     state = data.draw(
         st_burgers_state(
             grid,
             time=datetime(year=1992, month=2, day=20),
-            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
         ),
@@ -97,7 +90,9 @@ def test_forward_euler(data):
     )
 
     timestep = data.draw(
-        st_timedeltas(min_value=timedelta(seconds=0), max_value=timedelta(seconds=120)),
+        st_timedeltas(
+            min_value=timedelta(seconds=0), max_value=timedelta(seconds=120)
+        ),
         label="timestep",
     )
 
@@ -109,7 +104,6 @@ def test_forward_euler(data):
         intermediate_tendency_component=None,
         time_integration_scheme="forward_euler",
         flux_scheme="first_order",
-        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -130,8 +124,8 @@ def test_forward_euler(data):
     dt = timestep.total_seconds()
     dx = grid.dx.to_units("m").values.item()
     dy = grid.dy.to_units("m").values.item()
-    u0 = state["x_velocity"].to_units("m s^-1").values
-    v0 = state["y_velocity"].to_units("m s^-1").values
+    u0 = state["x_velocity"].to_units("m s^-1").data
+    v0 = state["y_velocity"].to_units("m s^-1").data
 
     adv_u_x, adv_u_y = first_order_advection(dx, dy, u0, v0, u0)
     adv_v_x, adv_v_y = first_order_advection(dx, dy, u0, v0, v0)
@@ -162,45 +156,37 @@ def test_forward_euler(data):
     compare_arrays(v1, new_state["y_velocity"])
 
 
-@settings(
-    suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
-    deadline=None,
-)
-@given(hyp_st.data())
-def test_rk2(data):
+@hyp_settings
+@given(data=hyp_st.data())
+@pytest.mark.parametrize("backend", conf_backend)
+@pytest.mark.parametrize("dtype", conf_dtype)
+def test_rk2(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
-    if gt_powered:
-        gt.storage.prepare_numpy()
-
-    nb = data.draw(hyp_st.integers(min_value=2, max_value=max(2, conf_nb)), label="nb")
+    nb = data.draw(
+        hyp_st.integers(min_value=2, max_value=max(2, conf_nb)), label="nb"
+    )
     domain = data.draw(
         st_domain(
             xaxis_length=(1, 40),
             yaxis_length=(1, 40),
             zaxis_length=(1, 1),
             nb=nb,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
         ),
         label="domain",
     )
-    if domain.horizontal_boundary.type == "relaxed":
-        assume(gt_powered is False)
+    assume(domain.horizontal_boundary.type != "relaxed" or not is_gt(backend))
     grid = domain.numerical_grid
 
     state = data.draw(
         st_burgers_state(
             grid,
             time=datetime(year=1992, month=2, day=20),
-            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
         ),
@@ -208,7 +194,9 @@ def test_rk2(data):
     )
 
     timestep = data.draw(
-        st_timedeltas(min_value=timedelta(seconds=0), max_value=timedelta(seconds=120)),
+        st_timedeltas(
+            min_value=timedelta(seconds=0), max_value=timedelta(seconds=120)
+        ),
         label="timestep",
     )
 
@@ -220,7 +208,6 @@ def test_rk2(data):
         intermediate_tendency_component=None,
         time_integration_scheme="rk2",
         flux_scheme="third_order",
-        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -241,8 +228,8 @@ def test_rk2(data):
     dt = timestep.total_seconds()
     dx = grid.dx.to_units("m").values.item()
     dy = grid.dy.to_units("m").values.item()
-    u0 = state["x_velocity"].to_units("m s^-1").values
-    v0 = state["y_velocity"].to_units("m s^-1").values
+    u0 = state["x_velocity"].to_units("m s^-1").data
+    v0 = state["y_velocity"].to_units("m s^-1").data
 
     adv_u_x, adv_u_y = third_order_advection(dx, dy, u0, v0, u0)
     adv_v_x, adv_v_y = third_order_advection(dx, dy, u0, v0, v0)
@@ -294,45 +281,37 @@ def test_rk2(data):
     compare_arrays(v2, new_state["y_velocity"])
 
 
-@settings(
-    suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
-    deadline=None,
-)
-@given(hyp_st.data())
-def test_rk3ws(data):
+@hyp_settings
+@given(data=hyp_st.data())
+@pytest.mark.parametrize("backend", conf_backend)
+@pytest.mark.parametrize("dtype", conf_dtype)
+def test_rk3ws(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
-    if gt_powered:
-        gt.storage.prepare_numpy()
-
-    nb = data.draw(hyp_st.integers(min_value=3, max_value=max(3, conf_nb)), label="nb")
+    nb = data.draw(
+        hyp_st.integers(min_value=3, max_value=max(3, conf_nb)), label="nb"
+    )
     domain = data.draw(
         st_domain(
             xaxis_length=(1, 40),
             yaxis_length=(1, 40),
             zaxis_length=(1, 1),
             nb=nb,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
         ),
         label="domain",
     )
-    if domain.horizontal_boundary.type == "relaxed":
-        assume(gt_powered is False)
+    assume(domain.horizontal_boundary.type != "relaxed" or not is_gt(backend))
     grid = domain.numerical_grid
 
     state = data.draw(
         st_burgers_state(
             grid,
             time=datetime(year=1992, month=2, day=20),
-            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
         ),
@@ -340,7 +319,9 @@ def test_rk3ws(data):
     )
 
     timestep = data.draw(
-        st_timedeltas(min_value=timedelta(seconds=0), max_value=timedelta(seconds=120)),
+        st_timedeltas(
+            min_value=timedelta(seconds=0), max_value=timedelta(seconds=120)
+        ),
         label="timestep",
     )
 
@@ -352,7 +333,6 @@ def test_rk3ws(data):
         intermediate_tendency_component=None,
         time_integration_scheme="rk3ws",
         flux_scheme="fifth_order",
-        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -373,8 +353,8 @@ def test_rk3ws(data):
     dt = timestep.total_seconds()
     dx = grid.dx.to_units("m").values.item()
     dy = grid.dy.to_units("m").values.item()
-    u0 = state["x_velocity"].to_units("m s^-1").values
-    v0 = state["y_velocity"].to_units("m s^-1").values
+    u0 = state["x_velocity"].to_units("m s^-1").data
+    v0 = state["y_velocity"].to_units("m s^-1").data
 
     adv_u_x, adv_u_y = fifth_order_advection(dx, dy, u0, v0, u0)
     adv_v_x, adv_v_y = fifth_order_advection(dx, dy, u0, v0, v0)

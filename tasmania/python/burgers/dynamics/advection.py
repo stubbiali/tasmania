@@ -27,6 +27,7 @@ from typing import Tuple
 from gt4py import gtscript
 
 from tasmania.python.utils import taz_types
+from tasmania.python.utils.utils import get_gt_backend, is_gt
 
 
 class BurgersAdvection(abc.ABC):
@@ -34,15 +35,15 @@ class BurgersAdvection(abc.ABC):
 
     extent: int = 0
 
-    def __init__(self, gt_powered: bool) -> None:
-        self.call = self.call_gt if gt_powered else self.call_numpy
+    def __init__(self, backend: str) -> None:
+        self.call = self.call_gt if is_gt(backend) else self.call_numpy
 
     @staticmethod
     @abc.abstractmethod
     def call_numpy(
         dx: float, dy: float, u: np.ndarray, v: np.ndarray
     ) -> "Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]":
-        """ Compute the accelerations due to advection.
+        """Compute the accelerations due to advection.
 
         Vanilla NumPy implementation.
 
@@ -104,19 +105,19 @@ class BurgersAdvection(abc.ABC):
         pass
 
     @staticmethod
-    def factory(flux_scheme: str, gt_powered: bool) -> "BurgersAdvection":
+    def factory(flux_scheme: str, backend: str) -> "BurgersAdvection":
         if flux_scheme == "first_order":
-            return _FirstOrder(gt_powered)
+            return _FirstOrder(backend)
         elif flux_scheme == "second_order":
-            return _SecondOrder(gt_powered)
+            return _SecondOrder(backend)
         elif flux_scheme == "third_order":
-            return _ThirdOrder(gt_powered)
+            return _ThirdOrder(backend)
         elif flux_scheme == "fourth_order":
-            return _FourthOrder(gt_powered)
+            return _FourthOrder(backend)
         elif flux_scheme == "fifth_order":
-            return _FifthOrder(gt_powered)
+            return _FifthOrder(backend)
         elif flux_scheme == "sixth_order":
-            return _SixthOrder(gt_powered)
+            return _SixthOrder(backend)
         else:
             raise RuntimeError()
 
@@ -124,26 +125,31 @@ class BurgersAdvection(abc.ABC):
 class _FirstOrder(BurgersAdvection):
     extent = 1
 
-    def __init__(self, gt_powered):
-        super().__init__(gt_powered)
-
     @staticmethod
     def call_numpy(dx, dy, u, v):
         abs_u = np.abs(u[1:-1, 1:-1])
         abs_v = np.abs(v[1:-1, 1:-1])
 
-        adv_u_x = u[1:-1, 1:-1] / (2.0 * dx) * (u[2:, 1:-1] - u[:-2, 1:-1]) - abs_u / (
-            2.0 * dx
-        ) * (u[2:, 1:-1] - 2.0 * u[1:-1, 1:-1] + u[:-2, 1:-1])
-        adv_u_y = v[1:-1, 1:-1] / (2.0 * dy) * (u[1:-1, 2:] - u[1:-1, :-2]) - abs_v / (
-            2.0 * dy
-        ) * (u[1:-1, 2:] - 2.0 * u[1:-1, 1:-1] + u[1:-1, :-2])
-        adv_v_x = u[1:-1, 1:-1] / (2.0 * dx) * (v[2:, 1:-1] - v[:-2, 1:-1]) - abs_u / (
-            2.0 * dx
-        ) * (v[2:, 1:-1] - 2.0 * v[1:-1, 1:-1] + v[:-2, 1:-1])
-        adv_v_y = v[1:-1, 1:-1] / (2.0 * dy) * (v[1:-1, 2:] - v[1:-1, :-2]) - abs_v / (
-            2.0 * dy
-        ) * (v[1:-1, 2:] - 2.0 * v[1:-1, 1:-1] + v[1:-1, :-2])
+        adv_u_x = u[1:-1, 1:-1] / (2.0 * dx) * (
+            u[2:, 1:-1] - u[:-2, 1:-1]
+        ) - abs_u / (2.0 * dx) * (
+            u[2:, 1:-1] - 2.0 * u[1:-1, 1:-1] + u[:-2, 1:-1]
+        )
+        adv_u_y = v[1:-1, 1:-1] / (2.0 * dy) * (
+            u[1:-1, 2:] - u[1:-1, :-2]
+        ) - abs_v / (2.0 * dy) * (
+            u[1:-1, 2:] - 2.0 * u[1:-1, 1:-1] + u[1:-1, :-2]
+        )
+        adv_v_x = u[1:-1, 1:-1] / (2.0 * dx) * (
+            v[2:, 1:-1] - v[:-2, 1:-1]
+        ) - abs_u / (2.0 * dx) * (
+            v[2:, 1:-1] - 2.0 * v[1:-1, 1:-1] + v[:-2, 1:-1]
+        )
+        adv_v_y = v[1:-1, 1:-1] / (2.0 * dy) * (
+            v[1:-1, 2:] - v[1:-1, :-2]
+        ) - abs_v / (2.0 * dy) * (
+            v[1:-1, 2:] - 2.0 * v[1:-1, 1:-1] + v[1:-1, :-2]
+        )
 
         return adv_u_x, adv_u_y, adv_v_x, adv_v_y
 
@@ -153,18 +159,26 @@ class _FirstOrder(BurgersAdvection):
         abs_u = u if u > 0 else -u
         abs_v = v if v > 0 else -v
 
-        adv_u_x = u[0, 0, 0] / (2.0 * dx) * (u[+1, 0, 0] - u[-1, 0, 0]) - abs_u[
-            0, 0, 0
-        ] / (2.0 * dx) * (u[+1, 0, 0] - 2.0 * u[0, 0, 0] + u[-1, 0, 0])
-        adv_u_y = v[0, 0, 0] / (2.0 * dy) * (u[0, +1, 0] - u[0, -1, 0]) - abs_v[
-            0, 0, 0
-        ] / (2.0 * dy) * (u[0, +1, 0] - 2.0 * u[0, 0, 0] + u[0, -1, 0])
-        adv_v_x = u[0, 0, 0] / (2.0 * dx) * (v[+1, 0, 0] - v[-1, 0, 0]) - abs_u[
-            0, 0, 0
-        ] / (2.0 * dx) * (v[+1, 0, 0] - 2.0 * v[0, 0, 0] + v[-1, 0, 0])
-        adv_v_y = v[0, 0, 0] / (2.0 * dy) * (v[0, +1, 0] - v[0, -1, 0]) - abs_v[
-            0, 0, 0
-        ] / (2.0 * dy) * (v[0, +1, 0] - 2.0 * v[0, 0, 0] + v[0, -1, 0])
+        adv_u_x = u[0, 0, 0] / (2.0 * dx) * (
+            u[+1, 0, 0] - u[-1, 0, 0]
+        ) - abs_u[0, 0, 0] / (2.0 * dx) * (
+            u[+1, 0, 0] - 2.0 * u[0, 0, 0] + u[-1, 0, 0]
+        )
+        adv_u_y = v[0, 0, 0] / (2.0 * dy) * (
+            u[0, +1, 0] - u[0, -1, 0]
+        ) - abs_v[0, 0, 0] / (2.0 * dy) * (
+            u[0, +1, 0] - 2.0 * u[0, 0, 0] + u[0, -1, 0]
+        )
+        adv_v_x = u[0, 0, 0] / (2.0 * dx) * (
+            v[+1, 0, 0] - v[-1, 0, 0]
+        ) - abs_u[0, 0, 0] / (2.0 * dx) * (
+            v[+1, 0, 0] - 2.0 * v[0, 0, 0] + v[-1, 0, 0]
+        )
+        adv_v_y = v[0, 0, 0] / (2.0 * dy) * (
+            v[0, +1, 0] - v[0, -1, 0]
+        ) - abs_v[0, 0, 0] / (2.0 * dy) * (
+            v[0, +1, 0] - 2.0 * v[0, 0, 0] + v[0, -1, 0]
+        )
 
         return adv_u_x, adv_u_y, adv_v_x, adv_v_y
 
@@ -201,7 +215,8 @@ class _ThirdOrder(BurgersAdvection):
         abs_v = np.abs(v[2:-2, 2:-2])
 
         adv_u_x = u[2:-2, 2:-2] / (12.0 * dx) * (
-            8.0 * (u[3:-1, 2:-2] - u[1:-3, 2:-2]) - (u[4:, 2:-2] - u[:-4, 2:-2])
+            8.0 * (u[3:-1, 2:-2] - u[1:-3, 2:-2])
+            - (u[4:, 2:-2] - u[:-4, 2:-2])
         ) + abs_u / (12.0 * dx) * (
             u[4:, 2:-2]
             + u[:-4, 2:-2]
@@ -209,7 +224,8 @@ class _ThirdOrder(BurgersAdvection):
             + 6.0 * u[2:-2, 2:-2]
         )
         adv_u_y = v[2:-2, 2:-2] / (12.0 * dy) * (
-            8.0 * (u[2:-2, 3:-1] - u[2:-2, 1:-3]) - (u[2:-2, 4:] - u[2:-2, :-4])
+            8.0 * (u[2:-2, 3:-1] - u[2:-2, 1:-3])
+            - (u[2:-2, 4:] - u[2:-2, :-4])
         ) + abs_v / (12.0 * dy) * (
             u[2:-2, 4:]
             + u[2:-2, :-4]
@@ -217,7 +233,8 @@ class _ThirdOrder(BurgersAdvection):
             + 6.0 * u[2:-2, 2:-2]
         )
         adv_v_x = u[2:-2, 2:-2] / (12.0 * dx) * (
-            8.0 * (v[3:-1, 2:-2] - v[1:-3, 2:-2]) - (v[4:, 2:-2] - v[:-4, 2:-2])
+            8.0 * (v[3:-1, 2:-2] - v[1:-3, 2:-2])
+            - (v[4:, 2:-2] - v[:-4, 2:-2])
         ) + abs_u / (12.0 * dx) * (
             v[4:, 2:-2]
             + v[:-4, 2:-2]
@@ -225,7 +242,8 @@ class _ThirdOrder(BurgersAdvection):
             + 6.0 * v[2:-2, 2:-2]
         )
         adv_v_y = v[2:-2, 2:-2] / (12.0 * dy) * (
-            8.0 * (v[2:-2, 3:-1] - v[2:-2, 1:-3]) - (v[2:-2, 4:] - v[2:-2, :-4])
+            8.0 * (v[2:-2, 3:-1] - v[2:-2, 1:-3])
+            - (v[2:-2, 4:] - v[2:-2, :-4])
         ) + abs_v / (12.0 * dy) * (
             v[2:-2, 4:]
             + v[2:-2, :-4]
@@ -285,22 +303,34 @@ class _FourthOrder(BurgersAdvection):
         adv_u_x = (
             u[2:-2, 2:-2]
             / (12.0 * dx)
-            * (8.0 * (u[3:-1, 2:-2] - u[1:-3, 2:-2]) - (u[4:, 2:-2] - u[:-4, 2:-2]))
+            * (
+                8.0 * (u[3:-1, 2:-2] - u[1:-3, 2:-2])
+                - (u[4:, 2:-2] - u[:-4, 2:-2])
+            )
         )
         adv_u_y = (
             v[2:-2, 2:-2]
             / (12.0 * dy)
-            * (8.0 * (u[2:-2, 3:-1] - u[2:-2, 1:-3]) - (u[2:-2, 4:] - u[2:-2, :-4]))
+            * (
+                8.0 * (u[2:-2, 3:-1] - u[2:-2, 1:-3])
+                - (u[2:-2, 4:] - u[2:-2, :-4])
+            )
         )
         adv_v_x = (
             u[2:-2, 2:-2]
             / (12.0 * dx)
-            * (8.0 * (v[3:-1, 2:-2] - v[1:-3, 2:-2]) - (v[4:, 2:-2] - v[:-4, 2:-2]))
+            * (
+                8.0 * (v[3:-1, 2:-2] - v[1:-3, 2:-2])
+                - (v[4:, 2:-2] - v[:-4, 2:-2])
+            )
         )
         adv_v_y = (
             v[2:-2, 2:-2]
             / (12.0 * dy)
-            * (8.0 * (v[2:-2, 3:-1] - v[2:-2, 1:-3]) - (v[2:-2, 4:] - v[2:-2, :-4]))
+            * (
+                8.0 * (v[2:-2, 3:-1] - v[2:-2, 1:-3])
+                - (v[2:-2, 4:] - v[2:-2, :-4])
+            )
         )
 
         return adv_u_x, adv_u_y, adv_v_x, adv_v_y

@@ -23,38 +23,33 @@
 from hypothesis import (
     assume,
     given,
-    HealthCheck,
     reproduce_failure,
-    settings,
     strategies as hyp_st,
 )
 import numpy as np
 import pytest
 from sympl import DataArray
 
-import gt4py as gt
-
 from tasmania.python.burgers.state import ZhaoSolutionFactory, ZhaoStateFactory
 
-from tests.conf import backend as conf_backend, default_origin as conf_dorigin
-from tests.strategies import st_floats, st_one_of, st_physical_grid
-from tests.utilities import compare_arrays
-
-
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
+from tests.conf import (
+    backend as conf_backend,
+    default_origin as conf_dorigin,
+    dtype as conf_dtype,
 )
-@given(hyp_st.data())
-def test_zhao_solution_factory(data):
+from tests.strategies import st_floats, st_one_of, st_physical_grid
+from tests.utilities import compare_arrays, hyp_settings
+
+
+@hyp_settings
+@given(data=hyp_st.data())
+@pytest.mark.parametrize("backend", conf_backend)
+@pytest.mark.parametrize("dtype", conf_dtype)
+def test_zhao_solution_factory(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    grid = data.draw(st_physical_grid(zaxis_length=(1, 1)))
+    grid = data.draw(st_physical_grid(zaxis_length=(1, 1), dtype=dtype))
     eps = DataArray(data.draw(st_floats()), attrs={"units": "m^2 s^-1"})
 
     el0 = data.draw(hyp_st.integers(min_value=0, max_value=grid.nx))
@@ -90,8 +85,12 @@ def test_zhao_solution_factory(data):
     assert u.shape == (grid.nx, slice_y.stop - slice_y.start, grid.nz)
     assert v.shape == (grid.nx, slice_y.stop - slice_y.start, grid.nz)
 
-    u = zsf(time, grid, slice_x=slice_x, slice_y=slice_y, field_name="x_velocity")
-    v = zsf(time, grid, slice_x=slice_x, slice_y=slice_y, field_name="x_velocity")
+    u = zsf(
+        time, grid, slice_x=slice_x, slice_y=slice_y, field_name="x_velocity"
+    )
+    v = zsf(
+        time, grid, slice_x=slice_x, slice_y=slice_y, field_name="x_velocity"
+    )
     assert u.shape == (
         slice_x.stop - slice_x.start,
         slice_y.stop - slice_y.start,
@@ -104,20 +103,15 @@ def test_zhao_solution_factory(data):
     )
 
 
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
-@given(hyp_st.data())
-def test_zhao_state_factory(data):
+@hyp_settings
+@given(data=hyp_st.data())
+@pytest.mark.parametrize("backend", conf_backend)
+@pytest.mark.parametrize("dtype", conf_dtype)
+def test_zhao_state_factory(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    grid = data.draw(st_physical_grid(zaxis_length=(1, 1)))
+    grid = data.draw(st_physical_grid(zaxis_length=(1, 1), dtype=dtype))
 
     eps = DataArray(
         data.draw(st_floats(min_value=-1e10, max_value=1e10)),
@@ -126,13 +120,7 @@ def test_zhao_state_factory(data):
 
     init_time = data.draw(hyp_st.datetimes())
 
-    gt_powered = data.draw(hyp_st.booleans())
-    backend = data.draw(st_one_of(conf_backend))
-    dtype = grid.x.dtype
     default_origin = data.draw(st_one_of(conf_dorigin))
-
-    if gt_powered:
-        gt.storage.prepare_numpy()
 
     # ========================================
     # test
@@ -140,7 +128,6 @@ def test_zhao_state_factory(data):
     zsf = ZhaoStateFactory(
         init_time,
         eps,
-        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,

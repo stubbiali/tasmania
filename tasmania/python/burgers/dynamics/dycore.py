@@ -41,12 +41,11 @@ class BurgersDynamicalCore(DynamicalCore):
         intermediate_tendency_component: Optional[taz_types.tendency_component_t] = None,
         time_integration_scheme: str = "forward_euler",
         flux_scheme: str = "upwind",
-        gt_powered: bool = False,
         *,
         backend: str = "numpy",
         backend_opts: Optional[taz_types.options_dict_t] = None,
-        build_info: Optional[taz_types.options_dict_t] = None,
         dtype: taz_types.dtype_t = np.float64,
+            build_info: Optional[taz_types.options_dict_t] = None,
         exec_info: Optional[taz_types.mutable_options_dict_t] = None,
         default_origin: Optional[taz_types.triplet_int_t] = None,
         rebuild: bool = False,
@@ -77,25 +76,26 @@ class BurgersDynamicalCore(DynamicalCore):
             String specifying the advective flux scheme to be used.
             Defaults to "upwind". See :class:`~tasmania.BurgersAdvection`
             for all available options.
-        gt_powered : `bool`, optional
-            ``True`` to harness GT4Py, ``False`` for a vanilla NumPy implementation.
         backend : `str`, optional
-            The GT4Py backend.
+            The backend.
         backend_opts : `dict`, optional
             Dictionary of backend-specific options.
-        build_info : `dict`, optional
-            Dictionary of building options.
         dtype : `data-type`, optional
             Data type of the storages.
+        build_info : `dict`, optional
+            Dictionary of building options.
         exec_info : `dict`, optional
-            Dictionary which will store statistics and diagnostics gathered at run time.
+            Dictionary which will store statistics and diagnostics gathered at
+            run time.
         default_origin : `tuple[int]`, optional
             Default origin of the storages.
         rebuild : `bool`, optional
-            ``True`` to trigger the stencils compilation at any class instantiation,
-            ``False`` to rely on the caching mechanism implemented by GT4Py.
+            ``True`` to trigger the stencils compilation at any class
+            instantiation, ``False`` to rely on the caching mechanism
+            implemented by the backend.
         managed_memory : `bool`, optional
-            ``True`` to allocate the storages as managed memory, ``False`` otherwise.
+            ``True`` to allocate the storages as managed memory,
+            ``False`` otherwise.
         """
         self._backend = backend
         self._dtype = dtype
@@ -110,11 +110,10 @@ class BurgersDynamicalCore(DynamicalCore):
             substeps=0,
             fast_tendency_component=None,
             fast_diagnostic_component=None,
-            gt_powered=gt_powered,
             backend=backend,
             backend_opts=backend_opts,
-            build_info=build_info,
             dtype=dtype,
+            build_info=build_info,
             rebuild=rebuild,
         )
 
@@ -127,11 +126,10 @@ class BurgersDynamicalCore(DynamicalCore):
             self.grid.grid_xy,
             self.horizontal_boundary.nb,
             flux_scheme,
-            gt_powered=gt_powered,
             backend=backend,
             backend_opts=backend_opts,
-            build_info=build_info,
             dtype=dtype,
+            build_info=build_info,
             exec_info=exec_info,
             default_origin=default_origin,
             rebuild=rebuild,
@@ -187,7 +185,6 @@ class BurgersDynamicalCore(DynamicalCore):
     def allocate_output_state(self):
         grid = self.grid
         nx, ny = grid.nx, grid.ny
-        gt_powered = self._gt_powered
         backend = self._backend
         dtype = self._dtype
         default_origin = self._default_origin
@@ -195,7 +192,6 @@ class BurgersDynamicalCore(DynamicalCore):
 
         u = zeros(
             (nx, ny, 1),
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -206,7 +202,6 @@ class BurgersDynamicalCore(DynamicalCore):
         )
         v = zeros(
             (nx, ny, 1),
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
