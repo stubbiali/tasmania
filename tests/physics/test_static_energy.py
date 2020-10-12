@@ -22,64 +22,57 @@
 #
 from hypothesis import (
     given,
-    HealthCheck,
     reproduce_failure,
-    settings,
     strategies as hyp_st,
 )
 import pytest
 
-import gt4py as gt
-
-from tasmania.python.physics.static_energy import DryStaticEnergy, MoistStaticEnergy
-from tasmania import get_dataarray_3d
+from tasmania.python.physics.static_energy import (
+    DryStaticEnergy,
+    MoistStaticEnergy,
+)
+from tasmania.python.utils.storage_utils import get_dataarray_3d
 
 from tests.conf import (
     backend as conf_backend,
-    datatype as conf_dtype,
+    dtype as conf_dtype,
     default_origin as conf_dorigin,
 )
 from tests.strategies import st_domain, st_one_of, st_raw_field
-from tests.utilities import compare_dataarrays
+from tests.utilities import compare_dataarrays, hyp_settings
 
 
 mfwv = "mass_fraction_of_water_vapor_in_air"
 
 
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
-@given(hyp_st.data())
-def test_dry(data):
+@hyp_settings
+@given(data=hyp_st.data())
+@pytest.mark.parametrize("backend", conf_backend)
+@pytest.mark.parametrize("dtype", conf_dtype)
+def test_dry(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-
-    if gt_powered:
-        gt.storage.prepare_numpy()
 
     domain = data.draw(
         st_domain(
             xaxis_length=(1, 30),
             yaxis_length=(1, 30),
             zaxis_length=(1, 20),
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
         ),
         label="domain",
     )
-    grid_type = data.draw(st_one_of(("physical", "numerical")), label="grid_type")
-    grid = domain.numerical_grid if grid_type == "numerical" else domain.physical_grid
+    grid_type = data.draw(
+        st_one_of(("physical", "numerical")), label="grid_type"
+    )
+    grid = (
+        domain.numerical_grid
+        if grid_type == "numerical"
+        else domain.physical_grid
+    )
 
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     dnx = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dnx")
@@ -92,7 +85,6 @@ def test_dry(data):
             storage_shape,
             -1e3,
             1e3,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -104,7 +96,6 @@ def test_dry(data):
             storage_shape,
             -1e3,
             1e3,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -137,7 +128,6 @@ def test_dry(data):
         domain,
         grid_type,
         height_on_interface_levels=False,
-        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -169,7 +159,6 @@ def test_dry(data):
         domain,
         grid_type,
         height_on_interface_levels=True,
-        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -196,40 +185,34 @@ def test_dry(data):
     assert len(diagnostics) == 1
 
 
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
-@given(hyp_st.data())
-def test_moist(data):
+@hyp_settings
+@given(data=hyp_st.data())
+@pytest.mark.parametrize("backend", conf_backend)
+@pytest.mark.parametrize("dtype", conf_dtype)
+def test_moist(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-
-    if gt_powered:
-        gt.storage.prepare_numpy()
 
     domain = data.draw(
         st_domain(
             xaxis_length=(1, 30),
             yaxis_length=(1, 30),
             zaxis_length=(1, 20),
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
         ),
         label="domain",
     )
-    grid_type = data.draw(st_one_of(("physical", "numerical")), label="grid_type")
-    grid = domain.numerical_grid if grid_type == "numerical" else domain.physical_grid
+    grid_type = data.draw(
+        st_one_of(("physical", "numerical")), label="grid_type"
+    )
+    grid = (
+        domain.numerical_grid
+        if grid_type == "numerical"
+        else domain.physical_grid
+    )
 
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     dnx = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dnx")
@@ -242,7 +225,6 @@ def test_moist(data):
             storage_shape,
             -1e3,
             1e3,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -254,7 +236,6 @@ def test_moist(data):
             storage_shape,
             -1e3,
             1e3,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -270,7 +251,11 @@ def test_moist(data):
     state = {
         "time": time,
         "montgomery_potential": get_dataarray_3d(
-            dse, grid, "m^2 s^-2", grid_shape=(nx, ny, nz), set_coordinates=False
+            dse,
+            grid,
+            "m^2 s^-2",
+            grid_shape=(nx, ny, nz),
+            set_coordinates=False,
         ),
         mfwv: get_dataarray_3d(
             qv, grid, "g g^-1", grid_shape=(nx, ny, nz), set_coordinates=False
@@ -280,7 +265,6 @@ def test_moist(data):
     comp = MoistStaticEnergy(
         domain,
         grid_type,
-        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,

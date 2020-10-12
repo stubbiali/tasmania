@@ -30,6 +30,7 @@ from tasmania.python.framework.base_components import DiagnosticComponent
 from tasmania.python.utils import taz_types
 from tasmania.python.utils.data_utils import get_physical_constants
 from tasmania.python.utils.storage_utils import get_storage_shape, zeros
+from tasmania.python.utils.utils import get_gt_backend, is_gt
 
 if TYPE_CHECKING:
     from tasmania.python.domain.domain import Domain
@@ -40,7 +41,9 @@ class DryStaticEnergy(DiagnosticComponent):
 
     # default values for the physical constants used in the class
     _d_physical_constants = {
-        "gravitational_acceleration": DataArray(9.80665, attrs={"units": "m s^-2"}),
+        "gravitational_acceleration": DataArray(
+            9.80665, attrs={"units": "m s^-2"}
+        ),
         "specific_heat_of_dry_air_at_constant_pressure": DataArray(
             1004.0, attrs={"units": "J K^-1 kg^-1"}
         ),
@@ -52,12 +55,11 @@ class DryStaticEnergy(DiagnosticComponent):
         grid_type: str = "numerical",
         height_on_interface_levels: bool = True,
         physical_constants: Optional[Mapping[str, DataArray]] = None,
-        gt_powered: bool = True,
         *,
         backend: str = "numpy",
         backend_opts: Optional[taz_types.options_dict_t] = None,
-        build_info: Optional[taz_types.options_dict_t] = None,
         dtype: taz_types.dtype_t = np.float64,
+        build_info: Optional[taz_types.options_dict_t] = None,
         exec_info: Optional[taz_types.mutable_options_dict_t] = None,
         default_origin: Optional[taz_types.triplet_int_t] = None,
         rebuild: bool = False,
@@ -72,9 +74,13 @@ class DryStaticEnergy(DiagnosticComponent):
         super().__init__(domain, grid_type)
 
         # set physical parameters values
-        pcs = get_physical_constants(self._d_physical_constants, physical_constants)
+        pcs = get_physical_constants(
+            self._d_physical_constants, physical_constants
+        )
         self._g = pcs["gravitational_acceleration"]  # debug purposes
-        self._cp = pcs["specific_heat_of_dry_air_at_constant_pressure"]  # debug purposes
+        self._cp = pcs[
+            "specific_heat_of_dry_air_at_constant_pressure"
+        ]  # debug purposes
 
         # set the storage shape
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
@@ -83,18 +89,17 @@ class DryStaticEnergy(DiagnosticComponent):
         # allocate the gt4py storage storing the output
         self._out_dse = zeros(
             storage_shape,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
             managed_memory=managed_memory,
         )
 
-        if gt_powered:
+        if is_gt(backend):
             # instantiate the underlying gt4py stencil object
             self._stencil = gtscript.stencil(
                 definition=self._stencil_gt_defs,
-                backend=backend,
+                backend=get_gt_backend(backend),
                 build_info=build_info,
                 rebuild=rebuild,
                 dtypes={"dtype": dtype},
@@ -116,7 +121,10 @@ class DryStaticEnergy(DiagnosticComponent):
 
         return_dict = {"air_temperature": {"dims": dims, "units": "K"}}
         if self._stgz:
-            return_dict["height_on_interface_levels"] = {"dims": dims_stgz, "units": "m"}
+            return_dict["height_on_interface_levels"] = {
+                "dims": dims_stgz,
+                "units": "m",
+            }
         else:
             return_dict["height"] = {"dims": dims, "units": "m"}
 
@@ -127,15 +135,23 @@ class DryStaticEnergy(DiagnosticComponent):
         g = self.grid
         dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
 
-        return_dict = {"montgomery_potential": {"dims": dims, "units": "m^2 s^-2"}}
+        return_dict = {
+            "montgomery_potential": {"dims": dims, "units": "m^2 s^-2"}
+        }
 
         return return_dict
 
-    def array_call(self, state: taz_types.array_dict_t) -> taz_types.array_dict_t:
+    def array_call(
+        self, state: taz_types.array_dict_t
+    ) -> taz_types.array_dict_t:
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
 
         in_t = state["air_temperature"]
-        in_h = state["height_on_interface_levels"] if self._stgz else state["height"]
+        in_h = (
+            state["height_on_interface_levels"]
+            if self._stgz
+            else state["height"]
+        )
         out_dse = self._out_dse
 
         self._stencil(
@@ -145,6 +161,7 @@ class DryStaticEnergy(DiagnosticComponent):
             origin=(0, 0, 0),
             domain=(nx, ny, nz),
             exec_info=self._exec_info,
+            validate_args=True,
         )
 
         diagnostics = {"montgomery_potential": out_dse}
@@ -171,7 +188,9 @@ class DryStaticEnergy(DiagnosticComponent):
                 in_h[i, j, k] + in_h[i, j, kp1]
             )
         else:
-            out_dse[i, j, k] = self._cp * in_t[i, j, k] + self._g * in_h[i, j, k]
+            out_dse[i, j, k] = (
+                self._cp * in_t[i, j, k] + self._g * in_h[i, j, k]
+            )
 
     @staticmethod
     def _stencil_gt_defs(
@@ -205,12 +224,11 @@ class MoistStaticEnergy(DiagnosticComponent):
         domain: "Domain",
         grid_type: str = "numerical",
         physical_constants: Optional[Mapping[str, DataArray]] = None,
-        gt_powered: bool = True,
         *,
         backend: str = "numpy",
         backend_opts: Optional[taz_types.options_dict_t] = None,
-        build_info: Optional[taz_types.options_dict_t] = None,
         dtype: taz_types.dtype_t = np.float64,
+        build_info: Optional[taz_types.options_dict_t] = None,
         exec_info: Optional[taz_types.mutable_options_dict_t] = None,
         default_origin: Optional[taz_types.triplet_int_t] = None,
         rebuild: bool = False,
@@ -224,7 +242,9 @@ class MoistStaticEnergy(DiagnosticComponent):
         super().__init__(domain, grid_type)
 
         # set physical parameters values
-        pcs = get_physical_constants(self._d_physical_constants, physical_constants)
+        pcs = get_physical_constants(
+            self._d_physical_constants, physical_constants
+        )
         self._lhvw = pcs["latent_heat_of_vaporization_of_water"]
 
         # set the storage shape
@@ -234,22 +254,23 @@ class MoistStaticEnergy(DiagnosticComponent):
         # allocate the gt4py storage storing the output
         self._out_mse = zeros(
             storage_shape,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
             managed_memory=managed_memory,
         )
 
-        if gt_powered:
+        if is_gt(backend):
             # instantiate the underlying gt4py stencil object
             self._stencil = gtscript.stencil(
                 definition=self._stencil_gt_defs,
-                backend=backend,
+                backend=get_gt_backend(backend),
                 build_info=build_info,
                 rebuild=rebuild,
                 dtypes={"dtype": dtype},
-                externals={"lhvw": pcs["latent_heat_of_vaporization_of_water"]},
+                externals={
+                    "lhvw": pcs["latent_heat_of_vaporization_of_water"]
+                },
                 **(backend_opts or {})
             )
         else:
@@ -262,7 +283,10 @@ class MoistStaticEnergy(DiagnosticComponent):
 
         return_dict = {
             "montgomery_potential": {"dims": dims, "units": "m^2 s^-2"},
-            "mass_fraction_of_water_vapor_in_air": {"dims": dims, "units": "g g^-1"},
+            "mass_fraction_of_water_vapor_in_air": {
+                "dims": dims,
+                "units": "g g^-1",
+            },
         }
 
         return return_dict
@@ -272,11 +296,15 @@ class MoistStaticEnergy(DiagnosticComponent):
         g = self.grid
         dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
 
-        return_dict = {"moist_static_energy": {"dims": dims, "units": "m^2 s^-2"}}
+        return_dict = {
+            "moist_static_energy": {"dims": dims, "units": "m^2 s^-2"}
+        }
 
         return return_dict
 
-    def array_call(self, state: taz_types.array_dict_t) -> taz_types.array_dict_t:
+    def array_call(
+        self, state: taz_types.array_dict_t
+    ) -> taz_types.array_dict_t:
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
 
         in_dse = state["montgomery_potential"]
@@ -290,6 +318,7 @@ class MoistStaticEnergy(DiagnosticComponent):
             origin=(0, 0, 0),
             domain=(nx, ny, nz),
             exec_info=self._exec_info,
+            validate_args=True,
         )
 
         diagnostics = {"moist_static_energy": out_mse}

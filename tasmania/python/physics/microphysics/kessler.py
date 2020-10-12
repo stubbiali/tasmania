@@ -24,9 +24,7 @@ import numpy as np
 from sympl import DataArray
 from typing import Mapping, Optional, TYPE_CHECKING, Tuple
 
-from gt4py import gtscript, __externals__
-
-# from gt4py.__gtscript__ import computation, interval, PARALLEL
+from gt4py import gtscript
 
 from tasmania.python.framework.base_components import (
     DiagnosticComponent,
@@ -37,7 +35,11 @@ from tasmania.python.physics.microphysics.utils import SedimentationFlux
 from tasmania.python.utils import taz_types
 from tasmania.python.utils.data_utils import get_physical_constants
 from tasmania.python.utils.storage_utils import get_storage_shape, zeros
-from tasmania.python.utils.meteo_utils import goff_gratch_formula, tetens_formula
+from tasmania.python.utils.meteo_utils import (
+    goff_gratch_formula,
+    tetens_formula,
+)
+from tasmania.python.utils.utils import get_gt_backend, is_gt
 
 if TYPE_CHECKING:
     from tasmania.python.domain.domain import Domain
@@ -49,8 +51,7 @@ mfpw = "mass_fraction_of_precipitation_water_in_air"
 
 
 class KesslerMicrophysics(TendencyComponent):
-    """
-    The WRF version of the Kessler microphysics scheme.
+    """ The WRF version of the Kessler microphysics scheme.
 
     Note
     ----
@@ -74,7 +75,9 @@ class KesslerMicrophysics(TendencyComponent):
 
     # default values for the physical constants used in the class
     _d_physical_constants = {
-        "gas_constant_of_dry_air": DataArray(287.05, attrs={"units": "J K^-1 kg^-1"}),
+        "gas_constant_of_dry_air": DataArray(
+            287.05, attrs={"units": "J K^-1 kg^-1"}
+        ),
         "gas_constant_of_water_vapor": DataArray(
             461.52, attrs={"units": "J K^-1 kg^-1"}
         ),
@@ -95,12 +98,11 @@ class KesslerMicrophysics(TendencyComponent):
         collection_rate: DataArray = _d_k2,
         saturation_vapor_pressure_formula: str = "tetens",
         physical_constants: Optional[Mapping[str, DataArray]] = None,
-        gt_powered: bool = True,
         *,
         backend: str = "numpy",
         backend_opts: Optional[taz_types.options_dict_t] = None,
-        build_info: Optional[taz_types.options_dict_t] = None,
         dtype: taz_types.dtype_t = np.float64,
+        build_info: Optional[taz_types.options_dict_t] = None,
         exec_info: Optional[taz_types.mutable_options_dict_t] = None,
         default_origin: Optional[taz_types.triplet_int_t] = None,
         rebuild: bool = False,
@@ -134,7 +136,8 @@ class KesslerMicrophysics(TendencyComponent):
         collection_rate : `sympl.DataArray`, optional
             Rate of collection, in units compatible with [s^-1].
         saturation_vapor_pressure_formula : `str`, optional
-            The formula giving the saturation water vapor pressure. Available options are:
+            The formula giving the saturation water vapor pressure.
+            Available options are:
 
                 * 'tetens' (default) for the Tetens' equation;
                 * 'goff_gratch' for the Goff-Gratch equation.
@@ -144,41 +147,44 @@ class KesslerMicrophysics(TendencyComponent):
             within this object, and whose values are :class:`sympl.DataArray`\s
             storing the values and units of those constants. The constants might be:
 
-                * 'gas_constant_of_dry_air', in units compatible with \
+                * 'gas_constant_of_dry_air', in units compatible with
                     [J K^-1 kg^-1];
-                * 'gas_constant_of_water_vapor', in units compatible with \
+                * 'gas_constant_of_water_vapor', in units compatible with
                     [J K^-1 kg^-1];
-                * 'latent_heat_of_vaporization_of_water', in units compatible with \
-                    [J kg^-1].
+                * 'latent_heat_of_vaporization_of_water', in units compatible
+                    with [J kg^-1].
 
-        gt_powered : `bool`, optional
-            TODO
         backend : `str`, optional
-            The GT4Py backend.
+            The backend.
         backend_opts : `dict`, optional
             Dictionary of backend-specific options.
-        build_info : `dict`, optional
-            Dictionary of building options.
         dtype : `data-type`, optional
             Data type of the storages.
+        build_info : `dict`, optional
+            Dictionary of building options.
         exec_info : `dict`, optional
-            Dictionary which will store statistics and diagnostics gathered at run time.
+            Dictionary which will store statistics and diagnostics gathered at
+            run time.
         default_origin : `tuple[int]`, optional
             Storage default origin.
         rebuild : `bool`, optional
-            ``True`` to trigger the stencils compilation at any class instantiation,
-            ``False`` to rely on the caching mechanism implemented by GT4Py.
+            ``True`` to trigger the stencils compilation at any class
+            instantiation, ``False`` to rely on the caching mechanism
+            implemented by the backend.
         storage_shape : `tuple[int]`, optional
             Shape of the storages.
         managed_memory : `bool`, optional
-            ``True`` to allocate the storages as managed memory, ``False`` otherwise.
+            ``True`` to allocate the storages as managed memory,
+            ``False`` otherwise.
         **kwargs :
             Additional keyword arguments to be directly forwarded to the parent
             :class:`tasmania.TendencyComponent`.
         """
         # keep track of input arguments needed at run-time
         self._pttd = tendency_of_air_potential_temperature_in_diagnostics
-        self._air_pressure_on_interface_levels = air_pressure_on_interface_levels
+        self._air_pressure_on_interface_levels = (
+            air_pressure_on_interface_levels
+        )
         self._rain_evaporation = rain_evaporation
         self._a = autoconversion_threshold.to_units("g g^-1").values.item()
         self._k1 = autoconversion_rate.to_units("s^-1").values.item()
@@ -212,7 +218,6 @@ class KesslerMicrophysics(TendencyComponent):
         # allocate the gt4py storage collecting the outputs
         self._in_ps = zeros(
             storage_shape,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -220,7 +225,6 @@ class KesslerMicrophysics(TendencyComponent):
         )
         self._out_qc_tnd = zeros(
             storage_shape,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -228,7 +232,6 @@ class KesslerMicrophysics(TendencyComponent):
         )
         self._out_qr_tnd = zeros(
             storage_shape,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -237,7 +240,6 @@ class KesslerMicrophysics(TendencyComponent):
         if rain_evaporation:
             self._out_qv_tnd = zeros(
                 storage_shape,
-                gt_powered=gt_powered,
                 backend=backend,
                 dtype=dtype,
                 default_origin=default_origin,
@@ -245,19 +247,18 @@ class KesslerMicrophysics(TendencyComponent):
             )
             self._out_theta_tnd = zeros(
                 storage_shape,
-                gt_powered=gt_powered,
                 backend=backend,
                 dtype=dtype,
                 default_origin=default_origin,
                 managed_memory=managed_memory,
             )
 
-        if gt_powered:
+        if is_gt(backend):
             # initialize the underlying gt4py stencil object
             self._stencil = gtscript.stencil(
                 definition=self._stencil_gt_defs,
                 name=self.__class__.__name__,
-                backend=backend,
+                backend=get_gt_backend(backend),
                 build_info=build_info,
                 rebuild=rebuild,
                 dtypes={"dtype": dtype},
@@ -301,7 +302,10 @@ class KesslerMicrophysics(TendencyComponent):
             }
         else:
             return_dict["air_pressure"] = {"dims": dims, "units": "Pa"}
-            return_dict["exner_function"] = {"dims": dims, "units": "J K^-1 kg^-1"}
+            return_dict["exner_function"] = {
+                "dims": dims,
+                "units": "J K^-1 kg^-1",
+            }
 
         return return_dict
 
@@ -382,7 +386,12 @@ class KesslerMicrophysics(TendencyComponent):
             stencil_args["out_theta_tnd"] = self._out_theta_tnd
 
         # run the stencil
-        self._stencil(**stencil_args, origin=(0, 0, 0), domain=(nx, ny, nz))
+        self._stencil(
+            **stencil_args,
+            origin=(0, 0, 0),
+            domain=(nx, ny, nz),
+            validate_args=True
+        )
 
         # collect the tendencies
         tendencies = {mfcw: self._out_qc_tnd, mfpw: self._out_qr_tnd}
@@ -393,7 +402,9 @@ class KesslerMicrophysics(TendencyComponent):
 
         # collect the diagnostics
         if self._rain_evaporation and self._pttd:
-            diagnostics = {"tendency_of_air_potential_temperature": self._out_theta_tnd}
+            diagnostics = {
+                "tendency_of_air_potential_temperature": self._out_theta_tnd
+            }
         else:
             diagnostics = {}
 
@@ -514,7 +525,9 @@ class KesslerMicrophysics(TendencyComponent):
             if __INLINED(rain_evaporation):  # compile-time if
                 # compute the contribution of evaporation to rain development
                 er = (
-                    0.0484794 * (qvs - in_qv) * (in_rho * in_qr) ** (13.0 / 20.0)
+                    0.0484794
+                    * (qvs - in_qv)
+                    * (in_rho * in_qr) ** (13.0 / 20.0)
                     if in_qr > 0
                     else 0
                 )
@@ -550,7 +563,9 @@ class KesslerSaturationAdjustmentDiagnostic(ImplicitTendencyComponent):
 
     # default values for the physical constants used in the class
     _d_physical_constants = {
-        "gas_constant_of_dry_air": DataArray(287.05, attrs={"units": "J K^-1 kg^-1"}),
+        "gas_constant_of_dry_air": DataArray(
+            287.05, attrs={"units": "J K^-1 kg^-1"}
+        ),
         "gas_constant_of_water_vapor": DataArray(
             461.52, attrs={"units": "J K^-1 kg^-1"}
         ),
@@ -569,7 +584,6 @@ class KesslerSaturationAdjustmentDiagnostic(ImplicitTendencyComponent):
         air_pressure_on_interface_levels: bool = True,
         saturation_vapor_pressure_formula: str = "tetens",
         physical_constants: Optional[Mapping[str, DataArray]] = None,
-        gt_powered: bool = True,
         *,
         backend: str = "numpy",
         backend_opts: Optional[taz_types.options_dict_t] = None,
@@ -594,7 +608,8 @@ class KesslerSaturationAdjustmentDiagnostic(ImplicitTendencyComponent):
             field is defined at the interface (resp., main) levels.
             Defaults to ``True``.
         saturation_vapor_pressure_formula : `str`, optional
-            The formula giving the saturation water vapor pressure. Available options are:
+            The formula giving the saturation water vapor pressure.
+            Available options are:
 
                 * 'tetens' (default) for the Tetens' equation;
                 * 'goff_gratch' for the Goff-Gratch equation.
@@ -602,38 +617,40 @@ class KesslerSaturationAdjustmentDiagnostic(ImplicitTendencyComponent):
         physical_constants : `dict[str, sympl.DataArray]`, optional
             Dictionary whose keys are strings indicating physical constants used
             within this object, and whose values are :class:`sympl.DataArray`\s
-            storing the values and units of those constants. The constants might be:
+            storing the values and units of those constants.
+            The constants might be:
 
-                * 'gas_constant_of_dry_air', in units compatible with \
+                * 'gas_constant_of_dry_air', in units compatible with
                     [J K^-1 kg^-1];
-                * 'gas_constant_of_water_vapor', in units compatible with \
+                * 'gas_constant_of_water_vapor', in units compatible with
                     [J K^-1 kg^-1];
-                * 'latent_heat_of_vaporization_of_water', in units compatible with \
-                    [J kg^-1];
-                * 'specific_heat_of_dry_air_at_constant_pressure', in units compatible \
-                    with [J K^-1 kg^-1].
+                * 'latent_heat_of_vaporization_of_water', in units compatible
+                    with [J kg^-1];
+                * 'specific_heat_of_dry_air_at_constant_pressure', in units
+                    compatible with [J K^-1 kg^-1].
 
-        gt_powered : `bool`, optional
-            TODO
         backend : `str`, optional
-            The GT4Py backend.
+            The backend.
         backend_opts : `dict`, optional
             Dictionary of backend-specific options.
-        build_info : `dict`, optional
-            Dictionary of building options.
         dtype : `data-type`, optional
             Data type of the storages.
+        build_info : `dict`, optional
+            Dictionary of building options.
         exec_info : `dict`, optional
-            Dictionary which will store statistics and diagnostics gathered at run time.
+            Dictionary which will store statistics and diagnostics gathered at
+            run time.
         default_origin : `tuple[int]`, optional
             Storage default origin.
         rebuild : `bool`, optional
-            ``True`` to trigger the stencils compilation at any class instantiation,
-            ``False`` to rely on the caching mechanism implemented by GT4Py.
+            ``True`` to trigger the stencils compilation at any class
+            instantiation, ``False`` to rely on the caching mechanism
+            implemented by the backend.
         storage_shape : `tuple[int]`, optional
             Shape of the storages.
         managed_memory : `bool`, optional
-            ``True`` to allocate the storages as managed memory, ``False`` otherwise.
+            ``True`` to allocate the storages as managed memory,
+            ``False`` otherwise.
         """
         # keep track of input arguments needed at run-time
         self._apoil = air_pressure_on_interface_levels
@@ -650,7 +667,9 @@ class KesslerSaturationAdjustmentDiagnostic(ImplicitTendencyComponent):
         )
 
         # set physical parameters values
-        pcs = get_physical_constants(self._d_physical_constants, physical_constants)
+        pcs = get_physical_constants(
+            self._d_physical_constants, physical_constants
+        )
 
         # shortcuts
         rd = pcs["gas_constant_of_dry_air"]
@@ -666,7 +685,6 @@ class KesslerSaturationAdjustmentDiagnostic(ImplicitTendencyComponent):
         # allocate the storages collecting inputs and outputs
         self._in_ps = zeros(
             storage_shape,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -674,7 +692,6 @@ class KesslerSaturationAdjustmentDiagnostic(ImplicitTendencyComponent):
         )
         self._out_qv = zeros(
             storage_shape,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -682,7 +699,6 @@ class KesslerSaturationAdjustmentDiagnostic(ImplicitTendencyComponent):
         )
         self._out_qc = zeros(
             storage_shape,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -690,7 +706,6 @@ class KesslerSaturationAdjustmentDiagnostic(ImplicitTendencyComponent):
         )
         self._out_t = zeros(
             storage_shape,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -698,19 +713,18 @@ class KesslerSaturationAdjustmentDiagnostic(ImplicitTendencyComponent):
         )
         self._out_theta_tnd = zeros(
             storage_shape,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
             managed_memory=managed_memory,
         )
 
-        if gt_powered:
+        if is_gt(backend):
             # initialize the underlying gt4py stencil object
             self._stencil = gtscript.stencil(
                 definition=self._stencil_gt_defs,
                 name=self.__class__.__name__,
-                backend=backend,
+                backend=get_gt_backend(backend),
                 build_info=build_info,
                 rebuild=rebuild,
                 dtypes={"dtype": dtype},
@@ -753,7 +767,10 @@ class KesslerSaturationAdjustmentDiagnostic(ImplicitTendencyComponent):
             }
         else:
             return_dict["air_pressure"] = {"dims": dims, "units": "Pa"}
-            return_dict["exner_function"] = {"dims": dims, "units": "J kg^-1 K^-1"}
+            return_dict["exner_function"] = {
+                "dims": dims,
+                "units": "J kg^-1 K^-1",
+            }
 
         return return_dict
 
@@ -762,7 +779,9 @@ class KesslerSaturationAdjustmentDiagnostic(ImplicitTendencyComponent):
         grid = self.grid
         dims = (grid.x.dims[0], grid.y.dims[0], grid.z.dims[0])
 
-        return_dict = {"air_potential_temperature": {"dims": dims, "units": "K s^-1"}}
+        return_dict = {
+            "air_potential_temperature": {"dims": dims, "units": "K s^-1"}
+        }
 
         return return_dict
 
@@ -814,6 +833,7 @@ class KesslerSaturationAdjustmentDiagnostic(ImplicitTendencyComponent):
             origin=(0, 0, 0),
             domain=(nx, ny, nz),
             exec_info=self._exec_info,
+            validate_args=True,
         )
 
         # collect the tendencies and the diagnostics
@@ -864,7 +884,9 @@ class KesslerSaturationAdjustmentDiagnostic(ImplicitTendencyComponent):
         # cloud liquid water
         sat = (qvs - in_qv[i, j, k]) / (
             1.0
-            + qvs * (self._lhvw ** 2.0) / (self._cp * self._rv * (in_t[i, j, k] ** 2.0))
+            + qvs
+            * (self._lhvw ** 2.0)
+            / (self._cp * self._rv * (in_t[i, j, k] ** 2.0))
         )
 
         # compute the source term representing the evaporation of
@@ -894,7 +916,13 @@ class KesslerSaturationAdjustmentDiagnostic(ImplicitTendencyComponent):
         *,
         dt: float
     ) -> None:
-        from __externals__ import air_pressure_on_interface_levels, beta, cp, lhvw, rv
+        from __externals__ import (
+            air_pressure_on_interface_levels,
+            beta,
+            cp,
+            lhvw,
+            rv,
+        )
 
         with computation(PARALLEL), interval(...):
             # interpolate the pressure at the vertical main levels
@@ -910,7 +938,9 @@ class KesslerSaturationAdjustmentDiagnostic(ImplicitTendencyComponent):
 
             # compute the amount of latent heat released by the condensation of
             # cloud liquid water
-            sat = (qvs - in_qv) / (1.0 + qvs * (lhvw ** 2.0) / (cp * rv * (in_t ** 2.0)))
+            sat = (qvs - in_qv) / (
+                1.0 + qvs * (lhvw ** 2.0) / (cp * rv * (in_t ** 2.0))
+            )
 
             # compute the source term representing the evaporation of
             # cloud liquid water
@@ -942,7 +972,9 @@ class KesslerSaturationAdjustmentPrognostic(TendencyComponent):
 
     # default values for the physical constants used in the class
     _d_physical_constants = {
-        "gas_constant_of_dry_air": DataArray(287.05, attrs={"units": "J K^-1 kg^-1"}),
+        "gas_constant_of_dry_air": DataArray(
+            287.05, attrs={"units": "J K^-1 kg^-1"}
+        ),
         "gas_constant_of_water_vapor": DataArray(
             461.52, attrs={"units": "J K^-1 kg^-1"}
         ),
@@ -962,12 +994,11 @@ class KesslerSaturationAdjustmentPrognostic(TendencyComponent):
         saturation_vapor_pressure_formula: str = "tetens",
         saturation_rate: Optional[DataArray] = None,
         physical_constants: Optional[Mapping[str, DataArray]] = None,
-        gt_powered: bool = True,
         *,
         backend: str = "numpy",
         backend_opts: Optional[taz_types.options_dict_t] = None,
-        build_info: Optional[taz_types.options_dict_t] = None,
         dtype: taz_types.dtype_t = np.float64,
+        build_info: Optional[taz_types.options_dict_t] = None,
         exec_info: Optional[taz_types.mutable_options_dict_t] = None,
         default_origin: Optional[taz_types.triplet_int_t] = None,
         rebuild: bool = False,
@@ -987,7 +1018,8 @@ class KesslerSaturationAdjustmentPrognostic(TendencyComponent):
             field is defined at the interface (resp., main) levels.
             Defaults to ``True``.
         saturation_vapor_pressure_formula : `str`, optional
-            The formula giving the saturation water vapor pressure. Available options are:
+            The formula giving the saturation water vapor pressure.
+            Available options are:
 
                 * 'tetens' (default) for the Tetens' equation;
                 * 'goff_gratch' for the Goff-Gratch equation.
@@ -997,36 +1029,40 @@ class KesslerSaturationAdjustmentPrognostic(TendencyComponent):
         physical_constants : `dict[str, sympl.DataArray]`, optional
             Dictionary whose keys are strings indicating physical constants used
             within this object, and whose values are :class:`sympl.DataArray`\s
-            storing the values and units of those constants. The constants might be:
+            storing the values and units of those constants.
+            The constants might be:
 
-                * 'gas_constant_of_dry_air', in units compatible with \
+                * 'gas_constant_of_dry_air', in units compatible with
                     [J K^-1 kg^-1];
-                * 'gas_constant_of_water_vapor', in units compatible with \
+                * 'gas_constant_of_water_vapor', in units compatible with
                     [J K^-1 kg^-1];
-                * 'latent_heat_of_vaporization_of_water', in units compatible with \
-                    [J kg^-1];
-                * 'specific_heat_of_dry_air_at_constant_pressure', in units compatible \
-                    with [J K^-1 kg^-1].
+                * 'latent_heat_of_vaporization_of_water', in units compatible
+                    with [J kg^-1];
+                * 'specific_heat_of_dry_air_at_constant_pressure', in units
+                    compatible with [J K^-1 kg^-1].
 
         backend : `str`, optional
-            The GT4Py backend.
+            The backend.
         backend_opts : `dict`, optional
             Dictionary of backend-specific options.
-        build_info : `dict`, optional
-            Dictionary of building options.
         dtype : `data-type`, optional
             Data type of the storages.
+        build_info : `dict`, optional
+            Dictionary of building options.
         exec_info : `dict`, optional
-            Dictionary which will store statistics and diagnostics gathered at run time.
+            Dictionary which will store statistics and diagnostics gathered at
+            run time.
         default_origin : `tuple[int]`, optional
             Storage default origin.
         rebuild : `bool`, optional
-            ``True`` to trigger the stencils compilation at any class instantiation,
-            ``False`` to rely on the caching mechanism implemented by GT4Py.
+            ``True`` to trigger the stencils compilation at any class
+            instantiation, ``False`` to rely on the caching mechanism
+            implemented by the backend.
         storage_shape : `tuple[int]`, optional
             Shape of the storages.
         managed_memory : `bool`, optional
-            ``True`` to allocate the storages as managed memory, ``False`` otherwise.
+            ``True`` to allocate the storages as managed memory,
+            ``False`` otherwise.
         """
         # keep track of input arguments needed at run-time
         self._apoil = air_pressure_on_interface_levels
@@ -1050,7 +1086,9 @@ class KesslerSaturationAdjustmentPrognostic(TendencyComponent):
         )
 
         # set physical parameters values
-        pcs = get_physical_constants(self._d_physical_constants, physical_constants)
+        pcs = get_physical_constants(
+            self._d_physical_constants, physical_constants
+        )
 
         # shortcuts
         rd = pcs["gas_constant_of_dry_air"]
@@ -1066,7 +1104,6 @@ class KesslerSaturationAdjustmentPrognostic(TendencyComponent):
         # allocate the gt4py storages collecting inputs and outputs
         self._in_ps = zeros(
             storage_shape,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -1074,7 +1111,6 @@ class KesslerSaturationAdjustmentPrognostic(TendencyComponent):
         )
         self._tnd_qv = zeros(
             storage_shape,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -1082,7 +1118,6 @@ class KesslerSaturationAdjustmentPrognostic(TendencyComponent):
         )
         self._tnd_qc = zeros(
             storage_shape,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -1090,19 +1125,18 @@ class KesslerSaturationAdjustmentPrognostic(TendencyComponent):
         )
         self._tnd_theta = zeros(
             storage_shape,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
             managed_memory=managed_memory,
         )
 
-        if gt_powered:
+        if is_gt(backend):
             # initialize the underlying gt4py stencil object
             self._stencil = gtscript.stencil(
                 definition=self._stencil_gt_defs,
                 name=self.__class__.__name__,
-                backend=backend,
+                backend=get_gt_backend(backend),
                 build_info=build_info,
                 rebuild=rebuild,
                 dtypes={"dtype": dtype},
@@ -1145,7 +1179,10 @@ class KesslerSaturationAdjustmentPrognostic(TendencyComponent):
             }
         else:
             return_dict["air_pressure"] = {"dims": dims, "units": "Pa"}
-            return_dict["exner_function"] = {"dims": dims, "units": "J kg^-1 K^-1"}
+            return_dict["exner_function"] = {
+                "dims": dims,
+                "units": "J kg^-1 K^-1",
+            }
 
         return return_dict
 
@@ -1200,6 +1237,7 @@ class KesslerSaturationAdjustmentPrognostic(TendencyComponent):
             origin=(0, 0, 0),
             domain=(nx, ny, nz),
             exec_info=self._exec_info,
+            validate_args=True,
         )
 
         # collect the tendencies and the diagnostics
@@ -1249,7 +1287,9 @@ class KesslerSaturationAdjustmentPrognostic(TendencyComponent):
         # cloud liquid water
         sat = (qvs - in_qv[i, j, k]) / (
             1.0
-            + qvs * (self._lhvw ** 2.0) / (self._cp * self._rv * (in_t[i, j, k] ** 2.0))
+            + qvs
+            * (self._lhvw ** 2.0)
+            / (self._cp * self._rv * (in_t[i, j, k] ** 2.0))
         )
 
         # compute the source term representing the evaporation of
@@ -1275,7 +1315,13 @@ class KesslerSaturationAdjustmentPrognostic(TendencyComponent):
         *,
         sr: float
     ) -> None:
-        from __externals__ import air_pressure_on_interface_levels, beta, cp, lhvw, rv
+        from __externals__ import (
+            air_pressure_on_interface_levels,
+            beta,
+            cp,
+            lhvw,
+            rv,
+        )
 
         with computation(PARALLEL), interval(...):
             # interpolate the pressure at the vertical main levels
@@ -1291,7 +1337,9 @@ class KesslerSaturationAdjustmentPrognostic(TendencyComponent):
 
             # compute the amount of latent heat released by the condensation of
             # cloud liquid water
-            sat = (qvs - in_qv) / (1.0 + qvs * (lhvw ** 2.0) / (cp * rv * (in_t ** 2.0)))
+            sat = (qvs - in_qv) / (
+                1.0 + qvs * (lhvw ** 2.0) / (cp * rv * (in_t ** 2.0))
+            )
 
             # compute the source term representing the evaporation of
             # cloud liquid water
@@ -1319,12 +1367,11 @@ class KesslerFallVelocity(DiagnosticComponent):
         self,
         domain: "Domain",
         grid_type: str = "numerical",
-        gt_powered: bool = True,
         *,
         backend: str = "numpy",
         backend_opts: Optional[taz_types.options_dict_t] = None,
-        build_info: Optional[taz_types.options_dict_t] = None,
         dtype: taz_types.dtype_t = np.float64,
+        build_info: Optional[taz_types.options_dict_t] = None,
         exec_info: Optional[taz_types.mutable_options_dict_t] = None,
         default_origin: Optional[taz_types.triplet_int_t] = None,
         rebuild: bool = False,
@@ -1339,27 +1386,28 @@ class KesslerFallVelocity(DiagnosticComponent):
         grid_type : `str`, optional
             The type of grid over which instantiating the class.
             Either "physical" or "numerical" (default).
-        gt_powered : `bool`, optional
-            TODO
         backend : `str`, optional
-            The GT4Py backend.
+            The backend.
         backend_opts : `dict`, optional
             Dictionary of backend-specific options.
-        build_info : `dict`, optional
-            Dictionary of building options.
         dtype : `data-type`, optional
             Data type of the storages.
+        build_info : `dict`, optional
+            Dictionary of building options.
         exec_info : `dict`, optional
-            Dictionary which will store statistics and diagnostics gathered at run time.
+            Dictionary which will store statistics and diagnostics gathered at
+            run time.
         default_origin : `tuple[int]`, optional
             Storage default origin.
         rebuild : `bool`, optional
-            ``True`` to trigger the stencils compilation at any class instantiation,
-            ``False`` to rely on the caching mechanism implemented by GT4Py.
+            ``True`` to trigger the stencils compilation at any class
+            instantiation, ``False`` to rely on the caching mechanism
+            implemented by the backend.
         storage_shape : `tuple[int]`, optional
             Shape of the storages.
         managed_memory : `bool`, optional
-            ``True`` to allocate the storages as managed memory, ``False`` otherwise.
+            ``True`` to allocate the storages as managed memory,
+            ``False`` otherwise.
         """
         super().__init__(domain, grid_type)
 
@@ -1370,7 +1418,6 @@ class KesslerFallVelocity(DiagnosticComponent):
 
         self._in_rho_s = zeros(
             storage_shape,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -1378,18 +1425,17 @@ class KesslerFallVelocity(DiagnosticComponent):
         )
         self._out_vt = zeros(
             storage_shape,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
             managed_memory=managed_memory,
         )
 
-        if gt_powered:
+        if is_gt(backend):
             self._stencil = gtscript.stencil(
                 definition=self._stencil_gt_defs,
                 name=self.__class__.__name__,
-                backend=backend,
+                backend=get_gt_backend(backend),
                 build_info=build_info,
                 rebuild=rebuild,
                 dtypes={"dtype": dtype},
@@ -1413,11 +1459,15 @@ class KesslerFallVelocity(DiagnosticComponent):
     def diagnostic_properties(self) -> taz_types.properties_dict_t:
         dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])
 
-        return_dict = {"raindrop_fall_velocity": {"dims": dims, "units": "m s^-1"}}
+        return_dict = {
+            "raindrop_fall_velocity": {"dims": dims, "units": "m s^-1"}
+        }
 
         return return_dict
 
-    def array_call(self, state: taz_types.array_dict_t) -> taz_types.array_dict_t:
+    def array_call(
+        self, state: taz_types.array_dict_t
+    ) -> taz_types.array_dict_t:
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
 
         in_rho = state["air_density"]
@@ -1432,6 +1482,7 @@ class KesslerFallVelocity(DiagnosticComponent):
             origin=(0, 0, 0),
             domain=(nx, ny, nz),
             exec_info=self._exec_info,
+            validate_args=True,
         )
 
         # collect the diagnostics
@@ -1492,12 +1543,11 @@ class KesslerSedimentation(ImplicitTendencyComponent):
         grid_type: str = "numerical",
         sedimentation_flux_scheme: str = "first_order_upwind",
         maximum_vertical_cfl: float = 0.975,
-        gt_powered: bool = True,
         *,
         backend: str = "numpy",
         backend_opts: Optional[taz_types.options_dict_t] = None,
-        build_info: Optional[taz_types.options_dict_t] = None,
         dtype: taz_types.dtype_t = np.float64,
+        build_info: Optional[taz_types.options_dict_t] = None,
         exec_info: Optional[taz_types.mutable_options_dict_t] = None,
         default_origin: Optional[taz_types.triplet_int_t] = None,
         rebuild: bool = False,
@@ -1519,52 +1569,55 @@ class KesslerSedimentation(ImplicitTendencyComponent):
             Defaults to 'first_order_upwind'.
         maximum_vertical_cfl : `float`, optional
             Maximum allowed vertical CFL number. Defaults to 0.975.
-        gt_powered : `bool`, optional
-            TODO
         backend : `str`, optional
-            The GT4Py backend.
+            The backend.
         backend_opts : `dict`, optional
             Dictionary of backend-specific options.
-        build_info : `dict`, optional
-            Dictionary of building options.
         dtype : `data-type`, optional
             Data type of the storages.
+        build_info : `dict`, optional
+            Dictionary of building options.
         exec_info : `dict`, optional
-            Dictionary which will store statistics and diagnostics gathered at run time.
+            Dictionary which will store statistics and diagnostics gathered at
+            run time.
         default_origin : `tuple[int]`, optional
             Storage default origin.
         rebuild : `bool`, optional
-            ``True`` to trigger the stencils compilation at any class instantiation,
-            ``False`` to rely on the caching mechanism implemented by GT4Py.
+            ``True`` to trigger the stencils compilation at any class
+            instantiation, ``False`` to rely on the caching mechanism
+            implemented by the backend.
         storage_shape : `tuple[int]`, optional
             Shape of the storages.
         managed_memory : `bool`, optional
-            ``True`` to allocate the storages as managed memory, ``False`` otherwise.
+            ``True`` to allocate the storages as managed memory,
+            ``False`` otherwise.
         **kwargs :
-            Additional keyword arguments to be directly forwarded to the parent class.
+            Additional keyword arguments to be directly forwarded to the parent
+            class.
         """
         super().__init__(domain, grid_type, **kwargs)
 
         self._exec_info = exec_info
 
-        self._sflux = SedimentationFlux.factory(sedimentation_flux_scheme, gt_powered)
+        self._sflux = SedimentationFlux.factory(
+            sedimentation_flux_scheme, backend
+        )
 
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
         storage_shape = get_storage_shape(storage_shape, (nx, ny, nz + 1))
         self._out_qr = zeros(
             storage_shape,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
             managed_memory=managed_memory,
         )
 
-        if gt_powered:
+        if is_gt(backend):
             self._stencil = gtscript.stencil(
                 definition=self._stencil_gt_defs,
                 name=self.__class__.__name__,
-                backend=backend,
+                backend=get_gt_backend(backend),
                 build_info=build_info,
                 rebuild=rebuild,
                 dtypes={"dtype": dtype},
@@ -1630,6 +1683,7 @@ class KesslerSedimentation(ImplicitTendencyComponent):
             origin=(nbh, nbh, 0),
             domain=(nx - 2 * nbh, ny - 2 * nbh, nz),
             exec_info=self._exec_info,
+            validate_args=True,
         )
 
         tendencies = {mfpw: self._out_qr}
@@ -1656,7 +1710,10 @@ class KesslerSedimentation(ImplicitTendencyComponent):
         h = 0.5 * (in_h[i, j, kb:ke] + in_h[i, j, kb + 1 : ke + 1])
 
         dfdz = self._sflux.call(
-            rho=in_rho[i, j, kb:ke], h=h, q=in_qr[i, j, kb:ke], vt=in_vt[i, j, kb:ke]
+            rho=in_rho[i, j, kb:ke],
+            h=h,
+            q=in_qr[i, j, kb:ke],
+            vt=in_vt[i, j, kb:ke],
         )
         out_qr[i, j, kb : kb + self._sflux.nb] = 0.0
         out_qr[i, j, kb + self._sflux.nb : ke] = (

@@ -24,35 +24,39 @@ from copy import deepcopy
 from datetime import timedelta
 from hypothesis import (
     given,
-    HealthCheck,
     reproduce_failure,
-    settings,
     strategies as hyp_st,
 )
 import numpy as np
 import pytest
 
-from gt4py import gtscript, storage as gt_storage
+from gt4py import gtscript
 
 from tasmania.python.physics.microphysics.kessler import KesslerFallVelocity
+from tasmania.python.physics.microphysics.sedimentation_fluxes import (
+    FirstOrderUpwind,
+    SecondOrderUpwind,
+)
 from tasmania.python.physics.microphysics.utils import (
     Clipping,
     SedimentationFlux,
-    _FirstOrderUpwind,
-    _SecondOrderUpwind,
-    Sedimentation,
     Precipitation,
 )
-from tasmania.python.utils.storage_utils import zeros
-from tasmania import get_dataarray_3d
+from tasmania.python.utils.storage_utils import get_dataarray_3d, zeros
+from tasmania.python.utils.utils import get_gt_backend, is_gt
 
 from tests.conf import (
     backend as conf_backend,
-    datatype as conf_dtype,
+    dtype as conf_dtype,
     default_origin as conf_dorigin,
 )
-from tests.strategies import st_one_of, st_domain, st_isentropic_state_f, st_raw_field
-from tests.utilities import compare_arrays, compare_dataarrays
+from tests.strategies import (
+    st_one_of,
+    st_domain,
+    st_isentropic_state_f,
+    st_raw_field,
+)
+from tests.utilities import compare_arrays, compare_dataarrays, hyp_settings
 
 
 mfwv = "mass_fraction_of_water_vapor_in_air"
@@ -62,10 +66,10 @@ ndpw = "number_density_of_precipitation_water"
 
 
 def precipitation_validation(state, timestep, maxcfl, rhow):
-    rho = state["air_density"].to_units("kg m^-3").values
-    h = state["height_on_interface_levels"].to_units("m").values
-    qr = state[mfpw].to_units("g g^-1").values
-    vt = state["raindrop_fall_velocity"].to_units("m s^-1").values
+    rho = state["air_density"].to_units("kg m^-3").data
+    h = state["height_on_interface_levels"].to_units("m").data
+    qr = state[mfpw].to_units("g g^-1").data
+    vt = state["raindrop_fall_velocity"].to_units("m s^-1").data
 
     dt = timestep.total_seconds()
     dh = h[:, :, :-1] - h[:, :, 1:]
@@ -75,35 +79,28 @@ def precipitation_validation(state, timestep, maxcfl, rhow):
     return 3.6e6 * rho * qr * vt / rhow
 
 
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
+@hyp_settings
 @given(data=hyp_st.data())
-def test_clipping(data, subtests):
+@pytest.mark.parametrize("backend", conf_backend)
+@pytest.mark.parametrize("dtype", conf_dtype)
+def test_clipping(data, backend, dtype, subtests):
     # ========================================
     # random data generation
     # ========================================
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
-    if gt_powered:
-        gt_storage.prepare_numpy()
-
     domain = data.draw(
-        st_domain(
-            zaxis_length=(2, 20), gt_powered=gt_powered, backend=backend, dtype=dtype
-        ),
+        st_domain(zaxis_length=(2, 20), backend=backend, dtype=dtype),
         label="domain",
     )
-    grid_type = data.draw(st_one_of(("physical", "numerical")), label="grid_type")
-    grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
+    grid_type = data.draw(
+        st_one_of(("physical", "numerical")), label="grid_type"
+    )
+    grid = (
+        domain.physical_grid
+        if grid_type == "physical"
+        else domain.numerical_grid
+    )
 
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     storage_shape = (nx + 1, ny + 1, nz + 1)
@@ -113,7 +110,6 @@ def test_clipping(data, subtests):
             grid,
             moist=True,
             precipitation=False,
-            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
             storage_shape=storage_shape,
@@ -136,7 +132,6 @@ def test_clipping(data, subtests):
         domain,
         grid_type,
         names,
-        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -154,7 +149,7 @@ def test_clipping(data, subtests):
         assert name in clip.input_properties
         assert name in clip.diagnostic_properties
 
-        q = state[name].to_units("g g^-1").values
+        q = state[name].to_units("g g^-1").data
         q[q < 0] = 0
 
         assert name in diagnostics
@@ -167,35 +162,28 @@ def test_clipping(data, subtests):
     assert len(diagnostics) == len(names)
 
 
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
-@given(hyp_st.data())
-def test_precipitation(data):
+@hyp_settings
+@given(data=hyp_st.data())
+@pytest.mark.parametrize("backend", conf_backend)
+@pytest.mark.parametrize("dtype", conf_dtype)
+def test_precipitation(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
-    if gt_powered:
-        gt_storage.prepare_numpy()
-
     domain = data.draw(
-        st_domain(
-            zaxis_length=(2, 20), gt_powered=gt_powered, backend=backend, dtype=dtype
-        ),
+        st_domain(zaxis_length=(2, 20), backend=backend, dtype=dtype),
         label="domain",
     )
-    grid_type = data.draw(st_one_of(("physical", "numerical")), label="grid_type")
-    grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
+    grid_type = data.draw(
+        st_one_of(("physical", "numerical")), label="grid_type"
+    )
+    grid = (
+        domain.physical_grid
+        if grid_type == "physical"
+        else domain.numerical_grid
+    )
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     storage_shape = (nx + 1, ny + 1, nz + 1)
 
@@ -204,7 +192,6 @@ def test_precipitation(data):
             grid,
             moist=True,
             precipitation=True,
-            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
             storage_shape=storage_shape,
@@ -225,7 +212,6 @@ def test_precipitation(data):
     rfv = KesslerFallVelocity(
         domain,
         grid_type,
-        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -236,7 +222,6 @@ def test_precipitation(data):
     comp = Precipitation(
         domain,
         grid_type,
-        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -247,9 +232,13 @@ def test_precipitation(data):
 
     assert len(tendencies) == 0
 
-    rho = state["air_density"].to_units("kg m^-3").values[:nx, :ny, nz - 1 : nz]
-    qr = state[mfpw].to_units("g g^-1").values[:nx, :ny, nz - 1 : nz]
-    vt = state["raindrop_fall_velocity"].to_units("m s^-1").values[:nx, :ny, nz - 1 : nz]
+    rho = state["air_density"].to_units("kg m^-3").data[:nx, :ny, nz - 1 : nz]
+    qr = state[mfpw].to_units("g g^-1").data[:nx, :ny, nz - 1 : nz]
+    vt = (
+        state["raindrop_fall_velocity"]
+        .to_units("m s^-1")
+        .data[:nx, :ny, nz - 1 : nz]
+    )
     rhow = comp._pcs["density_of_liquid_water"]
     prec = 3.6e6 * rho * qr * vt / rhow
     assert "precipitation" in diagnostics
@@ -259,7 +248,7 @@ def test_precipitation(data):
         compare_coordinate_values=False,
     )
 
-    accprec = state["accumulated_precipitation"].to_units("mm").values[:nx, :ny]
+    accprec = state["accumulated_precipitation"].to_units("mm").data[:nx, :ny]
     accprec_val = accprec + timestep.total_seconds() * prec / 3.6e3
     assert "accumulated_precipitation" in diagnostics
     compare_dataarrays(
@@ -334,16 +323,21 @@ def second_order_flux_validation(rho, h, qr, vt, staggering=False):
         tmp_h = h
 
     a = deepcopy(rho)
-    a[:, :, 2:] = (2 * tmp_h[:, :, 2:] - tmp_h[:, :, 1:-1] - tmp_h[:, :, :-2]) / (
-        (tmp_h[:, :, 1:-1] - tmp_h[:, :, 2:]) * (tmp_h[:, :, :-2] - tmp_h[:, :, 2:])
+    a[:, :, 2:] = (
+        2 * tmp_h[:, :, 2:] - tmp_h[:, :, 1:-1] - tmp_h[:, :, :-2]
+    ) / (
+        (tmp_h[:, :, 1:-1] - tmp_h[:, :, 2:])
+        * (tmp_h[:, :, :-2] - tmp_h[:, :, 2:])
     )
     b = deepcopy(rho)
     b[:, :, 2:] = (tmp_h[:, :, :-2] - tmp_h[:, :, 2:]) / (
-        (tmp_h[:, :, 1:-1] - tmp_h[:, :, 2:]) * (tmp_h[:, :, :-2] - tmp_h[:, :, 1:-1])
+        (tmp_h[:, :, 1:-1] - tmp_h[:, :, 2:])
+        * (tmp_h[:, :, :-2] - tmp_h[:, :, 1:-1])
     )
     c = deepcopy(rho)
     c[:, :, 2:] = -(tmp_h[:, :, 1:-1] - tmp_h[:, :, 2:]) / (
-        (tmp_h[:, :, :-2] - tmp_h[:, :, 2:]) * (tmp_h[:, :, :-2] - tmp_h[:, :, 1:-1])
+        (tmp_h[:, :, :-2] - tmp_h[:, :, 2:])
+        * (tmp_h[:, :, :-2] - tmp_h[:, :, 1:-1])
     )
 
     out = deepcopy(rho)
@@ -359,45 +353,45 @@ def second_order_flux_validation(rho, h, qr, vt, staggering=False):
 
 flux_properties = {
     "first_order_upwind": {
-        "type": _FirstOrderUpwind,
+        "type": FirstOrderUpwind,
         "validation": first_order_flux_validation,
     },
     "second_order_upwind": {
-        "type": _SecondOrderUpwind,
+        "type": SecondOrderUpwind,
         "validation": second_order_flux_validation,
     },
 }
 
 
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
+@hyp_settings
+@given(data=hyp_st.data())
+@pytest.mark.parametrize("backend", conf_backend)
+@pytest.mark.parametrize("dtype", conf_dtype)
+@pytest.mark.parametrize(
+    "flux_type", ("first_order_upwind", "second_order_upwind")
 )
-@given(hyp_st.data())
-def test_sedimentation_flux(data):
+def test_sedimentation_flux(data, backend, dtype, flux_type):
     # ========================================
     # random data generation
     # ========================================
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-
-    if gt_powered:
-        gt_storage.prepare_numpy()
 
     domain = data.draw(
         st_domain(
-            zaxis_length=(3, 20), gt_powered=gt_powered, backend=backend, dtype=dtype
+            zaxis_length=(3, 20),
+            backend=backend,
+            dtype=dtype,
         ),
         label="domain",
     )
-    grid_type = data.draw(st_one_of(("physical", "numerical")), label="grid_type")
-    grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
+    grid_type = data.draw(
+        st_one_of(("physical", "numerical")), label="grid_type"
+    )
+    grid = (
+        domain.physical_grid
+        if grid_type == "physical"
+        else domain.numerical_grid
+    )
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     dnx = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dnx")
     dny = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dny")
@@ -408,7 +402,6 @@ def test_sedimentation_flux(data):
             storage_shape,
             1,
             1e4,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -420,7 +413,6 @@ def test_sedimentation_flux(data):
             storage_shape,
             1,
             1e4,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -432,7 +424,6 @@ def test_sedimentation_flux(data):
             storage_shape,
             1,
             1e4,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -444,7 +435,6 @@ def test_sedimentation_flux(data):
             storage_shape,
             1,
             1e4,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -452,28 +442,28 @@ def test_sedimentation_flux(data):
         label="vt",
     )
 
-    flux_type = data.draw(st_one_of(("first_order_upwind",)), label="flux_type")
-
     # ========================================
     # test bed
     # ========================================
     dfdz_val = flux_properties[flux_type]["validation"](
-        rho[:nx, :ny, :nz], h[:nx, :ny, :nz], qr[:nx, :ny, :nz], vt[:nx, :ny, :nz]
+        rho[:nx, :ny, :nz],
+        h[:nx, :ny, :nz],
+        qr[:nx, :ny, :nz],
+        vt[:nx, :ny, :nz],
     )
 
-    core = SedimentationFlux.factory(flux_type, gt_powered)
+    core = SedimentationFlux.factory(flux_type, backend)
     assert isinstance(core, flux_properties[flux_type]["type"])
 
-    if gt_powered:
+    if is_gt(backend):
         dfdz = zeros(
             storage_shape,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
         )
 
-        ws = WrappingStencil(core, backend, dtype, True)
+        ws = WrappingStencil(core, get_gt_backend(backend), dtype, rebuild=False)
         ws(rho, h, qr, vt, dfdz)
 
         compare_arrays(dfdz[:nx, :ny, :nz], dfdz_val)
@@ -484,107 +474,122 @@ def test_sedimentation_flux(data):
         compare_arrays(dfdz[:nx, :ny, : nz - nb], dfdz_val[:nx, :ny, nb:nz])
 
 
-def kessler_sedimentation_validation(nx, ny, nz, state, timestep, flux_scheme, maxcfl):
-    rho = state["air_density"].to_units("kg m^-3").values[:nx, :ny, :nz]
-    h = state["height_on_interface_levels"].to_units("m").values[:nx, :ny, : nz + 1]
-    qr = state[mfpw].to_units("g g^-1").values[:nx, :ny, :nz]
-    vt = state["raindrop_fall_velocity"].to_units("m s^-1").values[:nx, :ny, :nz]
+def kessler_sedimentation_validation(
+    nx, ny, nz, state, timestep, flux_scheme, maxcfl
+):
+    rho = state["air_density"].to_units("kg m^-3").data[:nx, :ny, :nz]
+    h = (
+        state["height_on_interface_levels"]
+        .to_units("m")
+        .data[:nx, :ny, : nz + 1]
+    )
+    qr = state[mfpw].to_units("g g^-1").data[:nx, :ny, :nz]
+    vt = state["raindrop_fall_velocity"].to_units("m s^-1").data[:nx, :ny, :nz]
 
     # dt = timestep.total_seconds()
     # dh = h[:, :, :-1] - h[:, :, 1:]
     # ids = np.where(vt > maxcfl * dh / dt)
     # vt[ids] = maxcfl * dh[ids] / dt
 
-    dfdz = flux_properties[flux_scheme]["validation"](rho, h, qr, vt, staggering=True)
+    dfdz = flux_properties[flux_scheme]["validation"](
+        rho, h, qr, vt, staggering=True
+    )
 
     return dfdz / rho
 
 
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
-@given(hyp_st.data())
-def _test_kessler_sedimentation(data):
-    # ========================================
-    # random data generation
-    # ========================================
-    domain = data.draw(st_domain(), label="domain")
-
-    grid_type = data.draw(st_one_of(("physical", "numerical")), label="grid_type")
-    grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
-    state = data.draw(st_isentropic_state_f(grid, moist=True), label="state")
-
-    flux_scheme = data.draw(
-        st_one_of(("first_order_upwind", "second_order_upwind")), label="flux_scheme"
-    )
-    maxcfl = data.draw(hyp_st.floats(min_value=0, max_value=1), label="maxcfl")
-
-    timestep = data.draw(
-        hyp_st.timedeltas(
-            min_value=timedelta(seconds=1e-6), max_value=timedelta(hours=1)
-        ),
-        label="timestep",
-    )
-
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-
-    # ========================================
-    # test bed
-    # ========================================
-    dtype = grid.x.dtype
-
-    rfv = KesslerFallVelocity(
-        domain, grid_type, backend=backend, dtype=dtype, default_origin=default_origin
-    )
-    diagnostics = rfv(state)
-    state.update(diagnostics)
-
-    tracer = {mfpw: {"units": "g g^-1", "velocity": "raindrop_fall_velocity"}}
-    sed = Sedimentation(
-        domain,
-        grid_type,
-        tracer,
-        flux_scheme,
-        maxcfl,
-        backend=gt.mode.NUMPY,
-        dtype=dtype,
-    )
-
-    #
-    # test properties
-    #
-    assert "air_density" in sed.input_properties
-    assert "height_on_interface_levels" in sed.input_properties
-    assert mfpw in sed.input_properties
-    assert "raindrop_fall_velocity" in sed.input_properties
-    assert len(sed.input_properties) == 4
-
-    assert mfpw in sed.tendency_properties
-    assert len(sed.tendency_properties) == 1
-
-    assert len(sed.diagnostic_properties) == 0
-
-    #
-    # test numerics
-    #
-    tendencies, diagnostics = sed(state, timestep)
-
-    assert mfpw in tendencies
-    raw_mfpw_val = kessler_sedimentation_validation(state, timestep, flux_scheme, maxcfl)
-    compare_dataarrays(
-        get_dataarray_3d(raw_mfpw_val, grid, "g g^-1 s^-1"),
-        tendencies[mfpw],
-        compare_coordinate_values=False,
-    )
-    assert len(tendencies) == 1
-
-    assert len(diagnostics) == 0
+# @hyp_settings
+# @given(data=hyp_st.data())
+# @pytest.mark.parametrize("backend", conf_backend)
+# @pytest.mark.parametrize("dtype", conf_dtype)
+# def _test_kessler_sedimentation(data, backend, dtype):
+#     # ========================================
+#     # random data generation
+#     # ========================================
+#     domain = data.draw(st_domain(), label="domain")
+#
+#     grid_type = data.draw(
+#         st_one_of(("physical", "numerical")), label="grid_type"
+#     )
+#     grid = (
+#         domain.physical_grid
+#         if grid_type == "physical"
+#         else domain.numerical_grid
+#     )
+#     state = data.draw(st_isentropic_state_f(grid, moist=True), label="state")
+#
+#     flux_scheme = data.draw(
+#         st_one_of(("first_order_upwind", "second_order_upwind")),
+#         label="flux_scheme",
+#     )
+#     maxcfl = data.draw(hyp_st.floats(min_value=0, max_value=1), label="maxcfl")
+#
+#     timestep = data.draw(
+#         hyp_st.timedeltas(
+#             min_value=timedelta(seconds=1e-6), max_value=timedelta(hours=1)
+#         ),
+#         label="timestep",
+#     )
+#
+#     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+#
+#     # ========================================
+#     # test bed
+#     # ========================================
+#     dtype = grid.x.dtype
+#
+#     rfv = KesslerFallVelocity(
+#         domain,
+#         grid_type,
+#         backend=backend,
+#         dtype=dtype,
+#         default_origin=default_origin,
+#     )
+#     diagnostics = rfv(state)
+#     state.update(diagnostics)
+#
+#     tracer = {mfpw: {"units": "g g^-1", "velocity": "raindrop_fall_velocity"}}
+#     sed = Sedimentation(
+#         domain,
+#         grid_type,
+#         tracer,
+#         flux_scheme,
+#         maxcfl,
+#         backend=gt.mode.NUMPY,
+#         dtype=dtype,
+#     )
+#
+#     #
+#     # test properties
+#     #
+#     assert "air_density" in sed.input_properties
+#     assert "height_on_interface_levels" in sed.input_properties
+#     assert mfpw in sed.input_properties
+#     assert "raindrop_fall_velocity" in sed.input_properties
+#     assert len(sed.input_properties) == 4
+#
+#     assert mfpw in sed.tendency_properties
+#     assert len(sed.tendency_properties) == 1
+#
+#     assert len(sed.diagnostic_properties) == 0
+#
+#     #
+#     # test numerics
+#     #
+#     tendencies, diagnostics = sed(state, timestep)
+#
+#     assert mfpw in tendencies
+#     raw_mfpw_val = kessler_sedimentation_validation(
+#         state, timestep, flux_scheme, maxcfl
+#     )
+#     compare_dataarrays(
+#         get_dataarray_3d(raw_mfpw_val, grid, "g g^-1 s^-1"),
+#         tendencies[mfpw],
+#         compare_coordinate_values=False,
+#     )
+#     assert len(tendencies) == 1
+#
+#     assert len(diagnostics) == 0
 
 
 if __name__ == "__main__":

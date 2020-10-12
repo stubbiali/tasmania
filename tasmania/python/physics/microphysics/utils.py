@@ -23,11 +23,9 @@
 import abc
 import numpy as np
 from sympl import DataArray
-from typing import Mapping, Optional, Sequence, TYPE_CHECKING, Tuple
+from typing import Dict, Mapping, Optional, Sequence, TYPE_CHECKING, Tuple
 
-from gt4py import gtscript, __externals__
-
-# from gt4py.__gtscript__ import computation, interval, PARALLEL
+from gt4py import gtscript
 
 from tasmania.python.framework.base_components import (
     DiagnosticComponent,
@@ -35,8 +33,10 @@ from tasmania.python.framework.base_components import (
 )
 from tasmania.python.utils import taz_types
 from tasmania.python.utils.data_utils import get_physical_constants
+from tasmania.python.utils.framework_utils import factorize
 from tasmania.python.utils.gtscript_utils import stencil_clip_defs
 from tasmania.python.utils.storage_utils import get_storage_shape, zeros
+from tasmania.python.utils.utils import get_gt_backend, is_gt
 
 if TYPE_CHECKING:
     from tasmania.python.domain.domain import Domain
@@ -55,12 +55,11 @@ class Clipping(DiagnosticComponent):
         domain: "Domain",
         grid_type: str,
         water_species_names: Optional[Sequence[str]] = None,
-        gt_powered: bool = True,
         *,
         backend: str = "numpy",
         backend_opts: Optional[taz_types.options_dict_t] = None,
-        build_info: Optional[taz_types.options_dict_t] = None,
         dtype: taz_types.dtype_t = np.float64,
+        build_info: Optional[taz_types.options_dict_t] = None,
         exec_info: Optional[taz_types.mutable_options_dict_t] = None,
         default_origin: Optional[taz_types.triplet_int_t] = None,
         rebuild: bool = False,
@@ -77,27 +76,28 @@ class Clipping(DiagnosticComponent):
             Either "physical" or "numerical".
         water_species_names : `tuple`, optional
             The names of the water species to clip.
-        gt_powered : `bool`, optional
-            TODO
         backend : `str`, optional
-            The GT4Py backend.
+            The backend.
         backend_opts : `dict`, optional
             Dictionary of backend-specific options.
-        build_info : `dict`, optional
-            Dictionary of building options.
         dtype : `data-type`, optional
             Data type of the storages.
+        build_info : `dict`, optional
+            Dictionary of building options.
         exec_info : `dict`, optional
-            Dictionary which will store statistics and diagnostics gathered at run time.
+            Dictionary which will store statistics and diagnostics gathered at
+            run time.
         default_origin : `tuple[int]`, optional
             Storage default origin.
         rebuild : `bool`, optional
-            ``True`` to trigger the stencils compilation at any class instantiation,
-            ``False`` to rely on the caching mechanism implemented by GT4Py.
+            ``True`` to trigger the stencils compilation at any class
+            instantiation, ``False`` to rely on the caching mechanism
+            implemented by the backend.
         storage_shape : `tuple[int]`, optional
             Shape of the storages.
         managed_memory : `bool`, optional
-            ``True`` to allocate the storages as managed memory, ``False`` otherwise.
+            ``True`` to allocate the storages as managed memory,
+            ``False`` otherwise.
         """
         self._names = water_species_names
         super().__init__(domain, grid_type)
@@ -108,7 +108,6 @@ class Clipping(DiagnosticComponent):
         self._outs = {
             name: zeros(
                 storage_shape,
-                gt_powered=gt_powered,
                 backend=backend,
                 dtype=dtype,
                 default_origin=default_origin,
@@ -117,9 +116,9 @@ class Clipping(DiagnosticComponent):
             for name in water_species_names
         }
 
-        if gt_powered:
+        if is_gt(backend):
             self._stencil = gtscript.stencil(
-                backend=backend,
+                backend=get_gt_backend(backend),
                 definition=stencil_clip_defs,
                 rebuild=rebuild,
                 build_info=build_info,
@@ -149,14 +148,20 @@ class Clipping(DiagnosticComponent):
 
         return return_dict
 
-    def array_call(self, state: taz_types.array_dict_t) -> taz_types.array_dict_t:
+    def array_call(
+        self, state: taz_types.array_dict_t
+    ) -> taz_types.array_dict_t:
         diagnostics = {}
 
         for name in self._names:
             in_q = state[name]
             out_q = self._outs[name]
             self._stencil(
-                in_field=in_q, out_field=out_q, origin=(0, 0, 0), domain=out_q.shape
+                in_field=in_q,
+                out_field=out_q,
+                origin=(0, 0, 0),
+                domain=out_q.shape,
+                validate_args=True,
             )
             diagnostics[name] = out_q
 
@@ -175,7 +180,9 @@ class Clipping(DiagnosticComponent):
         j = slice(origin[1], origin[1] + domain[1])
         k = slice(origin[2], origin[2] + domain[2])
 
-        out_field[i, j, k] = np.where(in_field[i, j, k] > 0.0, in_field[i, j, k], 0.0)
+        out_field[i, j, k] = np.where(
+            in_field[i, j, k] > 0.0, in_field[i, j, k], 0.0
+        )
 
 
 class Precipitation(ImplicitTendencyComponent):
@@ -190,12 +197,11 @@ class Precipitation(ImplicitTendencyComponent):
         domain: "Domain",
         grid_type: str = "numerical",
         physical_constants: Optional[Mapping[str, DataArray]] = None,
-        gt_powered: bool = True,
         *,
         backend: str = "numpy",
         backend_opts: Optional[taz_types.options_dict_t] = None,
-        build_info: Optional[taz_types.options_dict_t] = None,
         dtype: taz_types.dtype_t = np.float64,
+        build_info: Optional[taz_types.options_dict_t] = None,
         exec_info: Optional[taz_types.mutable_options_dict_t] = None,
         default_origin: Optional[taz_types.triplet_int_t] = None,
         rebuild: bool = False,
@@ -218,27 +224,28 @@ class Precipitation(ImplicitTendencyComponent):
 
                 * 'density_of_liquid_water', in units compatible with [kg m^-3].
 
-        gt_powered : `bool`, optional
-            TODO
         backend : `str`, optional
-            The GT4Py backend.
+            The backend.
         backend_opts : `dict`, optional
             Dictionary of backend-specific options.
-        build_info : `dict`, optional
-            Dictionary of building options.
         dtype : `data-type`, optional
             Data type of the storages.
+        build_info : `dict`, optional
+            Dictionary of building options.
         exec_info : `dict`, optional
-            Dictionary which will store statistics and diagnostics gathered at run time.
+            Dictionary which will store statistics and diagnostics gathered at
+            run time.
         default_origin : `tuple[int]`, optional
             Storage default origin.
         rebuild : `bool`, optional
-            ``True`` to trigger the stencils compilation at any class instantiation,
-            ``False`` to rely on the caching mechanism implemented by GT4Py.
+            ``True`` to trigger the stencils compilation at any class
+            instantiation, ``False`` to rely on the caching mechanism
+            implemented by the backend.
         storage_shape : `tuple[int]`, optional
             Shape of the storages.
         managed_memory : `bool`, optional
-            ``True`` to allocate the storages as managed memory, ``False`` otherwise.
+            ``True`` to allocate the storages as managed memory,
+            ``False`` otherwise.
         **kwargs :
             Additional keyword arguments to be directly forwarded to the parent
             :class:`~tasmania.ImplicitTendencyComponent`.
@@ -261,7 +268,6 @@ class Precipitation(ImplicitTendencyComponent):
 
         self._in_rho = zeros(
             storage_shape,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -269,7 +275,6 @@ class Precipitation(ImplicitTendencyComponent):
         )
         self._in_qr = zeros(
             storage_shape,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -277,7 +282,6 @@ class Precipitation(ImplicitTendencyComponent):
         )
         self._in_vt = zeros(
             storage_shape,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -285,7 +289,6 @@ class Precipitation(ImplicitTendencyComponent):
         )
         self._out_prec = zeros(
             storage_shape,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -293,17 +296,16 @@ class Precipitation(ImplicitTendencyComponent):
         )
         self._out_accprec = zeros(
             storage_shape,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
             managed_memory=managed_memory,
         )
 
-        if gt_powered:
+        if is_gt(backend):
             self._stencil = gtscript.stencil(
                 definition=self._stencil_gt_defs,
-                backend=backend,
+                backend=get_gt_backend(backend),
                 build_info=build_info,
                 dtypes={"dtype": dtype},
                 externals={"rhow": self._pcs["density_of_liquid_water"]},
@@ -357,9 +359,9 @@ class Precipitation(ImplicitTendencyComponent):
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
 
         self._in_rho[...] = state["air_density"][:, :, nz - 1 : nz]
-        self._in_qr[...] = state["mass_fraction_of_precipitation_water_in_air"][
-            :, :, nz - 1 : nz
-        ]
+        self._in_qr[...] = state[
+            "mass_fraction_of_precipitation_water_in_air"
+        ][:, :, nz - 1 : nz]
         self._in_vt[...] = state["raindrop_fall_velocity"][:, :, nz - 1 : nz]
         in_accprec = state["accumulated_precipitation"]
 
@@ -376,6 +378,7 @@ class Precipitation(ImplicitTendencyComponent):
             origin=(0, 0, 0),
             domain=(nx, ny, 1),
             exec_info=self._exec_info,
+            validate_args=True,
         )
 
         tendencies = {}
@@ -411,7 +414,9 @@ class Precipitation(ImplicitTendencyComponent):
             * in_vt[i, j, k]
             / self._pcs["density_of_liquid_water"]
         )
-        out_accprec[i, j, k] = in_accprec[i, j, k] + dt * out_prec[i, j, k] / 3.6e3
+        out_accprec[i, j, k] = (
+            in_accprec[i, j, k] + dt * out_prec[i, j, k] / 3.6e3
+        )
 
     @staticmethod
     def _stencil_gt_defs(
@@ -441,8 +446,11 @@ class SedimentationFlux(abc.ABC):
     # the vertical extent of the stencil
     nb: int = None
 
-    def __init__(self, gt_powered):
-        self.call = self.call_gt if gt_powered else self.call_numpy
+    # registry of concrete subclasses
+    registry: Dict[str, "SedimentationFlux"] = {}
+
+    def __init__(self, backend: str) -> None:
+        self.call = self.call_gt if is_gt(backend) else self.call_numpy
 
     @staticmethod
     @abc.abstractmethod
@@ -484,7 +492,9 @@ class SedimentationFlux(abc.ABC):
         pass
 
     @staticmethod
-    def factory(sedimentation_flux_type: str, gt_powered: bool) -> "SedimentationFlux":
+    def factory(
+        sedimentation_flux_type: str, backend: str
+    ) -> "SedimentationFlux":
         """
         Static method returning an instance of the derived class
         which discretizes the vertical derivative of the
@@ -499,280 +509,209 @@ class SedimentationFlux(abc.ABC):
                 - 'first_order_upwind', for the first-order upwind scheme;
                 - 'second_order_upwind', for the second-order upwind scheme.
 
-        gt_powered : bool
-            TODO
+        backend: str
+            The backend.
 
         Return
         ------
         obj :
             Instance of the derived class implementing the desired method.
         """
-        if sedimentation_flux_type == "first_order_upwind":
-            return _FirstOrderUpwind(gt_powered)
-        elif sedimentation_flux_type == "second_order_upwind":
-            return _SecondOrderUpwind(gt_powered)
-        else:
-            raise ValueError(
-                "Only first- and second-order upwind methods have been implemented."
-            )
-
-
-class _FirstOrderUpwind(SedimentationFlux):
-    """ The standard, first-order accurate upwind method. """
-
-    nb = 1
-
-    def __init__(self, gt_powered):
-        super().__init__(gt_powered)
-
-    @staticmethod
-    def call_numpy(rho, h, q, vt):
-        dfdz = (
-            rho[:, :, :-1] * q[:, :, :-1] * vt[:, :, :-1]
-            - rho[:, :, 1:] * q[:, :, 1:] * vt[:, :, 1:]
-        ) / (h[:, :, :-1] - h[:, :, 1:])
-        return dfdz
-
-    @staticmethod
-    @gtscript.function
-    def call_gt(rho, h, q, vt):
-        dfdz = (
-            rho[0, 0, -1] * q[0, 0, -1] * vt[0, 0, -1]
-            - rho[0, 0, 0] * q[0, 0, 0] * vt[0, 0, 0]
-        ) / (h[0, 0, -1] - h[0, 0, 0])
-        return dfdz
-
-
-class _SecondOrderUpwind(SedimentationFlux):
-    """ The second-order accurate upwind method. """
-
-    nb = 2
-
-    def __init__(self, gt_powered):
-        super().__init__(gt_powered)
-
-    @staticmethod
-    def call_numpy(rho, h, q, vt):
-        # evaluate the space-dependent coefficients occurring in the
-        # second-order upwind finite difference approximation of the
-        # vertical derivative of the flux
-        tmp_a = (2.0 * h[:, :, 2:] - h[:, :, 1:-1] - h[:, :, :-2]) / (
-            (h[:, :, 1:-1] - h[:, :, 2:]) * (h[:, :, :-2] - h[:, :, 2:])
-        )
-        tmp_b = (h[:, :, :-2] - h[:, :, 2:]) / (
-            (h[:, :, 1:-1] - h[:, :, 2:]) * (h[:, :, :-2] - h[:, :, 1:-1])
-        )
-        tmp_c = (h[:, :, 2:] - h[:, :, 1:-1]) / (
-            (h[:, :, :-2] - h[:, :, 2:]) * (h[:, :, :-2] - h[:, :, 1:-1])
+        return factorize(
+            sedimentation_flux_type, SedimentationFlux, (backend,)
         )
 
-        # calculate the vertical derivative of the sedimentation flux
-        dfdz = (
-            tmp_a * rho[:, :, 2:] * q[:, :, 2:] * vt[:, :, 2:]
-            + tmp_b * rho[:, :, 1:-1] * q[:, :, 1:-1] * vt[:, :, 1:-1]
-            + tmp_c * rho[:, :, :-2] * q[:, :, :-2] * vt[:, :, :-2]
-        )
 
-        return dfdz
-
-    @staticmethod
-    @gtscript.function
-    def call_gt(rho, h, q, vt):
-        # evaluate the space-dependent coefficients occurring in the
-        # second-order upwind finite difference approximation of the
-        # vertical derivative of the flux
-        tmp_a = (2.0 * h[0, 0, 0] - h[0, 0, -1] - h[0, 0, -2]) / (
-            (h[0, 0, -1] - h[0, 0, 0]) * (h[0, 0, -2] - h[0, 0, 0])
-        )
-        tmp_b = (h[0, 0, -2] - h[0, 0, 0]) / (
-            (h[0, 0, -1] - h[0, 0, 0]) * (h[0, 0, -2] - h[0, 0, -1])
-        )
-        tmp_c = (h[0, 0, 0] - h[0, 0, -1]) / (
-            (h[0, 0, -2] - h[0, 0, 0]) * (h[0, 0, -2] - h[0, 0, -1])
-        )
-
-        # calculate the vertical derivative of the sedimentation flux
-        dfdz = (
-            tmp_a[0, 0, 0] * rho[0, 0, 0] * q[0, 0, 0] * vt[0, 0, 0]
-            + tmp_b[0, 0, 0] * rho[0, 0, -1] * q[0, 0, -1] * vt[0, 0, -1]
-            + tmp_c[0, 0, 0] * rho[0, 0, -2] * q[0, 0, -2] * vt[0, 0, -2]
-        )
-
-        return dfdz
-
-
-class Sedimentation(ImplicitTendencyComponent):
-    """
-    Calculate the vertical derivative of the sedimentation flux for multiple
-    precipitating tracers.
-    """
-
-    def __init__(
-        self,
-        domain,
-        grid_type,
-        tracers,
-        sedimentation_flux_scheme="first_order_upwind",
-        maximum_vertical_cfl=0.975,
-        backend="numpy",
-        dtype=np.float64,
-        **kwargs
-    ):
-        """
-        Parameters
-        ----------
-        domain : tasmania.Domain
-            The :class:`~tasmania.Domain` holding the grid underneath.
-        grid_type : str
-            The type of grid over which instantiating the class.
-            Either "physical" or "numerical".
-        tracers : dict[str, dict]
-            Dictionary whose keys are the names of the precipitating tracers to
-            consider, and whose values are dictionaries specifying 'units' and
-            'velocity' for those tracers.
-        sedimentation_flux_scheme : `str`, optional
-            The numerical sedimentation flux scheme. Please refer to
-            :class:`~tasmania.SedimentationFlux` for the available options.
-            Defaults to 'first_order_upwind'.
-        maximum_vertical_cfl : `float`, optional
-            Maximum allowed vertical CFL number. Defaults to 0.975.
-        backend : `obj`, optional
-            TODO
-        dtype : `data-type`, optional
-            The data type for any :class:`gt4py.storage.storage.Storage` instantiated and
-            used within this class.
-        **kwargs :
-            Additional keyword arguments to be directly forwarded to the parent
-            :class:`~tasmania.ImplicitTendencyComponent`.
-        """
-        self._tracer_units = {}
-        self._velocities = {}
-        for tracer in tracers:
-            try:
-                self._tracer_units[tracer] = tracers[tracer]["units"]
-            except KeyError:
-                raise KeyError(
-                    "Dictionary for " "{}" " misses the key " "units" ".".format(tracer)
-                )
-
-            try:
-                self._velocities[tracer] = tracers[tracer]["velocity"]
-            except KeyError:
-                raise KeyError(
-                    "Dictionary for "
-                    "{}"
-                    " misses the key "
-                    "velocity"
-                    ".".format(tracer)
-                )
-
-        super().__init__(domain, grid_type, **kwargs)
-
-        self._sflux = SedimentationFlux.factory(sedimentation_flux_scheme)
-        self._max_cfl = maximum_vertical_cfl
-        self._stencil_initialize(backend, dtype)
-
-    @property
-    def input_properties(self):
-        g = self.grid
-        dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
-        dims_z = (g.x.dims[0], g.y.dims[0], g.z_on_interface_levels.dims[0])
-
-        return_dict = {
-            "air_density": {"dims": dims, "units": "kg m^-3"},
-            "height_on_interface_levels": {"dims": dims_z, "units": "m"},
-        }
-
-        for tracer in self._tracer_units:
-            return_dict[tracer] = {"dims": dims, "units": self._tracer_units[tracer]}
-            return_dict[self._velocities[tracer]] = {"dims": dims, "units": "m s^-1"}
-
-        return return_dict
-
-    @property
-    def tendency_properties(self):
-        g = self.grid
-        dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
-
-        return_dict = {}
-        for tracer, units in self._tracer_units.items():
-            return_dict[tracer] = {"dims": dims, "units": units + " s^-1"}
-
-        return return_dict
-
-    @property
-    def diagnostic_properties(self):
-        return {}
-
-    def array_call(self, state, timestep):
-        self._stencil_set_inputs(state, timestep)
-
-        self._stencil.compute()
-
-        tendencies = {name: self._outputs["out_" + name] for name in self._tracer_units}
-        diagnostics = {}
-
-        return tendencies, diagnostics
-
-    def _stencil_initialize(self, backend, dtype):
-        nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
-
-        self._dt = gt.Global()
-        self._maxcfl = gt.Global(self._max_cfl)
-
-        self._inputs = {
-            "in_rho": np.zeros((nx, ny, nz), dtype=dtype),
-            "in_h": np.zeros((nx, ny, nz + 1), dtype=dtype),
-        }
-        self._outputs = {}
-        for tracer in self._tracer_units:
-            self._inputs["in_" + tracer] = np.zeros((nx, ny, nz), dtype=dtype)
-            self._inputs["in_" + self._velocities[tracer]] = np.zeros(
-                (nx, ny, nz), dtype=dtype
-            )
-            self._outputs["out_" + tracer] = np.zeros((nx, ny, nz), dtype=dtype)
-
-        self._stencil = gt.NGStencil(
-            definitions_func=self._stencil_gt_defs,
-            inputs=self._inputs,
-            global_inputs={"dt": self._dt, "max_cfl": self._maxcfl},
-            outputs=self._outputs,
-            domain=gt.domain.Rectangle((0, 0, self._sflux.nb), (nx - 1, ny - 1, nz - 1)),
-            mode=backend,
-        )
-
-    def _stencil_set_inputs(self, state, timestep):
-        self._dt.value = timestep.total_seconds()
-        self._inputs["in_rho"][...] = state["air_density"][...]
-        self._inputs["in_h"][...] = state["height_on_interface_levels"][...]
-        for tracer in self._tracer_units:
-            self._inputs["in_" + tracer][...] = state[tracer][...]
-            velocity = self._velocities[tracer]
-            self._inputs["in_" + velocity] = state[velocity][...]
-
-    def _stencil_gt_defs(self, dt, max_cfl, in_rho, in_h, **kwargs):
-        k = gt.Index(axis=2)
-
-        tmp_dh = gt.Equation()
-        tmp_dh[k] = in_h[k] - in_h[k + 1]
-
-        outs = []
-
-        for tracer in self._tracer_units:
-            in_q = kwargs["in_" + tracer]
-            in_vt = kwargs["in_" + self._velocities[tracer]]
-
-            tmp_vt = gt.Equation(name="tmp_" + self._velocities[tracer])
-            tmp_vt[k] = in_vt[k]
-            # 	(vt[k] >  max_cfl * tmp_dh[k] / dt) * max_cfl * tmp_dh[k] / dt + \
-            # 	(vt[k] <= max_cfl * tmp_dh[k] / dt) * vt[k]
-
-            tmp_dfdz = gt.Equation(name="tmp_dfdz_" + tracer)
-            self._sflux(k, in_rho, in_h, in_q, tmp_vt, tmp_dfdz)
-
-            out_q = gt.Equation(name="out_" + tracer)
-            out_q[k] = tmp_dfdz[k] / in_rho[k]
-
-            outs.append(out_q)
-
-        return outs
+# class Sedimentation(ImplicitTendencyComponent):
+#     """
+#     Calculate the vertical derivative of the sedimentation flux for multiple
+#     precipitating tracers.
+#     """
+#
+#     def __init__(
+#         self,
+#         domain,
+#         grid_type,
+#         tracers,
+#         sedimentation_flux_scheme="first_order_upwind",
+#         maximum_vertical_cfl=0.975,
+#         backend="numpy",
+#         dtype=np.float64,
+#         **kwargs
+#     ):
+#         """
+#         Parameters
+#         ----------
+#         domain : tasmania.Domain
+#             The :class:`~tasmania.Domain` holding the grid underneath.
+#         grid_type : str
+#             The type of grid over which instantiating the class.
+#             Either "physical" or "numerical".
+#         tracers : dict[str, dict]
+#             Dictionary whose keys are the names of the precipitating tracers to
+#             consider, and whose values are dictionaries specifying 'units' and
+#             'velocity' for those tracers.
+#         sedimentation_flux_scheme : `str`, optional
+#             The numerical sedimentation flux scheme. Please refer to
+#             :class:`~tasmania.SedimentationFlux` for the available options.
+#             Defaults to 'first_order_upwind'.
+#         maximum_vertical_cfl : `float`, optional
+#             Maximum allowed vertical CFL number. Defaults to 0.975.
+#         backend : `str`, optional
+#             The backend.
+#         dtype : `data-type`, optional
+#             The data type for any storage instantiated and used within this
+#             class.
+#         **kwargs :
+#             Additional keyword arguments to be directly forwarded to the parent
+#             :class:`~tasmania.ImplicitTendencyComponent`.
+#         """
+#         self._tracer_units = {}
+#         self._velocities = {}
+#         for tracer in tracers:
+#             try:
+#                 self._tracer_units[tracer] = tracers[tracer]["units"]
+#             except KeyError:
+#                 raise KeyError(
+#                     "Dictionary for "
+#                     "{}"
+#                     " misses the key "
+#                     "units"
+#                     ".".format(tracer)
+#                 )
+#
+#             try:
+#                 self._velocities[tracer] = tracers[tracer]["velocity"]
+#             except KeyError:
+#                 raise KeyError(
+#                     "Dictionary for "
+#                     "{}"
+#                     " misses the key "
+#                     "velocity"
+#                     ".".format(tracer)
+#                 )
+#
+#         super().__init__(domain, grid_type, **kwargs)
+#
+#         self._sflux = SedimentationFlux.factory(
+#             sedimentation_flux_scheme, backend
+#         )
+#         self._max_cfl = maximum_vertical_cfl
+#         self._stencil_initialize(backend, dtype)
+#
+#     @property
+#     def input_properties(self):
+#         g = self.grid
+#         dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
+#         dims_z = (g.x.dims[0], g.y.dims[0], g.z_on_interface_levels.dims[0])
+#
+#         return_dict = {
+#             "air_density": {"dims": dims, "units": "kg m^-3"},
+#             "height_on_interface_levels": {"dims": dims_z, "units": "m"},
+#         }
+#
+#         for tracer in self._tracer_units:
+#             return_dict[tracer] = {
+#                 "dims": dims,
+#                 "units": self._tracer_units[tracer],
+#             }
+#             return_dict[self._velocities[tracer]] = {
+#                 "dims": dims,
+#                 "units": "m s^-1",
+#             }
+#
+#         return return_dict
+#
+#     @property
+#     def tendency_properties(self):
+#         g = self.grid
+#         dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
+#
+#         return_dict = {}
+#         for tracer, units in self._tracer_units.items():
+#             return_dict[tracer] = {"dims": dims, "units": units + " s^-1"}
+#
+#         return return_dict
+#
+#     @property
+#     def diagnostic_properties(self):
+#         return {}
+#
+#     def array_call(self, state, timestep):
+#         self._stencil_set_inputs(state, timestep)
+#
+#         self._stencil.compute()
+#
+#         tendencies = {
+#             name: self._outputs["out_" + name] for name in self._tracer_units
+#         }
+#         diagnostics = {}
+#
+#         return tendencies, diagnostics
+#
+#     def _stencil_initialize(self, backend, dtype):
+#         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
+#
+#         self._dt = gt.Global()
+#         self._maxcfl = gt.Global(self._max_cfl)
+#
+#         self._inputs = {
+#             "in_rho": np.zeros((nx, ny, nz), dtype=dtype),
+#             "in_h": np.zeros((nx, ny, nz + 1), dtype=dtype),
+#         }
+#         self._outputs = {}
+#         for tracer in self._tracer_units:
+#             self._inputs["in_" + tracer] = np.zeros((nx, ny, nz), dtype=dtype)
+#             self._inputs["in_" + self._velocities[tracer]] = np.zeros(
+#                 (nx, ny, nz), dtype=dtype
+#             )
+#             self._outputs["out_" + tracer] = np.zeros(
+#                 (nx, ny, nz), dtype=dtype
+#             )
+#
+#         self._stencil = gt.NGStencil(
+#             definitions_func=self._stencil_gt_defs,
+#             inputs=self._inputs,
+#             global_inputs={"dt": self._dt, "max_cfl": self._maxcfl},
+#             outputs=self._outputs,
+#             domain=gt.domain.Rectangle(
+#                 (0, 0, self._sflux.nb), (nx - 1, ny - 1, nz - 1)
+#             ),
+#             mode=backend,
+#         )
+#
+#     def _stencil_set_inputs(self, state, timestep):
+#         self._dt.value = timestep.total_seconds()
+#         self._inputs["in_rho"][...] = state["air_density"][...]
+#         self._inputs["in_h"][...] = state["height_on_interface_levels"][...]
+#         for tracer in self._tracer_units:
+#             self._inputs["in_" + tracer][...] = state[tracer][...]
+#             velocity = self._velocities[tracer]
+#             self._inputs["in_" + velocity] = state[velocity][...]
+#
+#     def _stencil_gt_defs(self, dt, max_cfl, in_rho, in_h, **kwargs):
+#         k = gt.Index(axis=2)
+#
+#         tmp_dh = gt.Equation()
+#         tmp_dh[k] = in_h[k] - in_h[k + 1]
+#
+#         outs = []
+#
+#         for tracer in self._tracer_units:
+#             in_q = kwargs["in_" + tracer]
+#             in_vt = kwargs["in_" + self._velocities[tracer]]
+#
+#             tmp_vt = gt.Equation(name="tmp_" + self._velocities[tracer])
+#             tmp_vt[k] = in_vt[k]
+#             # 	(vt[k] >  max_cfl * tmp_dh[k] / dt) * max_cfl * tmp_dh[k] / dt + \
+#             # 	(vt[k] <= max_cfl * tmp_dh[k] / dt) * vt[k]
+#
+#             tmp_dfdz = gt.Equation(name="tmp_dfdz_" + tracer)
+#             self._sflux(k, in_rho, in_h, in_q, tmp_vt, tmp_dfdz)
+#
+#             out_q = gt.Equation(name="out_" + tracer)
+#             out_q[k] = tmp_dfdz[k] / in_rho[k]
+#
+#             outs.append(out_q)
+#
+#         return outs

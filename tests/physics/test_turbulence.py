@@ -23,26 +23,22 @@
 from copy import deepcopy
 from hypothesis import (
     given,
-    HealthCheck,
     reproduce_failure,
-    settings,
     strategies as hyp_st,
 )
 import pytest
 
-import gt4py as gt
-
 from tasmania.python.physics.turbulence import Smagorinsky2d
-from tasmania import get_dataarray_3d
+from tasmania.python.utils.storage_utils import get_dataarray_3d
 
 from tests.conf import (
     backend as conf_backend,
-    datatype as conf_dtype,
+    dtype as conf_dtype,
     default_origin as conf_dorigin,
     nb as conf_nb,
 )
 from tests.strategies import st_domain, st_one_of, st_raw_field
-from tests.utilities import compare_dataarrays
+from tests.utilities import compare_dataarrays, hyp_settings
 
 
 def smagorinsky2d_validation(dx, dy, cs, u, v):
@@ -56,49 +52,45 @@ def smagorinsky2d_validation(dx, dy, cs, u, v):
     )
     s11 = (v[1:-1, 2:] - v[1:-1, :-2]) / (2.0 * dy)
     nu = (
-        (cs ** 2) * (dx * dy) * (2.0 * s00 ** 2 + 4.0 * s01 ** 2 + 2.0 * s11 ** 2) ** 0.5
+        (cs ** 2)
+        * (dx * dy)
+        * (2.0 * s00 ** 2 + 4.0 * s01 ** 2 + 2.0 * s11 ** 2) ** 0.5
     )
     u_tnd[2:-2, 2:-2] = 2.0 * (
-        (nu[2:, 1:-1] * s00[2:, 1:-1] - nu[:-2, 1:-1] * s00[:-2, 1:-1]) / (2.0 * dx)
-        + (nu[1:-1, 2:] * s01[1:-1, 2:] - nu[1:-1, :-2] * s01[1:-1, :-2]) / (2.0 * dy)
+        (nu[2:, 1:-1] * s00[2:, 1:-1] - nu[:-2, 1:-1] * s00[:-2, 1:-1])
+        / (2.0 * dx)
+        + (nu[1:-1, 2:] * s01[1:-1, 2:] - nu[1:-1, :-2] * s01[1:-1, :-2])
+        / (2.0 * dy)
     )
     v_tnd[2:-2, 2:-2] = 2.0 * (
-        (nu[2:, 1:-1] * s01[2:, 1:-1] - nu[:-2, 1:-1] * s01[:-2, 1:-1]) / (2.0 * dx)
-        + (nu[1:-1, 2:] * s11[1:-1, 2:] - nu[1:-1, :-2] * s11[1:-1, :-2]) / (2.0 * dy)
+        (nu[2:, 1:-1] * s01[2:, 1:-1] - nu[:-2, 1:-1] * s01[:-2, 1:-1])
+        / (2.0 * dx)
+        + (nu[1:-1, 2:] * s11[1:-1, 2:] - nu[1:-1, :-2] * s11[1:-1, :-2])
+        / (2.0 * dy)
     )
 
     return u_tnd, v_tnd
 
 
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
-@given(hyp_st.data())
-def test_smagorinsky2d(data):
+@hyp_settings
+@given(data=hyp_st.data())
+@pytest.mark.parametrize("backend", conf_backend)
+@pytest.mark.parametrize("dtype", conf_dtype)
+def test_smagorinsky2d(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
-    if gt_powered:
-        gt.storage.prepare_numpy()
-
-    nb = data.draw(hyp_st.integers(min_value=2, max_value=max(2, conf_nb)), label="nb")
+    nb = data.draw(
+        hyp_st.integers(min_value=2, max_value=max(2, conf_nb)), label="nb"
+    )
     domain = data.draw(
         st_domain(
             xaxis_length=(1, 30),
             yaxis_length=(1, 30),
             zaxis_length=(1, 20),
             nb=nb,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
         ),
@@ -117,7 +109,6 @@ def test_smagorinsky2d(data):
             storage_shape,
             -1e3,
             1e3,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -129,7 +120,6 @@ def test_smagorinsky2d(data):
             storage_shape,
             -1e3,
             1e3,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -162,7 +152,6 @@ def test_smagorinsky2d(data):
     smag = Smagorinsky2d(
         domain,
         smagorinsky_constant=cs,
-        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -175,7 +164,11 @@ def test_smagorinsky2d(data):
     compare_dataarrays(
         tendencies["x_velocity"][nb : nx - nb, nb : ny - nb, :nz],
         get_dataarray_3d(
-            u_tnd, grid, "m s^-2", grid_shape=(nx, ny, nz), set_coordinates=False
+            u_tnd,
+            grid,
+            "m s^-2",
+            grid_shape=(nx, ny, nz),
+            set_coordinates=False,
         )[nb : nx - nb, nb : ny - nb, :nz],
         compare_coordinate_values=False,
     )
@@ -183,7 +176,11 @@ def test_smagorinsky2d(data):
     compare_dataarrays(
         tendencies["y_velocity"][nb : nx - nb, nb : ny - nb, :nz],
         get_dataarray_3d(
-            v_tnd, grid, "m s^-2", grid_shape=(nx, ny, nz), set_coordinates=False
+            v_tnd,
+            grid,
+            "m s^-2",
+            grid_shape=(nx, ny, nz),
+            set_coordinates=False,
         )[nb : nx - nb, nb : ny - nb, :nz],
         compare_coordinate_values=False,
     )

@@ -25,11 +25,10 @@ from typing import Optional, TYPE_CHECKING, Tuple
 
 from gt4py import gtscript
 
-# from gt4py.__gtscript__ import computation, interval, PARALLEL
-
 from tasmania.python.framework.base_components import TendencyComponent
 from tasmania.python.utils import taz_types
 from tasmania.python.utils.storage_utils import zeros
+from tasmania.python.utils.utils import get_gt_backend, is_gt
 
 if TYPE_CHECKING:
     from tasmania.python.domain.domain import Domain
@@ -52,12 +51,11 @@ class Smagorinsky2d(TendencyComponent):
         self,
         domain: "Domain",
         smagorinsky_constant: float = 0.18,
-        gt_powered: bool = True,
         *,
         backend: str = "numpy",
         backend_opts: Optional[taz_types.options_dict_t] = None,
-        build_info: Optional[taz_types.options_dict_t] = None,
         dtype: taz_types.dtype_t = np.float64,
+        build_info: Optional[taz_types.options_dict_t] = None,
         exec_info: Optional[taz_types.mutable_options_dict_t] = None,
         default_origin: Optional[taz_types.triplet_int_t] = None,
         rebuild: bool = False,
@@ -72,29 +70,31 @@ class Smagorinsky2d(TendencyComponent):
             The :class:`~tasmania.Domain` holding the grid underneath.
         smagorinsky_constant : `float`, optional
             The Smagorinsky constant. Defaults to 0.18.
-        gt_powered : `bool`, optional
-            TODO
         backend : `str`, optional
-            The GT4Py backend.
+            The backend.
         backend_opts : `dict`, optional
             Dictionary of backend-specific options.
-        build_info : `dict`, optional
-            Dictionary of building options.
         dtype : `data-type`, optional
             Data type of the storages.
+        build_info : `dict`, optional
+            Dictionary of building options.
         exec_info : `dict`, optional
-            Dictionary which will store statistics and diagnostics gathered at run time.
+            Dictionary which will store statistics and diagnostics gathered at
+            run time.
         default_origin : `tuple[int]`, optional
             Storage default origin.
         rebuild : `bool`, optional
-            ``True`` to trigger the stencils compilation at any class instantiation,
-            ``False`` to rely on the caching mechanism implemented by GT4Py.
+            ``True`` to trigger the stencils compilation at any class
+            instantiation, ``False`` to rely on the caching mechanism
+            implemented by the backend.
         storage_shape : `tuple[int]`, optional
             Shape of the storages.
         managed_memory : `bool`, optional
-            ``True`` to allocate the storages as managed memory, ``False`` otherwise.
+            ``True`` to allocate the storages as managed memory,
+            ``False`` otherwise.
         **kwargs :
-            Additional keyword arguments to be directly forwarded to the parent class.
+            Additional keyword arguments to be directly forwarded to the parent
+            class.
         """
         super().__init__(domain, "numerical", **kwargs)
 
@@ -108,8 +108,12 @@ class Smagorinsky2d(TendencyComponent):
         self._nb = max(2, self.horizontal_boundary.nb)
 
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
-        storage_shape = (nx, ny, nz) if storage_shape is None else storage_shape
-        error_msg = "storage_shape must be larger or equal than {}.".format((nx, ny, nz))
+        storage_shape = (
+            (nx, ny, nz) if storage_shape is None else storage_shape
+        )
+        error_msg = "storage_shape must be larger or equal than {}.".format(
+            (nx, ny, nz)
+        )
         assert storage_shape[0] >= nx, error_msg
         assert storage_shape[1] >= ny, error_msg
         assert storage_shape[2] >= nz, error_msg
@@ -117,7 +121,6 @@ class Smagorinsky2d(TendencyComponent):
 
         self._out_u_tnd = zeros(
             storage_shape,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -125,17 +128,16 @@ class Smagorinsky2d(TendencyComponent):
         )
         self._out_v_tnd = zeros(
             storage_shape,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
             managed_memory=managed_memory,
         )
 
-        if gt_powered:
+        if is_gt(backend):
             self._stencil = gtscript.stencil(
                 definition=self._stencil_gt_defs,
-                backend=backend,
+                backend=get_gt_backend(backend),
                 build_info=build_info,
                 rebuild=rebuild,
                 dtypes={"dtype": dtype},
@@ -183,9 +185,13 @@ class Smagorinsky2d(TendencyComponent):
             origin=(nb, nb, 0),
             domain=(nx - 2 * nb, ny - 2 * nb, nz),
             exec_info=self._exec_info,
+            validate_args=True,
         )
 
-        tendencies = {"x_velocity": self._out_u_tnd, "y_velocity": self._out_v_tnd}
+        tendencies = {
+            "x_velocity": self._out_u_tnd,
+            "y_velocity": self._out_v_tnd,
+        }
         diagnostics = {}
 
         return tendencies, diagnostics
@@ -209,7 +215,8 @@ class Smagorinsky2d(TendencyComponent):
         k = slice(origin[2], origin[2] + domain[2])
 
         s00 = (
-            in_u[ib : ie + 2, jb - 1 : je + 1, k] - in_u[ib - 2 : ie, jb - 1 : je + 1, k]
+            in_u[ib : ie + 2, jb - 1 : je + 1, k]
+            - in_u[ib - 2 : ie, jb - 1 : je + 1, k]
         ) / (2.0 * dx)
         s01 = 0.5 * (
             (
@@ -224,16 +231,24 @@ class Smagorinsky2d(TendencyComponent):
             / (2.0 * dx)
         )
         s11 = (
-            in_v[ib - 1 : ie + 1, jb : je + 2, k] - in_v[ib - 1 : ie + 1, jb - 2 : je, k]
+            in_v[ib - 1 : ie + 1, jb : je + 2, k]
+            - in_v[ib - 1 : ie + 1, jb - 2 : je, k]
         ) / (2.0 * dy)
-        nu = cs ** 2 * dx * dy * (2.0 * (s00 ** 2 + 2.0 * s01 ** 2 + s11 ** 2)) ** 0.5
+        nu = (
+            cs ** 2
+            * dx
+            * dy
+            * (2.0 * (s00 ** 2 + 2.0 * s01 ** 2 + s11 ** 2)) ** 0.5
+        )
         out_u_tnd[ib:ie, jb:je, k] = 2.0 * (
-            (nu[2:, 1:-1] * s00[2:, 1:-1] - nu[:-2, 1:-1] * s00[:-2, 1:-1]) / (2.0 * dx)
+            (nu[2:, 1:-1] * s00[2:, 1:-1] - nu[:-2, 1:-1] * s00[:-2, 1:-1])
+            / (2.0 * dx)
             + (nu[1:-1, 2:] * s01[1:-1, 2:] - nu[1:-1, :-2] * s01[1:-1, :-2])
             / (2.0 * dy)
         )
         out_v_tnd[ib:ie, jb:je, k] = 2.0 * (
-            (nu[2:, 1:-1] * s01[2:, 1:-1] - nu[:-2, 1:-1] * s01[:-2, 1:-1]) / (2.0 * dx)
+            (nu[2:, 1:-1] * s01[2:, 1:-1] - nu[:-2, 1:-1] * s01[:-2, 1:-1])
+            / (2.0 * dx)
             + (nu[1:-1, 2:] * s11[1:-1, 2:] - nu[1:-1, :-2] * s11[1:-1, :-2])
             / (2.0 * dy)
         )
@@ -257,7 +272,10 @@ class Smagorinsky2d(TendencyComponent):
             )
             s11 = (in_v[0, +1, 0] - in_v[0, -1, 0]) / (2.0 * dy)
             nu = (
-                cs ** 2 * dx * dy * (2.0 * (s00 ** 2 + 2.0 * s01 ** 2 + s11 ** 2)) ** 0.5
+                cs ** 2
+                * dx
+                * dy
+                * (2.0 * (s00 ** 2 + 2.0 * s01 ** 2 + s11 ** 2)) ** 0.5
             )
             out_u_tnd = 2.0 * (
                 (nu[+1, 0, 0] * s00[+1, 0, 0] - nu[-1, 0, 0] * s00[-1, 0, 0])
