@@ -28,10 +28,11 @@ try:
 except (ImportError, ModuleNotFoundError):
     cp = np
 
-import gt4py as gt
-
 from tasmania.python.domain.horizontal_boundary import HorizontalBoundary
-from tasmania.python.domain.horizontal_boundaries.utils import repeat_axis, shrink_axis
+from tasmania.python.domain.subclasses.horizontal_boundaries.utils import (
+    repeat_axis,
+    shrink_axis,
+)
 from tasmania.python.utils.framework_utils import register
 from tasmania.python.utils.storage_utils import get_asarray_function
 
@@ -43,7 +44,7 @@ def placeholder(time, grid, slice_x, slice_y, field_name, field_units):
 class Dirichlet(HorizontalBoundary):
     """ Dirichlet boundary conditions. """
 
-    def __init__(self, nx, ny, nb, gt_powered, backend, dtype, core=placeholder):
+    def __init__(self, nx, ny, nb, backend, dtype, core=placeholder):
         """
         Parameters
         ----------
@@ -55,10 +56,8 @@ class Dirichlet(HorizontalBoundary):
             along the second dimension.
         nb : int
             Number of boundary layers.
-        gt_powered : bool
-            ``True`` to harness GT4Py, ``False`` for a vanilla NumPy implementation.
         backend : str
-            The GT4Py backend.
+            The backend.
         dtype : data-type
             The data type of the storages.
         core : `callable`, optional
@@ -85,7 +84,7 @@ class Dirichlet(HorizontalBoundary):
         assert "field_name" in signature.parameters, error_msg
         assert "field_units" in signature.parameters, error_msg
 
-        super().__init__(nx, ny, nb, gt_powered, backend=backend, dtype=dtype)
+        super().__init__(nx, ny, nb, backend=backend, dtype=dtype)
 
         self._kwargs["core"] = core
 
@@ -123,25 +122,43 @@ class Dirichlet(HorizontalBoundary):
         field_name = field_name or ""
         mi = (
             self.nx + 1
-            if "at_u_locations" in field_name or "at_uv_locations" in field_name
+            if "at_u_locations" in field_name
+            or "at_uv_locations" in field_name
             else self.nx
         )
         mj = (
             self.ny + 1
-            if "at_v_locations" in field_name or "at_uv_locations" in field_name
+            if "at_v_locations" in field_name
+            or "at_uv_locations" in field_name
             else self.ny
         )
 
-        asarray = get_asarray_function(self._gt_powered, self._backend or "numpy")
+        asarray = get_asarray_function(self._backend or "numpy")
 
         field[:nb, :mj] = asarray(
-            core(time, grid, slice(0, nb), slice(0, mj), field_name, field_units)
+            core(
+                time, grid, slice(0, nb), slice(0, mj), field_name, field_units
+            )
         )
         field[mi - nb : mi, :mj] = asarray(
-            core(time, grid, slice(mi - nb, mi), slice(0, mj), field_name, field_units)
+            core(
+                time,
+                grid,
+                slice(mi - nb, mi),
+                slice(0, mj),
+                field_name,
+                field_units,
+            )
         )
         field[nb : mi - nb, :nb] = asarray(
-            core(time, grid, slice(nb, mi - nb), slice(0, nb), field_name, field_units)
+            core(
+                time,
+                grid,
+                slice(nb, mi - nb),
+                slice(0, nb),
+                field_name,
+                field_units,
+            )
         )
         field[nb : mi - nb, mj - nb : mj] = asarray(
             core(
@@ -162,22 +179,33 @@ class Dirichlet(HorizontalBoundary):
         field_name = field_name or ""
         mi = (
             self.nx + 1
-            if "at_u_locations" in field_name or "at_uv_locations" in field_name
+            if "at_u_locations" in field_name
+            or "at_uv_locations" in field_name
             else self.nx
         )
         mj = (
             self.ny + 1
-            if "at_v_locations" in field_name or "at_uv_locations" in field_name
+            if "at_v_locations" in field_name
+            or "at_uv_locations" in field_name
             else self.ny
         )
 
-        asarray = get_asarray_function(self._gt_powered, self._backend or "numpy")
+        asarray = get_asarray_function(self._backend or "numpy")
 
         field[:1, :mj] = asarray(
-            core(time, grid, slice(0, 1), slice(0, mj), field_name, field_units)
+            core(
+                time, grid, slice(0, 1), slice(0, mj), field_name, field_units
+            )
         )
         field[mi - 1 : mi, :mj] = asarray(
-            core(time, grid, slice(mi - 1, mi), slice(0, mj), field_name, field_units)
+            core(
+                time,
+                grid,
+                slice(mi - 1, mi),
+                slice(0, mj),
+                field_name,
+                field_units,
+            )
         )
 
     def set_outermost_layers_y(
@@ -188,29 +216,40 @@ class Dirichlet(HorizontalBoundary):
         field_name = field_name or ""
         mi = (
             self.nx + 1
-            if "at_u_locations" in field_name or "at_uv_locations" in field_name
+            if "at_u_locations" in field_name
+            or "at_uv_locations" in field_name
             else self.nx
         )
         mj = (
             self.ny + 1
-            if "at_v_locations" in field_name or "at_uv_locations" in field_name
+            if "at_v_locations" in field_name
+            or "at_uv_locations" in field_name
             else self.ny
         )
 
-        asarray = get_asarray_function(self._gt_powered, self._backend or "numpy")
+        asarray = get_asarray_function(self._backend or "numpy")
 
         field[:mi, :1] = asarray(
-            core(time, grid, slice(0, mi), slice(0, 1), field_name, field_units)
+            core(
+                time, grid, slice(0, mi), slice(0, 1), field_name, field_units
+            )
         )
         field[:mi, mj - 1 : mj] = asarray(
-            core(time, grid, slice(0, mi), slice(mj - 1, mj), field_name, field_units)
+            core(
+                time,
+                grid,
+                slice(0, mi),
+                slice(mj - 1, mj),
+                field_name,
+                field_units,
+            )
         )
 
 
 class Dirichlet1DX(HorizontalBoundary):
     """ Dirichlet boundary conditions for a physical grid with ``ny=1``. """
 
-    def __init__(self, nx, ny, nb, gt_powered, backend, dtype, core=placeholder):
+    def __init__(self, nx, ny, nb, backend, dtype, core=placeholder):
         """
         Parameters
         ----------
@@ -222,10 +261,8 @@ class Dirichlet1DX(HorizontalBoundary):
             along the second dimension. It must be 1.
         nb : int
             Number of boundary layers.
-        gt_powered : bool
-            ``True`` to harness GT4Py, ``False`` for a vanilla NumPy implementation.
         backend : str
-            The GT4Py backend.
+            The backend.
         dtype : data-type
             The data type of the storages.
         core : `callable`, optional
@@ -234,7 +271,9 @@ class Dirichlet1DX(HorizontalBoundary):
         assert (
             nx > 1
         ), "Number of grid points along first dimension should be larger than 1."
-        assert ny == 1, "Number of grid points along second dimension must be 1."
+        assert (
+            ny == 1
+        ), "Number of grid points along second dimension must be 1."
         assert nb <= nx / 2, "Number of boundary layers cannot exceed nx/2."
 
         signature = inspect.signature(core)
@@ -249,7 +288,7 @@ class Dirichlet1DX(HorizontalBoundary):
         assert "field_name" in signature.parameters, error_msg
         assert "field_units" in signature.parameters, error_msg
 
-        super().__init__(nx, ny, nb, gt_powered, backend=backend, dtype=dtype)
+        super().__init__(nx, ny, nb, backend=backend, dtype=dtype)
 
         self._kwargs["core"] = core
 
@@ -297,19 +336,28 @@ class Dirichlet1DX(HorizontalBoundary):
         field_name = field_name or ""
         mi = (
             self.nx + 1
-            if "at_u_locations" in field_name or "at_uv_locations" in field_name
+            if "at_u_locations" in field_name
+            or "at_uv_locations" in field_name
             else self.nx
         )
         mj = (
             self.nj + 1
-            if "at_v_locations" in field_name or "at_uv_locations" in field_name
+            if "at_v_locations" in field_name
+            or "at_uv_locations" in field_name
             else self.nj
         )
 
-        asarray = get_asarray_function(self._gt_powered, self._backend or "numpy")
+        asarray = get_asarray_function(self._backend or "numpy")
 
         field[:nb, nb : mj - nb] = asarray(
-            core(time, grid, slice(0, nb), slice(nb, mj - nb), field_name, field_units)
+            core(
+                time,
+                grid,
+                slice(0, nb),
+                slice(nb, mj - nb),
+                field_name,
+                field_units,
+            )
         )
         field[mi - nb : mi, nb : mj - nb] = asarray(
             core(
@@ -333,22 +381,33 @@ class Dirichlet1DX(HorizontalBoundary):
         field_name = field_name or ""
         mi = (
             self.nx + 1
-            if "at_u_locations" in field_name or "at_uv_locations" in field_name
+            if "at_u_locations" in field_name
+            or "at_uv_locations" in field_name
             else self.nx
         )
         mj = (
             self.nj + 1
-            if "at_v_locations" in field_name or "at_uv_locations" in field_name
+            if "at_v_locations" in field_name
+            or "at_uv_locations" in field_name
             else self.nj
         )
 
-        asarray = get_asarray_function(self._gt_powered, self._backend or "numpy")
+        asarray = get_asarray_function(self._backend or "numpy")
 
         field[:1, :mj] = asarray(
-            core(time, grid, slice(0, 1), slice(0, mj), field_name, field_units)
+            core(
+                time, grid, slice(0, 1), slice(0, mj), field_name, field_units
+            )
         )
         field[mi - 1 : mi, :mj] = asarray(
-            core(time, grid, slice(mi - 1, mi), slice(0, mj), field_name, field_units)
+            core(
+                time,
+                grid,
+                slice(mi - 1, mi),
+                slice(0, mj),
+                field_name,
+                field_units,
+            )
         )
 
     def set_outermost_layers_y(
@@ -359,29 +418,40 @@ class Dirichlet1DX(HorizontalBoundary):
         field_name = field_name or ""
         mi = (
             self.nx + 1
-            if "at_u_locations" in field_name or "at_uv_locations" in field_name
+            if "at_u_locations" in field_name
+            or "at_uv_locations" in field_name
             else self.nx
         )
         mj = (
             self.nj + 1
-            if "at_v_locations" in field_name or "at_uv_locations" in field_name
+            if "at_v_locations" in field_name
+            or "at_uv_locations" in field_name
             else self.nj
         )
 
-        asarray = get_asarray_function(self._gt_powered, self._backend or "numpy")
+        asarray = get_asarray_function(self._backend or "numpy")
 
         field[:mi, :1] = asarray(
-            core(time, grid, slice(0, mi), slice(0, 1), field_name, field_units)
+            core(
+                time, grid, slice(0, mi), slice(0, 1), field_name, field_units
+            )
         )
         field[:mi, mj - 1 : mj] = asarray(
-            core(time, grid, slice(0, mi), slice(mj - 1, mj), field_name, field_units)
+            core(
+                time,
+                grid,
+                slice(0, mi),
+                slice(mj - 1, mj),
+                field_name,
+                field_units,
+            )
         )
 
 
 class Dirichlet1DY(HorizontalBoundary):
     """ Dirichlet boundary conditions for a physical grid with ``nx=1``. """
 
-    def __init__(self, nx, ny, nb, gt_powered, backend, dtype, core=placeholder):
+    def __init__(self, nx, ny, nb, backend, dtype, core=placeholder):
         """
         Parameters
         ----------
@@ -393,16 +463,16 @@ class Dirichlet1DY(HorizontalBoundary):
             along the second dimension.
         nb : int
             Number of boundary layers.
-        gt_powered : bool
-            ``True`` to harness GT4Py, ``False`` for a vanilla NumPy implementation.
         backend : str
-            The GT4Py backend.
+            The backend.
         dtype : data-type
             The data type of the storages.
         core : `callable`, optional
             Callable object providing the boundary layers values.
         """
-        assert nx == 1, "Number of grid points along first dimension must be 1."
+        assert (
+            nx == 1
+        ), "Number of grid points along first dimension must be 1."
         assert (
             ny > 1
         ), "Number of grid points along second dimension should be larger than 1."
@@ -420,7 +490,7 @@ class Dirichlet1DY(HorizontalBoundary):
         assert "field_name" in signature.parameters, error_msg
         assert "field_units" in signature.parameters, error_msg
 
-        super().__init__(nx, ny, nb, gt_powered, backend=backend, dtype=dtype)
+        super().__init__(nx, ny, nb, backend=backend, dtype=dtype)
 
         self._kwargs["core"] = core
 
@@ -468,19 +538,28 @@ class Dirichlet1DY(HorizontalBoundary):
         field_name = field_name or ""
         mi = (
             self.ni + 1
-            if "at_u_locations" in field_name or "at_uv_locations" in field_name
+            if "at_u_locations" in field_name
+            or "at_uv_locations" in field_name
             else self.ni
         )
         mj = (
             self.ny + 1
-            if "at_v_locations" in field_name or "at_uv_locations" in field_name
+            if "at_v_locations" in field_name
+            or "at_uv_locations" in field_name
             else self.ny
         )
 
-        asarray = get_asarray_function(self._gt_powered, self._backend or "numpy")
+        asarray = get_asarray_function(self._backend or "numpy")
 
         field[nb : mi - nb, :nb] = asarray(
-            core(time, grid, slice(nb, mi - nb), slice(0, nb), field_name, field_units)
+            core(
+                time,
+                grid,
+                slice(nb, mi - nb),
+                slice(0, nb),
+                field_name,
+                field_units,
+            )
         )
         field[nb : mi - nb, mj - nb : mj] = asarray(
             core(
@@ -504,22 +583,33 @@ class Dirichlet1DY(HorizontalBoundary):
         field_name = field_name or ""
         mi = (
             self.ni + 1
-            if "at_u_locations" in field_name or "at_uv_locations" in field_name
+            if "at_u_locations" in field_name
+            or "at_uv_locations" in field_name
             else self.ni
         )
         mj = (
             self.ny + 1
-            if "at_v_locations" in field_name or "at_uv_locations" in field_name
+            if "at_v_locations" in field_name
+            or "at_uv_locations" in field_name
             else self.ny
         )
 
-        asarray = get_asarray_function(self._gt_powered, self._backend or "numpy")
+        asarray = get_asarray_function(self._backend or "numpy")
 
         field[:1, :mj] = asarray(
-            core(time, grid, slice(0, 1), slice(0, mj), field_name, field_units)
+            core(
+                time, grid, slice(0, 1), slice(0, mj), field_name, field_units
+            )
         )
         field[mi - 1 : mi, :mj] = asarray(
-            core(time, grid, slice(mi - 1, mi), slice(0, mj), field_name, field_units)
+            core(
+                time,
+                grid,
+                slice(mi - 1, mi),
+                slice(0, mj),
+                field_name,
+                field_units,
+            )
         )
 
     def set_outermost_layers_y(
@@ -530,22 +620,33 @@ class Dirichlet1DY(HorizontalBoundary):
         field_name = field_name or ""
         mi = (
             self.ni + 1
-            if "at_u_locations" in field_name or "at_uv_locations" in field_name
+            if "at_u_locations" in field_name
+            or "at_uv_locations" in field_name
             else self.ni
         )
         mj = (
             self.ny + 1
-            if "at_v_locations" in field_name or "at_uv_locations" in field_name
+            if "at_v_locations" in field_name
+            or "at_uv_locations" in field_name
             else self.ny
         )
 
-        asarray = get_asarray_function(self._gt_powered, self._backend or "numpy")
+        asarray = get_asarray_function(self._backend or "numpy")
 
         field[:mi, :1] = asarray(
-            core(time, grid, slice(0, mi), slice(0, 1), field_name, field_units)
+            core(
+                time, grid, slice(0, mi), slice(0, 1), field_name, field_units
+            )
         )
         field[:mi, mj - 1 : mj] = asarray(
-            core(time, grid, slice(0, mi), slice(mj - 1, mj), field_name, field_units)
+            core(
+                time,
+                grid,
+                slice(0, mi),
+                slice(mj - 1, mj),
+                field_name,
+                field_units,
+            )
         )
 
 
@@ -554,11 +655,10 @@ def dispatch(
     nx,
     ny,
     nb,
-    gt_powered,
     backend="numpy",
     backend_opts=None,
-    build_info=None,
     dtype=np.float64,
+    build_info=None,
     exec_info=None,
     default_origin=None,
     rebuild=False,
@@ -568,8 +668,8 @@ def dispatch(
 ):
     """ Dispatch based on the grid size. """
     if nx == 1:
-        return Dirichlet1DY(1, ny, nb, gt_powered, backend, dtype, core)
+        return Dirichlet1DY(1, ny, nb, backend, dtype, core)
     elif ny == 1:
-        return Dirichlet1DX(nx, 1, nb, gt_powered, backend, dtype, core)
+        return Dirichlet1DX(nx, 1, nb, backend, dtype, core)
     else:
-        return Dirichlet(nx, ny, nb, gt_powered, backend, dtype, core)
+        return Dirichlet(nx, ny, nb, backend, dtype, core)

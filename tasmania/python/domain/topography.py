@@ -158,7 +158,7 @@ class PhysicalTopography(abc.ABC, Topography):
         )
 
         # store keyword arguments
-        self._kwargs = kwargs
+        self._kwargs = {"smooth": smooth, **kwargs}
 
         super().__init__(topo_steady, time=time)
 

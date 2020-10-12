@@ -28,14 +28,17 @@ except (ImportError, ModuleNotFoundError):
     cp = np
 
 from tasmania.python.domain.horizontal_boundary import HorizontalBoundary
-from tasmania.python.domain.horizontal_boundaries.utils import repeat_axis, shrink_axis
+from tasmania.python.domain.subclasses.horizontal_boundaries.utils import (
+    repeat_axis,
+    shrink_axis,
+)
 from tasmania.python.utils.framework_utils import register
 
 
 class Identity(HorizontalBoundary):
     """ *Identity* boundary conditions. """
 
-    def __init__(self, nx, ny, nb, gt_powered, backend, dtype):
+    def __init__(self, nx, ny, nb, backend, dtype):
         assert (
             nx > 1
         ), "Number of grid points along first dimension should be larger than 1."
@@ -45,7 +48,7 @@ class Identity(HorizontalBoundary):
         assert nb <= nx / 2, "Number of boundary layers cannot exceed ny/2."
         assert nb <= ny / 2, "Number of boundary layers cannot exceed ny/2."
 
-        super().__init__(nx, ny, nb, gt_powered, backend=backend, dtype=dtype)
+        super().__init__(nx, ny, nb, backend=backend, dtype=dtype)
 
     @property
     def ni(self):
@@ -92,14 +95,16 @@ class Identity(HorizontalBoundary):
 class Identity1DX(HorizontalBoundary):
     """ *Identity* boundary conditions for a physical grid with ``ny=1``. """
 
-    def __init__(self, nx, ny, nb, gt_powered, backend, dtype):
+    def __init__(self, nx, ny, nb, backend, dtype):
         assert (
             nx > 1
         ), "Number of grid points along first dimension should be larger than 1."
-        assert ny == 1, "Number of grid points along second dimension must be 1."
+        assert (
+            ny == 1
+        ), "Number of grid points along second dimension must be 1."
         assert nb <= nx / 2, "Number of boundary layers cannot exceed nx/2."
 
-        super().__init__(nx, ny, nb, gt_powered, backend=backend, dtype=dtype)
+        super().__init__(nx, ny, nb, backend=backend, dtype=dtype)
 
     @property
     def ni(self):
@@ -143,7 +148,10 @@ class Identity1DX(HorizontalBoundary):
         ny, nb = self.ny, self.nb
         field_name = field_name or ""
         my = (
-            2 if "at_v_locations" in field_name or "at_uv_locations" in field_name else 1
+            2
+            if "at_v_locations" in field_name
+            or "at_uv_locations" in field_name
+            else 1
         )
         field[:, :nb] = field[:, nb : nb + 1]
         field[:, my + nb : my + 2 * nb] = (
@@ -164,14 +172,16 @@ class Identity1DX(HorizontalBoundary):
 class Identity1DY(HorizontalBoundary):
     """ *Identity* boundary conditions for a physical grid with ``nx=1``. """
 
-    def __init__(self, nx, ny, nb, gt_powered, backend, dtype):
-        assert nx == 1, "Number of grid points along first dimension must be 1."
+    def __init__(self, nx, ny, nb, backend, dtype):
+        assert (
+            nx == 1
+        ), "Number of grid points along first dimension must be 1."
         assert (
             ny > 1
         ), "Number of grid points along second dimension should be larger than 1."
         assert nb <= ny / 2, "Number of boundary layers cannot exceed ny/2."
 
-        super().__init__(nx, ny, nb, gt_powered, backend=backend, dtype=dtype)
+        super().__init__(nx, ny, nb, backend=backend, dtype=dtype)
 
     @property
     def ni(self):
@@ -215,7 +225,10 @@ class Identity1DY(HorizontalBoundary):
         nx, nb = self.nx, self.nb
         field_name = field_name or ""
         mx = (
-            2 if "at_u_locations" in field_name or "at_uv_locations" in field_name else 1
+            2
+            if "at_u_locations" in field_name
+            or "at_uv_locations" in field_name
+            else 1
         )
         field[:nb, :] = field[nb : nb + 1, :]
         field[mx + nb : mx + 2 * nb, :] = (
@@ -238,11 +251,10 @@ def dispatch(
     nx,
     ny,
     nb,
-    gt_powered,
     backend="numpy",
     backend_opts=None,
-    build_info=None,
     dtype=np.float64,
+    build_info=None,
     exec_info=None,
     default_origin=None,
     rebuild=False,
@@ -251,8 +263,8 @@ def dispatch(
 ):
     """ Dispatch based on the grid size. """
     if nx == 1:
-        return Identity1DY(1, ny, nb, gt_powered, backend, dtype)
+        return Identity1DY(1, ny, nb, backend, dtype)
     elif ny == 1:
-        return Identity1DX(nx, 1, nb, gt_powered, backend, dtype)
+        return Identity1DX(nx, 1, nb, backend, dtype)
     else:
-        return Identity(nx, ny, nb, gt_powered, backend, dtype)
+        return Identity(nx, ny, nb, backend, dtype)

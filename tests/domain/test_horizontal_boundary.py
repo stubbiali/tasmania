@@ -22,35 +22,32 @@
 #
 from hypothesis import (
     given,
-    HealthCheck,
-    settings,
     strategies as hyp_st,
-    reproduce_failure,
 )
 import pytest
 
 import gt4py as gt
 
 from tasmania.python.domain.grid import NumericalGrid
-from tasmania.python.domain.horizontal_boundaries.dirichlet import (
+from tasmania.python.domain.subclasses.horizontal_boundaries.dirichlet import (
     Dirichlet,
     Dirichlet1DX,
     Dirichlet1DY,
     dispatch as dispatch_dirichlet,
 )
-from tasmania.python.domain.horizontal_boundaries.identity import (
+from tasmania.python.domain.subclasses.horizontal_boundaries.identity import (
     Identity,
     Identity1DX,
     Identity1DY,
     dispatch as dispatch_identity,
 )
-from tasmania.python.domain.horizontal_boundaries.periodic import (
+from tasmania.python.domain.subclasses.horizontal_boundaries.periodic import (
     Periodic,
     Periodic1DX,
     Periodic1DY,
     dispatch as dispatch_periodic,
 )
-from tasmania.python.domain.horizontal_boundaries.relaxed import (
+from tasmania.python.domain.subclasses.horizontal_boundaries.relaxed import (
     Relaxed,
     Relaxed1DX,
     Relaxed1DY,
@@ -61,15 +58,15 @@ from tasmania.python.utils.storage_utils import (
     deepcopy_array_dict,
     deepcopy_dataarray_dict,
 )
+from tasmania.python.utils.utils import is_gt
 
-from tests.conf import backend as conf_backend, datatype as conf_dtype
+from tests.conf import backend as conf_backend, dtype as conf_dtype
 from tests.strategies import (
     st_horizontal_boundary,
-    st_one_of,
     st_physical_grid,
     st_state,
 )
-from tests.utilities import compare_arrays, compare_dataarrays
+from tests.utilities import compare_arrays, compare_dataarrays, hyp_settings
 
 
 def test_registry():
@@ -124,24 +121,15 @@ def test_factory():
     assert isinstance(obj, Relaxed1DY)
 
 
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
-@given(hyp_st.data())
-def test_enforce_raw(data):
+@hyp_settings
+@given(data=hyp_st.data())
+@pytest.mark.parametrize("backend", conf_backend)
+@pytest.mark.parametrize("dtype", conf_dtype)
+def test_enforce_raw(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
-
-    if gt_powered:
+    if is_gt(backend):
         gt.storage.prepare_numpy()
 
     pgrid = data.draw(st_physical_grid(dtype=dtype), label="grid")
@@ -150,7 +138,6 @@ def test_enforce_raw(data):
             pgrid.nx,
             pgrid.ny,
             nz=pgrid.nz,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
         ),
@@ -158,11 +145,11 @@ def test_enforce_raw(data):
     )
     ngrid = NumericalGrid(pgrid, hb)
 
-    state = data.draw(st_state(ngrid, gt_powered=gt_powered, backend=backend))
+    state = data.draw(st_state(ngrid, backend=backend))
 
     field_properties = {}
     for key in state:
-        if key is not "time" and data.draw(hyp_st.booleans()):
+        if key != "time" and data.draw(hyp_st.booleans()):
             field_properties[key] = {"units": state[key].attrs["units"]}
 
     # ========================================
@@ -171,13 +158,15 @@ def test_enforce_raw(data):
     hb.reference_state = state
 
     raw_state = {"time": state["time"]}
-    raw_state.update({key: state[key].data for key in state if key is not "time"})
+    raw_state.update(
+        {key: state[key].data for key in state if key != "time"}
+    )
     raw_state_dc = deepcopy_array_dict(raw_state)
 
     hb.enforce_raw(raw_state, field_properties, ngrid)
 
     for key in state:
-        if key is not "time":
+        if key != "time":
             if key in field_properties:
                 hb.enforce_field(
                     raw_state_dc[key],
@@ -189,24 +178,15 @@ def test_enforce_raw(data):
             compare_arrays(raw_state[key], raw_state_dc[key])
 
 
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
-@given(hyp_st.data())
-def test_enforce(data):
+@hyp_settings
+@given(data=hyp_st.data())
+@pytest.mark.parametrize("backend", conf_backend)
+@pytest.mark.parametrize("dtype", conf_dtype)
+def test_enforce(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
-
-    if gt_powered:
+    if is_gt(backend):
         gt.storage.prepare_numpy()
 
     pgrid = data.draw(st_physical_grid(dtype=dtype), label="grid")
@@ -215,7 +195,6 @@ def test_enforce(data):
             pgrid.nx,
             pgrid.ny,
             nz=pgrid.nz,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
         ),
@@ -223,11 +202,11 @@ def test_enforce(data):
     )
     ngrid = NumericalGrid(pgrid, hb)
 
-    state = data.draw(st_state(ngrid, gt_powered=gt_powered, backend=backend))
+    state = data.draw(st_state(ngrid, backend=backend))
 
     field_names = []
     for key in state:
-        if key is not "time" and data.draw(hyp_st.booleans()):
+        if key != "time" and data.draw(hyp_st.booleans()):
             field_names.append(key)
 
     # ========================================
@@ -240,7 +219,7 @@ def test_enforce(data):
     hb.enforce(state, field_names, ngrid)
 
     for key in state:
-        if key is not "time":
+        if key != "time":
             if key in field_names:
                 hb.enforce_field(
                     state_dc[key].values,
@@ -253,5 +232,4 @@ def test_enforce(data):
 
 
 if __name__ == "__main__":
-    # pytest.main([__file__])
-    test_enforce_raw()
+    pytest.main([__file__])

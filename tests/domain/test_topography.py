@@ -23,18 +23,15 @@
 from copy import deepcopy
 from hypothesis import (
     given,
-    HealthCheck,
-    reproduce_failure,
-    settings,
     strategies as hyp_st,
 )
 from pandas import Timedelta
 import pytest
 
 from tasmania.python.domain.horizontal_grid import NumericalHorizontalGrid
-from tasmania.python.domain.topographies.flat import Flat
-from tasmania.python.domain.topographies.gaussian import Gaussian
-from tasmania.python.domain.topographies.schaer import Schaer
+from tasmania.python.domain.subclasses.topographies import Flat
+from tasmania.python.domain.subclasses.topographies.gaussian import Gaussian
+from tasmania.python.domain.subclasses.topographies import Schaer
 from tasmania.python.domain.topography import (
     Topography,
     PhysicalTopography,
@@ -48,17 +45,15 @@ from tests.strategies import (
     st_physical_horizontal_grid,
     st_topography_kwargs,
 )
-from tests.utilities import compare_arrays, compare_dataarrays, compare_datetimes
-
-
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
+from tests.utilities import (
+    compare_arrays,
+    compare_dataarrays,
+    compare_datetimes,
+    hyp_settings,
 )
+
+
+@hyp_settings
 @given(hyp_st.data())
 def test_topography_properties(data):
     # ========================================
@@ -67,7 +62,7 @@ def test_topography_properties(data):
     pgrid = data.draw(st_physical_horizontal_grid(), label="pgrid")
 
     steady_profile = data.draw(
-        st_horizontal_field(pgrid, 0, 10000, "m", "sprof", gt_powered=False),
+        st_horizontal_field(pgrid, 0, 10000, "m", "sprof"),
         label="sprof",
     )
 
@@ -94,14 +89,7 @@ def test_topography_properties(data):
         compare_dataarrays(profile, topo.profile)
 
 
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
+@hyp_settings
 @given(hyp_st.data())
 def test_topography_update(data):
     # ========================================
@@ -110,7 +98,7 @@ def test_topography_update(data):
     pgrid = data.draw(st_physical_horizontal_grid(), label="pgrid")
 
     steady_profile = data.draw(
-        st_horizontal_field(pgrid, 0, 10000, "m", "sprof", gt_powered=False),
+        st_horizontal_field(pgrid, 0, 10000, "m", "sprof"),
         label="sprof",
     )
 
@@ -160,14 +148,7 @@ def test_physical_topography_registry():
     assert PhysicalTopography.registry["schaer"] == Schaer
 
 
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
+@hyp_settings
 @given(hyp_st.data())
 def test_physical_topography_factory(data):
     # ========================================
@@ -191,14 +172,7 @@ def test_physical_topography_factory(data):
     assert isinstance(obj, Schaer)
 
 
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
+@hyp_settings
 @given(hyp_st.data())
 def test_numerical_topography(data):
     # ========================================
@@ -212,7 +186,15 @@ def test_numerical_topography(data):
     # ========================================
     # test bed
     # ========================================
-    keys = ("time", "smooth", "max_height", "center_x", "center_y", "width_x", "width_y")
+    keys = (
+        "time",
+        "smooth",
+        "max_height",
+        "center_x",
+        "center_y",
+        "width_x",
+        "width_y",
+    )
     ptopo = PhysicalTopography.factory(
         "gaussian", pgrid, **{key: kwargs[key] for key in keys}
     )
@@ -221,11 +203,14 @@ def test_numerical_topography(data):
     assert ctopo.type == "gaussian"
 
     # profile
-    compare_arrays(ctopo.profile.values, hb.get_numerical_field(ptopo.profile.values))
+    compare_arrays(
+        ctopo.profile.values, hb.get_numerical_field(ptopo.profile.values)
+    )
 
     # steady_profile
     compare_arrays(
-        ctopo.steady_profile.values, hb.get_numerical_field(ptopo.steady_profile.values)
+        ctopo.steady_profile.values,
+        hb.get_numerical_field(ptopo.steady_profile.values),
     )
 
     # time

@@ -29,14 +29,17 @@ except (ImportError, ModuleNotFoundError):
     cp = np
 
 from tasmania.python.domain.horizontal_boundary import HorizontalBoundary
-from tasmania.python.domain.horizontal_boundaries.utils import repeat_axis, shrink_axis
+from tasmania.python.domain.subclasses.horizontal_boundaries.utils import (
+    repeat_axis,
+    shrink_axis,
+)
 from tasmania.python.utils.framework_utils import register
 
 
 class Periodic(HorizontalBoundary):
     """ Periodic boundary conditions. """
 
-    def __init__(self, nx, ny, nb, gt_powered, backend, dtype):
+    def __init__(self, nx, ny, nb, backend, dtype):
         assert (
             nx > 1
         ), "Number of grid points along first dimension should be larger than 1."
@@ -46,7 +49,7 @@ class Periodic(HorizontalBoundary):
         assert nb <= nx / 2, "Number of boundary layers cannot exceed ny/2."
         assert nb <= ny / 2, "Number of boundary layers cannot exceed ny/2."
 
-        super().__init__(nx, ny, nb, gt_powered, backend=backend, dtype=dtype)
+        super().__init__(nx, ny, nb, backend=backend, dtype=dtype)
 
     @property
     def ni(self):
@@ -65,11 +68,17 @@ class Periodic(HorizontalBoundary):
         cvalues = np.zeros(mi + 2 * nb, dtype=dtype)
         cvalues[nb:-nb] = pvalues[...]
         cvalues[:nb] = np.array(
-            [pvalues[0] - i * (pvalues[1] - pvalues[0]) for i in range(nb, 0, -1)],
+            [
+                pvalues[0] - i * (pvalues[1] - pvalues[0])
+                for i in range(nb, 0, -1)
+            ],
             dtype=dtype,
         )
         cvalues[-nb:] = np.array(
-            [pvalues[-1] + (i + 1) * (pvalues[1] - pvalues[0]) for i in range(nb)],
+            [
+                pvalues[-1] + (i + 1) * (pvalues[1] - pvalues[0])
+                for i in range(nb)
+            ],
             dtype=dtype,
         )
 
@@ -90,13 +99,15 @@ class Periodic(HorizontalBoundary):
         field_name = field_name or ""
         mx = (
             nx + 1
-            if "at_u_locations" in field_name or "at_uv_locations" in field_name
+            if "at_u_locations" in field_name
+            or "at_uv_locations" in field_name
             else nx
         )
         mi = mx + 2 * nb
         my = (
             ny + 1
-            if "at_v_locations" in field_name or "at_uv_locations" in field_name
+            if "at_v_locations" in field_name
+            or "at_uv_locations" in field_name
             else ny
         )
 
@@ -139,13 +150,15 @@ class Periodic(HorizontalBoundary):
         field_name = field_name or ""
         mx = (
             nx + 1
-            if "at_u_locations" in field_name or "at_uv_locations" in field_name
+            if "at_u_locations" in field_name
+            or "at_uv_locations" in field_name
             else nx
         )
         mi = mx + 2 * nb
         my = (
             ny + 1
-            if "at_v_locations" in field_name or "at_uv_locations" in field_name
+            if "at_v_locations" in field_name
+            or "at_uv_locations" in field_name
             else ny
         )
 
@@ -178,14 +191,16 @@ class Periodic(HorizontalBoundary):
 class Periodic1DX(HorizontalBoundary):
     """ Periodic boundary conditions for a physical grid with ``ny=1``. """
 
-    def __init__(self, nx, ny, nb, gt_powered, backend, dtype):
+    def __init__(self, nx, ny, nb, backend, dtype):
         assert (
             nx > 1
         ), "Number of grid points along first dimension should be larger than 1."
-        assert ny == 1, "Number of grid points along second dimension must be 1."
+        assert (
+            ny == 1
+        ), "Number of grid points along second dimension must be 1."
         assert nb <= nx / 2, "Number of boundary layers cannot exceed nx/2."
 
-        super().__init__(nx, ny, nb, gt_powered, backend=backend, dtype=dtype)
+        super().__init__(nx, ny, nb, backend=backend, dtype=dtype)
 
     @property
     def ni(self):
@@ -204,11 +219,17 @@ class Periodic1DX(HorizontalBoundary):
         cvalues = np.zeros(mi + 2 * nb, dtype=dtype)
         cvalues[nb:-nb] = pvalues[...]
         cvalues[:nb] = np.array(
-            [pvalues[0] - i * (pvalues[1] - pvalues[0]) for i in range(nb, 0, -1)],
+            [
+                pvalues[0] - i * (pvalues[1] - pvalues[0])
+                for i in range(nb, 0, -1)
+            ],
             dtype=dtype,
         )
         cvalues[-nb:] = np.array(
-            [pvalues[-1] + (i + 1) * (pvalues[1] - pvalues[0]) for i in range(nb)],
+            [
+                pvalues[-1] + (i + 1) * (pvalues[1] - pvalues[0])
+                for i in range(nb)
+            ],
             dtype=dtype,
         )
 
@@ -229,12 +250,16 @@ class Periodic1DX(HorizontalBoundary):
         field_name = field_name or ""
         mx = (
             nx + 1
-            if "at_u_locations" in field_name or "at_uv_locations" in field_name
+            if "at_u_locations" in field_name
+            or "at_uv_locations" in field_name
             else nx
         )
         mi = mx + 2 * nb
         my = (
-            2 if "at_v_locations" in field_name or "at_uv_locations" in field_name else 1
+            2
+            if "at_v_locations" in field_name
+            or "at_uv_locations" in field_name
+            else 1
         )
 
         try:
@@ -253,7 +278,9 @@ class Periodic1DX(HorizontalBoundary):
         )
         cfield[:mi, :nb] = cfield[:mi, nb : nb + 1]
         cfield[:mi, my + nb : my + 2 * nb] = (
-            cfield[:mi, nb : nb + 1] if my == 1 else cfield[:mi, nb + 1 : nb + 2]
+            cfield[:mi, nb : nb + 1]
+            if my == 1
+            else cfield[:mi, nb + 1 : nb + 2]
         )
 
         return cfield
@@ -274,12 +301,16 @@ class Periodic1DX(HorizontalBoundary):
         field_name = field_name or ""
         mx = (
             nx + 1
-            if "at_u_locations" in field_name or "at_uv_locations" in field_name
+            if "at_u_locations" in field_name
+            or "at_uv_locations" in field_name
             else nx
         )
         mi = mx + 2 * nb
         my = (
-            2 if "at_v_locations" in field_name or "at_uv_locations" in field_name else 1
+            2
+            if "at_v_locations" in field_name
+            or "at_uv_locations" in field_name
+            else 1
         )
 
         field[:nb, nb : my + nb] = field[nx - 1 : nx - 1 + nb, nb : my + nb]
@@ -309,14 +340,16 @@ class Periodic1DX(HorizontalBoundary):
 class Periodic1DY(HorizontalBoundary):
     """ Periodic boundary conditions for a physical grid with ``ny=1``. """
 
-    def __init__(self, nx, ny, nb, gt_powered, backend, dtype):
-        assert nx == 1, "Number of grid points along first dimension must be 1."
+    def __init__(self, nx, ny, nb, backend, dtype):
+        assert (
+            nx == 1
+        ), "Number of grid points along first dimension must be 1."
         assert (
             ny > 1
         ), "Number of grid points along second dimension should be larger than 1."
         assert nb <= ny / 2, "Number of boundary layers cannot exceed ny/2."
 
-        super().__init__(nx, ny, nb, gt_powered, backend=backend, dtype=dtype)
+        super().__init__(nx, ny, nb, backend=backend, dtype=dtype)
 
     @property
     def ni(self):
@@ -338,11 +371,17 @@ class Periodic1DY(HorizontalBoundary):
         cvalues = np.zeros(mi + 2 * nb, dtype=dtype)
         cvalues[nb:-nb] = pvalues[...]
         cvalues[:nb] = np.array(
-            [pvalues[0] - i * (pvalues[1] - pvalues[0]) for i in range(nb, 0, -1)],
+            [
+                pvalues[0] - i * (pvalues[1] - pvalues[0])
+                for i in range(nb, 0, -1)
+            ],
             dtype=dtype,
         )
         cvalues[-nb:] = np.array(
-            [pvalues[-1] + (i + 1) * (pvalues[1] - pvalues[0]) for i in range(nb)],
+            [
+                pvalues[-1] + (i + 1) * (pvalues[1] - pvalues[0])
+                for i in range(nb)
+            ],
             dtype=dtype,
         )
 
@@ -359,11 +398,15 @@ class Periodic1DY(HorizontalBoundary):
         dtype = field.dtype
         field_name = field_name or ""
         mx = (
-            2 if "at_u_locations" in field_name or "at_uv_locations" in field_name else 1
+            2
+            if "at_u_locations" in field_name
+            or "at_uv_locations" in field_name
+            else 1
         )
         my = (
             ny + 1
-            if "at_v_locations" in field_name or "at_uv_locations" in field_name
+            if "at_v_locations" in field_name
+            or "at_uv_locations" in field_name
             else ny
         )
         mj = my + 2 * nb
@@ -384,7 +427,9 @@ class Periodic1DY(HorizontalBoundary):
         )
         cfield[:nb, :mj] = cfield[nb : nb + 1, :mj]
         cfield[mx + nb : mx + 2 * nb, :mj] = (
-            cfield[nb : nb + 1, :mj] if mx == 1 else cfield[nb + 1 : nb + 2, :mj]
+            cfield[nb : nb + 1, :mj]
+            if mx == 1
+            else cfield[nb + 1 : nb + 2, :mj]
         )
 
         return cfield
@@ -404,11 +449,15 @@ class Periodic1DY(HorizontalBoundary):
         ny, nb = self.ny, self.nb
         field_name = field_name or ""
         mx = (
-            2 if "at_u_locations" in field_name or "at_uv_locations" in field_name else 1
+            2
+            if "at_u_locations" in field_name
+            or "at_uv_locations" in field_name
+            else 1
         )
         my = (
             ny + 1
-            if "at_v_locations" in field_name or "at_uv_locations" in field_name
+            if "at_v_locations" in field_name
+            or "at_uv_locations" in field_name
             else ny
         )
         mj = my + 2 * nb
@@ -442,11 +491,10 @@ def dispatch(
     nx,
     ny,
     nb,
-    gt_powered,
     backend="numpy",
     backend_opts=None,
-    build_info=None,
     dtype=np.float64,
+    build_info=None,
     exec_info=None,
     default_origin=None,
     rebuild=False,
@@ -455,8 +503,8 @@ def dispatch(
 ):
     """ Dispatch based on the grid size. """
     if nx == 1:
-        return Periodic1DY(1, ny, nb, gt_powered, backend, dtype)
+        return Periodic1DY(1, ny, nb, backend, dtype)
     elif ny == 1:
-        return Periodic1DX(nx, 1, nb, gt_powered, backend, dtype)
+        return Periodic1DX(nx, 1, nb, backend, dtype)
     else:
-        return Periodic(nx, ny, nb, gt_powered, backend, dtype)
+        return Periodic(nx, ny, nb, backend, dtype)

@@ -23,9 +23,7 @@
 from hypothesis import (
     assume,
     given,
-    HealthCheck,
     reproduce_failure,
-    settings,
     strategies as hyp_st,
 )
 import pytest
@@ -36,19 +34,22 @@ from tasmania.python.domain.horizontal_grid import (
     NumericalHorizontalGrid,
 )
 
-from tests.conf import datatype as conf_dtype
-from tests.strategies import st_horizontal_boundary, st_interval, st_length, st_one_of
-from tests.utilities import compare_dataarrays, get_xaxis, get_yaxis
-
-
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
+from tests.conf import dtype as conf_dtype
+from tests.strategies import (
+    st_horizontal_boundary,
+    st_interval,
+    st_length,
+    st_one_of,
 )
+from tests.utilities import (
+    compare_dataarrays,
+    get_xaxis,
+    get_yaxis,
+    hyp_settings,
+)
+
+
+@hyp_settings
 @given(hyp_st.data())
 def test_grid(data):
     # ========================================
@@ -131,14 +132,7 @@ def test_grid(data):
     assert grid.ny == ny
 
 
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
+@hyp_settings
 @given(hyp_st.data())
 def test_physical_grid(data):
     # ========================================
@@ -173,14 +167,7 @@ def test_physical_grid(data):
     assert grid.ny == ny
 
 
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
+@hyp_settings
 @given(hyp_st.data())
 def test_numerical_grid(data):
     # ========================================
@@ -210,14 +197,16 @@ def test_numerical_grid(data):
 
     compare_dataarrays(hb.get_numerical_xaxis(x, dims="c_x"), grid.x)
     compare_dataarrays(
-        hb.get_numerical_xaxis(xu, dims="c_x_at_u_locations"), grid.x_at_u_locations
+        hb.get_numerical_xaxis(xu, dims="c_x_at_u_locations"),
+        grid.x_at_u_locations,
     )
     compare_dataarrays(dx, grid.dx)
     assert grid.nx == hb.ni
 
     compare_dataarrays(hb.get_numerical_yaxis(y, dims="c_y"), grid.y)
     compare_dataarrays(
-        hb.get_numerical_yaxis(yv, dims="c_y_at_v_locations"), grid.y_at_v_locations
+        hb.get_numerical_yaxis(yv, dims="c_y_at_v_locations"),
+        grid.y_at_v_locations,
     )
     compare_dataarrays(dy, grid.dy)
     assert grid.ny == hb.nj

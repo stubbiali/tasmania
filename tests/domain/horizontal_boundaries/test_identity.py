@@ -23,39 +23,32 @@
 from copy import deepcopy
 from hypothesis import (
     given,
-    HealthCheck,
-    settings,
     strategies as hyp_st,
     reproduce_failure,
 )
 import numpy as np
 import pytest
 
-import gt4py as gt
-
 from tasmania.python.domain.horizontal_boundary import HorizontalBoundary
 
-from tests.conf import backend as conf_backend, datatype as conf_dtype
+from tests.conf import backend as conf_backend, dtype as conf_dtype
 from tests.strategies import (
     st_horizontal_boundary_layers,
-    st_one_of,
     st_physical_grid,
     st_raw_field,
 )
-from tests.utilities import compare_arrays, compare_dataarrays
+from tests.utilities import compare_arrays, compare_dataarrays, hyp_settings
 
 
-@settings(
-    suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
-    deadline=None,
-)
+@hyp_settings
 @given(hyp_st.data())
 def test_properties(data):
     # ========================================
     # random data generation
     # ========================================
     grid = data.draw(
-        st_physical_grid(xaxis_length=(2, None), yaxis_length=(2, None)), label="grid"
+        st_physical_grid(xaxis_length=(2, None), yaxis_length=(2, None)),
+        label="grid",
     )
     nx, ny = grid.grid_xy.nx, grid.grid_xy.ny
     nb = data.draw(st_horizontal_boundary_layers(nx, ny), label="nb")
@@ -74,17 +67,15 @@ def test_properties(data):
     assert len(hb.kwargs) == 0
 
 
-@settings(
-    suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
-    deadline=None,
-)
+@hyp_settings
 @given(hyp_st.data())
 def test_axis(data):
     # ========================================
     # random data generation
     # ========================================
     grid = data.draw(
-        st_physical_grid(xaxis_length=(2, None), yaxis_length=(2, None)), label="grid"
+        st_physical_grid(xaxis_length=(2, None), yaxis_length=(2, None)),
+        label="grid",
     )
     nx, ny = grid.grid_xy.nx, grid.grid_xy.ny
     nb = data.draw(st_horizontal_boundary_layers(nx, ny), label="nb")
@@ -131,24 +122,17 @@ def test_axis(data):
     compare_dataarrays(px, px_val)
 
 
-@settings(
-    suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
-    deadline=None,
-)
-@given(hyp_st.data())
-def test_field(data):
+@hyp_settings
+@given(data=hyp_st.data())
+@pytest.mark.parametrize("backend", conf_backend)
+@pytest.mark.parametrize("dtype", conf_dtype)
+def test_field(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
-
-    if gt_powered:
-        gt.storage.prepare_numpy()
-
     grid = data.draw(
-        st_physical_grid(xaxis_length=(2, None), yaxis_length=(2, None)), label="grid"
+        st_physical_grid(xaxis_length=(2, None), yaxis_length=(2, None)),
+        label="grid",
     )
     nx, ny, nz = grid.grid_xy.nx, grid.grid_xy.ny, grid.nz
     nb = data.draw(st_horizontal_boundary_layers(nx, ny), label="nb")
@@ -158,7 +142,6 @@ def test_field(data):
             (nx + 1, ny + 1, nz),
             -1e4,
             1e4,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
         )
@@ -168,7 +151,7 @@ def test_field(data):
     # test
     # ========================================
     hb = HorizontalBoundary.factory(
-        "identity", nx, ny, nb, gt_powered=gt_powered, backend=backend, dtype=dtype
+        "identity", nx, ny, nb, backend=backend, dtype=dtype
     )
 
     # (nx, ny)
@@ -189,47 +172,40 @@ def test_field(data):
     # (nx+1, ny+1)
     pf = pfield
     compare_arrays(
-        hb.get_numerical_field(pf, field_name="at_u_locations_at_v_locations"), pf
+        hb.get_numerical_field(pf, field_name="at_u_locations_at_v_locations"),
+        pf,
     )
     compare_arrays(
-        hb.get_physical_field(pf, field_name="at_u_locations_at_v_locations"), pf
+        hb.get_physical_field(pf, field_name="at_u_locations_at_v_locations"),
+        pf,
     )
 
 
-@settings(
-    suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
-    deadline=None,
-)
-@given(hyp_st.data())
-def test_enforce(data):
+@hyp_settings
+@given(data=hyp_st.data())
+@pytest.mark.parametrize("backend", conf_backend)
+@pytest.mark.parametrize("dtype", conf_dtype)
+def test_enforce(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
-
-    if gt_powered:
-        gt.storage.prepare_numpy()
-
     grid = data.draw(
-        st_physical_grid(xaxis_length=(2, None), yaxis_length=(2, None)), label="grid"
+        st_physical_grid(xaxis_length=(2, None), yaxis_length=(2, None)),
+        label="grid",
     )
     nx, ny, nz = grid.grid_xy.nx, grid.grid_xy.ny, grid.nz
     nb = data.draw(st_horizontal_boundary_layers(nx, ny), label="nb")
 
     storage_shape = (nx + 1, ny + 1, nz + 1)
     cfield = data.draw(
-        st_raw_field(
-            storage_shape, -1e4, 1e4, gt_powered=gt_powered, backend=backend, dtype=dtype
-        )
+        st_raw_field(storage_shape, -1e4, 1e4, backend=backend, dtype=dtype)
     )
 
     # ========================================
     # test
     # ========================================
     hb = HorizontalBoundary.factory(
-        "identity", nx, ny, nb, gt_powered=gt_powered, backend=backend, dtype=dtype
+        "identity", nx, ny, nb, backend=backend, dtype=dtype
     )
 
     cfield_val = deepcopy(cfield)
@@ -237,24 +213,17 @@ def test_enforce(data):
     compare_arrays(cfield, cfield_val)
 
 
-@settings(
-    suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
-    deadline=None,
-)
-@given(hyp_st.data())
-def test_outermost_layers(data):
+@hyp_settings
+@given(data=hyp_st.data())
+@pytest.mark.parametrize("backend", conf_backend)
+@pytest.mark.parametrize("dtype", conf_dtype)
+def test_outermost_layers(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
-
-    if gt_powered:
-        gt.storage.prepare_numpy()
-
     grid = data.draw(
-        st_physical_grid(xaxis_length=(2, None), yaxis_length=(2, None)), label="grid"
+        st_physical_grid(xaxis_length=(2, None), yaxis_length=(2, None)),
+        label="grid",
     )
     nx, ny, nz = grid.grid_xy.nx, grid.grid_xy.ny, grid.nz
     nb = data.draw(st_horizontal_boundary_layers(nx, ny), label="nb")
@@ -266,7 +235,7 @@ def test_outermost_layers(data):
     # test
     # ========================================
     hb = HorizontalBoundary.factory(
-        "identity", nx, ny, nb, gt_powered=gt_powered, backend=backend, dtype=dtype
+        "identity", nx, ny, nb, backend=backend, dtype=dtype
     )
 
     cfield_val = deepcopy(cfield)

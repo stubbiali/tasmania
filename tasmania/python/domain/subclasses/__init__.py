@@ -20,4 +20,8 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from tasmania.python.domain import subclasses
+from tasmania.python.domain.subclasses import (
+    grids,
+    horizontal_boundaries,
+    topographies,
+)
