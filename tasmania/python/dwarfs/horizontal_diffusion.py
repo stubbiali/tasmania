@@ -30,6 +30,7 @@ from gt4py import gtscript
 from tasmania.python.utils import taz_types
 from tasmania.python.utils.framework_utils import factorize
 from tasmania.python.utils.storage_utils import zeros
+from tasmania.python.utils.utils import get_gt_backend, is_gt
 
 
 class HorizontalDiffusion(abc.ABC):
@@ -46,11 +47,10 @@ class HorizontalDiffusion(abc.ABC):
         diffusion_coeff_max: float,
         diffusion_damp_depth: int,
         nb: int,
-        gt_powered: bool,
         backend: str,
         backend_opts: taz_types.options_dict_t,
+            dtype: taz_types.dtype_t,
         build_info: taz_types.options_dict_t,
-        dtype: taz_types.dtype_t,
         exec_info: taz_types.mutable_options_dict_t,
         default_origin: taz_types.triplet_int_t,
         rebuild: bool,
@@ -73,25 +73,26 @@ class HorizontalDiffusion(abc.ABC):
             Depth of, i.e., number of vertical regions in the damping region.
         nb : int
             Number of boundary layers.
-        gt_powered : bool
-            ``True`` to harness GT4Py, ``False`` for a vanilla Numpy implementation.
         backend : str
-            The GT4Py backend.
+            The backend.
         backend_opts : dict
             Dictionary of backend-specific options.
-        build_info : dict
-            Dictionary of building options.
         dtype : data-type
             Data type of the storages.
+        build_info : dict
+            Dictionary of building options.
         exec_info : dict
-            Dictionary which will store statistics and diagnostics gathered at run time.
+            Dictionary which will store statistics and diagnostics gathered at
+            run time.
         default_origin : tuple[int]
             Storage default origin.
         rebuild : bool
-            ``True`` to trigger the stencils compilation at any class instantiation,
-            ``False`` to rely on the caching mechanism implemented by GT4Py.
+            ``True`` to trigger the stencils compilation at any class
+            instantiation, ``False`` to rely on the caching mechanism
+            implemented by the backend.
         managed_memory : `bool`, optional
-            ``True`` to allocate the storages as managed memory, ``False`` otherwise.
+            ``True`` to allocate the storages as managed memory,
+            ``False`` otherwise.
         """
         # store input arguments needed at run-time
         self._shape = shape
@@ -103,7 +104,6 @@ class HorizontalDiffusion(abc.ABC):
         # initialize the diffusivity
         gamma = zeros(
             (shape[0], shape[1], shape[2]),
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -124,11 +124,11 @@ class HorizontalDiffusion(abc.ABC):
             )
 
         # initialize the underlying stencil
-        if gt_powered:
+        if is_gt(backend):
             self._stencil = gtscript.stencil(
                 definition=self._stencil_gt_defs,
                 name=self.__class__.__name__,
-                backend=backend,
+                backend=get_gt_backend(backend),
                 build_info=build_info,
                 rebuild=rebuild,
                 dtypes={"dtype": dtype},
@@ -139,16 +139,16 @@ class HorizontalDiffusion(abc.ABC):
 
     @abc.abstractmethod
     def __call__(
-        self, phi: taz_types.gtstorage_t, phi_tnd: taz_types.gtstorage_t
+        self, phi: taz_types.array_t, phi_tnd: taz_types.array_t
     ) -> None:
         """ Calculate the tendency.
 
         Parameters
         ----------
-        phi : gt4py.storage.storage.Storage
-            The 3-D prognostic field.
-        phi_tnd : gt4py.storage.storage.Storage
-            Buffer into which the calculated tendency is written.
+        phi : array-like
+            A 3-D prognostic field.
+        phi_tnd : array-like
+            Output buffer in which to place the result.
         """
         pass
 
@@ -162,12 +162,11 @@ class HorizontalDiffusion(abc.ABC):
         diffusion_coeff_max: float,
         diffusion_damp_depth: int,
         nb: Optional[int] = None,
-        gt_powered: bool = True,
         *,
         backend: str = "numpy",
         backend_opts: Optional[taz_types.options_dict_t] = None,
+            dtype: taz_types.dtype_t = np.float64,
         build_info: Optional[taz_types.options_dict_t] = None,
-        dtype: taz_types.dtype_t = np.float64,
         exec_info: Optional[taz_types.mutable_options_dict_t] = None,
         default_origin: Optional[taz_types.triplet_int_t] = None,
         rebuild: bool = False,
@@ -197,25 +196,26 @@ class HorizontalDiffusion(abc.ABC):
         nb : `int`, optional
             Number of boundary layers. If not specified, this is derived
             from the extent of the underlying stencil.
-        gt_powered : `bool`, optional
-            ``True`` to harness GT4Py, ``False`` for a vanilla Numpy implementation.
         backend : `str`, optional
-            The GT4Py backend.
+            The backend.
         backend_opts : `dict`, optional
             Dictionary of backend-specific options.
-        build_info : `dict`, optional
-            Dictionary of building options.
         dtype : `data-type`, optional
             Data type of the storages.
+        build_info : `dict`, optional
+            Dictionary of building options.
         exec_info : `dict`, optional
-            Dictionary which will store statistics and diagnostics gathered at run time.
+            Dictionary which will store statistics and diagnostics gathered at
+            run time.
         default_origin : `tuple[int]`, optional
             Storage default origin.
         rebuild : `bool`, optional
-            ``True`` to trigger the stencils compilation at any class instantiation,
-            ``False`` to rely on the caching mechanism implemented by GT4Py.
+            ``True`` to trigger the stencils compilation at any class
+            instantiation, ``False`` to rely on the caching mechanism
+            implemented by the backend.
         managed_memory : `bool`, optional
-            ``True`` to allocate the storages as managed memory, ``False`` otherwise.
+            ``True`` to allocate the storages as managed memory,
+            ``False`` otherwise.
 
         Return
         ------
@@ -230,11 +230,10 @@ class HorizontalDiffusion(abc.ABC):
             diffusion_coeff_max,
             diffusion_damp_depth,
             nb,
-            gt_powered,
             backend,
             backend_opts,
-            build_info,
             dtype,
+            build_info,
             exec_info,
             default_origin,
             rebuild,

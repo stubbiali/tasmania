@@ -22,32 +22,27 @@
 #
 from hypothesis import (
     given,
-    HealthCheck,
     reproduce_failure,
-    settings,
     strategies as hyp_st,
 )
 from pandas import Timedelta
 import pytest
-
-import gt4py as gt
 
 from tasmania.python.dwarfs.vertical_damping import VerticalDamping as VD
 from tasmania.python.utils.storage_utils import zeros
 
 from tests.conf import (
     backend as conf_backend,
-    datatype as conf_dtype,
+    dtype as conf_dtype,
     default_origin as conf_dorigin,
 )
 from tests.strategies import st_domain, st_one_of, st_raw_field, st_timedeltas
-from tests.utilities import compare_arrays
+from tests.utilities import compare_arrays, hyp_settings
 
 
 def assert_rayleigh(
     grid,
     depth,
-    gt_powered,
     backend,
     default_origin,
     dt,
@@ -65,7 +60,6 @@ def assert_rayleigh(
         depth,
         0.01,
         time_units="s",
-        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -77,40 +71,28 @@ def assert_rayleigh(
 
     vd(dt, phi_now, phi_new, phi_ref, phi_out)
 
-    phi_val = phi_new[:ni, :nj, :nk] - dt.total_seconds() * rmat[:ni, :nj, :nk] * (
-        phi_now[:ni, :nj, :nk] - phi_ref[:ni, :nj, :nk]
-    )
+    phi_val = phi_new[:ni, :nj, :nk] - dt.total_seconds() * rmat[
+        :ni, :nj, :nk
+    ] * (phi_now[:ni, :nj, :nk] - phi_ref[:ni, :nj, :nk])
     compare_arrays(phi_out[:, :, :depth], phi_val[:, :, :depth])
     compare_arrays(phi_out[:, :, depth:], phi_val[:ni, :nj, depth:nk])
 
 
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
-@given(hyp_st.data())
-def test(data):
+@hyp_settings
+@given(data=hyp_st.data())
+@pytest.mark.parametrize("backend", conf_backend)
+@pytest.mark.parametrize("dtype", conf_dtype)
+def test(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-
-    if gt_powered:
-        gt.storage.prepare_numpy()
 
     domain = data.draw(
         st_domain(
             xaxis_length=(1, 30),
             yaxis_length=(1, 30),
             zaxis_length=(1, 30),
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
         ),
@@ -128,7 +110,6 @@ def test(data):
             shape,
             min_value=-1e10,
             max_value=1e10,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -140,7 +121,6 @@ def test(data):
             shape,
             min_value=-1e10,
             max_value=1e10,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -152,7 +132,6 @@ def test(data):
             shape,
             min_value=-1e10,
             max_value=1e10,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -161,22 +140,25 @@ def test(data):
     )
 
     dt = data.draw(
-        st_timedeltas(min_value=Timedelta(seconds=0), max_value=Timedelta(hours=1)),
+        st_timedeltas(
+            min_value=Timedelta(seconds=0), max_value=Timedelta(hours=1)
+        ),
         label="dt",
     )
 
-    depth = data.draw(hyp_st.integers(min_value=0, max_value=cgrid.nz), label="depth")
+    depth = data.draw(
+        hyp_st.integers(min_value=0, max_value=cgrid.nz), label="depth"
+    )
 
     # ========================================
     # test
     # ========================================
     phi_out = zeros(
-        shape, gt_powered, backend=backend, dtype=dtype, default_origin=default_origin
+        shape, backend=backend, dtype=dtype, default_origin=default_origin
     )
     assert_rayleigh(
         cgrid,
         depth,
-        gt_powered,
         backend,
         default_origin,
         dt,
@@ -188,5 +170,4 @@ def test(data):
 
 
 if __name__ == "__main__":
-    # pytest.main([__file__])
-    test()
+    pytest.main([__file__])

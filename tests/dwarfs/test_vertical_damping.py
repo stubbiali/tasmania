@@ -22,27 +22,15 @@
 #
 from hypothesis import (
     given,
-    HealthCheck,
-    reproduce_failure,
-    settings,
     strategies as hyp_st,
 )
-from pandas import Timedelta
 import pytest
 
-import gt4py as gt
-
 from tasmania.python.dwarfs.vertical_damping import VerticalDamping as VD
-from tasmania.python.dwarfs.vertical_dampers import Rayleigh
-from tasmania.python.utils.storage_utils import zeros
+from tasmania.python.dwarfs.subclasses.vertical_dampers import Rayleigh
 
-from tests.conf import (
-    backend as conf_backend,
-    datatype as conf_dtype,
-    default_origin as conf_dorigin,
-)
 from tests.strategies import st_domain, st_floats
-from tests.utilities import compare_arrays
+from tests.utilities import hyp_settings
 
 
 def test_registry():
@@ -51,26 +39,25 @@ def test_registry():
     assert VD.registry["rayleigh"] == Rayleigh
 
 
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
+@hyp_settings
 @given(hyp_st.data())
 def test_factory(data):
     # ========================================
     # random data generation
     # ========================================
     domain = data.draw(
-        st_domain(xaxis_length=(1, 30), yaxis_length=(1, 30), zaxis_length=(1, 30)),
+        st_domain(
+            xaxis_length=(1, 30), yaxis_length=(1, 30), zaxis_length=(1, 30)
+        ),
         label="grid",
     )
     cgrid = domain.numerical_grid
-    depth = data.draw(hyp_st.integers(min_value=0, max_value=cgrid.nz), label="depth")
-    coeff_max = data.draw(st_floats(min_value=0, max_value=1e4), label="coeff_max")
+    depth = data.draw(
+        hyp_st.integers(min_value=0, max_value=cgrid.nz), label="depth"
+    )
+    coeff_max = data.draw(
+        st_floats(min_value=0, max_value=1e4), label="coeff_max"
+    )
 
     # ========================================
     # test

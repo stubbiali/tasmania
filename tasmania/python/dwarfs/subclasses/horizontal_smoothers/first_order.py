@@ -37,11 +37,10 @@ class FirstOrder(HorizontalSmoothing):
         smooth_coeff_max,
         smooth_damp_depth,
         nb,
-        gt_powered,
         backend,
         backend_opts,
-        build_info,
         dtype,
+        build_info,
         exec_info,
         default_origin,
         rebuild,
@@ -54,11 +53,10 @@ class FirstOrder(HorizontalSmoothing):
             smooth_coeff_max,
             smooth_damp_depth,
             nb,
-            gt_powered,
             backend,
             backend_opts,
-            build_info,
             dtype,
+            build_info,
             exec_info,
             default_origin,
             rebuild,
@@ -78,6 +76,7 @@ class FirstOrder(HorizontalSmoothing):
             origin=(nb, nb, 0),
             domain=(nx - 2 * nb, ny - 2 * nb, nz),
             exec_info=self._exec_info,
+            validate_args=True
         )
 
         # set the outermost lateral layers of the output field,
@@ -97,10 +96,13 @@ class FirstOrder(HorizontalSmoothing):
         jp1 = slice(origin[1] + 1, origin[1] + domain[1] + 1)
         k = slice(origin[2], origin[2] + domain[2])
 
-        out_phi[i, j, k] = (1.0 - in_gamma[i, j, k]) * in_phi[i, j, k] + 0.25 * in_gamma[
+        out_phi[i, j, k] = (1.0 - in_gamma[i, j, k]) * in_phi[
             i, j, k
-        ] * (
-            in_phi[im1, j, k] + in_phi[ip1, j, k] + in_phi[i, jm1, k] + in_phi[i, jp1, k]
+        ] + 0.25 * in_gamma[i, j, k] * (
+            in_phi[im1, j, k]
+            + in_phi[ip1, j, k]
+            + in_phi[i, jm1, k]
+            + in_phi[i, jp1, k]
         )
 
     @staticmethod
@@ -110,9 +112,14 @@ class FirstOrder(HorizontalSmoothing):
         out_phi: gtscript.Field["dtype"],
     ) -> None:
         with computation(PARALLEL), interval(...):
-            out_phi = (1.0 - in_gamma[0, 0, 0]) * in_phi[0, 0, 0] + 0.25 * in_gamma[
+            out_phi = (1.0 - in_gamma[0, 0, 0]) * in_phi[
                 0, 0, 0
-            ] * (in_phi[-1, 0, 0] + in_phi[1, 0, 0] + in_phi[0, -1, 0] + in_phi[0, 1, 0])
+            ] + 0.25 * in_gamma[0, 0, 0] * (
+                in_phi[-1, 0, 0]
+                + in_phi[1, 0, 0]
+                + in_phi[0, -1, 0]
+                + in_phi[0, 1, 0]
+            )
 
 
 @register(name="first_order_1dx")
@@ -126,11 +133,10 @@ class FirstOrder1DX(HorizontalSmoothing):
         smooth_coeff_max,
         smooth_damp_depth,
         nb,
-        gt_powered,
         backend,
         backend_opts,
-        build_info,
         dtype,
+        build_info,
         exec_info,
         default_origin,
         rebuild,
@@ -143,11 +149,10 @@ class FirstOrder1DX(HorizontalSmoothing):
             smooth_coeff_max,
             smooth_damp_depth,
             nb,
-            gt_powered,
             backend,
             backend_opts,
-            build_info,
             dtype,
+            build_info,
             exec_info,
             default_origin,
             rebuild,
@@ -167,6 +172,7 @@ class FirstOrder1DX(HorizontalSmoothing):
             origin=(nb, 0, 0),
             domain=(nx - 2 * nb, ny, nz),
             exec_info=self._exec_info,
+            validate_args=True
         )
 
         # set the outermost lateral layers of the output field,
@@ -209,11 +215,10 @@ class FirstOrder1DY(HorizontalSmoothing):
         smooth_coeff_max,
         smooth_damp_depth,
         nb,
-        gt_powered,
         backend,
         backend_opts,
-        build_info,
         dtype,
+        build_info,
         exec_info,
         default_origin,
         rebuild,
@@ -226,11 +231,10 @@ class FirstOrder1DY(HorizontalSmoothing):
             smooth_coeff_max,
             smooth_damp_depth,
             nb,
-            gt_powered,
             backend,
             backend_opts,
-            build_info,
             dtype,
+            build_info,
             exec_info,
             default_origin,
             rebuild,
@@ -250,6 +254,7 @@ class FirstOrder1DY(HorizontalSmoothing):
             origin=(0, nb, 0),
             domain=(nx, ny - 2 * nb, nz),
             exec_info=self._exec_info,
+            validate_args=True
         )
 
         # set the outermost lateral layers of the output field,

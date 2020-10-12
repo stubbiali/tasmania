@@ -23,30 +23,30 @@
 from copy import deepcopy
 from hypothesis import (
     given,
-    HealthCheck,
     reproduce_failure,
-    settings,
     strategies as hyp_st,
 )
 import pytest
 
-import gt4py as gt
-
-from tasmania.python.dwarfs.horizontal_smoothing import HorizontalSmoothing as HS
+from tasmania.python.dwarfs.horizontal_smoothing import (
+    HorizontalSmoothing as HS,
+)
 from tasmania.python.utils.storage_utils import zeros
 
 from tests.conf import (
     backend as conf_backend,
-    datatype as conf_dtype,
+    dtype as conf_dtype,
     default_origin as conf_dorigin,
     nb as conf_nb,
 )
 from tests.strategies import st_domain, st_one_of, st_raw_field
-from tests.utilities import compare_arrays
+from tests.utilities import compare_arrays, hyp_settings
 
 
 def assert_xyz(phi, phi_new, phi_new_assert, nb):
-    compare_arrays(phi_new_assert[nb:-nb, nb:-nb, :], phi_new[nb:-nb, nb:-nb, :])
+    compare_arrays(
+        phi_new_assert[nb:-nb, nb:-nb, :], phi_new[nb:-nb, nb:-nb, :]
+    )
     compare_arrays(phi[:nb, :, :], phi_new[:nb, :, :])
     compare_arrays(phi[-nb:, :, :], phi_new[-nb:, :, :])
     compare_arrays(phi[nb:-nb, :nb, :], phi_new[nb:-nb, :nb, :])
@@ -73,9 +73,9 @@ def first_order_smoothing_xyz(phi, g):
     jm1, jp1 = slice(0, nj - 2), slice(2, nj)
 
     phi_smooth = deepcopy(phi)
-    phi_smooth[i, j, k] = (1 - g[i, j, k]) * phi[i, j, k] + 0.25 * g[i, j, k] * (
-        phi[ip1, j, k] + phi[im1, j, k] + phi[i, jm1, k] + phi[i, jp1, k]
-    )
+    phi_smooth[i, j, k] = (1 - g[i, j, k]) * phi[i, j, k] + 0.25 * g[
+        i, j, k
+    ] * (phi[ip1, j, k] + phi[im1, j, k] + phi[i, jm1, k] + phi[i, jp1, k])
 
     return phi_smooth
 
@@ -87,9 +87,9 @@ def first_order_smoothing_xz(phi, g):
     im1, ip1 = slice(0, ni - 2), slice(2, ni)
 
     phi_smooth = deepcopy(phi)
-    phi_smooth[i, j, k] = (1 - 0.5 * g[i, j, k]) * phi[i, j, k] + 0.25 * g[i, j, k] * (
-        phi[ip1, j, k] + phi[im1, j, k]
-    )
+    phi_smooth[i, j, k] = (1 - 0.5 * g[i, j, k]) * phi[i, j, k] + 0.25 * g[
+        i, j, k
+    ] * (phi[ip1, j, k] + phi[im1, j, k])
 
     return phi_smooth
 
@@ -101,19 +101,16 @@ def first_order_smoothing_yz(phi, g):
     jm1, jp1 = slice(0, nj - 2), slice(2, nj)
 
     phi_smooth = deepcopy(phi)
-    phi_smooth[i, j, k] = (1 - 0.5 * g[i, j, k]) * phi[i, j, k] + 0.25 * g[i, j, k] * (
-        phi[i, jm1, k] + phi[i, jp1, k]
-    )
+    phi_smooth[i, j, k] = (1 - 0.5 * g[i, j, k]) * phi[i, j, k] + 0.25 * g[
+        i, j, k
+    ] * (phi[i, jm1, k] + phi[i, jp1, k])
 
     return phi_smooth
 
 
-def first_order_validation_xyz(
-    phi, smooth_depth, nb, gt_powered, backend, default_origin
-):
+def first_order_validation_xyz(phi, smooth_depth, nb, backend, default_origin):
     phi_new = zeros(
         phi.shape,
-        gt_powered,
         backend=backend,
         dtype=phi.dtype,
         default_origin=default_origin,
@@ -126,7 +123,6 @@ def first_order_validation_xyz(
         1.0,
         smooth_depth,
         nb,
-        gt_powered=gt_powered,
         backend=backend,
         dtype=phi.dtype,
         default_origin=default_origin,
@@ -140,12 +136,9 @@ def first_order_validation_xyz(
     assert_xyz(phi, phi_new, phi_new_assert, nb)
 
 
-def first_order_validation_xz(
-    phi, smooth_depth, nb, gt_powered, backend, default_origin
-):
+def first_order_validation_xz(phi, smooth_depth, nb, backend, default_origin):
     phi_new = zeros(
         phi.shape,
-        gt_powered,
         backend=backend,
         dtype=phi.dtype,
         default_origin=default_origin,
@@ -158,7 +151,6 @@ def first_order_validation_xz(
         1.0,
         smooth_depth,
         nb,
-        gt_powered=gt_powered,
         backend=backend,
         dtype=phi.dtype,
         default_origin=default_origin,
@@ -172,12 +164,9 @@ def first_order_validation_xz(
     assert_xz(phi, phi_new, phi_new_assert, nb)
 
 
-def first_order_validation_yz(
-    phi, smooth_depth, nb, gt_powered, backend, default_origin
-):
+def first_order_validation_yz(phi, smooth_depth, nb, backend, default_origin):
     phi_new = zeros(
         phi.shape,
-        gt_powered,
         backend=backend,
         dtype=phi.dtype,
         default_origin=default_origin,
@@ -190,7 +179,6 @@ def first_order_validation_yz(
         1.0,
         smooth_depth,
         nb,
-        gt_powered=gt_powered,
         backend=backend,
         dtype=phi.dtype,
         default_origin=default_origin,
@@ -204,35 +192,25 @@ def first_order_validation_yz(
     assert_yz(phi, phi_new, phi_new_assert, nb)
 
 
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
-@given(hyp_st.data())
-def test(data):
+@hyp_settings
+@given(data=hyp_st.data())
+@pytest.mark.parametrize("backend", conf_backend)
+@pytest.mark.parametrize("dtype", conf_dtype)
+def test(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
-    if gt_powered:
-        gt.storage.prepare_numpy()
-
-    nb = data.draw(hyp_st.integers(min_value=1, max_value=max(1, conf_nb)), label="nb")
+    nb = data.draw(
+        hyp_st.integers(min_value=1, max_value=max(1, conf_nb)), label="nb"
+    )
     domain = data.draw(
         st_domain(
             xaxis_length=(1, 30),
             yaxis_length=(1, 30),
             zaxis_length=(1, 30),
             nb=nb,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
         ),
@@ -250,7 +228,6 @@ def test(data):
             shape,
             min_value=1e-10,
             max_value=1e10,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -258,14 +235,16 @@ def test(data):
         label="phi",
     )
 
-    depth = data.draw(hyp_st.integers(min_value=0, max_value=grid.nz), label="depth")
+    depth = data.draw(
+        hyp_st.integers(min_value=0, max_value=grid.nz), label="depth"
+    )
 
     # ========================================
     # test
     # ========================================
-    first_order_validation_xyz(phi, depth, nb, gt_powered, backend, default_origin)
-    first_order_validation_xz(phi, depth, nb, gt_powered, backend, default_origin)
-    first_order_validation_yz(phi, depth, nb, gt_powered, backend, default_origin)
+    first_order_validation_xyz(phi, depth, nb, backend, default_origin)
+    first_order_validation_xz(phi, depth, nb, backend, default_origin)
+    first_order_validation_yz(phi, depth, nb, backend, default_origin)
 
 
 if __name__ == "__main__":

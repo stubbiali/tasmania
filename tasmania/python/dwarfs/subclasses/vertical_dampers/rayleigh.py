@@ -39,11 +39,10 @@ class Rayleigh(VerticalDamping):
         damp_depth=15,
         damp_coeff_max=0.0002,
         time_units="s",
-        gt_powered=True,
         backend="numpy",
         backend_opts=None,
-        build_info=None,
         dtype=np.float64,
+        build_info=None,
         exec_info=None,
         default_origin=None,
         rebuild=False,
@@ -55,11 +54,10 @@ class Rayleigh(VerticalDamping):
             damp_depth,
             damp_coeff_max,
             time_units,
-            gt_powered,
             backend,
             backend_opts,
-            build_info,
             dtype,
+            build_info,
             exec_info,
             default_origin,
             rebuild,
@@ -87,6 +85,7 @@ class Rayleigh(VerticalDamping):
             origin=(0, 0, 0),
             domain=(ni, nj, nk),
             exec_info=self._exec_info,
+            validate_args=True
         )
 
         # if nk > dnk:

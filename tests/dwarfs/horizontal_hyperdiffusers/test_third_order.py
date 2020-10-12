@@ -23,14 +23,10 @@
 from hypothesis import (
     assume,
     given,
-    HealthCheck,
     reproduce_failure,
-    settings,
     strategies as hyp_st,
 )
 import pytest
-
-import gt4py as gt
 
 from tasmania.python.dwarfs.horizontal_hyperdiffusion import (
     HorizontalHyperDiffusion as HHD,
@@ -39,7 +35,7 @@ from tasmania.python.utils.storage_utils import zeros
 
 from tests.conf import (
     backend as conf_backend,
-    datatype as conf_dtype,
+    dtype as conf_dtype,
     default_origin as conf_dorigin,
     nb as conf_nb,
 )
@@ -52,6 +48,7 @@ from tests.dwarfs.horizontal_hyperdiffusers.test_first_order import (
     laplacian2d,
 )
 from tests.strategies import st_domain, st_one_of, st_raw_field
+from tests.utilities import hyp_settings
 
 
 def third_order_diffusion_xyz(dx, dy, phi):
@@ -76,13 +73,12 @@ def third_order_diffusion_yz(dy, phi):
 
 
 def third_order_validation_xyz(
-    phi, grid, diffusion_depth, nb, gt_powered, backend, default_origin
+    phi, grid, diffusion_depth, nb, backend, default_origin
 ):
     ni, nj, nk = phi.shape
     dtype = phi.dtype
     phi_tnd = zeros(
         (ni, nj, nk),
-        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -99,7 +95,6 @@ def third_order_validation_xyz(
         0.5,
         1.0,
         diffusion_depth,
-        gt_powered=gt_powered,
         nb=nb,
         backend=backend,
         dtype=phi.dtype,
@@ -115,13 +110,12 @@ def third_order_validation_xyz(
 
 
 def third_order_validation_xz(
-    phi, grid, diffusion_depth, nb, gt_powered, backend, default_origin
+    phi, grid, diffusion_depth, nb, backend, default_origin
 ):
     ni, nj, nk = phi.shape
     dtype = phi.dtype
     phi_tnd = zeros(
         (ni, nj, nk),
-        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -138,7 +132,6 @@ def third_order_validation_xz(
         0.5,
         1.0,
         diffusion_depth,
-        gt_powered=gt_powered,
         nb=nb,
         backend=backend,
         dtype=phi.dtype,
@@ -154,13 +147,12 @@ def third_order_validation_xz(
 
 
 def third_order_validation_yz(
-    phi, grid, diffusion_depth, nb, gt_powered, backend, default_origin
+    phi, grid, diffusion_depth, nb, backend, default_origin
 ):
     ni, nj, nk = phi.shape
     dtype = phi.dtype
     phi_tnd = zeros(
         (ni, nj, nk),
-        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -177,7 +169,6 @@ def third_order_validation_yz(
         0.5,
         1.0,
         diffusion_depth,
-        gt_powered=gt_powered,
         nb=nb,
         backend=backend,
         dtype=phi.dtype,
@@ -192,27 +183,15 @@ def third_order_validation_yz(
     assert_yz(phi_tnd, phi_tnd_assert, nb)
 
 
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
-@given(hyp_st.data())
-def test(data):
+@hyp_settings
+@given(data=hyp_st.data())
+@pytest.mark.parametrize("backend", conf_backend)
+@pytest.mark.parametrize("dtype", conf_dtype)
+def test(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-
-    if gt_powered:
-        # comment the following line to prevent segfault
-        gt.storage.prepare_numpy()
 
     nb = data.draw(hyp_st.integers(min_value=3, max_value=max(3, conf_nb)))
     domain = data.draw(
@@ -221,7 +200,6 @@ def test(data):
             yaxis_length=(1, 30),
             zaxis_length=(1, 30),
             nb=nb,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
         ),
@@ -239,7 +217,6 @@ def test(data):
             shape,
             min_value=-1e10,
             max_value=1e10,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -247,14 +224,16 @@ def test(data):
         label="phi",
     )
 
-    depth = data.draw(hyp_st.integers(min_value=0, max_value=grid.nz), label="depth")
+    depth = data.draw(
+        hyp_st.integers(min_value=0, max_value=grid.nz), label="depth"
+    )
 
     # ========================================
     # test
     # ========================================
-    third_order_validation_xyz(phi, grid, depth, nb, gt_powered, backend, default_origin)
-    third_order_validation_xz(phi, grid, depth, nb, gt_powered, backend, default_origin)
-    third_order_validation_yz(phi, grid, depth, nb, gt_powered, backend, default_origin)
+    third_order_validation_xyz(phi, grid, depth, nb, backend, default_origin)
+    third_order_validation_xz(phi, grid, depth, nb, backend, default_origin)
+    third_order_validation_yz(phi, grid, depth, nb, backend, default_origin)
 
 
 if __name__ == "__main__":

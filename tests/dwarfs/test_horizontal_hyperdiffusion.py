@@ -20,13 +20,8 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from copy import deepcopy
 from hypothesis import (
-    assume,
     given,
-    HealthCheck,
-    reproduce_failure,
-    settings,
     strategies as hyp_st,
 )
 import pytest
@@ -34,7 +29,7 @@ import pytest
 from tasmania.python.dwarfs.horizontal_hyperdiffusion import (
     HorizontalHyperDiffusion as HHD,
 )
-from tasmania.python.dwarfs.horizontal_hyperdiffusers import (
+from tasmania.python.dwarfs.subclasses.horizontal_hyperdiffusers import (
     FirstOrder,
     FirstOrder1DX,
     FirstOrder1DY,
@@ -47,6 +42,7 @@ from tasmania.python.dwarfs.horizontal_hyperdiffusers import (
 )
 
 from tests.strategies import st_floats
+from tests.utilities import hyp_settings
 
 
 def test_registry():
@@ -75,14 +71,7 @@ def test_registry():
     assert HHD.registry["third_order_1dy"] == ThirdOrder1DY
 
 
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
+@hyp_settings
 @given(hyp_st.data())
 def test_factory(data):
     # ========================================

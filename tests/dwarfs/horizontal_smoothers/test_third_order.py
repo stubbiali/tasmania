@@ -23,21 +23,19 @@
 from copy import deepcopy
 from hypothesis import (
     given,
-    HealthCheck,
     reproduce_failure,
-    settings,
     strategies as hyp_st,
 )
 import pytest
 
-import gt4py as gt
-
-from tasmania.python.dwarfs.horizontal_smoothing import HorizontalSmoothing as HS
+from tasmania.python.dwarfs.horizontal_smoothing import (
+    HorizontalSmoothing as HS,
+)
 from tasmania.python.utils.storage_utils import zeros
 
 from tests.conf import (
     backend as conf_backend,
-    datatype as conf_dtype,
+    dtype as conf_dtype,
     default_origin as conf_dorigin,
     nb as conf_nb,
 )
@@ -47,6 +45,7 @@ from tests.dwarfs.horizontal_smoothers.test_first_order import (
     assert_yz,
 )
 from tests.strategies import st_domain, st_one_of, st_raw_field
+from tests.utilities import hyp_settings
 
 
 def third_order_smoothing_xyz(phi, g):
@@ -61,9 +60,9 @@ def third_order_smoothing_xyz(phi, g):
     jm3, jp3 = slice(0, nj - 6), slice(6, nj)
 
     phi_smooth = deepcopy(phi)
-    phi_smooth[i, j, k] = (1 - 0.625 * g[i, j, k]) * phi[i, j, k] + 0.015625 * g[
+    phi_smooth[i, j, k] = (1 - 0.625 * g[i, j, k]) * phi[
         i, j, k
-    ] * (
+    ] + 0.015625 * g[i, j, k] * (
         phi[im3, j, k]
         - 6.0 * phi[im2, j, k]
         + 15.0 * phi[im1, j, k]
@@ -90,9 +89,9 @@ def third_order_smoothing_xz(phi, g):
     im3, ip3 = slice(0, ni - 6), slice(6, ni)
 
     phi_smooth = deepcopy(phi)
-    phi_smooth[i, j, k] = (1 - 0.3125 * g[i, j, k]) * phi[i, j, k] + 0.015625 * g[
+    phi_smooth[i, j, k] = (1 - 0.3125 * g[i, j, k]) * phi[
         i, j, k
-    ] * (
+    ] + 0.015625 * g[i, j, k] * (
         phi[im3, j, k]
         - 6.0 * phi[im2, j, k]
         + 15.0 * phi[im1, j, k]
@@ -113,9 +112,9 @@ def third_order_smoothing_yz(phi, g):
     jm3, jp3 = slice(0, nj - 6), slice(6, nj)
 
     phi_smooth = deepcopy(phi)
-    phi_smooth[i, j, k] = (1 - 0.3125 * g[i, j, k]) * phi[i, j, k] + 0.015625 * g[
+    phi_smooth[i, j, k] = (1 - 0.3125 * g[i, j, k]) * phi[
         i, j, k
-    ] * (
+    ] + 0.015625 * g[i, j, k] * (
         phi[i, jm3, k]
         - 6.0 * phi[i, jm2, k]
         + 15.0 * phi[i, jm1, k]
@@ -127,13 +126,10 @@ def third_order_smoothing_yz(phi, g):
     return phi_smooth
 
 
-def third_order_validation_xyz(
-    phi, smooth_depth, nb, gt_powered, backend, default_origin
-):
+def third_order_validation_xyz(phi, smooth_depth, nb, backend, default_origin):
     ni, nj, nk = phi.shape
     phi_new = zeros(
         phi.shape,
-        gt_powered,
         backend=backend,
         dtype=phi.dtype,
         default_origin=default_origin,
@@ -146,7 +142,6 @@ def third_order_validation_xyz(
         1.0,
         smooth_depth,
         nb,
-        gt_powered=gt_powered,
         backend=backend,
         dtype=phi.dtype,
         default_origin=default_origin,
@@ -160,13 +155,10 @@ def third_order_validation_xyz(
     assert_xyz(phi, phi_new, phi_new_assert, nb)
 
 
-def third_order_validation_xz(
-    phi, smooth_depth, nb, gt_powered, backend, default_origin
-):
+def third_order_validation_xz(phi, smooth_depth, nb, backend, default_origin):
     ni, nj, nk = phi.shape
     phi_new = zeros(
         phi.shape,
-        gt_powered,
         backend=backend,
         dtype=phi.dtype,
         default_origin=default_origin,
@@ -179,7 +171,6 @@ def third_order_validation_xz(
         1.0,
         smooth_depth,
         nb,
-        gt_powered=gt_powered,
         backend=backend,
         dtype=phi.dtype,
         default_origin=default_origin,
@@ -193,13 +184,10 @@ def third_order_validation_xz(
     assert_xz(phi, phi_new, phi_new_assert, nb)
 
 
-def third_order_validation_yz(
-    phi, smooth_depth, nb, gt_powered, backend, default_origin
-):
+def third_order_validation_yz(phi, smooth_depth, nb, backend, default_origin):
     ni, nj, nk = phi.shape
     phi_new = zeros(
         phi.shape,
-        gt_powered,
         backend=backend,
         dtype=phi.dtype,
         default_origin=default_origin,
@@ -212,7 +200,6 @@ def third_order_validation_yz(
         1.0,
         smooth_depth,
         nb,
-        gt_powered=gt_powered,
         backend=backend,
         dtype=phi.dtype,
         default_origin=default_origin,
@@ -226,35 +213,25 @@ def third_order_validation_yz(
     assert_yz(phi, phi_new, phi_new_assert, nb)
 
 
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
-@given(hyp_st.data())
-def test(data):
+@hyp_settings
+@given(data=hyp_st.data())
+@pytest.mark.parametrize("backend", conf_backend)
+@pytest.mark.parametrize("dtype", conf_dtype)
+def test(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
-    if gt_powered:
-        gt.storage.prepare_numpy()
-
-    nb = data.draw(hyp_st.integers(min_value=3, max_value=max(3, conf_nb)), label="nb")
+    nb = data.draw(
+        hyp_st.integers(min_value=3, max_value=max(3, conf_nb)), label="nb"
+    )
     domain = data.draw(
         st_domain(
             xaxis_length=(1, 30),
             yaxis_length=(1, 30),
             zaxis_length=(1, 30),
             nb=nb,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
         ),
@@ -272,7 +249,6 @@ def test(data):
             shape,
             min_value=1e-10,
             max_value=1e10,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -280,14 +256,16 @@ def test(data):
         label="phi",
     )
 
-    depth = data.draw(hyp_st.integers(min_value=0, max_value=grid.nz), label="depth")
+    depth = data.draw(
+        hyp_st.integers(min_value=0, max_value=grid.nz), label="depth"
+    )
 
     # ========================================
     # test
     # ========================================
-    third_order_validation_xyz(phi, depth, nb, gt_powered, backend, default_origin)
-    third_order_validation_xz(phi, depth, nb, gt_powered, backend, default_origin)
-    third_order_validation_yz(phi, depth, nb, gt_powered, backend, default_origin)
+    third_order_validation_xyz(phi, depth, nb, backend, default_origin)
+    third_order_validation_xz(phi, depth, nb, backend, default_origin)
+    third_order_validation_yz(phi, depth, nb, backend, default_origin)
 
 
 if __name__ == "__main__":

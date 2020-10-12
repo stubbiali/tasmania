@@ -22,13 +22,18 @@
 #
 from gt4py import gtscript
 
-from tasmania.python.dwarfs.horizontal_diffusion import HorizontalDiffusion
+from tasmania.python.dwarfs.horizontal_hyperdiffusion import (
+    HorizontalHyperDiffusion,
+    stage_laplacian_numpy,
+    stage_laplacian_x_numpy,
+    stage_laplacian_y_numpy,
+)
 from tasmania.python.utils.framework_utils import register
 
 
-@register(name="second_order")
-class SecondOrder(HorizontalDiffusion):
-    """ Two-dimensional second-order diffusion. """
+@register(name="third_order")
+class ThirdOrder(HorizontalHyperDiffusion):
+    """ Two-dimensional third-order hyper-diffusion. """
 
     def __init__(
         self,
@@ -39,17 +44,16 @@ class SecondOrder(HorizontalDiffusion):
         diffusion_coeff_max,
         diffusion_damp_depth,
         nb,
-        gt_powered,
         backend,
         backend_opts,
-        build_info,
         dtype,
+        build_info,
         exec_info,
         default_origin,
         rebuild,
         managed_memory,
     ):
-        nb = 1 if (nb is None or nb < 1) else nb
+        nb = 3 if (nb is None or nb < 3) else nb
         super().__init__(
             shape,
             dx,
@@ -58,11 +62,10 @@ class SecondOrder(HorizontalDiffusion):
             diffusion_coeff_max,
             diffusion_damp_depth,
             nb,
-            gt_powered,
             backend,
             backend_opts,
-            build_info,
             dtype,
+            build_info,
             exec_info,
             default_origin,
             rebuild,
@@ -83,22 +86,24 @@ class SecondOrder(HorizontalDiffusion):
             dy=dy,
             origin=(nb, nb, 0),
             domain=(nx - 2 * nb, ny - 2 * nb, nz),
-            exec_info=self._exec_info,
+            validate_args=True,
         )
 
     @staticmethod
-    def _stencil_numpy(in_phi, in_gamma, out_phi, *, dx, dy, origin, domain, **kwargs):
-        i = slice(origin[0], origin[0] + domain[0])
-        ip1 = slice(origin[0] + 1, origin[0] + domain[0] + 1)
-        im1 = slice(origin[0] - 1, origin[0] + domain[0] - 1)
-        j = slice(origin[1], origin[1] + domain[1])
-        jp1 = slice(origin[1] + 1, origin[1] + domain[1] + 1)
-        jm1 = slice(origin[1] - 1, origin[1] + domain[1] - 1)
+    def _stencil_numpy(
+        in_phi, in_gamma, out_phi, *, dx, dy, origin, domain, **kwargs
+    ):
+        ib, ie = origin[0], origin[0] + domain[0]
+        jb, je = origin[1], origin[1] + domain[1]
+        k = slice(origin[2], origin[2] + domain[2])
 
-        out_phi[i, j] = in_gamma[i, j] * (
-            (in_phi[im1, j] - 2.0 * in_phi[i, j] + in_phi[ip1, j]) / (dx * dx)
-            + (in_phi[i, jm1] - 2.0 * in_phi[i, j] + in_phi[i, jp1]) / (dy * dy)
+        lap0 = stage_laplacian_numpy(
+            dx, dy, in_phi[ib - 3 : ie + 3, jb - 3 : je + 3, k]
         )
+        lap1 = stage_laplacian_numpy(dx, dy, lap0)
+        out_phi[ib:ie, jb:je, k] = in_gamma[
+            ib:ie, jb:je, k
+        ] * stage_laplacian_numpy(dx, dy, lap1)
 
     @staticmethod
     def _stencil_gt_defs(
@@ -109,17 +114,22 @@ class SecondOrder(HorizontalDiffusion):
         dx: float,
         dy: float
     ) -> None:
+        from __externals__ import (
+            stage_laplacian,
+            stage_laplacian_x,
+            stage_laplacian_y,
+        )
+
         with computation(PARALLEL), interval(...):
-            out_phi = in_gamma[0, 0, 0] * (
-                (in_phi[-1, 0, 0] - 2.0 * in_phi[0, 0, 0] + in_phi[1, 0, 0]) / (dx * dx)
-                + (in_phi[0, -1, 0] - 2.0 * in_phi[0, 0, 0] + in_phi[0, 1, 0])
-                / (dy * dy)
-            )
+            lap0 = stage_laplacian(dx=dx, dy=dy, phi=in_phi)
+            lap1 = stage_laplacian(dx=dx, dy=dy, phi=lap0)
+            lap2 = stage_laplacian(dx=dx, dy=dy, phi=lap1)
+            out_phi = in_gamma * lap2
 
 
-@register(name="second_order_1dx")
-class SecondOrder1DX(HorizontalDiffusion):
-    """ One-dimensional second-order diffusion along the x-direction. """
+@register(name="third_order_1dx")
+class ThirdOrder1DX(HorizontalHyperDiffusion):
+    """ One-dimensional third-order hyper-diffusion along the x-direction. """
 
     def __init__(
         self,
@@ -130,17 +140,16 @@ class SecondOrder1DX(HorizontalDiffusion):
         diffusion_coeff_max,
         diffusion_damp_depth,
         nb,
-        gt_powered,
         backend,
         backend_opts,
-        build_info,
         dtype,
+        build_info,
         exec_info,
         default_origin,
         rebuild,
         managed_memory,
     ):
-        nb = 1 if (nb is None or nb < 1) else nb
+        nb = 3 if (nb is None or nb < 3) else nb
         super().__init__(
             shape,
             dx,
@@ -149,11 +158,10 @@ class SecondOrder1DX(HorizontalDiffusion):
             diffusion_coeff_max,
             diffusion_damp_depth,
             nb,
-            gt_powered,
             backend,
             backend_opts,
-            build_info,
             dtype,
+            build_info,
             exec_info,
             default_origin,
             rebuild,
@@ -174,21 +182,22 @@ class SecondOrder1DX(HorizontalDiffusion):
             dy=dy,
             origin=(nb, 0, 0),
             domain=(nx - 2 * nb, ny, nz),
-            exec_info=self._exec_info,
+            validate_args=True,
         )
 
     @staticmethod
-    def _stencil_numpy(in_phi, in_gamma, out_phi, *, dx, dy, origin, domain, **kwargs):
-        i = slice(origin[0], origin[0] + domain[0])
-        ip1 = slice(origin[0] + 1, origin[0] + domain[0] + 1)
-        im1 = slice(origin[0] - 1, origin[0] + domain[0] - 1)
-        j = slice(origin[1], origin[1] + domain[1])
+    def _stencil_numpy(
+        in_phi, in_gamma, out_phi, *, dx, dy, origin, domain, **kwargs
+    ):
+        ib, ie = origin[0], origin[0] + domain[0]
+        jb, je = origin[1], origin[1] + domain[1]
+        k = slice(origin[2], origin[2] + domain[2])
 
-        out_phi[i, j] = (
-            in_gamma[i, j]
-            * (in_phi[im1, j] - 2.0 * in_phi[i, j] + in_phi[ip1, j])
-            / (dx * dx)
-        )
+        lap0 = stage_laplacian_x_numpy(dx, in_phi[ib - 3 : ie + 3, jb:je, k])
+        lap1 = stage_laplacian_x_numpy(dx, lap0)
+        out_phi[ib:ie, jb:je, k] = in_gamma[
+            ib:ie, jb:je, k
+        ] * stage_laplacian_x_numpy(dx, lap1)
 
     @staticmethod
     def _stencil_gt_defs(
@@ -199,17 +208,18 @@ class SecondOrder1DX(HorizontalDiffusion):
         dx: float,
         dy: float = 0.0
     ) -> None:
+        from __externals__ import stage_laplacian_x
+
         with computation(PARALLEL), interval(...):
-            out_phi = (
-                in_gamma[0, 0, 0]
-                * (in_phi[-1, 0, 0] - 2.0 * in_phi[0, 0, 0] + in_phi[1, 0, 0])
-                / (dx * dx)
-            )
+            lap0 = stage_laplacian_x(dx=dx, phi=in_phi)
+            lap1 = stage_laplacian_x(dx=dx, phi=lap0)
+            lap2 = stage_laplacian_x(dx=dx, phi=lap1)
+            out_phi = in_gamma * lap2
 
 
-@register(name="second_order_1dy")
-class SecondOrder1DY(HorizontalDiffusion):
-    """ One-dimensional second-order diffusion along the y-direction. """
+@register(name="third_order_1dy")
+class ThirdOrder1DY(HorizontalHyperDiffusion):
+    """ One-dimensional third-order hyper-diffusion along the y-direction. """
 
     def __init__(
         self,
@@ -220,17 +230,16 @@ class SecondOrder1DY(HorizontalDiffusion):
         diffusion_coeff_max,
         diffusion_damp_depth,
         nb,
-        gt_powered,
         backend,
         backend_opts,
-        build_info,
         dtype,
+        build_info,
         exec_info,
         default_origin,
         rebuild,
         managed_memory,
     ):
-        nb = 1 if (nb is None or nb < 1) else nb
+        nb = 3 if (nb is None or nb < 3) else nb
         super().__init__(
             shape,
             dx,
@@ -239,11 +248,10 @@ class SecondOrder1DY(HorizontalDiffusion):
             diffusion_coeff_max,
             diffusion_damp_depth,
             nb,
-            gt_powered,
             backend,
             backend_opts,
-            build_info,
             dtype,
+            build_info,
             exec_info,
             default_origin,
             rebuild,
@@ -264,21 +272,22 @@ class SecondOrder1DY(HorizontalDiffusion):
             dy=dy,
             origin=(0, nb, 0),
             domain=(nx, ny - 2 * nb, nz),
-            exec_info=self._exec_info,
+            validate_args=True,
         )
 
     @staticmethod
-    def _stencil_numpy(in_phi, in_gamma, out_phi, *, dx, dy, origin, domain, **kwargs):
-        i = slice(origin[0], origin[0] + domain[0])
-        j = slice(origin[1], origin[1] + domain[1])
-        jp1 = slice(origin[1] + 1, origin[1] + domain[1] + 1)
-        jm1 = slice(origin[1] - 1, origin[1] + domain[1] - 1)
+    def _stencil_numpy(
+        in_phi, in_gamma, out_phi, *, dx, dy, origin, domain, **kwargs
+    ):
+        ib, ie = origin[0], origin[0] + domain[0]
+        jb, je = origin[1], origin[1] + domain[1]
+        k = slice(origin[2], origin[2] + domain[2])
 
-        out_phi[i, j] = (
-            in_gamma[i, j]
-            * (in_phi[i, jm1] - 2.0 * in_phi[i, j] + in_phi[i, jp1])
-            / (dy * dy)
-        )
+        lap0 = stage_laplacian_y_numpy(dy, in_phi[ib:ie, jb - 3 : je + 3, k])
+        lap1 = stage_laplacian_y_numpy(dy, lap0)
+        out_phi[ib:ie, jb:je, k] = in_gamma[
+            ib:ie, jb:je, k
+        ] * stage_laplacian_y_numpy(dy, lap1)
 
     @staticmethod
     def _stencil_gt_defs(
@@ -289,9 +298,10 @@ class SecondOrder1DY(HorizontalDiffusion):
         dx: float = 0.0,
         dy: float
     ) -> None:
+        from __externals__ import stage_laplacian_y
+
         with computation(PARALLEL), interval(...):
-            out_phi = (
-                in_gamma[0, 0, 0]
-                * (in_phi[0, -1, 0] - 2.0 * in_phi[0, 0, 0] + in_phi[0, 1, 0])
-                / (dy * dy)
-            )
+            lap0 = stage_laplacian_y(dy=dy, phi=in_phi)
+            lap1 = stage_laplacian_y(dy=dy, phi=lap0)
+            lap2 = stage_laplacian_y(dy=dy, phi=lap1)
+            out_phi = in_gamma * lap2

@@ -23,17 +23,18 @@
 import abc
 import math
 import numpy as np
-from sympl import DataArray
 from typing import Optional, TYPE_CHECKING
 
 from gt4py import gtscript
 
-# from gt4py.__gtscript__ import computation, interval, PARALLEL
-
 from tasmania.python.utils import taz_types
 from tasmania.python.utils.framework_utils import factorize
 from tasmania.python.utils.storage_utils import get_asarray_function, zeros
-from tasmania.python.utils.utils import greater_or_equal_than as ge
+from tasmania.python.utils.utils import (
+    get_gt_backend,
+    greater_or_equal_than as ge,
+    is_gt,
+)
 
 if TYPE_CHECKING:
     from tasmania.python.domain.grid import Grid
@@ -53,11 +54,10 @@ class VerticalDamping(abc.ABC):
         damp_depth: int,
         damp_coeff_max: float,
         time_units: str,
-        gt_powered: bool,
         backend: str,
         backend_opts: taz_types.options_dict_t,
-        build_info: taz_types.options_dict_t,
         dtype: taz_types.dtype_t,
+        build_info: taz_types.options_dict_t,
         exec_info: taz_types.mutable_options_dict_t,
         default_origin: taz_types.triplet_int_t,
         rebuild: bool,
@@ -75,30 +75,33 @@ class VerticalDamping(abc.ABC):
             Maximum value for the damping coefficient.
         time_units : str
             Time units to be used throughout the class.
-        gt_powered : bool
-            ``True`` to harness GT4Py, ``False`` for a vanilla Numpy implementation.
         backend : str
-            The GT4Py backend.
+            The backend.
         backend_opts : dict
             Dictionary of backend-specific options.
         build_info : dict
             Dictionary of building options.
+        exec_info : dict
+            Dictionary which will store statistics and diagnostics gathered at
+            run time.
         dtype : data-type
             Data type of the storages.
-        exec_info : dict
-            Dictionary which will store statistics and diagnostics gathered at run time.
         default_origin : tuple[int]
             Storage default origin.
         rebuild : bool
-            ``True`` to trigger the stencils compilation at any class instantiation,
-            ``False`` to rely on the caching mechanism implemented by GT4Py.
+            ``True`` to trigger the stencils compilation at any class
+            instantiation, ``False`` to rely on the caching mechanism
+            implemented by the backend.
         managed_memory : `bool`, optional
-            ``True`` to allocate the storages as managed memory, ``False`` otherwise.
+            ``True`` to allocate the storages as managed memory,
+            ``False`` otherwise.
         """
         # safety-guard checks
         assert damp_depth <= grid.nz, (
             "The depth of the damping region ({}) should be smaller or equal than "
-            "the number of main vertical levels ({}).".format(damp_depth, grid.nz)
+            "the number of main vertical levels ({}).".format(
+                damp_depth, grid.nz
+            )
         )
 
         # store input arguments needed at run-time
@@ -106,7 +109,9 @@ class VerticalDamping(abc.ABC):
         self._tunits = time_units
         self._exec_info = exec_info
         storage_shape = (
-            (grid.nx, grid.ny, grid.nz) if storage_shape is None else storage_shape
+            (grid.nx, grid.ny, grid.nz)
+            if storage_shape is None
+            else storage_shape
         )
         assert grid.nz <= storage_shape[2] <= grid.nz + 1
         self._shape = storage_shape
@@ -114,7 +119,6 @@ class VerticalDamping(abc.ABC):
         # allocate the damping matrix
         self._rmat = zeros(
             storage_shape,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -130,16 +134,19 @@ class VerticalDamping(abc.ABC):
             )
             zt = grid.z_on_interface_levels.values[0]
             za = z[damp_depth - 1]
-            r = ge(z, za) * damp_coeff_max * (1 - np.cos(math.pi * (z - za) / (zt - za)))
-            asarray = get_asarray_function(gt_powered, backend)
+            r = (
+                ge(z, za)
+                * damp_coeff_max
+                * (1 - np.cos(math.pi * (z - za) / (zt - za)))
+            )
+            asarray = get_asarray_function(backend)
             self._rmat[...] = asarray(r[np.newaxis, np.newaxis, :])
 
         # instantiate the underlying stencil
-        self._gt_powered = gt_powered
-        if gt_powered:
+        if is_gt(backend):
             self._stencil = gtscript.stencil(
                 definition=self._stencil_gt_defs,
-                backend=backend,
+                backend=get_gt_backend(backend),
                 build_info=build_info,
                 rebuild=rebuild,
                 dtypes={"dtype": dtype},
@@ -152,12 +159,12 @@ class VerticalDamping(abc.ABC):
     def __call__(
         self,
         dt: taz_types.timedelta_t,
-        field_now: taz_types.gtstorage_t,
-        field_new: taz_types.gtstorage_t,
-        field_ref: taz_types.gtstorage_t,
-        field_out: taz_types.gtstorage_t,
+        field_now: taz_types.array_t,
+        field_new: taz_types.array_t,
+        field_ref: taz_types.array_t,
+        field_out: taz_types.array_t,
     ) -> None:
-        """ Apply vertical damping to a generic field.
+        """Apply vertical damping to a generic field.
 
         As this method is marked as abstract, its implementation
         is delegated to the derived classes.
@@ -166,13 +173,13 @@ class VerticalDamping(abc.ABC):
         ----------
         dt : datetime.timedelta
             The time step.
-        field_now : gt4py.storage.storage.Storage
+        field_now : array-like
             The field at the current time level.
-        field_new : gt4py.storage.storage.Storage
+        field_new : array-like
             The field at the next time level, on which the absorber will be applied.
-        field_ref : gt4py.storage.storage.Storage
+        field_ref : array-like
             A reference value for the field.
-        field_out : gt4py.storage.storage.Storage
+        field_out : array-like
             Buffer into which the output vertically damped field is written.
         """
         pass
@@ -184,12 +191,11 @@ class VerticalDamping(abc.ABC):
         damp_depth: int,
         damp_coeff_max: float,
         time_units: str = "s",
-        gt_powered: bool = True,
         *,
         backend: str = "numpy",
         backend_opts: Optional[taz_types.options_dict_t] = None,
-        build_info: Optional[taz_types.options_dict_t] = None,
         dtype: taz_types.dtype_t = np.float64,
+        build_info: Optional[taz_types.options_dict_t] = None,
         exec_info: Optional[taz_types.mutable_options_dict_t] = None,
         default_origin: Optional[taz_types.triplet_int_t] = None,
         rebuild: bool = False,
@@ -215,25 +221,26 @@ class VerticalDamping(abc.ABC):
             Maximum value for the damping coefficient.
         time_units : `str`, optional
             Time units to be used throughout the class. Defaults to 's'.
-        gt_powered : `bool`, optional
-            ``True`` to harness GT4Py, ``False`` for a vanilla Numpy implementation.
         backend : `str`, optional
-            The GT4Py backend.
+            The backend.
         backend_opts : `dict`, optional
             Dictionary of backend-specific options.
-        build_info : `dict`, optional
-            Dictionary of building options.
         dtype : `data-type`, optional
             Data type of the storages.
+        build_info : `dict`, optional
+            Dictionary of building options.
         exec_info : `dict`, optional
-            Dictionary which will store statistics and diagnostics gathered at run time.
+            Dictionary which will store statistics and diagnostics gathered at
+            run time.
         default_origin : `tuple[int]`, optional
             Storage default origin.
         rebuild : `bool`, optional
-            ``True`` to trigger the stencils compilation at any class instantiation,
-            ``False`` to rely on the caching mechanism implemented by GT4Py.
+            ``True`` to trigger the stencils compilation at any class
+            instantiation, ``False`` to rely on the caching mechanism
+            implemented by the backend.
         managed_memory : `bool`, optional
-            ``True`` to allocate the storages as managed memory, ``False`` otherwise.
+            ``True`` to allocate the storages as managed memory,
+            ``False`` otherwise.
 
         Return
         ------
@@ -245,11 +252,10 @@ class VerticalDamping(abc.ABC):
             damp_depth,
             damp_coeff_max,
             time_units,
-            gt_powered,
             backend,
             backend_opts,
-            build_info,
             dtype,
+            build_info,
             exec_info,
             default_origin,
             rebuild,

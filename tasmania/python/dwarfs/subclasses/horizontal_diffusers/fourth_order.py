@@ -39,17 +39,22 @@ class FourthOrder(HorizontalDiffusion):
         diffusion_coeff_max,
         diffusion_damp_depth,
         nb,
-        gt_powered,
         backend,
         backend_opts,
-        build_info,
         dtype,
+        build_info,
         exec_info,
         default_origin,
         rebuild,
         managed_memory,
     ):
         nb = 2 if (nb is None or nb < 2) else nb
+        lb = 2 * nb + 1
+        assert shape[0] >= lb and shape[1] >= lb, (
+            f"\n\tProvided: shape[0] = {shape[0]} and shape[1] = {shape[1]}."
+            f"\n\tRequirements: shape[0] >= {lb} and shape[1] >= {lb}."
+        )
+
         super().__init__(
             shape,
             dx,
@@ -58,11 +63,10 @@ class FourthOrder(HorizontalDiffusion):
             diffusion_coeff_max,
             diffusion_damp_depth,
             nb,
-            gt_powered,
             backend,
             backend_opts,
-            build_info,
             dtype,
+            build_info,
             exec_info,
             default_origin,
             rebuild,
@@ -84,10 +88,13 @@ class FourthOrder(HorizontalDiffusion):
             origin=(nb, nb, 0),
             domain=(nx - 2 * nb, ny - 2 * nb, nz),
             exec_info=self._exec_info,
+            validate_args=True
         )
 
     @staticmethod
-    def _stencil_numpy(in_phi, in_gamma, out_phi, *, dx, dy, origin, domain, **kwargs):
+    def _stencil_numpy(
+        in_phi, in_gamma, out_phi, *, dx, dy, origin, domain, **kwargs
+    ):
         i = slice(origin[0], origin[0] + domain[0])
         ip2 = slice(origin[0] + 2, origin[0] + domain[0] + 2)
         ip1 = slice(origin[0] + 1, origin[0] + domain[0] + 1)
@@ -161,17 +168,22 @@ class FourthOrder1DX(HorizontalDiffusion):
         diffusion_coeff_max,
         diffusion_damp_depth,
         nb,
-        gt_powered,
         backend,
         backend_opts,
-        build_info,
         dtype,
+        build_info,
         exec_info,
         default_origin,
         rebuild,
         managed_memory,
     ):
         nb = 2 if (nb is None or nb < 2) else nb
+        lb = 2 * nb + 1
+        assert shape[0] >= lb, (
+            f"\n\tProvided: shape[0] = {shape[0]}."
+            f"\n\tRequirement: shape[0] >= {lb}."
+        )
+
         super().__init__(
             shape,
             dx,
@@ -180,11 +192,10 @@ class FourthOrder1DX(HorizontalDiffusion):
             diffusion_coeff_max,
             diffusion_damp_depth,
             nb,
-            gt_powered,
             backend,
             backend_opts,
-            build_info,
             dtype,
+            build_info,
             exec_info,
             default_origin,
             rebuild,
@@ -206,10 +217,13 @@ class FourthOrder1DX(HorizontalDiffusion):
             origin=(nb, 0, 0),
             domain=(nx - 2 * nb, ny, nz),
             exec_info=self._exec_info,
+            validate_args=True
         )
 
     @staticmethod
-    def _stencil_numpy(in_phi, in_gamma, out_phi, *, dx, dy, origin, domain, **kwargs):
+    def _stencil_numpy(
+        in_phi, in_gamma, out_phi, *, dx, dy, origin, domain, **kwargs
+    ):
         i = slice(origin[0], origin[0] + domain[0])
         ip2 = slice(origin[0] + 2, origin[0] + domain[0] + 2)
         ip1 = slice(origin[0] + 1, origin[0] + domain[0] + 1)
@@ -265,17 +279,22 @@ class FourthOrder1DY(HorizontalDiffusion):
         diffusion_coeff_max,
         diffusion_damp_depth,
         nb,
-        gt_powered,
         backend,
         backend_opts,
-        build_info,
         dtype,
+        build_info,
         exec_info,
         default_origin,
         rebuild,
         managed_memory,
     ):
         nb = 2 if (nb is None or nb < 2) else nb
+        lb = 2 * nb + 1
+        assert shape[1] >= lb, (
+            f"\n\tProvided: shape[1] = {shape[1]}."
+            f"\n\tRequirement: shape[1] >= {lb}."
+        )
+
         super().__init__(
             shape,
             dx,
@@ -284,11 +303,10 @@ class FourthOrder1DY(HorizontalDiffusion):
             diffusion_coeff_max,
             diffusion_damp_depth,
             nb,
-            gt_powered,
             backend,
             backend_opts,
-            build_info,
             dtype,
+            build_info,
             exec_info,
             default_origin,
             rebuild,
@@ -310,10 +328,13 @@ class FourthOrder1DY(HorizontalDiffusion):
             origin=(0, nb, 0),
             domain=(nx, ny - 2 * nb, nz),
             exec_info=self._exec_info,
+            validate_args=True
         )
 
     @staticmethod
-    def _stencil_numpy(in_phi, in_gamma, out_phi, *, dx, dy, origin, domain, **kwargs):
+    def _stencil_numpy(
+        in_phi, in_gamma, out_phi, *, dx, dy, origin, domain, **kwargs
+    ):
         i = slice(origin[0], origin[0] + domain[0])
         j = slice(origin[1], origin[1] + domain[1])
         jp2 = slice(origin[1] + 2, origin[1] + domain[1] + 2)
