@@ -9,3 +9,6 @@
 [submodule "docker/external/xarray"]
 	path = docker/external/xarray
 	url = https://github.com/pydata/xarray.git
+[submodule "docker/external/dawn"]
+	path = docker/external/dawn
+	url = https://github.com/MeteoSwiss-APN/dawn.git
