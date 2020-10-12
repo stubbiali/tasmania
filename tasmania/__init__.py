@@ -274,3 +274,8 @@ finally:
 __author__ = "ETH Zurich"
 __copyright__ = "ETH Zurich"
 __license__ = "GPLv3"
+
+
+# numpy monkey-patch
+import gt4py as gt
+gt.storage.prepare_numpy()
