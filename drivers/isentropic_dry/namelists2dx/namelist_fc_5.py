@@ -26,11 +26,17 @@ from sympl import DataArray
 
 
 # computational domain
-domain_x = DataArray([-176, 176], dims="x", attrs={"units": "km"}).to_units("m")
+domain_x = DataArray([-176, 176], dims="x", attrs={"units": "km"}).to_units(
+    "m"
+)
 nx = 1281
-domain_y = DataArray([-200, 200], dims="y", attrs={"units": "km"}).to_units("m")
+domain_y = DataArray([-200, 200], dims="y", attrs={"units": "km"}).to_units(
+    "m"
+)
 ny = 1
-domain_z = DataArray([400, 280], dims="potential_temperature", attrs={"units": "K"})
+domain_z = DataArray(
+    [400, 280], dims="potential_temperature", attrs={"units": "K"}
+)
 nz = 60
 
 # horizontal boundary
@@ -38,10 +44,9 @@ hb_type = "relaxed"
 nb = 3
 hb_kwargs = {"nr": 6}
 
-# gt4py settings
-gt_powered = True
-gt_kwargs = {
-    "backend": "gtx86",
+# backend settings
+backend_kwargs = {
+    "backend": "gt4py:gtx86",
     "build_info": None,
     "dtype": np.float64,
     "exec_info": None,
@@ -49,8 +54,11 @@ gt_kwargs = {
     "rebuild": False,
     "managed_memory": False,
 }
-gt_kwargs["backend_opts"] = (
-    {"verbose": True} if gt_kwargs["backend"] in ("gtx86", "gtmc", "gtcuda") else None
+backend_kwargs["backend_opts"] = (
+    {"verbose": True}
+    if backend_kwargs["backend"]
+    in ("gt4py:gtx86", "gt4py:gtmc", "gt4py:gtcuda")
+    else None
 )
 
 # topography
@@ -98,7 +106,7 @@ diff_damp_depth = 30
 
 # horizontal smoothing
 smooth = True
-smooth_type = "second_order"
+smooth_type = "second_order_1dx"
 smooth_coeff = 1.0
 smooth_coeff_max = 1.0
 smooth_damp_depth = 0
@@ -119,25 +127,24 @@ niter = int(12 * 60 * 60 / timestep.total_seconds())
 # output
 save = True
 save_frequency = 2880
-filename = (
-    "/scratch/snx3000tds/subbiali/data/pdc_paper/isentropic_dry/isentropic_dry_"
-    "{}_{}_nx{}_nz{}_dt{}_nt{}_{}_L{}_H{}_u{}_{}{}{}{}_fc_{}.nc".format(
-        time_integration_scheme,
-        horizontal_flux_scheme,
-        nx,
-        nz,
-        int(timestep.total_seconds()),
-        niter,
-        topo_type,
-        int(topo_kwargs["width_x"].to_units("m").values.item()),
-        int(topo_kwargs["max_height"].to_units("m").values.item()),
-        int(x_velocity.to_units("m s^-1").values.item()),
-        "T" if isothermal else "bv",
-        "_diff" if diff else "",
-        "_smooth" if smooth else "",
-        "_turb" if turbulence else "",
-        gt_kwargs["backend"],
-    )
+filename = """/scratch/snx3000/subbiali/data/pdc-paper/isentropic-dry/
+    isentropic_dry_{}_{}_nx{}_nz{}_dt{}_nt{}_{}_L{}_H{}_u{}_{}{}{}{}_fc_{}
+    .nc""".format(
+    time_integration_scheme,
+    horizontal_flux_scheme,
+    nx,
+    nz,
+    int(timestep.total_seconds()),
+    niter,
+    topo_type,
+    int(topo_kwargs["width_x"].to_units("m").values.item()),
+    int(topo_kwargs["max_height"].to_units("m").values.item()),
+    int(x_velocity.to_units("m s^-1").values.item()),
+    "T" if isothermal else "bv",
+    "_diff" if diff else "",
+    "_smooth" if smooth else "",
+    "_turb" if turbulence else "",
+    backend_kwargs["backend"],
 )
 store_names = (
     "air_isentropic_density",

@@ -47,9 +47,8 @@ nb = 3
 hb_kwargs = {"core": zsof}
 
 # gt4py settings
-gt_powered = True
-gt_kwargs = {
-    "backend": "gtcuda",
+backend_settings = {
+    "backend": "gt4py:gtcuda",
     "build_info": None,
     "dtype": np.float64,
     "exec_info": None,
@@ -57,7 +56,9 @@ gt_kwargs = {
     "rebuild": False,
     "managed_memory": False,
 }
-gt_kwargs["backend_opts"] = {"verbose": True} if gt_kwargs["backend"] != "numpy" else None
+backend_settings["backend_opts"] = (
+    {"verbose": True} if backend_settings["backend"] != "numpy" else None
+)
 
 # numerical scheme
 time_integration_scheme = "rk3ws"
@@ -71,5 +72,5 @@ niter = 100  # 4 ** factor * 100
 # output
 save = False
 save_frequency = -1
-filename = "../../data/burgers_lfc_{}.nc".format(gt_kwargs["backend"])
+filename = "../../data/burgers_lfc_{}.nc".format(backend_settings["backend"])
 print_frequency = -1

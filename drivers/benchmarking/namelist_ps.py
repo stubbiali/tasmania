@@ -27,9 +27,9 @@ from sympl import DataArray
 
 # computational domain
 domain_x = DataArray([-176, 176], dims="x", attrs={"units": "km"}).to_units("m")
-nx = 161
+nx = 41
 domain_y = DataArray([-176, 176], dims="y", attrs={"units": "km"}).to_units("m")
-ny = 161
+ny = 41
 domain_z = DataArray([400, 280], dims="potential_temperature", attrs={"units": "K"})
 nz = 60
 
@@ -38,10 +38,9 @@ hb_type = "relaxed"
 nb = 3
 hb_kwargs = {"nr": 6, "nz": nz}
 
-# gt4py settings
-gt_powered = False
-gt_kwargs = {
-    "backend": "numpy",
+# backend settings
+backend_kwargs = {
+    "backend": "gt4py:gtmc",
     "build_info": None,
     "dtype": np.float64,
     "exec_info": None,
@@ -49,8 +48,8 @@ gt_kwargs = {
     "rebuild": False,
     "managed_memory": False,
 }
-gt_kwargs["backend_opts"] = (
-    {"verbose": True} if gt_kwargs["backend"] in ("gtx86", "gtmc", "gtcuda") else None
+backend_kwargs["backend_opts"] = (
+    {"verbose": True} if backend_kwargs["backend"] in ("gt4py:gtx86", "gt4py:gtmc", "gt4py:gtcuda") else None
 )
 
 # topography
@@ -115,7 +114,7 @@ coriolis_parameter = None  # DataArray(1e-3, attrs={'units': 'rad s^-1'})
 
 # simulation length
 timestep = timedelta(seconds=10)
-niter = 10  # int(1 * 60 * 60 / timestep.total_seconds())
+niter = 100  # int(1 * 60 * 60 / timestep.total_seconds())
 
 # output
 save = False
@@ -138,7 +137,7 @@ filename = (
         "_diff" if diff else "",
         "_smooth" if smooth else "",
         "_turb" if turbulence else "",
-        gt_kwargs["backend"],
+        backend_kwargs["backend"],
     )
 )
 store_names = (
@@ -152,4 +151,4 @@ store_names = (
     "y_momentum_isentropic",
     "y_velocity_at_v_locations",
 )
-print_frequency = -1
+print_frequency = 1

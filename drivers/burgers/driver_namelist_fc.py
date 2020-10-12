@@ -51,12 +51,6 @@ nl = locals()["namelist"]
 taz.feed_module(target=nl, source=namelist_fc)
 
 # ============================================================
-# Prepare NumPy
-# ============================================================
-if nl.gt_powered:
-    gt.storage.prepare_numpy()
-
-# ============================================================
 # The underlying domain
 # ============================================================
 domain = taz.Domain(
@@ -70,8 +64,7 @@ domain = taz.Domain(
     nb=nl.nb,
     horizontal_boundary_kwargs=nl.hb_kwargs,
     topography_type="flat",
-    gt_powered=nl.gt_powered,
-    **nl.gt_kwargs
+    **nl.backend_settings
 )
 pgrid = domain.physical_grid
 cgrid = domain.numerical_grid
@@ -83,11 +76,10 @@ zsof = taz.ZhaoSolutionFactory(nl.init_time, nl.diffusion_coeff)
 zsf = taz.ZhaoStateFactory(
     nl.init_time,
     nl.diffusion_coeff,
-    gt_powered=nl.gt_powered,
-    backend=nl.gt_kwargs["backend"],
-    dtype=nl.gt_kwargs["dtype"],
-    default_origin=nl.gt_kwargs["default_origin"],
-    managed_memory=nl.gt_kwargs["managed_memory"],
+    backend=nl.backend_settings["backend"],
+    dtype=nl.backend_settings["dtype"],
+    default_origin=nl.backend_settings["default_origin"],
+    managed_memory=nl.backend_settings["managed_memory"],
 )
 state = zsf(nl.init_time, cgrid)
 
@@ -104,8 +96,7 @@ diff = taz.BurgersHorizontalDiffusion(
     "numerical",
     nl.diffusion_type,
     nl.diffusion_coeff,
-    gt_powered=nl.gt_powered,
-    **nl.gt_kwargs
+    **nl.backend_settings
 )
 
 # ============================================================
@@ -116,8 +107,7 @@ dycore = taz.BurgersDynamicalCore(
     intermediate_tendency_component=diff,
     time_integration_scheme=nl.time_integration_scheme,
     flux_scheme=nl.flux_scheme,
-    gt_powered=nl.gt_powered,
-    **nl.gt_kwargs
+    **nl.backend_settings
 )
 
 # ============================================================
@@ -141,7 +131,7 @@ wall_time_start = time.time()
 compute_time = 0.0
 
 # dict operator
-dict_op = taz.DataArrayDictOperator(nl.gt_powered, **nl.gt_kwargs)
+dict_op = taz.DataArrayDictOperator(**nl.backend_settings)
 
 for i in range(nt):
     compute_time_start = time.time()
@@ -193,8 +183,7 @@ if nl.save and nl.filename is not None:
 wall_time = time.time() - wall_time_start
 
 # restore numpy
-if nl.gt_powered:
-    gt.storage.restore_numpy()
+gt.storage.restore_numpy()
 
 # compute the error
 try:

@@ -38,10 +38,9 @@ hb_type = "relaxed"
 nb = 3
 hb_kwargs = {"nr": 6}
 
-# gt4py settings
-gt_powered = True
-gt_kwargs = {
-    "backend": "gtmc",
+# backend settings
+backend_kwargs = {
+    "backend": "gt4py:gtmc",
     "build_info": None,
     "dtype": np.float64,
     "exec_info": None,
@@ -49,8 +48,8 @@ gt_kwargs = {
     "rebuild": False,
     "managed_memory": False,
 }
-gt_kwargs["backend_opts"] = (
-    {"verbose": True} if gt_kwargs["backend"] in ("gtx86", "gtmc", "gtcuda") else None
+backend_kwargs["backend_opts"] = (
+    {"verbose": True} if backend_kwargs["backend"] in ("gt4py:gtx86", "gt4py:gtmc", "gt4py:gtcuda") else None
 )
 
 # topography
@@ -95,11 +94,6 @@ diff_type = "second_order"
 diff_coeff = DataArray(10, attrs={"units": "s^-1"})
 diff_coeff_max = DataArray(12, attrs={"units": "s^-1"})
 diff_damp_depth = 30
-diff_moist = False
-diff_moist_type = "second_order"
-diff_moist_coeff = DataArray(0.12, attrs={"units": "s^-1"})
-diff_moist_coeff_max = DataArray(0.12, attrs={"units": "s^-1"})
-diff_moist_damp_depth = 0
 
 # horizontal smoothing
 smooth = True
@@ -123,13 +117,14 @@ niter = int(1 * 60 * 60 / timestep.total_seconds())
 
 # output
 save = False
-save_frequency = 20
+save_frequency = -1
 filename = (
-    "../../data/isentropic_dry_{}_{}_nx{}_nz{}_dt{}_nt{}_"
-    "{}_L{}_H{}_u{}_T{}{}{}{}_fc_{}.nc".format(
+    "/scratch/snx3000tds/subbiali/data/isentropic_dry_{}_{}_nx{}_ny{}_nz{}_dt{}_nt{}_"
+    "{}_L{}_H{}_u{}_{}{}{}{}_fc_{}.nc".format(
         time_integration_scheme,
         horizontal_flux_scheme,
         nx,
+        ny,
         nz,
         int(timestep.total_seconds()),
         niter,
@@ -137,26 +132,16 @@ filename = (
         int(topo_kwargs["width_x"].to_units("m").values.item()),
         int(topo_kwargs["max_height"].to_units("m").values.item()),
         int(x_velocity.to_units("m s^-1").values.item()),
-        int(temperature),
+        "T" if isothermal else "bv",
         "_diff" if diff else "",
         "_smooth" if smooth else "",
         "_turb" if turbulence else "",
-        gt_kwargs["backend"],
+        backend_kwargs["backend"],
     )
 )
 store_names = (
-    "accumulated_precipitation",
-    "air_density",
     "air_isentropic_density",
-    "air_pressure_on_interface_levels",
-    "air_temperature",
-    "exner_function_on_interface_levels",
     "height_on_interface_levels",
-    "mass_fraction_of_water_vapor_in_air",
-    "mass_fraction_of_cloud_liquid_water_in_air",
-    "mass_fraction_of_precipitation_water_in_air",
-    "montgomery_potential",
-    "precipitation",
     "x_momentum_isentropic",
     "x_velocity_at_u_locations",
     "y_momentum_isentropic",

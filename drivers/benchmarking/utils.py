@@ -22,21 +22,24 @@
 #
 def print_info(dt, i, nl, pgrid, state):
     if (nl.print_frequency > 0) and ((i + 1) % nl.print_frequency == 0):
+        s = state["air_isentropic_density"]
+        su = state["x_momentum_isentropic"]
+        sv = state["y_momentum_isentropic"]
+
+        try:
+            s.data.synchronize()
+            su.synchronize()
+            sv.synchronize()
+        except AttributeError:
+            pass
+
         u = (
-            state["x_momentum_isentropic"]
-            .to_units("kg m^-1 K^-1 s^-1")
-            .data[3:-4, 3:-4, :-1]
-            / state["air_isentropic_density"]
-            .to_units("kg m^-2 K^-1")
-            .data[3:-4, 3:-4, :-1]
+            su.to_units("kg m^-1 K^-1 s^-1").data[3:-4, 3:-4, :-1]
+            / s.to_units("kg m^-2 K^-1").data[3:-4, 3:-4, :-1]
         )
         v = (
-            state["y_momentum_isentropic"]
-            .to_units("kg m^-1 K^-1 s^-1")
-            .data[3:-4, 3:-4, :-1]
-            / state["air_isentropic_density"]
-            .to_units("kg m^-2 K^-1")
-            .data[3:-4, 3:-4, :-1]
+            sv.to_units("kg m^-1 K^-1 s^-1").data[3:-4, 3:-4, :-1]
+            / s.to_units("kg m^-2 K^-1").data[3:-4, 3:-4, :-1]
         )
 
         umax, umin = u.max().item(), u.min().item()

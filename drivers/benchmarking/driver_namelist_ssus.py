@@ -21,7 +21,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 import argparse
-import gt4py as gt
 import os
 import tasmania as taz
 import time
@@ -50,12 +49,6 @@ nl = locals()["namelist"]
 taz.feed_module(target=nl, source=namelist_ssus)
 
 # ============================================================
-# Prepare NumPy
-# ============================================================
-if nl.gt_powered:
-    gt.storage.prepare_numpy()
-
-# ============================================================
 # The underlying domain
 # ============================================================
 domain = taz.Domain(
@@ -70,13 +63,12 @@ domain = taz.Domain(
     horizontal_boundary_kwargs=nl.hb_kwargs,
     topography_type=nl.topo_type,
     topography_kwargs=nl.topo_kwargs,
-    gt_powered=nl.gt_powered,
-    **nl.gt_kwargs
+    **nl.backend_kwargs
 )
 pgrid = domain.physical_grid
 cgrid = domain.numerical_grid
 storage_shape = (cgrid.nx + 1, cgrid.ny + 1, cgrid.nz + 1)
-nl.gt_kwargs["storage_shape"] = storage_shape
+nl.backend_kwargs["storage_shape"] = storage_shape
 
 # ============================================================
 # The initial state
@@ -89,12 +81,11 @@ if nl.isothermal:
         nl.y_velocity,
         nl.temperature,
         moist=False,
-        gt_powered=nl.gt_powered,
-        backend=nl.gt_kwargs["backend"],
-        dtype=nl.gt_kwargs["dtype"],
-        default_origin=nl.gt_kwargs["default_origin"],
+        backend=nl.backend_kwargs["backend"],
+        dtype=nl.backend_kwargs["dtype"],
+        default_origin=nl.backend_kwargs["default_origin"],
         storage_shape=storage_shape,
-        managed_memory=nl.gt_kwargs["managed_memory"],
+        managed_memory=nl.backend_kwargs["managed_memory"],
     )
 else:
     state = taz.get_isentropic_state_from_brunt_vaisala_frequency(
@@ -104,12 +95,11 @@ else:
         nl.y_velocity,
         nl.brunt_vaisala,
         moist=False,
-        gt_powered=nl.gt_powered,
-        backend=nl.gt_kwargs["backend"],
-        dtype=nl.gt_kwargs["dtype"],
-        default_origin=nl.gt_kwargs["default_origin"],
+        backend=nl.backend_kwargs["backend"],
+        dtype=nl.backend_kwargs["dtype"],
+        default_origin=nl.backend_kwargs["default_origin"],
         storage_shape=storage_shape,
-        managed_memory=nl.gt_kwargs["managed_memory"],
+        managed_memory=nl.backend_kwargs["managed_memory"],
     )
 domain.horizontal_boundary.reference_state = state
 
@@ -140,8 +130,7 @@ dycore = taz.IsentropicDynamicalCore(
     smooth=False,
     smooth_moist=False,
     # backend settings
-    gt_powered=nl.gt_powered,
-    **nl.gt_kwargs
+    **nl.backend_kwargs
 )
 
 # ============================================================
@@ -153,12 +142,7 @@ ptis = nl.physics_time_integration_scheme
 
 # component retrieving the diagnostic variables
 dv = taz.IsentropicDiagnostics(
-    domain,
-    grid_type="numerical",
-    moist=False,
-    pt=pt,
-    gt_powered=nl.gt_powered,
-    **nl.gt_kwargs
+    domain, grid_type="numerical", moist=False, pt=pt, **nl.backend_kwargs
 )
 args_after_dynamics.append({"component": dv})
 
@@ -168,15 +152,13 @@ if nl.coriolis:
         domain,
         grid_type="numerical",
         coriolis_parameter=nl.coriolis_parameter,
-        gt_powered=nl.gt_powered,
-        **nl.gt_kwargs
+        **nl.backend_kwargs
     )
     args_before_dynamics.append(
         {
             "component": cf,
             "time_integrator": ptis,
-            "gt_powered": nl.gt_powered,
-            "time_integrator_kwargs": nl.gt_kwargs,
+            "time_integrator_kwargs": nl.backend_kwargs,
             "substeps": 1,
         }
     )
@@ -184,8 +166,7 @@ if nl.coriolis:
         {
             "component": cf,
             "time_integrator": ptis,
-            "gt_powered": nl.gt_powered,
-            "time_integrator_kwargs": nl.gt_kwargs,
+            "time_integrator_kwargs": nl.backend_kwargs,
             "substeps": 1,
         }
     )
@@ -199,8 +180,7 @@ if nl.smooth:
         nl.smooth_coeff_max,
         nl.smooth_damp_depth,
         moist=False,
-        gt_powered=nl.gt_powered,
-        **nl.gt_kwargs
+        **nl.backend_kwargs
     )
     args_after_dynamics.append({"component": hs})
 
@@ -213,15 +193,13 @@ if nl.diff:
         nl.diff_coeff_max,
         nl.diff_damp_depth,
         moist=False,
-        gt_powered=nl.gt_powered,
-        **nl.gt_kwargs
+        **nl.backend_kwargs
     )
     args_after_dynamics.append(
         {
             "component": hd,
             "time_integrator": ptis,
-            "gt_powered": nl.gt_powered,
-            "time_integrator_kwargs": nl.gt_kwargs,
+            "time_integrator_kwargs": nl.backend_kwargs,
             "substeps": 1,
         }
     )
@@ -229,14 +207,13 @@ if nl.diff:
 if nl.turbulence:
     # component implementing the Smagorinsky turbulence model
     turb = taz.IsentropicSmagorinsky(
-        domain, nl.smagorinsky_constant, gt_powered=nl.gt_powered, **nl.gt_kwargs
+        domain, nl.smagorinsky_constant, **nl.backend_kwargs
     )
     args_before_dynamics.append(
         {
             "component": turb,
             "time_integrator": ptis,
-            "gt_powered": nl.gt_powered,
-            "time_integrator_kwargs": nl.gt_kwargs,
+            "time_integrator_kwargs": nl.backend_kwargs,
             "substeps": 1,
         }
     )
@@ -244,8 +221,7 @@ if nl.turbulence:
         {
             "component": turb,
             "time_integrator": ptis,
-            "gt_powered": nl.gt_powered,
-            "time_integrator_kwargs": nl.gt_kwargs,
+            "time_integrator_kwargs": nl.backend_kwargs,
             "substeps": 1,
         }
     )
@@ -254,9 +230,7 @@ iargs_before_dynamics = args_before_dynamics[::-1]
 
 if nl.coriolis or nl.smooth or nl.diff or nl.turbulence:
     # component retrieving the velocity components
-    ivc = taz.IsentropicVelocityComponents(
-        domain, gt_powered=nl.gt_powered, **nl.gt_kwargs
-    )
+    ivc = taz.IsentropicVelocityComponents(domain, **nl.backend_kwargs)
     iargs_before_dynamics.append({"component": ivc})
 
 # wrap the components in two SequentialUpdateSplitting objects
@@ -285,7 +259,7 @@ wall_time_start = time.time()
 compute_time = 0.0
 
 # dict operator
-dict_op = taz.DataArrayDictOperator(nl.gt_powered, **nl.gt_kwargs)
+dict_op = taz.DataArrayDictOperator(**nl.backend_kwargs)
 
 for i in range(nt):
     compute_time_start = time.time()

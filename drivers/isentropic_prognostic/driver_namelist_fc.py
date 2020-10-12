@@ -21,7 +21,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 import argparse
-import gt4py as gt
 import os
 import tasmania as taz
 import time
@@ -50,12 +49,6 @@ nl = locals()["namelist"]
 taz.feed_module(target=nl, source=namelist_fc)
 
 # ============================================================
-# Prepare NumPy
-# ============================================================
-if nl.gt_powered:
-    gt.storage.prepare_numpy()
-
-# ============================================================
 # The underlying domain
 # ============================================================
 domain = taz.Domain(
@@ -70,13 +63,12 @@ domain = taz.Domain(
     horizontal_boundary_kwargs=nl.hb_kwargs,
     topography_type=nl.topo_type,
     topography_kwargs=nl.topo_kwargs,
-    gt_powered=nl.gt_powered,
-    **nl.gt_kwargs
+    **nl.backend_kwargs
 )
 pgrid = domain.physical_grid
 cgrid = domain.numerical_grid
 storage_shape = (cgrid.nx + 1, cgrid.ny + 1, cgrid.nz + 1)
-nl.gt_kwargs["storage_shape"] = storage_shape
+nl.backend_kwargs["storage_shape"] = storage_shape
 
 # ============================================================
 # The initial state
@@ -90,24 +82,22 @@ state = taz.get_isentropic_state_from_brunt_vaisala_frequency(
     moist=True,
     precipitation=nl.sedimentation,
     relative_humidity=nl.relative_humidity,
-    gt_powered=nl.gt_powered,
-    backend=nl.gt_kwargs["backend"],
-    dtype=nl.gt_kwargs["dtype"],
-    default_origin=nl.gt_kwargs["default_origin"],
+    backend=nl.backend_kwargs["backend"],
+    dtype=nl.backend_kwargs["dtype"],
+    default_origin=nl.backend_kwargs["default_origin"],
     storage_shape=storage_shape,
-    managed_memory=nl.gt_kwargs["managed_memory"],
+    managed_memory=nl.backend_kwargs["managed_memory"],
 )
 domain.horizontal_boundary.reference_state = state
 
 # add tendency_of_air_potential_temperature to the state
 state["tendency_of_air_potential_temperature"] = taz.get_dataarray_3d(
     taz.zeros(
-        nl.gt_kwargs["storage_shape"],
-        gt_powered=nl.gt_powered,
-        backend=nl.gt_kwargs["backend"],
-        dtype=nl.gt_kwargs["dtype"],
-        default_origin=nl.gt_kwargs["default_origin"],
-        managed_memory=nl.gt_kwargs["managed_memory"],
+        nl.backend_kwargs["storage_shape"],
+        backend=nl.backend_kwargs["backend"],
+        dtype=nl.backend_kwargs["dtype"],
+        default_origin=nl.backend_kwargs["default_origin"],
+        managed_memory=nl.backend_kwargs["managed_memory"],
     ),
     cgrid,
     "K s^-1",
@@ -126,8 +116,7 @@ if nl.coriolis:
         domain,
         grid_type="numerical",
         coriolis_parameter=nl.coriolis_parameter,
-        gt_powered=nl.gt_powered,
-        **nl.gt_kwargs
+        **nl.backend_kwargs
     )
     args.append(cf)
 
@@ -140,15 +129,14 @@ if nl.diff:
         nl.diff_coeff_max,
         nl.diff_damp_depth,
         moist=False,
-        gt_powered=nl.gt_powered,
-        **nl.gt_kwargs
+        **nl.backend_kwargs
     )
     args.append(diff)
 
 if nl.turbulence:
     # component implementing the Smagorinsky turbulence model
     turb = taz.IsentropicSmagorinsky(
-        domain, nl.smagorinsky_constant, gt_powered=nl.gt_powered, **nl.gt_kwargs
+        domain, nl.smagorinsky_constant, **nl.backend_kwargs
     )
     args.append(turb)
 
@@ -163,8 +151,7 @@ ke = taz.KesslerMicrophysics(
     autoconversion_rate=nl.autoconversion_rate,
     collection_rate=nl.collection_rate,
     saturation_vapor_pressure_formula=nl.saturation_vapor_pressure_formula,
-    gt_powered=nl.gt_powered,
-    **nl.gt_kwargs
+    **nl.backend_kwargs
 )
 if nl.update_frequency > 0:
     from sympl import UpdateFrequencyWrapper
@@ -180,8 +167,7 @@ sa = taz.KesslerSaturationAdjustmentPrognostic(
     air_pressure_on_interface_levels=True,
     saturation_vapor_pressure_formula=nl.saturation_vapor_pressure_formula,
     saturation_rate=nl.saturation_rate,
-    gt_powered=nl.gt_powered,
-    **nl.gt_kwargs
+    **nl.backend_kwargs
 )
 args.append(sa)
 
@@ -196,8 +182,7 @@ if nl.vertical_advection:
             domain,
             moist=True,
             tendency_of_air_potential_temperature_on_interface_levels=False,
-            gt_powered=nl.gt_powered,
-            **nl.gt_kwargs
+            **nl.backend_kwargs
         )
         args.append(vf)
     else:
@@ -207,15 +192,14 @@ if nl.vertical_advection:
             flux_scheme=nl.vertical_flux_scheme,
             moist=True,
             tendency_of_air_potential_temperature_on_interface_levels=False,
-            gt_powered=nl.gt_powered,
-            **nl.gt_kwargs
+            **nl.backend_kwargs
         )
         args.append(vf)
 
 if nl.sedimentation:
     # component estimating the raindrop fall velocity
     rfv = taz.KesslerFallVelocity(
-        domain, "numerical", gt_powered=nl.gt_powered, **nl.gt_kwargs
+        domain, "numerical", **nl.backend_kwargs
     )
     args.append(rfv)
 
@@ -224,14 +208,13 @@ if nl.sedimentation:
         domain,
         "numerical",
         sedimentation_flux_scheme=nl.sedimentation_flux_scheme,
-        gt_powered=nl.gt_powered,
-        **nl.gt_kwargs
+        **nl.backend_kwargs
     )
     args.append(sd)
 
 # wrap the components in a ConcurrentCoupling object
 inter_tends = taz.ConcurrentCoupling(
-    *args, execution_policy="serial", gt_powered=nl.gt_powered, **nl.gt_kwargs
+    *args, execution_policy="serial", **nl.backend_kwargs
 )
 
 # ============================================================
@@ -244,8 +227,7 @@ dv = taz.IsentropicDiagnostics(
     grid_type="numerical",
     moist=True,
     pt=pt,
-    gt_powered=nl.gt_powered,
-    **nl.gt_kwargs
+    **nl.backend_kwargs
 )
 
 # ============================================================
@@ -257,7 +239,7 @@ if nl.sedimentation:
     args.append(rfv)
 
     # component calculating the accumulated precipitation
-    ap = taz.Precipitation(domain, "numerical", gt_powered=nl.gt_powered, **nl.gt_kwargs)
+    ap = taz.Precipitation(domain, "numerical", **nl.backend_kwargs)
     args.append(ap)
 
 if nl.smooth:
@@ -268,14 +250,13 @@ if nl.smooth:
         nl.smooth_coeff,
         nl.smooth_coeff_max,
         nl.smooth_damp_depth,
-        gt_powered=nl.gt_powered,
-        **nl.gt_kwargs
+        **nl.backend_kwargs
     )
     args.append(hs)
 
     # component calculating the velocity components
     vc = taz.IsentropicVelocityComponents(
-        domain, gt_powered=nl.gt_powered, **nl.gt_kwargs
+        domain, **nl.backend_kwargs
     )
     args.append(vc)
 
@@ -292,11 +273,11 @@ dycore = taz.IsentropicDynamicalCore(
     domain,
     moist=True,
     # parameterizations
-    intermediate_tendencies=inter_tends,
-    intermediate_diagnostics=dv,
+    intermediate_tendency_component=inter_tends,
+    intermediate_diagnostic_component=dv,
     substeps=nl.substeps,
-    fast_tendencies=None,
-    fast_diagnostics=None,
+    fast_tendency_component=None,
+    fast_diagnostic_component=None,
     # numerical scheme
     time_integration_scheme=nl.time_integration_scheme,
     horizontal_flux_scheme=nl.horizontal_flux_scheme,
@@ -316,9 +297,8 @@ dycore = taz.IsentropicDynamicalCore(
     # horizontal smoothing
     smooth=False,
     smooth_moist=False,
-    # gt4py settings
-    gt_powered=nl.gt_powered,
-    **nl.gt_kwargs
+    # backend settings
+    **nl.backend_kwargs
 )
 
 # ============================================================
@@ -343,7 +323,7 @@ wall_time_start = time.time()
 compute_time = 0.0
 
 # dict operator
-dict_op = taz.DataArrayDictOperator(nl.gt_powered, **nl.gt_kwargs)
+dict_op = taz.DataArrayDictOperator(**nl.backend_kwargs)
 
 for i in range(nt):
     compute_time_start = time.time()

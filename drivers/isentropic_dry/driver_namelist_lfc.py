@@ -21,7 +21,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 import argparse
-import gt4py as gt
 import os
 import tasmania as taz
 import time
@@ -29,8 +28,6 @@ import time
 from drivers.isentropic_dry import namelist_lfc
 from drivers.isentropic_dry.utils import print_info
 
-
-gt.storage.prepare_numpy()
 
 # ============================================================
 # The namelist
@@ -66,13 +63,13 @@ domain = taz.Domain(
     horizontal_boundary_kwargs=nl.hb_kwargs,
     topography_type=nl.topo_type,
     topography_kwargs=nl.topo_kwargs,
-    backend=nl.gt_kwargs["backend"],
-    dtype=nl.gt_kwargs["dtype"],
+    backend=nl.backend_kwargs["backend"],
+    dtype=nl.backend_kwargs["dtype"],
 )
 pgrid = domain.physical_grid
 cgrid = domain.numerical_grid
 storage_shape = (cgrid.nx + 1, cgrid.ny + 1, cgrid.nz + 1)
-nl.gt_kwargs["storage_shape"] = storage_shape
+nl.backend_kwargs["storage_shape"] = storage_shape
 
 # ============================================================
 # The initial state
@@ -85,11 +82,11 @@ if nl.isothermal:
         nl.y_velocity,
         nl.temperature,
         moist=False,
-        backend=nl.gt_kwargs["backend"],
-        dtype=nl.gt_kwargs["dtype"],
-        default_origin=nl.gt_kwargs["default_origin"],
+        backend=nl.backend_kwargs["backend"],
+        dtype=nl.backend_kwargs["dtype"],
+        default_origin=nl.backend_kwargs["default_origin"],
         storage_shape=storage_shape,
-        managed_memory=nl.gt_kwargs["managed_memory"],
+        managed_memory=nl.backend_kwargs["managed_memory"],
     )
 else:
     state = taz.get_isentropic_state_from_brunt_vaisala_frequency(
@@ -99,11 +96,11 @@ else:
         nl.y_velocity,
         nl.brunt_vaisala,
         moist=False,
-        backend=nl.gt_kwargs["backend"],
-        dtype=nl.gt_kwargs["dtype"],
-        default_origin=nl.gt_kwargs["default_origin"],
+        backend=nl.backend_kwargs["backend"],
+        dtype=nl.backend_kwargs["dtype"],
+        default_origin=nl.backend_kwargs["default_origin"],
         storage_shape=storage_shape,
-        managed_memory=nl.gt_kwargs["managed_memory"],
+        managed_memory=nl.backend_kwargs["managed_memory"],
     )
 domain.horizontal_boundary.reference_state = state
 
@@ -118,7 +115,7 @@ if nl.coriolis:
         domain,
         grid_type="numerical",
         coriolis_parameter=nl.coriolis_parameter,
-        **nl.gt_kwargs
+        **nl.backend_kwargs
     )
     args.append(cf)
 
@@ -131,20 +128,20 @@ if nl.diff:
         nl.diff_coeff_max,
         nl.diff_damp_depth,
         moist=False,
-        **nl.gt_kwargs
+        **nl.backend_kwargs
     )
     args.append(diff)
 
 if nl.turbulence:
     # component implementing the Smagorinsky turbulence model
     turb = taz.IsentropicSmagorinsky(
-        domain, smagorinsky_constant=nl.smagorinsky_constant, **nl.gt_kwargs
+        domain, smagorinsky_constant=nl.smagorinsky_constant, **nl.backend_kwargs
     )
     args.append(turb)
 
 # wrap the components in a ConcurrentCoupling object
 slow_tends = taz.ConcurrentCoupling(
-    *args, execution_policy="serial", gt_powered=nl.gt_powered, **nl.gt_kwargs
+    *args, execution_policy="serial", **nl.backend_kwargs
 )
 
 # ============================================================
@@ -155,7 +152,7 @@ args = []
 # component retrieving the diagnostic variables
 pt = state["air_pressure_on_interface_levels"][0, 0, 0]
 idv = taz.IsentropicDiagnostics(
-    domain, grid_type="numerical", moist=False, pt=pt, **nl.gt_kwargs
+    domain, grid_type="numerical", moist=False, pt=pt, **nl.backend_kwargs
 )
 args.append(idv)
 
@@ -167,12 +164,12 @@ if nl.smooth:
         nl.smooth_coeff,
         nl.smooth_coeff_max,
         nl.smooth_damp_depth,
-        **nl.gt_kwargs
+        **nl.backend_kwargs
     )
     args.append(hs)
 
     # component calculating the velocity components
-    vc = taz.IsentropicVelocityComponents(domain, **nl.gt_kwargs)
+    vc = taz.IsentropicVelocityComponents(domain, **nl.backend_kwargs)
     args.append(vc)
 
 # wrap the components in a DiagnosticComponentComposite object
@@ -185,11 +182,11 @@ dycore = taz.IsentropicDynamicalCore(
     domain,
     moist=False,
     # parameterizations
-    intermediate_tendencies=None,
-    intermediate_diagnostics=None,
+    intermediate_tendency_component=None,
+    intermediate_diagnostic_component=None,
     substeps=nl.substeps,
-    fast_tendencies=None,
-    fast_diagnostics=None,
+    fast_tendency_component=None,
+    fast_diagnostic_component=None,
     # numerical scheme
     time_integration_scheme=nl.time_integration_scheme,
     horizontal_flux_scheme=nl.horizontal_flux_scheme,
@@ -209,9 +206,8 @@ dycore = taz.IsentropicDynamicalCore(
     # horizontal smoothing
     smooth=False,
     smooth_moist=False,
-    # gt4py settings
-    gt_powered=nl.gt_powered,
-    **nl.gt_kwargs
+    # backend settings
+    **nl.backend_kwargs
 )
 
 # ============================================================
@@ -236,7 +232,7 @@ wall_time_start = time.time()
 compute_time = 0.0
 
 # dict operator
-dict_op = taz.DataArrayDictOperator(nl.gt_powered, **nl.gt_kwargs)
+dict_op = taz.DataArrayDictOperator(**nl.backend_kwargs)
 
 for i in range(nt):
     compute_time_start = time.time()

@@ -31,8 +31,6 @@ import time
 from drivers.burgers import namelist_ps
 
 
-gt.storage.prepare_numpy()
-
 # ============================================================
 # The namelist
 # ============================================================
@@ -66,9 +64,8 @@ domain = taz.Domain(
     nb=nl.nb,
     horizontal_boundary_kwargs=nl.hb_kwargs,
     topography_type="flat",
-    gt_powered=nl.gt_powered,
-    backend=nl.gt_kwargs["backend"],
-    dtype=nl.gt_kwargs["dtype"],
+    backend=nl.backend_settings["backend"],
+    dtype=nl.backend_settings["dtype"],
 )
 pgrid = domain.physical_grid
 cgrid = domain.numerical_grid
@@ -80,11 +77,10 @@ zsof = taz.ZhaoSolutionFactory(nl.init_time, nl.diffusion_coeff)
 zsf = taz.ZhaoStateFactory(
     nl.init_time,
     nl.diffusion_coeff,
-    gt_powered=nl.gt_powered,
-    backend=nl.gt_kwargs["backend"],
-    dtype=nl.gt_kwargs["dtype"],
-    default_origin=nl.gt_kwargs["default_origin"],
-    managed_memory=nl.gt_kwargs["managed_memory"],
+    backend=nl.backend_settings["backend"],
+    dtype=nl.backend_settings["dtype"],
+    default_origin=nl.backend_settings["default_origin"],
+    managed_memory=nl.backend_settings["managed_memory"],
 )
 state = zsf(nl.init_time, cgrid)
 
@@ -100,8 +96,7 @@ dycore = taz.BurgersDynamicalCore(
     intermediate_tendency_component=None,
     time_integration_scheme=nl.time_integration_scheme,
     flux_scheme=nl.flux_scheme,
-    gt_powered=nl.gt_powered,
-    **nl.gt_kwargs
+    **nl.backend_settings
 )
 
 # ============================================================
@@ -113,8 +108,7 @@ diff = taz.BurgersHorizontalDiffusion(
     "numerical",
     nl.diffusion_type,
     nl.diffusion_coeff,
-    gt_powered=nl.gt_powered,
-    **nl.gt_kwargs
+    **nl.backend_settings
 )
 
 # wrap the component in a ParallelSplitting object
@@ -123,13 +117,11 @@ physics = taz.ParallelSplitting(
         "component": diff,
         "enforce_horizontal_boundary": True,
         "time_integrator": nl.physics_time_integration_scheme,
-        "gt_powered": nl.gt_powered,
-        "time_integrator_kwargs": nl.gt_kwargs,
+        "time_integrator_kwargs": nl.backend_settings,
         "substeps": 1,
     },
     execution_policy="serial",
-    gt_powered=nl.gt_powered,
-    **nl.gt_kwargs
+    **nl.backend_settings
 )
 
 # ============================================================
@@ -152,7 +144,7 @@ wall_time_start = time.time()
 compute_time = 0.0
 
 # dict operator
-dict_op = taz.DataArrayDictOperator(nl.gt_powered, **nl.gt_kwargs)
+dict_op = taz.DataArrayDictOperator(**nl.backend_settings)
 
 for i in range(nt):
     compute_time_start = time.time()

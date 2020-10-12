@@ -21,7 +21,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 import argparse
-import gt4py as gt
 import os
 import tasmania as taz
 import time
@@ -29,8 +28,6 @@ import time
 from drivers.isentropic_prognostic import namelist_ssus
 from drivers.isentropic_prognostic.utils import print_info
 
-
-gt.storage.prepare_numpy()
 
 # ============================================================
 # The namelist
@@ -66,13 +63,12 @@ domain = taz.Domain(
     horizontal_boundary_kwargs=nl.hb_kwargs,
     topography_type=nl.topo_type,
     topography_kwargs=nl.topo_kwargs,
-    gt_powered=nl.gt_powered,
-    backend=nl.gt_kwargs["backend"],
-    dtype=nl.gt_kwargs["dtype"],
+    backend=nl.backend_kwargs["backend"],
+    dtype=nl.backend_kwargs["dtype"],
 )
 pgrid = domain.physical_grid
 cgrid = domain.numerical_grid
-nl.gt_kwargs["storage_shape"] = (cgrid.nx + 1, cgrid.ny + 1, cgrid.nz + 1)
+nl.backend_kwargs["storage_shape"] = (cgrid.nx + 1, cgrid.ny + 1, cgrid.nz + 1)
 
 # ============================================================
 # The initial state
@@ -86,24 +82,22 @@ state = taz.get_isentropic_state_from_brunt_vaisala_frequency(
     moist=True,
     precipitation=nl.sedimentation,
     relative_humidity=nl.relative_humidity,
-    gt_powered=nl.gt_powered,
-    backend=nl.gt_kwargs["backend"],
-    dtype=nl.gt_kwargs["dtype"],
-    default_origin=nl.gt_kwargs["default_origin"],
-    storage_shape=nl.gt_kwargs["storage_shape"],
-    managed_memory=nl.gt_kwargs["managed_memory"],
+    backend=nl.backend_kwargs["backend"],
+    dtype=nl.backend_kwargs["dtype"],
+    default_origin=nl.backend_kwargs["default_origin"],
+    storage_shape=nl.backend_kwargs["storage_shape"],
+    managed_memory=nl.backend_kwargs["managed_memory"],
 )
 domain.horizontal_boundary.reference_state = state
 
 # add tendency_of_air_potential_temperature to the state
 state["tendency_of_air_potential_temperature"] = taz.get_dataarray_3d(
     taz.zeros(
-        nl.gt_kwargs["storage_shape"],
-        gt_powered=nl.gt_powered,
-        backend=nl.gt_kwargs["backend"],
-        dtype=nl.gt_kwargs["dtype"],
-        default_origin=nl.gt_kwargs["default_origin"],
-        managed_memory=nl.gt_kwargs["managed_memory"],
+        nl.backend_kwargs["storage_shape"],
+        backend=nl.backend_kwargs["backend"],
+        dtype=nl.backend_kwargs["dtype"],
+        default_origin=nl.backend_kwargs["default_origin"],
+        managed_memory=nl.backend_kwargs["managed_memory"],
     ),
     cgrid,
     "K s^-1",
@@ -119,11 +113,11 @@ dycore = taz.IsentropicDynamicalCore(
     domain,
     moist=True,
     # parameterizations
-    intermediate_tendencies=None,
-    intermediate_diagnostics=None,
+    intermediate_tendency_component=None,
+    intermediate_diagnostic_component=None,
     substeps=nl.substeps,
-    fast_tendencies=None,
-    fast_diagnostics=None,
+    fast_tendency_component=None,
+    fast_diagnostic_component=None,
     # numerical scheme
     time_integration_scheme=nl.time_integration_scheme,
     horizontal_flux_scheme=nl.horizontal_flux_scheme,
@@ -138,8 +132,7 @@ dycore = taz.IsentropicDynamicalCore(
     smooth=False,
     smooth_moist=False,
     # backend settings
-    gt_powered=nl.gt_powered,
-    **nl.gt_kwargs
+    **nl.backend_kwargs
 )
 
 # ============================================================
@@ -151,12 +144,7 @@ ptis = nl.physics_time_integration_scheme
 
 # component retrieving the diagnostic variables
 dv = taz.IsentropicDiagnostics(
-    domain,
-    grid_type="numerical",
-    moist=True,
-    pt=pt,
-    gt_powered=nl.gt_powered,
-    **nl.gt_kwargs
+    domain, grid_type="numerical", moist=True, pt=pt, **nl.backend_kwargs
 )
 args_after_dynamics.append({"component": dv})
 
@@ -166,15 +154,13 @@ if nl.coriolis:
         domain,
         grid_type="numerical",
         coriolis_parameter=nl.coriolis_parameter,
-        gt_powered=nl.gt_powered,
-        **nl.gt_kwargs
+        **nl.backend_kwargs
     )
     args_before_dynamics.append(
         {
             "component": cf,
             "time_integrator": ptis,
-            "gt_powered": nl.gt_powered,
-            "time_integrator_kwargs": nl.gt_kwargs,
+            "time_integrator_kwargs": nl.backend_kwargs,
             "substeps": 1,
         }
     )
@@ -182,8 +168,7 @@ if nl.coriolis:
         {
             "component": cf,
             "time_integrator": ptis,
-            "gt_powered": nl.gt_powered,
-            "time_integrator_kwargs": nl.gt_kwargs,
+            "time_integrator_kwargs": nl.backend_kwargs,
             "substeps": 1,
         }
     )
@@ -200,8 +185,7 @@ if nl.smooth:
         smooth_moist_coeff=nl.smooth_moist_coeff,
         smooth_moist_coeff_max=nl.smooth_moist_coeff_max,
         smooth_moist_damp_depth=nl.smooth_moist_damp_depth,
-        gt_powered=nl.gt_powered,
-        **nl.gt_kwargs
+        **nl.backend_kwargs
     )
     args_after_dynamics.append({"component": hs})
 
@@ -217,15 +201,13 @@ if nl.diff:
         diffusion_moist_coeff=nl.diff_moist_coeff,
         diffusion_moist_coeff_max=nl.diff_moist_coeff_max,
         diffusion_moist_damp_depth=nl.diff_moist_damp_depth,
-        gt_powered=nl.gt_powered,
-        **nl.gt_kwargs
+        **nl.backend_kwargs
     )
     args_before_dynamics.append(
         {
             "component": hd,
             "time_integrator": ptis,
-            "gt_powered": nl.gt_powered,
-            "time_integrator_kwargs": nl.gt_kwargs,
+            "time_integrator_kwargs": nl.backend_kwargs,
             "substeps": 1,
         }
     )
@@ -233,8 +215,7 @@ if nl.diff:
         {
             "component": hd,
             "time_integrator": ptis,
-            "gt_powered": nl.gt_powered,
-            "time_integrator_kwargs": nl.gt_kwargs,
+            "time_integrator_kwargs": nl.backend_kwargs,
             "substeps": 1,
         }
     )
@@ -242,14 +223,13 @@ if nl.diff:
 if nl.turbulence:
     # component implementing the Smagorinsky turbulence model
     turb = taz.IsentropicSmagorinsky(
-        domain, nl.smagorinsky_constant, gt_powered=nl.gt_powered, **nl.gt_kwargs
+        domain, nl.smagorinsky_constant, **nl.backend_kwargs
     )
     args_before_dynamics.append(
         {
             "component": turb,
             "time_integrator": ptis,
-            "gt_powered": nl.gt_powered,
-            "time_integrator_kwargs": nl.gt_kwargs,
+            "time_integrator_kwargs": nl.backend_kwargs,
             "substeps": 1,
         }
     )
@@ -257,8 +237,7 @@ if nl.turbulence:
         {
             "component": turb,
             "time_integrator": ptis,
-            "gt_powered": nl.gt_powered,
-            "time_integrator_kwargs": nl.gt_kwargs,
+            "time_integrator_kwargs": nl.backend_kwargs,
             "substeps": 1,
         }
     )
@@ -280,8 +259,7 @@ ke = taz.KesslerMicrophysics(
     autoconversion_rate=nl.autoconversion_rate,
     collection_rate=nl.collection_rate,
     saturation_vapor_pressure_formula=nl.saturation_vapor_pressure_formula,
-    gt_powered=nl.gt_powered,
-    **nl.gt_kwargs
+    **nl.backend_kwargs
 )
 
 if nl.update_frequency > 0:
@@ -295,31 +273,20 @@ if nl.rain_evaporation:
     args_before_dynamics.append(
         {
             "component": taz.ConcurrentCoupling(
-                d2t,
-                comp,
-                t2d,
-                execution_policy="serial",
-                gt_powered=nl.gt_powered,
-                **nl.gt_kwargs
+                d2t, comp, t2d, execution_policy="serial", **nl.backend_kwargs
             ),
             "time_integrator": ptis,
-            "gt_powered": nl.gt_powered,
-            "time_integrator_kwargs": nl.gt_kwargs,
+            "time_integrator_kwargs": nl.backend_kwargs,
             "substeps": 1,
         }
     )
     args_after_dynamics.append(
         {
             "component": taz.ConcurrentCoupling(
-                comp,
-                t2d,
-                execution_policy="serial",
-                gt_powered=nl.gt_powered,
-                **nl.gt_kwargs
+                comp, t2d, execution_policy="serial", **nl.backend_kwargs
             ),
             "time_integrator": ptis,
-            "gt_powered": nl.gt_powered,
-            "time_integrator_kwargs": nl.gt_kwargs,
+            "time_integrator_kwargs": nl.backend_kwargs,
             "substeps": 1,
         }
     )
@@ -328,8 +295,7 @@ else:
         {
             "component": comp,
             "time_integrator": ptis,
-            "gt_powered": nl.gt_powered,
-            "time_integrator_kwargs": nl.gt_kwargs,
+            "time_integrator_kwargs": nl.backend_kwargs,
             "substeps": 1,
         }
     )
@@ -337,8 +303,7 @@ else:
         {
             "component": comp,
             "time_integrator": ptis,
-            "gt_powered": nl.gt_powered,
-            "time_integrator_kwargs": nl.gt_kwargs,
+            "time_integrator_kwargs": nl.backend_kwargs,
             "substeps": 1,
         }
     )
@@ -350,38 +315,26 @@ sa = taz.KesslerSaturationAdjustmentPrognostic(
     air_pressure_on_interface_levels=True,
     saturation_vapor_pressure_formula=nl.saturation_vapor_pressure_formula,
     saturation_rate=nl.saturation_rate,
-    gt_powered=nl.gt_powered,
-    **nl.gt_kwargs
+    **nl.backend_kwargs
 )
 if nl.rain_evaporation:
     args_before_dynamics.append(
         {
             "component": taz.ConcurrentCoupling(
-                sa,
-                t2d,
-                execution_policy="serial",
-                gt_powered=nl.gt_powered,
-                **nl.gt_kwargs
+                sa, t2d, execution_policy="serial", **nl.backend_kwargs
             ),
             "time_integrator": ptis,
-            "gt_powered": nl.gt_powered,
-            "time_integrator_kwargs": nl.gt_kwargs,
+            "time_integrator_kwargs": nl.backend_kwargs,
             "substeps": 1,
         }
     )
     args_after_dynamics.append(
         {
             "component": taz.ConcurrentCoupling(
-                d2t,
-                sa,
-                t2d,
-                execution_policy="serial",
-                gt_powered=nl.gt_powered,
-                **nl.gt_kwargs
+                d2t, sa, t2d, execution_policy="serial", **nl.backend_kwargs
             ),
             "time_integrator": ptis,
-            "gt_powered": nl.gt_powered,
-            "time_integrator_kwargs": nl.gt_kwargs,
+            "time_integrator_kwargs": nl.backend_kwargs,
             "substeps": 1,
         }
     )
@@ -392,27 +345,20 @@ else:
     #             sa,
     #             t2d,
     #             execution_policy="serial",
-    #             gt_powered=nl.gt_powered,
-    #             **nl.gt_kwargs
+    #             **nl.backend_kwargs
     #         ),
     #         "time_integrator": ptis,
-    #         "gt_powered": nl.gt_powered,
-    #         "time_integrator_kwargs": nl.gt_kwargs,
+    #         "time_integrator_kwargs": nl.backend_kwargs,
     #         "substeps": 1,
     #     }
     # )
     args_after_dynamics.append(
         {
             "component": taz.ConcurrentCoupling(
-                sa,
-                t2d,
-                execution_policy="serial",
-                gt_powered=nl.gt_powered,
-                **nl.gt_kwargs
+                sa, t2d, execution_policy="serial", **nl.backend_kwargs
             ),
             "time_integrator": ptis,
-            "gt_powered": nl.gt_powered,
-            "time_integrator_kwargs": nl.gt_kwargs,
+            "time_integrator_kwargs": nl.backend_kwargs,
             "substeps": 1,
         }
     )
@@ -433,26 +379,24 @@ if nl.vertical_advection:
             domain,
             moist=True,
             tendency_of_air_potential_temperature_on_interface_levels=False,
-            gt_powered=nl.gt_powered,
-            **nl.gt_kwargs
+            **nl.backend_kwargs
         )
-        args_before_dynamics.append({"component": taz.DiagnosticComponentComposite(vf)})
+        args_before_dynamics.append(
+            {"component": taz.DiagnosticComponentComposite(vf)}
+        )
         args_before_dynamics.append(
             {
                 "component": taz.ConcurrentCoupling(
-                    sa,
-                    t2d,
-                    execution_policy="serial",
-                    gt_powered=nl.gt_powered,
-                    **nl.gt_kwargs
+                    sa, t2d, execution_policy="serial", **nl.backend_kwargs
                 ),
                 "time_integrator": ptis,
-                "gt_powered": nl.gt_powered,
-                "time_integrator_kwargs": nl.gt_kwargs,
+                "time_integrator_kwargs": nl.backend_kwargs,
                 "substeps": 1,
             }
         )
-        args_after_dynamics.append({"component": taz.DiagnosticComponentComposite(vf)})
+        args_after_dynamics.append(
+            {"component": taz.DiagnosticComponentComposite(vf)}
+        )
     else:
         # component integrating the vertical flux
         vf = taz.IsentropicVerticalAdvection(
@@ -460,15 +404,13 @@ if nl.vertical_advection:
             flux_scheme=nl.vertical_flux_scheme,
             moist=True,
             tendency_of_air_potential_temperature_on_interface_levels=False,
-            gt_powered=nl.gt_powered,
-            **nl.gt_kwargs
+            **nl.backend_kwargs
         )
         args_before_dynamics.append(
             {
                 "component": vf,
                 "time_integrator": "rk3ws",
-                "gt_powered": nl.gt_powered,
-                "time_integrator_kwargs": nl.gt_kwargs,
+                "time_integrator_kwargs": nl.backend_kwargs,
                 "substeps": 1,
             }
         )
@@ -476,60 +418,46 @@ if nl.vertical_advection:
             {
                 "component": vf,
                 "time_integrator": "rk3ws",
-                "gt_powered": nl.gt_powered,
-                "time_integrator_kwargs": nl.gt_kwargs,
+                "time_integrator_kwargs": nl.backend_kwargs,
                 "substeps": 1,
             }
         )
 
 if nl.sedimentation:
     # component estimating the raindrop fall velocity
-    rfv = taz.KesslerFallVelocity(
-        domain, "numerical", gt_powered=nl.gt_powered, **nl.gt_kwargs
-    )
+    rfv = taz.KesslerFallVelocity(domain, "numerical", **nl.backend_kwargs)
 
     # component integrating the sedimentation flux
     sd = taz.KesslerSedimentation(
         domain,
         "numerical",
         sedimentation_flux_scheme=nl.sedimentation_flux_scheme,
-        gt_powered=nl.gt_powered,
-        **nl.gt_kwargs
+        **nl.backend_kwargs
     )
     args_before_dynamics.append(
         {
             "component": taz.ConcurrentCoupling(
-                rfv,
-                sd,
-                execution_policy="serial",
-                gt_powered=nl.gt_powered,
-                **nl.gt_kwargs
+                rfv, sd, execution_policy="serial", **nl.backend_kwargs
             ),
             "time_integrator": "rk3ws",
-            "gt_powered": nl.gt_powered,
-            "time_integrator_kwargs": nl.gt_kwargs,
+            "time_integrator_kwargs": nl.backend_kwargs,
             "substeps": 1,
         }
     )
     args_after_dynamics.append(
         {
             "component": taz.ConcurrentCoupling(
-                rfv,
-                sd,
-                execution_policy="serial",
-                gt_powered=nl.gt_powered,
-                **nl.gt_kwargs
+                rfv, sd, execution_policy="serial", **nl.backend_kwargs
             ),
             "time_integrator": "rk3ws",
-            "gt_powered": nl.gt_powered,
-            "time_integrator_kwargs": nl.gt_kwargs,
+            "time_integrator_kwargs": nl.backend_kwargs,
             "substeps": 1,
         }
     )
 
 if nl.sedimentation:
     # component calculating the accumulated precipitation
-    ap = taz.Precipitation(domain, "numerical", gt_powered=nl.gt_powered, **nl.gt_kwargs)
+    ap = taz.Precipitation(domain, "numerical", **nl.backend_kwargs)
     args_before_dynamics.append({"component": ap})
     args_after_dynamics.append(
         {
@@ -542,12 +470,11 @@ if nl.sedimentation:
     # include raindrop_fall_velocity in the state
     state["raindrop_fall_velocity"] = taz.get_dataarray_3d(
         taz.zeros(
-            nl.gt_kwargs["storage_shape"],
-            gt_powered=nl.gt_powered,
-            backend=nl.gt_kwargs["backend"],
-            dtype=nl.gt_kwargs["dtype"],
-            default_origin=nl.gt_kwargs["default_origin"],
-            managed_memory=nl.gt_kwargs["managed_memory"],
+            nl.backend_kwargs["storage_shape"],
+            backend=nl.backend_kwargs["backend"],
+            dtype=nl.backend_kwargs["dtype"],
+            default_origin=nl.backend_kwargs["default_origin"],
+            managed_memory=nl.backend_kwargs["managed_memory"],
         ),
         cgrid,
         "m s^-1",
@@ -559,9 +486,7 @@ iargs_before_dynamics = args_before_dynamics[::-1]
 
 if nl.coriolis or nl.smooth or nl.diff or nl.turbulence:
     # component retrieving the velocity components
-    ivc = taz.IsentropicVelocityComponents(
-        domain, gt_powered=nl.gt_powered, **nl.gt_kwargs
-    )
+    ivc = taz.IsentropicVelocityComponents(domain, **nl.backend_kwargs)
     iargs_before_dynamics.append({"component": ivc})
 
 # wrap the components in two SequentialUpdateSplitting objects
@@ -590,7 +515,7 @@ wall_time_start = time.time()
 compute_time = 0.0
 
 # dict operator
-dict_op = taz.DataArrayDictOperator(nl.gt_powered, **nl.gt_kwargs)
+dict_op = taz.DataArrayDictOperator(**nl.backend_kwargs)
 
 for i in range(nt):
     compute_time_start = time.time()
