@@ -21,23 +21,22 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 from hypothesis import (
-    assume,
     given,
-    HealthCheck,
-    settings,
     strategies as hyp_st,
-    reproduce_failure,
 )
 import pytest
 
 from tasmania.python.framework.fakes import FakeTendencyComponent
 from tasmania.python.framework.tendency_stepper import TendencyStepper
-from tasmania.python.framework.tendency_steppers.forward_euler import ForwardEuler
-from tasmania.python.framework.tendency_steppers.implicit import Implicit
-from tasmania.python.framework.tendency_steppers.rk2 import RK2
-from tasmania.python.framework.tendency_steppers.rk3ws import RK3WS
+from tasmania.python.framework.subclasses.tendency_steppers import (
+    ForwardEuler,
+)
+from tasmania.python.framework.subclasses.tendency_steppers import Implicit
+from tasmania.python.framework.subclasses.tendency_steppers import RK2
+from tasmania.python.framework.subclasses.tendency_steppers import RK3WS
 
 from tests.strategies import st_domain, st_one_of
+from tests.utilities import hyp_settings
 
 
 def test_registry():
@@ -58,21 +57,16 @@ def test_registry():
     assert TendencyStepper.registry["implicit"] == Implicit
 
 
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
+@hyp_settings
 @given(data=hyp_st.data())
 def test_factory(data):
     # ========================================
     # random data generation
     # ========================================
     domain = data.draw(st_domain(), label="domain")
-    grid_type = data.draw(st_one_of(("physical", "numerical")), label="grid_type")
+    grid_type = data.draw(
+        st_one_of(("physical", "numerical")), label="grid_type"
+    )
 
     # ========================================
     # test bed

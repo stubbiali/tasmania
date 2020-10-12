@@ -56,7 +56,9 @@ class DiagnosticComponent(sympl.DiagnosticComponent):
         )
         self._grid_type = grid_type
         self._grid = (
-            domain.physical_grid if grid_type == "physical" else domain.numerical_grid
+            domain.physical_grid
+            if grid_type == "physical"
+            else domain.numerical_grid
         )
         self._hb = domain.horizontal_boundary
         super().__init__()
@@ -118,7 +120,9 @@ class ImplicitTendencyComponent(sympl.ImplicitTendencyComponent):
         )
         self._grid_type = grid_type
         self._grid = (
-            domain.physical_grid if grid_type == "physical" else domain.numerical_grid
+            domain.physical_grid
+            if grid_type == "physical"
+            else domain.numerical_grid
         )
         self._hb = domain.horizontal_boundary
         super().__init__(tendencies_in_diagnostics, name)
@@ -180,7 +184,9 @@ class Stepper(sympl.Stepper):
         )
         self._grid_type = grid_type
         self._grid = (
-            domain.physical_grid if grid_type == "physical" else domain.numerical_grid
+            domain.physical_grid
+            if grid_type == "physical"
+            else domain.numerical_grid
         )
         self._hb = domain.horizontal_boundary
         super().__init__(tendencies_in_diagnostics, name)
@@ -242,7 +248,9 @@ class TendencyComponent(sympl.TendencyComponent):
         )
         self._grid_type = grid_type
         self._grid = (
-            domain.physical_grid if grid_type == "physical" else domain.numerical_grid
+            domain.physical_grid
+            if grid_type == "physical"
+            else domain.numerical_grid
         )
         self._hb = domain.horizontal_boundary
         super().__init__(tendencies_in_diagnostics, name)

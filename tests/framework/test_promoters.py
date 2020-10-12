@@ -21,23 +21,22 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 from hypothesis import (
-    assume,
     given,
-    HealthCheck,
-    settings,
     strategies as hyp_st,
     reproduce_failure,
 )
 import pytest
 from sympl._core.units import units_are_same
 
-import gt4py as gt
-
-from tasmania.python.framework.promoters import Tendency2Diagnostic, Diagnostic2Tendency
+from tasmania.python.framework.promoters import (
+    Tendency2Diagnostic,
+    Diagnostic2Tendency,
+)
 from tasmania.python.utils.storage_utils import get_dataarray_3d
 
-from tests.conf import backend as conf_backend, datatype as conf_dtype
+from tests.conf import backend as conf_backend, dtype as conf_dtype
 from tests.strategies import st_domain, st_one_of, st_raw_field
+from tests.utilities import hyp_settings
 
 
 class FakeTendency2Diagnostic(Tendency2Diagnostic):
@@ -62,41 +61,37 @@ class FakeTendency2Diagnostic(Tendency2Diagnostic):
         return return_dict
 
 
-@settings(
-    suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
-    deadline=None,
-)
-@given(hyp_st.data())
-def test_tendency_to_diagnostic(data):
+@hyp_settings
+@given(data=hyp_st.data())
+@pytest.mark.parametrize("backend", conf_backend)
+@pytest.mark.parametrize("dtype", conf_dtype)
+def test_tendency_to_diagnostic(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
-
-    if gt_powered:
-        gt.storage.prepare_numpy()
-
     domain = data.draw(
         st_domain(
             xaxis_length=(1, 20),
             yaxis_length=(1, 20),
             zaxis_length=(1, 10),
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
         ),
         label="domain",
     )
-    grid_type = data.draw(st_one_of(("physical", "numerical")), label="grid_type")
-    grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
+    grid_type = data.draw(
+        st_one_of(("physical", "numerical")), label="grid_type"
+    )
+    grid = (
+        domain.physical_grid
+        if grid_type == "physical"
+        else domain.numerical_grid
+    )
     field = data.draw(
         st_raw_field(
             (grid.nx, grid.ny, grid.nz),
             -1e4,
             1e4,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
         ),
@@ -112,7 +107,12 @@ def test_tendency_to_diagnostic(data):
     u = get_dataarray_3d(field, grid, "m s^-2", set_coordinates=False)
     v = get_dataarray_3d(field, grid, "m s^-2", set_coordinates=False)
     w = get_dataarray_3d(field, grid, "m s^-2", set_coordinates=False)
-    tendencies = {"air_pressure": p, "x_velocity": u, "y_velocity": v, "z_velocity": w}
+    tendencies = {
+        "air_pressure": p,
+        "x_velocity": u,
+        "y_velocity": v,
+        "z_velocity": w,
+    }
 
     promoter = FakeTendency2Diagnostic(domain, grid_type)
 
@@ -147,9 +147,13 @@ def test_tendency_to_diagnostic(data):
     assert "tendency_of_air_pressure" in out
     assert all(
         src == trg
-        for src, trg in zip(out["tendency_of_air_pressure"].dims, (dim2, dim0, dim1))
+        for src, trg in zip(
+            out["tendency_of_air_pressure"].dims, (dim2, dim0, dim1)
+        )
     )
-    assert units_are_same(out["tendency_of_air_pressure"].attrs["units"], "hPa s^-1")
+    assert units_are_same(
+        out["tendency_of_air_pressure"].attrs["units"], "hPa s^-1"
+    )
     assert all(
         src == trg
         for src, trg in zip(
@@ -159,22 +163,30 @@ def test_tendency_to_diagnostic(data):
 
     assert "tnd_of_x_velocity" in out
     assert all(
-        src == trg for src, trg in zip(out["tnd_of_x_velocity"].dims, (dim0, dim1, dim2))
+        src == trg
+        for src, trg in zip(out["tnd_of_x_velocity"].dims, (dim0, dim1, dim2))
     )
     assert units_are_same(out["tnd_of_x_velocity"].attrs["units"], "m s^-2")
     assert all(
         src == trg
-        for src, trg in zip(out["tnd_of_x_velocity"].shape, (grid.nx, grid.ny, grid.nz))
+        for src, trg in zip(
+            out["tnd_of_x_velocity"].shape, (grid.nx, grid.ny, grid.nz)
+        )
     )
 
     assert "y_velocity_abcde" in out
     assert all(
-        src == trg for src, trg in zip(out["y_velocity_abcde"].dims, (dim1, dim0, dim2))
+        src == trg
+        for src, trg in zip(out["y_velocity_abcde"].dims, (dim1, dim0, dim2))
     )
-    assert units_are_same(out["y_velocity_abcde"].attrs["units"], "km s^-1 hr^-1")
+    assert units_are_same(
+        out["y_velocity_abcde"].attrs["units"], "km s^-1 hr^-1"
+    )
     assert all(
         src == trg
-        for src, trg in zip(out["y_velocity_abcde"].shape, (grid.ny, grid.nx, grid.nz))
+        for src, trg in zip(
+            out["y_velocity_abcde"].shape, (grid.ny, grid.nx, grid.nz)
+        )
     )
 
     assert len(out) == 3
@@ -208,41 +220,37 @@ class FakeDiagnostic2Tendency(Diagnostic2Tendency):
         return return_dict
 
 
-@settings(
-    suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
-    deadline=None,
-)
-@given(hyp_st.data())
-def test_diagnostic_to_tendency(data):
+@hyp_settings
+@given(data=hyp_st.data())
+@pytest.mark.parametrize("backend", conf_backend)
+@pytest.mark.parametrize("dtype", conf_dtype)
+def test_diagnostic_to_tendency(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
-
-    if gt_powered:
-        gt.storage.prepare_numpy()
-
     domain = data.draw(
         st_domain(
             xaxis_length=(1, 20),
             yaxis_length=(1, 20),
             zaxis_length=(1, 10),
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
         ),
         label="domain",
     )
-    grid_type = data.draw(st_one_of(("physical", "numerical")), label="grid_type")
-    grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
+    grid_type = data.draw(
+        st_one_of(("physical", "numerical")), label="grid_type"
+    )
+    grid = (
+        domain.physical_grid
+        if grid_type == "physical"
+        else domain.numerical_grid
+    )
     field = data.draw(
         st_raw_field(
             (grid.nx, grid.ny, grid.nz),
             -1e4,
             1e4,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
         ),
@@ -297,32 +305,41 @@ def test_diagnostic_to_tendency(data):
 
     assert "air_pressure" in out
     assert all(
-        src == trg for src, trg in zip(out["air_pressure"].dims, (dim2, dim0, dim1))
+        src == trg
+        for src, trg in zip(out["air_pressure"].dims, (dim2, dim0, dim1))
     )
     assert units_are_same(out["air_pressure"].attrs["units"], "hPa s^-1")
     assert all(
         src == trg
-        for src, trg in zip(out["air_pressure"].shape, (grid.nz, grid.nx, grid.ny))
+        for src, trg in zip(
+            out["air_pressure"].shape, (grid.nz, grid.nx, grid.ny)
+        )
     )
 
     assert "tnd_of_x_velocity" in out
     assert all(
-        src == trg for src, trg in zip(out["tnd_of_x_velocity"].dims, (dim0, dim1, dim2))
+        src == trg
+        for src, trg in zip(out["tnd_of_x_velocity"].dims, (dim0, dim1, dim2))
     )
     assert units_are_same(out["tnd_of_x_velocity"].attrs["units"], "m s^-2")
     assert all(
         src == trg
-        for src, trg in zip(out["tnd_of_x_velocity"].shape, (grid.nx, grid.ny, grid.nz))
+        for src, trg in zip(
+            out["tnd_of_x_velocity"].shape, (grid.nx, grid.ny, grid.nz)
+        )
     )
 
     assert "y_velocity" in out
     assert all(
-        src == trg for src, trg in zip(out["y_velocity"].dims, (dim1, dim0, dim2))
+        src == trg
+        for src, trg in zip(out["y_velocity"].dims, (dim1, dim0, dim2))
     )
     assert units_are_same(out["y_velocity"].attrs["units"], "km s^-1 hr^-1")
     assert all(
         src == trg
-        for src, trg in zip(out["y_velocity"].shape, (grid.ny, grid.nx, grid.nz))
+        for src, trg in zip(
+            out["y_velocity"].shape, (grid.ny, grid.nx, grid.nz)
+        )
     )
 
     assert len(out) == 3

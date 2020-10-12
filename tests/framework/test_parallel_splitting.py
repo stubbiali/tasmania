@@ -24,36 +24,26 @@ from datetime import timedelta
 from hypothesis import (
     assume,
     given,
-    HealthCheck,
     reproduce_failure,
-    settings,
     strategies as hyp_st,
 )
 import pytest
 
-import gt4py as gt
-
 from tasmania.python.framework.parallel_splitting import ParallelSplitting
 from tasmania.python.utils.storage_utils import deepcopy_dataarray_dict
+from tasmania.python.utils.utils import is_gt
 
 from tests.conf import (
     backend as conf_backend,
-    datatype as conf_dtype,
+    dtype as conf_dtype,
     default_origin as conf_dorigin,
     nb as conf_nb,
 )
 from tests.strategies import st_domain, st_isentropic_state_f, st_one_of
-from tests.utilities import compare_arrays
+from tests.utilities import compare_arrays, hyp_settings
 
 
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
+@hyp_settings
 @given(data=hyp_st.data())
 def test_properties(
     data, make_fake_tendency_component_1, make_fake_tendency_component_2
@@ -61,8 +51,10 @@ def test_properties(
     # ========================================
     # random data generation
     # ========================================
-    domain = data.draw(st_domain(gt_powered=False), label="domain")
-    grid_type = data.draw(st_one_of(("physical", "numerical")), label="grid_type")
+    domain = data.draw(st_domain(), label="domain")
+    grid_type = data.draw(
+        st_one_of(("physical", "numerical")), label="grid_type"
+    )
 
     # ========================================
     # test bed
@@ -74,7 +66,11 @@ def test_properties(
     # test 1
     #
     ps = ParallelSplitting(
-        {"component": tendency1, "time_integrator": "forward_euler", "substeps": 1},
+        {
+            "component": tendency1,
+            "time_integrator": "forward_euler",
+            "substeps": 1,
+        },
         {"component": tendency2, "time_integrator": "forward_euler"},
         execution_policy="as_parallel",
     )
@@ -111,7 +107,11 @@ def test_properties(
     # test 2
     #
     ps = ParallelSplitting(
-        {"component": tendency1, "time_integrator": "forward_euler", "substeps": 1},
+        {
+            "component": tendency1,
+            "time_integrator": "forward_euler",
+            "substeps": 1,
+        },
         {"component": tendency2, "time_integrator": "forward_euler"},
         execution_policy="serial",
         retrieve_diagnostics_from_provisional_state=False,
@@ -148,7 +148,11 @@ def test_properties(
     # test 3
     #
     ps = ParallelSplitting(
-        {"component": tendency1, "time_integrator": "forward_euler", "substeps": 1},
+        {
+            "component": tendency1,
+            "time_integrator": "forward_euler",
+            "substeps": 1,
+        },
         {"component": tendency2, "time_integrator": "forward_euler"},
         execution_policy="serial",
         retrieve_diagnostics_from_provisional_state=True,
@@ -182,49 +186,49 @@ def test_properties(
     assert len(ps.provisional_output_properties) == 4
 
 
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
+@hyp_settings
 @given(data=hyp_st.data())
+@pytest.mark.parametrize("backend", conf_backend)
+@pytest.mark.parametrize("dtype", conf_dtype)
 def test_forward_euler(
-    data, make_fake_tendency_component_1, make_fake_tendency_component_2
+    data,
+    backend,
+    dtype,
+    make_fake_tendency_component_1,
+    make_fake_tendency_component_2,
 ):
     # ========================================
     # random data generation
     # ========================================
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-    gt_powered_ts1 = gt_powered and data.draw(hyp_st.booleans(), label="gt_powered_ts1")
-    gt_powered_ts2 = gt_powered and data.draw(hyp_st.booleans(), label="gt_powered_ts2")
-    gt_powered_ps = gt_powered and data.draw(hyp_st.booleans(), label="gt_powered_ps")
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-    gt_kwargs = {"backend": backend, "dtype": dtype, "default_origin": default_origin}
+
+    ts_kwargs = {
+        "backend": backend,
+        "dtype": dtype,
+        "default_origin": default_origin,
+    }
+    ps_kwargs = {
+        "backend": backend if data.draw(hyp_st.booleans()) else "numpy",
+        "dtype": dtype,
+        "default_origin": default_origin,
+    }
+
     same_shape = data.draw(hyp_st.booleans(), label="same_shape")
-
-    if gt_powered:
-        gt.storage.prepare_numpy()
-
-    nb = data.draw(hyp_st.integers(min_value=1, max_value=max(1, conf_nb)), label="nb")
+    nb = data.draw(
+        hyp_st.integers(min_value=1, max_value=max(1, conf_nb)), label="nb"
+    )
     domain = data.draw(
         st_domain(
             xaxis_length=(1, 30),
             yaxis_length=(1, 30),
             zaxis_length=(1, 20),
             nb=nb,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
         ),
         label="domain",
     )
     grid = domain.numerical_grid
-    hb = domain.horizontal_boundary
 
     dnx = data.draw(hyp_st.integers(min_value=0, max_value=3), label="dnx")
     dny = data.draw(hyp_st.integers(min_value=0, max_value=3), label="dny")
@@ -235,7 +239,6 @@ def test_forward_euler(
         st_isentropic_state_f(
             grid,
             moist=True,
-            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
             storage_shape=storage_shape if same_shape else None,
@@ -246,7 +249,6 @@ def test_forward_euler(
         st_isentropic_state_f(
             grid,
             moist=True,
-            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
             storage_shape=storage_shape if same_shape else None,
@@ -271,18 +273,15 @@ def test_forward_euler(
         {
             "component": tendency1,
             "time_integrator": "forward_euler",
-            "gt_powered": gt_powered_ts1,
-            "time_integrator_kwargs": gt_kwargs,
+            "time_integrator_kwargs": ts_kwargs,
         },
         {
             "component": tendency2,
             "time_integrator": "forward_euler",
-            "gt_powered": gt_powered_ts2,
-            "time_integrator_kwargs": gt_kwargs,
+            "time_integrator_kwargs": ts_kwargs,
         },
         execution_policy="serial",
-        gt_powered=gt_powered_ps,
-        **gt_kwargs
+        **ps_kwargs
     )
 
     state_dc = deepcopy_dataarray_dict(state)
@@ -319,60 +318,68 @@ def test_forward_euler(
     assert "y_momentum_isentropic" in state_prv
     v = state_dc["y_velocity_at_v_locations"].to_units("m s^-1").values
     sv = state_dc["y_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").values
-    sv1 = state_prv_dc["y_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").values
-    if same_shape or gt_powered:
+    sv1 = (
+        state_prv_dc["y_momentum_isentropic"]
+        .to_units("kg m^-1 K^-1 s^-1")
+        .values
+    )
+    if same_shape or is_gt(backend):
         sv3 = sv[:, :-1] + timestep.total_seconds() * 0.5 * s[:, :-1] * (
             v[:, :-1] + v[:, 1:]
         )
         sv_out = sv1[:, :-1] + (sv3 - sv[:, :-1])
-        compare_arrays(state_prv["y_momentum_isentropic"].values[:, :-1], sv_out)
+        compare_arrays(
+            state_prv["y_momentum_isentropic"].values[:, :-1], sv_out
+        )
     else:
         sv3 = sv + timestep.total_seconds() * 0.5 * s * (v[:, :-1] + v[:, 1:])
         sv_out = sv1 + (sv3 - sv)
         compare_arrays(state_prv["y_momentum_isentropic"].values, sv_out)
 
 
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
+@hyp_settings
 @given(data=hyp_st.data())
-def test_rk2(data, make_fake_tendency_component_1, make_fake_tendency_component_2):
+@pytest.mark.parametrize("backend", conf_backend)
+@pytest.mark.parametrize("dtype", conf_dtype)
+def test_rk2(
+    data,
+    backend,
+    dtype,
+    make_fake_tendency_component_1,
+    make_fake_tendency_component_2,
+):
     # ========================================
     # random data generation
     # ========================================
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-    gt_powered_ts1 = gt_powered and data.draw(hyp_st.booleans(), label="gt_powered_ts1")
-    gt_powered_ts2 = gt_powered and data.draw(hyp_st.booleans(), label="gt_powered_ts2")
-    gt_powered_ps = gt_powered and data.draw(hyp_st.booleans(), label="gt_powered_ps")
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-    gt_kwargs = {"backend": backend, "dtype": dtype, "default_origin": default_origin}
+
+    ts_kwargs = {
+        "backend": backend,
+        "dtype": dtype,
+        "default_origin": default_origin,
+    }
+    ps_kwargs = {
+        "backend": backend if data.draw(hyp_st.booleans()) else "numpy",
+        "dtype": dtype,
+        "default_origin": default_origin,
+    }
     same_shape = data.draw(hyp_st.booleans(), label="same_shape")
 
-    if gt_powered:
-        gt.storage.prepare_numpy()
-
-    nb = data.draw(hyp_st.integers(min_value=1, max_value=max(1, conf_nb)), label="nb")
+    nb = data.draw(
+        hyp_st.integers(min_value=1, max_value=max(1, conf_nb)), label="nb"
+    )
     domain = data.draw(
         st_domain(
             xaxis_length=(1, 30),
             yaxis_length=(1, 30),
             zaxis_length=(1, 20),
             nb=nb,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
         ),
         label="domain",
     )
     grid = domain.numerical_grid
-    hb = domain.horizontal_boundary
 
     dnx = data.draw(hyp_st.integers(min_value=0, max_value=3), label="dnx")
     dny = data.draw(hyp_st.integers(min_value=0, max_value=3), label="dny")
@@ -383,7 +390,6 @@ def test_rk2(data, make_fake_tendency_component_1, make_fake_tendency_component_
         st_isentropic_state_f(
             grid,
             moist=True,
-            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
             storage_shape=storage_shape if same_shape else None,
@@ -394,7 +400,6 @@ def test_rk2(data, make_fake_tendency_component_1, make_fake_tendency_component_
         st_isentropic_state_f(
             grid,
             moist=True,
-            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
             storage_shape=storage_shape if same_shape else None,
@@ -419,18 +424,15 @@ def test_rk2(data, make_fake_tendency_component_1, make_fake_tendency_component_
         {
             "component": tendency1,
             "time_integrator": "rk2",
-            "gt_powered": gt_powered_ts1,
-            "time_integrator_kwargs": gt_kwargs,
+            "time_integrator_kwargs": ts_kwargs,
         },
         {
             "component": tendency2,
             "time_integrator": "rk2",
-            "gt_powered": gt_powered_ts2,
-            "time_integrator_kwargs": gt_kwargs,
+            "time_integrator_kwargs": ts_kwargs,
         },
         execution_policy="serial",
-        gt_powered=gt_powered_ps,
-        **gt_kwargs
+        **ps_kwargs
     )
 
     state_dc = deepcopy_dataarray_dict(state)
@@ -454,7 +456,11 @@ def test_rk2(data, make_fake_tendency_component_1, make_fake_tendency_component_
 
     assert "x_momentum_isentropic" in state_prv
     su = state_dc["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").values
-    su1 = state_prv_dc["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").values
+    su1 = (
+        state_prv_dc["x_momentum_isentropic"]
+        .to_units("kg m^-1 K^-1 s^-1")
+        .values
+    )
     su2b = su + 0.5 * timestep.total_seconds() * 300 * su
     su2 = su + timestep.total_seconds() * 300 * su2b
     su_out = su1 + (su2 - su)
@@ -471,15 +477,23 @@ def test_rk2(data, make_fake_tendency_component_1, make_fake_tendency_component_
     assert "y_momentum_isentropic" in state_prv
     v = state_dc["y_velocity_at_v_locations"].to_units("m s^-1").values
     sv = state_dc["y_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").values
-    sv1 = state_prv_dc["y_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").values
-    if same_shape or gt_powered:
+    sv1 = (
+        state_prv_dc["y_momentum_isentropic"]
+        .to_units("kg m^-1 K^-1 s^-1")
+        .values
+    )
+    if same_shape or is_gt(backend):
         sv3 = sv[:, :-1] + timestep.total_seconds() * 0.5 * s3b[:, :-1] * (
             v[:, :-1] + v[:, 1:]
         )
         sv_out = sv1[:, :-1] + (sv3 - sv[:, :-1])
-        compare_arrays(state_prv["y_momentum_isentropic"].values[:, :-1], sv_out)
+        compare_arrays(
+            state_prv["y_momentum_isentropic"].values[:, :-1], sv_out
+        )
     else:
-        sv3 = sv + timestep.total_seconds() * 0.5 * s3b * (v[:, :-1] + v[:, 1:])
+        sv3 = sv + timestep.total_seconds() * 0.5 * s3b * (
+            v[:, :-1] + v[:, 1:]
+        )
         sv_out = sv1 + (sv3 - sv)
         compare_arrays(state_prv["y_momentum_isentropic"].values, sv_out)
 

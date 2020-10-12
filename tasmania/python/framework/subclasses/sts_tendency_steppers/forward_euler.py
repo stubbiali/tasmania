@@ -35,11 +35,10 @@ class ForwardEuler(STSTendencyStepper):
         *args,
         execution_policy="serial",
         enforce_horizontal_boundary=False,
-        gt_powered=False,
         backend="numpy",
         backend_opts=None,
-        build_info=None,
         dtype=np.float64,
+        build_info=None,
         rebuild=False,
         **kwargs
     ):
@@ -47,11 +46,10 @@ class ForwardEuler(STSTendencyStepper):
             *args,
             execution_policy=execution_policy,
             enforce_horizontal_boundary=enforce_horizontal_boundary,
-            gt_powered=gt_powered,
             backend=backend,
             backend_opts=backend_opts,
-            build_info=build_info,
             dtype=dtype,
+            build_info=build_info,
             rebuild=rebuild
         )
 
@@ -61,7 +59,9 @@ class ForwardEuler(STSTendencyStepper):
         out_state = self._out_state
 
         # calculate the tendencies and the diagnostics
-        tendencies, diagnostics = get_increment(state, timestep, self.prognostic)
+        tendencies, diagnostics = get_increment(
+            state, timestep, self.prognostic
+        )
 
         # step the solution
         self._dict_op.fma(
@@ -76,7 +76,9 @@ class ForwardEuler(STSTendencyStepper):
         if self._enforce_hb:
             # enforce the boundary conditions on each prognostic variable
             self._hb.enforce(
-                out_state, field_names=self.output_properties.keys(), grid=self._grid
+                out_state,
+                field_names=self.output_properties.keys(),
+                grid=self._grid,
             )
 
         # restore original units of the tendencies

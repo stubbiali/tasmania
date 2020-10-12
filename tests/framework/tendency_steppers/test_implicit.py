@@ -23,14 +23,10 @@
 from datetime import timedelta
 from hypothesis import (
     given,
-    HealthCheck,
-    settings,
     strategies as hyp_st,
     reproduce_failure,
 )
 import pytest
-
-import gt4py as gt
 
 from tasmania.python.framework.tendency_stepper import TendencyStepper
 from tasmania.python.isentropic.physics.implicit_vertical_advection import (
@@ -40,7 +36,7 @@ from tasmania.python.utils.storage_utils import get_dataarray_3d
 
 from tests.conf import (
     backend as conf_backend,
-    datatype as conf_dtype,
+    dtype as conf_dtype,
     default_origin as conf_dorigin,
 )
 from tests.strategies import (
@@ -50,34 +46,21 @@ from tests.strategies import (
     st_raw_field,
     st_timedeltas,
 )
-from tests.utilities import compare_dataarrays
+from tests.utilities import compare_dataarrays, hyp_settings
 
 
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
+@hyp_settings
 @given(data=hyp_st.data())
-def test_implicit(data, subtests):
+@pytest.mark.parametrize("backend", conf_backend)
+@pytest.mark.parametrize("dtype", conf_dtype)
+def test(data, backend, dtype, subtests):
     # ========================================
     # random data generation
     # ========================================
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
-    if gt_powered:
-        gt.storage.prepare_numpy()
-
     domain = data.draw(
-        st_domain(
-            zaxis_length=(2, 30), gt_powered=gt_powered, backend=backend, dtype=dtype
-        ),
+        st_domain(zaxis_length=(2, 30), backend=backend, dtype=dtype),
         label="domain",
     )
     cgrid = domain.numerical_grid
@@ -93,7 +76,6 @@ def test_implicit(data, subtests):
             cgrid,
             moist=True,
             precipitation=False,
-            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
             storage_shape=storage_shape,
@@ -116,7 +98,9 @@ def test_implicit(data, subtests):
     )
 
     dt = data.draw(
-        st_timedeltas(min_value=timedelta(seconds=0), max_value=timedelta(minutes=60)),
+        st_timedeltas(
+            min_value=timedelta(seconds=0), max_value=timedelta(minutes=60)
+        ),
         label="dt",
     )
 
@@ -127,7 +111,6 @@ def test_implicit(data, subtests):
         domain,
         moist=True,
         tendency_of_air_potential_temperature_on_interface_levels=False,
-        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -138,7 +121,6 @@ def test_implicit(data, subtests):
         "implicit",
         iva,
         execution_policy="serial",
-        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
     )
@@ -152,7 +134,6 @@ def test_implicit(data, subtests):
         domain,
         moist=True,
         tendency_of_air_potential_temperature_on_interface_levels=False,
-        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -169,7 +150,9 @@ def test_implicit(data, subtests):
         # with subtests.test(name=name):
         assert name in diagnostics_val
         compare_dataarrays(
-            out_state[name], diagnostics_val[name], compare_coordinate_values=False
+            out_state[name],
+            diagnostics_val[name],
+            compare_coordinate_values=False,
         )
 
 

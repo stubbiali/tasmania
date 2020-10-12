@@ -22,18 +22,17 @@
 #
 from hypothesis import (
     given,
-    HealthCheck,
-    settings,
     strategies as hyp_st,
-    reproduce_failure,
 )
 import pytest
 
 from tasmania.python.framework.fakes import FakeTendencyComponent
 from tasmania.python.framework.sts_tendency_stepper import STSTendencyStepper
-from tasmania.python.framework.sts_tendency_steppers.forward_euler import ForwardEuler
-from tasmania.python.framework.sts_tendency_steppers.rk2 import RK2
-from tasmania.python.framework.sts_tendency_steppers.rk3ws import RK3WS
+from tasmania.python.framework.subclasses.sts_tendency_steppers import (
+    ForwardEuler,
+)
+from tasmania.python.framework.subclasses.sts_tendency_steppers.rk2 import RK2
+from tasmania.python.framework.subclasses.sts_tendency_steppers import RK3WS
 from tasmania.python.isentropic.physics.implicit_vertical_advection import (
     IsentropicImplicitVerticalAdvectionDiagnostic,
 )
@@ -42,6 +41,7 @@ from tasmania.python.isentropic.physics.sts_tendency_stepper import (
 )
 
 from tests.strategies import st_domain, st_one_of
+from tests.utilities import hyp_settings
 
 
 def test_registry():
@@ -65,21 +65,16 @@ def test_registry():
     )
 
 
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
+@hyp_settings
 @given(data=hyp_st.data())
 def test_factory(data):
     # ========================================
     # random data generation
     # ========================================
     domain = data.draw(st_domain(), label="domain")
-    grid_type = data.draw(st_one_of(("physical", "numerical")), label="grid_type")
+    grid_type = data.draw(
+        st_one_of(("physical", "numerical")), label="grid_type"
+    )
 
     # ========================================
     # test bed

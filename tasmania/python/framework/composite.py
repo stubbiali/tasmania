@@ -59,7 +59,10 @@ class DiagnosticComponentComposite(BaseDiagnosticComponentComposite):
         properties (dims, units) for those variables.
     """
 
-    allowed_diagnostic_type = (DiagnosticComponent, BaseDiagnosticComponentComposite)
+    allowed_diagnostic_type = (
+        DiagnosticComponent,
+        BaseDiagnosticComponentComposite,
+    )
     allowed_tendency_type = (
         BaseConcurrentCoupling,
         ImplicitTendencyComponent,
@@ -68,7 +71,9 @@ class DiagnosticComponentComposite(BaseDiagnosticComponentComposite):
     allowed_component_type = allowed_diagnostic_type + allowed_tendency_type
 
     def __init__(
-        self, *args: taz_types.diagnostic_component_t, execution_policy: str = "serial"
+        self,
+        *args: taz_types.diagnostic_component_t,
+        execution_policy: str = "serial"
     ) -> None:
         """
         Parameters
@@ -117,11 +122,15 @@ class DiagnosticComponentComposite(BaseDiagnosticComponentComposite):
         )
 
         self._call = (
-            self._call_serial if execution_policy == "serial" else self._call_asparallel
+            self._call_serial
+            if execution_policy == "serial"
+            else self._call_asparallel
         )
 
     def __call__(
-        self, state: taz_types.dataarray_dict_t, timestep: taz_types.timedelta_t
+        self,
+        state: taz_types.dataarray_dict_t,
+        timestep: taz_types.timedelta_t,
     ):
         """
         Retrieve diagnostics from the input state by sequentially calling
@@ -147,7 +156,9 @@ class DiagnosticComponentComposite(BaseDiagnosticComponentComposite):
         return self._call(state, timestep)
 
     def _call_serial(
-        self, state: taz_types.dataarray_dict_t, timestep: taz_types.timedelta_t
+        self,
+        state: taz_types.dataarray_dict_t,
+        timestep: taz_types.timedelta_t,
     ):
         return_dict = {}
 

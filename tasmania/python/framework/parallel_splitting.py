@@ -101,11 +101,10 @@ class ParallelSplitting:
         *args: Mapping[str, Any],
         execution_policy: str = "serial",
         retrieve_diagnostics_from_provisional_state: bool = False,
-        gt_powered: bool = False,
         backend: str = "numpy",
         backend_opts: Optional[taz_types.options_dict_t] = None,
-        build_info: Optional[taz_types.options_dict_t] = None,
         dtype: taz_types.dtype_t = np.float64,
+        build_info: Optional[taz_types.options_dict_t] = None,
         rebuild: bool = False,
         **kwargs
     ) -> None:
@@ -114,8 +113,8 @@ class ParallelSplitting:
         ----------
         *args : dict
             Dictionaries containing the components to wrap and specifying
-            fundamental properties (time_integrator, substeps) of those processes.
-            Particularly:
+            fundamental properties (time_integrator, substeps) of those
+            components. Particularly:
 
                 * 'component' is an instance of
 
@@ -127,7 +126,7 @@ class ParallelSplitting:
                         - :class:`sympl.ImplicitTendencyComponentComposite`, or
                         - :class:`tasmania.ConcurrentCoupling`
 
-                    representing the process;
+                    representing the model component to wrap;
 
                 * if 'component' is an instance of
 
@@ -141,22 +140,12 @@ class ParallelSplitting:
                     integrate the process forward in time. Available options:
 
                         - 'forward_euler', for the forward Euler scheme;
-                        - 'rk2', for the two-stage second-order Runge-Kutta (RK) scheme;
+                        - 'rk2', for the two-stage second-order Runge-Kutta
+                            (RK) scheme;
                         - 'rk3ws', for the three-stage RK scheme as used in the
-                            `COSMO model <http://www.cosmo-model.org>`_; this method is
-                            nominally second-order, and third-order for linear problems.
-
-                * if 'component' is a
-
-                        - :class:`sympl.TendencyComponent`,
-                        - :class:`sympl.TendencyComponentComposite`,
-                        - :class:`sympl.ImplicitTendencyComponent`,
-                        - :class:`sympl.ImplicitTendencyComponentComposite`, or
-                        - :class:`tasmania.ConcurrentCoupling`,
-
-                    'gt_powered' specifies if all the time-intensive math
-                    operations performed inside 'time_integrator' should harness
-                    GT4Py. Defaults to `gt_powered` (see later).
+                            `COSMO model <http://www.cosmo-model.org>`_; this
+                            method is nominally second-order, and third-order
+                            for linear problems.
 
                 * if 'component' is a
 
@@ -170,18 +159,21 @@ class ParallelSplitting:
                     options for 'time_integrator'. The dictionary may include
                     the following keys:
 
-                        - backend (str): The GT4Py backend;
-                        - backend_opts (dict): Dictionary of backend-specific options;
-                        - build_info (dict): Dictionary of building options;
+                        - backend (str): The backend;
+                        - backend_opts (dict): Dictionary of backend-specific
+                            options;
                         - dtype (data-type): Data type of the storages;
-                        - exec_info (dict): Dictionary which will store statistics
-                            and diagnostics gathered at run time;
+                        - build_info (dict): Dictionary of building options;
+                        - exec_info (dict): Dictionary which will store
+                            statistics and diagnostics gathered at run time;
                         - default_origin (tuple): Storage default origin;
-                        - rebuild (bool): ``True`` to trigger the stencils compilation
-                            at any class instantiation, ``False`` to rely on the caching
-                            mechanism implemented by GT4Py.
+                        - rebuild (bool): ``True`` to trigger the stencils
+                            compilation at any class instantiation,
+                            ``False`` to rely on the caching mechanism
+                            implemented by the backend.
 
-                * if 'component' is either an instance of or wraps objects of class
+                * if 'component' is either an instance of or wraps objects of
+                    class
 
                         - :class:`tasmania.TendencyComponent`,
                         - :class:`tasmania.ImplicitTendencyComponent`, or
@@ -211,8 +203,9 @@ class ParallelSplitting:
                         - :class:`sympl.ImplicitTendencyComponentComposite`, or
                         - :class:`tasmania.ConcurrentCoupling`,
 
-                    'add_diagnostics_to_provisional_input' says whether the computed
-                    diagnostics should be added to the input or provisional state.
+                    'add_diagnostics_to_provisional_input' says whether the
+                    computed diagnostics should be added to the input or
+                    provisional state.
 
         execution_policy : `str`, optional
             String specifying the runtime mode in which parameterizations
@@ -233,22 +226,21 @@ class ParallelSplitting:
             (resp., current) state, and add the so-retrieved diagnostics
             to the provisional (resp., current) state dictionary.
             Defaults to ``False``.
-        gt_powered : `bool`, optional
-            ``True`` to perform additions and subtractions using GT4Py (leveraging
-            field versioning), ``False`` to perform the operations in plain Python.
         backend : `str`, optional
-            The GT4Py backend.
+            The backend.
         backend_opts : `dict`, optional
             Dictionary of backend-specific options.
-        build_info : `dict`, optional
-            Dictionary of building options.
         dtype : `data-type`, optional
             Data type of the storages passed to the stencil.
+        build_info : `dict`, optional
+            Dictionary of building options.
         exec_info : `dict`, optional
-            Dictionary which will store statistics and diagnostics gathered at run time.
+            Dictionary which will store statistics and diagnostics gathered at
+            run time.
         rebuild : `bool`, optional
-            ``True`` to trigger the stencils compilation at any class instantiation,
-            ``False`` to rely on the caching mechanism implemented by GT4Py.
+            ``True`` to trigger the stencils compilation at any class
+            instantiation, ``False`` to rely on the caching mechanism
+            implemented by the backend.
         **kwargs:
             Catch-all for unused keyword arguments.
         """
@@ -259,25 +251,35 @@ class ParallelSplitting:
             try:
                 bare_component = process["component"]
             except KeyError:
-                msg = "Missing mandatory key ''component'' in one item of ''processes''."
-                raise KeyError(msg)
+                raise KeyError(
+                    "Missing mandatory key ''component'' in one item of "
+                    "''processes''."
+                )
 
             assert isinstance(
                 bare_component, self.__class__.allowed_component_type
             ), "''component'' value should be either a {}.".format(
-                ", ".join(str(ctype) for ctype in self.__class__.allowed_component_type)
+                ", ".join(
+                    str(ctype)
+                    for ctype in self.__class__.allowed_component_type
+                )
             )
 
-            if isinstance(bare_component, self.__class__.allowed_diagnostic_type):
+            if isinstance(
+                bare_component, self.__class__.allowed_diagnostic_type
+            ):
                 self._component_list.append(bare_component)
                 self._substeps.append(1)
             else:
                 integrator = process.get("time_integrator", "forward_euler")
                 enforce_hb = process.get("enforce_horizontal_boundary", False)
-                integrator_gt_powered = process.get("gt_powered", gt_powered)
                 integrator_kwargs = process.get(
                     "time_integrator_kwargs",
-                    {"backend": "numpy", "dtype": np.float64, "rebuild": False},
+                    {
+                        "backend": "numpy",
+                        "dtype": np.float64,
+                        "rebuild": False,
+                    },
                 )
 
                 self._component_list.append(
@@ -285,7 +287,6 @@ class ParallelSplitting:
                         integrator,
                         bare_component,
                         enforce_horizontal_boundary=enforce_hb,
-                        gt_powered=integrator_gt_powered,
                         **integrator_kwargs
                     )
                 )
@@ -296,7 +297,9 @@ class ParallelSplitting:
 
         self._policy = execution_policy
         self._call = (
-            self._call_serial if execution_policy == "serial" else self._call_asparallel
+            self._call_serial
+            if execution_policy == "serial"
+            else self._call_asparallel
         )
 
         if (
@@ -317,9 +320,13 @@ class ParallelSplitting:
 
         # Set properties
         self.input_properties = self._init_input_properties()
-        self.provisional_input_properties = self._init_provisional_input_properties()
+        self.provisional_input_properties = (
+            self._init_provisional_input_properties()
+        )
         self.output_properties = self._init_output_properties()
-        self.provisional_output_properties = self._init_provisional_output_properties()
+        self.provisional_output_properties = (
+            self._init_provisional_output_properties()
+        )
 
         # Ensure that dimensions and units of the variables present
         # in both input_properties and output_properties are compatible
@@ -342,11 +349,10 @@ class ParallelSplitting:
         )
 
         self._dict_op = DataArrayDictOperator(
-            gt_powered,
             backend=backend,
             backend_opts=backend_opts,
-            build_info=build_info,
             dtype=dtype,
+            build_info=build_info,
             rebuild=rebuild,
         )
 
@@ -371,11 +377,15 @@ class ParallelSplitting:
                         "consider_diagnostics": True,
                     }
                     for component in self.component_list
-                    if not isinstance(component, self.__class__.allowed_diagnostic_type)
+                    if not isinstance(
+                        component, self.__class__.allowed_diagnostic_type
+                    )
                 )
             )
 
-    def _init_provisional_input_properties(self) -> taz_types.properties_dict_t:
+    def _init_provisional_input_properties(
+        self,
+    ) -> taz_types.properties_dict_t:
         # We require that all prognostic variables affected by the
         # parameterizations are included in the provisional state
         return_dict = get_input_properties(
@@ -386,7 +396,9 @@ class ParallelSplitting:
                     "consider_diagnostics": False,
                 }
                 for component in self.component_list
-                if not isinstance(component, self.__class__.allowed_diagnostic_type)
+                if not isinstance(
+                    component, self.__class__.allowed_diagnostic_type
+                )
             )
         )
 
@@ -400,7 +412,9 @@ class ParallelSplitting:
                             "consider_diagnostics": True,
                         }
                         for component in self.component_list
-                        if isinstance(component, self.__class__.allowed_diagnostic_type)
+                        if isinstance(
+                            component, self.__class__.allowed_diagnostic_type
+                        )
                     )
                 )
             )
@@ -428,11 +442,15 @@ class ParallelSplitting:
                         "consider_diagnostics": True,
                     }
                     for component in self.component_list
-                    if not isinstance(component, self.__class__.allowed_diagnostic_type)
+                    if not isinstance(
+                        component, self.__class__.allowed_diagnostic_type
+                    )
                 )
             )
 
-    def _init_provisional_output_properties(self) -> taz_types.properties_dict_t:
+    def _init_provisional_output_properties(
+        self,
+    ) -> taz_types.properties_dict_t:
         return_dict = self.provisional_input_properties
 
         if self._diagnostics_from_provisional:
@@ -445,7 +463,9 @@ class ParallelSplitting:
                             "consider_diagnostics": True,
                         }
                         for component in self.component_list
-                        if isinstance(component, self.__class__.allowed_diagnostic_type)
+                        if isinstance(
+                            component, self.__class__.allowed_diagnostic_type
+                        )
                     )
                 )
             )
@@ -508,7 +528,9 @@ class ParallelSplitting:
     ) -> None:
         """ Process the components in 'serial' runtime mode. """
         for component, substeps in zip(self._component_list, self._substeps):
-            if not isinstance(component, self.__class__.allowed_diagnostic_type):
+            if not isinstance(
+                component, self.__class__.allowed_diagnostic_type
+            ):
                 diagnostics, state_tmp = component(state, timestep / substeps)
 
                 if substeps > 1:
@@ -521,7 +543,9 @@ class ParallelSplitting:
                     )
 
                     for _ in range(1, substeps):
-                        _, state_aux = component(state_tmp, timestep / substeps)
+                        _, state_aux = component(
+                            state_tmp, timestep / substeps
+                        )
                         state_tmp.update(state_aux)
 
                 self._dict_op.iaddsub(
@@ -533,7 +557,9 @@ class ParallelSplitting:
 
                 state.update(diagnostics)
             else:
-                arg = state_prv if self._diagnostics_from_provisional else state
+                arg = (
+                    state_prv if self._diagnostics_from_provisional else state
+                )
 
                 try:
                     diagnostics = component(arg)
@@ -552,7 +578,9 @@ class ParallelSplitting:
         agg_diagnostics = {}
 
         for component, substeps in zip(self.component_list, self._substeps):
-            if not isinstance(component, self.__class__.allowed_diagnostic_type):
+            if not isinstance(
+                component, self.__class__.allowed_diagnostic_type
+            ):
                 diagnostics, state_tmp = component(state, timestep / substeps)
 
                 if substeps > 1:
@@ -565,7 +593,9 @@ class ParallelSplitting:
                     )
 
                     for _ in range(1, substeps):
-                        _, state_aux = component(state_tmp, timestep / substeps)
+                        _, state_aux = component(
+                            state_tmp, timestep / substeps
+                        )
                         state_tmp.update(state_aux)
 
                 self._dict_op.iaddsub(

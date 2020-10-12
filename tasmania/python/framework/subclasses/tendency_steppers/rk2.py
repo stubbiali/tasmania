@@ -22,19 +22,18 @@
 #
 import numpy as np
 
-from tasmania.python.framework.sts_tendency_stepper import STSTendencyStepper
+from tasmania.python.framework.tendency_stepper import TendencyStepper
 from tasmania.python.utils.framework_utils import get_increment, register
 
 
-@register(name="rk3ws")
-class RK3WS(STSTendencyStepper):
-    """ The Wicker-Skamarock three-stages Runge-Kutta scheme.
+@register(name="rk2")
+class RK2(TendencyStepper):
+    """ The two-stages second-order Runge-Kutta scheme.
 
     References
     ----------
-    Doms, G., and M. Baldauf. (2015). *A description of the nonhydrostatic \
-        regional COSMO-model. Part I: Dynamics and numerics.* \
-        Deutscher Wetterdienst, Germany.
+    Gear, C. W. (1971). *Numerical initial value problems in \
+        ordinary differential equations.* Prentice Hall PTR.
     """
 
     def __init__(
@@ -42,11 +41,10 @@ class RK3WS(STSTendencyStepper):
         *args,
         execution_policy="serial",
         enforce_horizontal_boundary=False,
-        gt_powered=False,
         backend="numpy",
         backend_opts=None,
-        build_info=None,
         dtype=np.float64,
+        build_info=None,
         rebuild=False,
         **kwargs
     ):
@@ -54,35 +52,35 @@ class RK3WS(STSTendencyStepper):
             *args,
             execution_policy=execution_policy,
             enforce_horizontal_boundary=enforce_horizontal_boundary,
-            gt_powered=gt_powered,
             backend=backend,
             backend_opts=backend_opts,
-            build_info=build_info,
             dtype=dtype,
+            build_info=build_info,
             rebuild=rebuild
         )
 
-    def _call(self, state, prv_state, timestep):
+    def _call(self, state, timestep):
         # initialize the output state
         self._out_state = self._out_state or self._allocate_output_state(state)
         out_state = self._out_state
 
         # first stage
         k0, diagnostics = get_increment(state, timestep, self.prognostic)
-        self._dict_op.sts_rk3ws_0(
-            timestep.total_seconds(),
+        self._dict_op.fma(
             state,
-            prv_state,
             k0,
+            0.5 * timestep.total_seconds(),
             out=out_state,
             field_properties=self.output_properties,
         )
-        out_state["time"] = state["time"] + timestep / 3.0
+        out_state["time"] = state["time"] + 0.5 * timestep
 
         if self._enforce_hb:
             # enforce the boundary conditions on each prognostic variable
             self._hb.enforce(
-                out_state, field_names=self.output_properties.keys(), grid=self._grid
+                out_state,
+                field_names=self.output_properties.keys(),
+                grid=self._grid,
             )
 
         # populate out_state with all other variables from state
@@ -90,7 +88,7 @@ class RK3WS(STSTendencyStepper):
             if name != "time" and name not in out_state:
                 out_state[name] = state[name]
 
-        # restore original units of the tendencies
+        # restore original units for the tendencies
         # restore_tendency_units(k0)
 
         # second stage
@@ -102,42 +100,9 @@ class RK3WS(STSTendencyStepper):
                 out_state.pop(name, None)
 
         # step the solution
-        self._dict_op.sts_rk2_0(
-            timestep.total_seconds(),
-            state,
-            prv_state,
-            k1,
-            out=out_state,
-            field_properties=self.output_properties,
-        )
-        out_state["time"] = state["time"] + 0.5 * timestep
-
-        if self._enforce_hb:
-            # Enforce the boundary conditions on each prognostic variable
-            self._hb.enforce(
-                out_state, field_names=self.output_properties.keys(), grid=self._grid
-            )
-
-        # populate out_state with all other variables from state
-        for name in state:
-            if name != "time" and name not in out_state:
-                out_state[name] = state[name]
-
-        # restore original units of the tendencies
-        # restore_tendency_units(k1)
-
-        # third stage
-        k2, _ = get_increment(out_state, timestep, self.prognostic)
-
-        # remove undesired variables
-        for name in state:
-            if name != "time" and name not in self.output_properties:
-                out_state.pop(name, None)
-
-        # step the solution
         self._dict_op.fma(
-            prv_state,
-            k2,
+            state,
+            k1,
             timestep.total_seconds(),
             out=out_state,
             field_properties=self.output_properties,
@@ -147,10 +112,12 @@ class RK3WS(STSTendencyStepper):
         if self._enforce_hb:
             # enforce the boundary conditions on each prognostic variable
             self._hb.enforce(
-                out_state, field_names=self.output_properties.keys(), grid=self._grid
+                out_state,
+                field_names=self.output_properties.keys(),
+                grid=self._grid,
             )
 
-        # restore original units of the tendencies
-        # restore_tendency_units(k2)
+        # restore original units for the tendencies
+        # restore_tendency_units(k1)
 
         return diagnostics, out_state

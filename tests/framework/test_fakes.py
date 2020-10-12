@@ -24,8 +24,6 @@ from datetime import timedelta
 from hypothesis import (
     assume,
     given,
-    HealthCheck,
-    settings,
     strategies as hyp_st,
     reproduce_failure,
 )
@@ -39,45 +37,48 @@ from tasmania.python.framework.tendency_stepper import TendencyStepper
 
 from tests.conf import (
     backend as conf_backend,
-    datatype as conf_dtype,
+    dtype as conf_dtype,
     default_origin as conf_dorigin,
 )
-from tests.strategies import st_domain, st_isentropic_state_f, st_one_of, st_timedeltas
-
-
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
+from tests.strategies import (
+    st_domain,
+    st_isentropic_state_f,
+    st_one_of,
+    st_timedeltas,
 )
+from tests.utilities import hyp_settings
+
+
+@hyp_settings
 @given(data=hyp_st.data())
-def test_fake_tendency_component(data, make_fake_tendency_component_1):
+@pytest.mark.parametrize("backend", conf_backend)
+@pytest.mark.parametrize("dtype", conf_dtype)
+def test_fake_tendency_component(
+    data, backend, dtype, make_fake_tendency_component_1
+):
     # ========================================
     # random data generation
     # ========================================
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
-    if gt_powered:
-        gt.storage.prepare_numpy()
-
     domain = data.draw(
-        st_domain(gt_powered=gt_powered, backend=backend, dtype=dtype), label="domain"
+        st_domain(backend=backend, dtype=dtype),
+        label="domain",
     )
-    grid_type = data.draw(st_one_of(("physical", "numerical")), label="grid_type")
-    grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
+    grid_type = data.draw(
+        st_one_of(("physical", "numerical")), label="grid_type"
+    )
+    grid = (
+        domain.physical_grid
+        if grid_type == "physical"
+        else domain.numerical_grid
+    )
 
     state = data.draw(
         st_isentropic_state_f(
             grid,
             moist=False,
             precipitation=False,
-            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
         ),
@@ -98,39 +99,36 @@ def test_fake_tendency_component(data, make_fake_tendency_component_1):
     assert len(diagnostics) == 0
 
 
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
+@hyp_settings
 @given(data=hyp_st.data())
-def test_fake_tendency_component_tendency_stepper(data, make_fake_tendency_component_1):
+@pytest.mark.parametrize("backend", conf_backend)
+@pytest.mark.parametrize("dtype", conf_dtype)
+def test_fake_tendency_component_tendency_stepper(
+    data, backend, dtype, make_fake_tendency_component_1
+):
     # ========================================
     # random data generation
     # ========================================
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
-    if gt_powered:
-        gt.storage.prepare_numpy()
-
     domain = data.draw(
-        st_domain(gt_powered=gt_powered, backend=backend, dtype=dtype), label="domain"
+        st_domain(backend=backend, dtype=dtype),
+        label="domain",
     )
-    grid_type = data.draw(st_one_of(("physical", "numerical")), label="grid_type")
-    grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
+    grid_type = data.draw(
+        st_one_of(("physical", "numerical")), label="grid_type"
+    )
+    grid = (
+        domain.physical_grid
+        if grid_type == "physical"
+        else domain.numerical_grid
+    )
 
     state = data.draw(
         st_isentropic_state_f(
             grid,
             moist=False,
             precipitation=False,
-            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
         ),
@@ -138,7 +136,9 @@ def test_fake_tendency_component_tendency_stepper(data, make_fake_tendency_compo
     )
 
     timestep = data.draw(
-        st_timedeltas(min_value=timedelta(seconds=1), max_value=timedelta(hours=1)),
+        st_timedeltas(
+            min_value=timedelta(seconds=1), max_value=timedelta(hours=1)
+        ),
         label="timestep",
     )
 
@@ -192,41 +192,36 @@ def test_fake_tendency_component_tendency_stepper(data, make_fake_tendency_compo
     assert len(out_state) == 1
 
 
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
+@hyp_settings
 @given(data=hyp_st.data())
+@pytest.mark.parametrize("backend", conf_backend)
+@pytest.mark.parametrize("dtype", conf_dtype)
 def test_fake_tendency_component_sts_tendency_stepper(
-    data, make_fake_tendency_component_1
+    data, backend, dtype, make_fake_tendency_component_1
 ):
     # ========================================
     # random data generation
     # ========================================
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
-    if gt_powered:
-        gt.storage.prepare_numpy()
-
     domain = data.draw(
-        st_domain(gt_powered=gt_powered, backend=backend, dtype=dtype), label="domain"
+        st_domain(backend=backend, dtype=dtype),
+        label="domain",
     )
-    grid_type = data.draw(st_one_of(("physical", "numerical")), label="grid_type")
-    grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
+    grid_type = data.draw(
+        st_one_of(("physical", "numerical")), label="grid_type"
+    )
+    grid = (
+        domain.physical_grid
+        if grid_type == "physical"
+        else domain.numerical_grid
+    )
 
     state = data.draw(
         st_isentropic_state_f(
             grid,
             moist=False,
             precipitation=False,
-            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
         ),
@@ -234,7 +229,9 @@ def test_fake_tendency_component_sts_tendency_stepper(
     )
 
     timestep = data.draw(
-        st_timedeltas(min_value=timedelta(seconds=1), max_value=timedelta(hours=1)),
+        st_timedeltas(
+            min_value=timedelta(seconds=1), max_value=timedelta(hours=1)
+        ),
         label="timestep",
     )
 

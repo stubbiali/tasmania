@@ -36,7 +36,9 @@ SequenceType = (tuple, list)
 
 
 class FakeComponent:
-    def __init__(self, properties: Mapping[str, taz_types.properties_dict_t]) -> None:
+    def __init__(
+        self, properties: Mapping[str, taz_types.properties_dict_t]
+    ) -> None:
         for name, value in properties.items():
             if name == "input_properties":
                 self.input_properties = value
@@ -66,13 +68,17 @@ class OfflineDiagnosticComponent(abc.ABC):
 
         assert isinstance(self.diagnostic_properties, dict), (
             "diagnostic_properties attribute is of type {}, "
-            "but should be a dict.".format(self.diagnostic_properties.__class__.__name__)
+            "but should be a dict.".format(
+                self.diagnostic_properties.__class__.__name__
+            )
         )
 
         self._input_checkers = []
         for input_property in self.input_properties:
             self._input_checkers.append(
-                InputChecker(FakeComponent({"input_properties": input_property}))
+                InputChecker(
+                    FakeComponent({"input_properties": input_property})
+                )
             )
 
         self._diagnostic_checker = DiagnosticChecker(
@@ -131,14 +137,18 @@ class OfflineDiagnosticComponent(abc.ABC):
             and whose values are :class:`sympl.DataArray`\s representing
             values for those diagnostics.
         """
-        assert_sequence(states, reflen=len(self.input_properties), reftype=dict)
+        assert_sequence(
+            states, reflen=len(self.input_properties), reftype=dict
+        )
 
         for input_checker, state in zip(self._input_checkers, states):
             input_checker.check_inputs(state)
 
         raw_states = []
         for input_properties, state in zip(self.input_properties, states):
-            raw_states.append(get_numpy_arrays_with_properties(state, input_properties))
+            raw_states.append(
+                get_numpy_arrays_with_properties(state, input_properties)
+            )
             raw_states[-1]["time"] = state["time"]
 
         raw_diagnostics = self.array_call(*raw_states)
@@ -148,7 +158,9 @@ class OfflineDiagnosticComponent(abc.ABC):
             key: val for key, val in raw_diagnostics.items() if key != "time"
         }
 
-        self._diagnostic_checker.check_diagnostics(raw_diagnostics_without_time)
+        self._diagnostic_checker.check_diagnostics(
+            raw_diagnostics_without_time
+        )
 
         diagnostics = restore_data_arrays_with_properties(
             raw_diagnostics_without_time,
@@ -160,7 +172,9 @@ class OfflineDiagnosticComponent(abc.ABC):
         return diagnostics
 
     @abc.abstractmethod
-    def array_call(self, *states: taz_types.array_dict_t) -> taz_types.array_dict_t:
+    def array_call(
+        self, *states: taz_types.array_dict_t
+    ) -> taz_types.array_dict_t:
         """
         Retrieve the diagnostics.
 
@@ -233,9 +247,15 @@ class RMSD(OfflineDiagnosticComponent):
         y = y if isinstance(y, SequenceType) else (y, y)
         z = z if isinstance(z, SequenceType) else (z, z)
 
-        self._xs = tuple(slice(0, None, None) if arg is None else arg for arg in x)
-        self._ys = tuple(slice(0, None, None) if arg is None else arg for arg in y)
-        self._zs = tuple(slice(0, None, None) if arg is None else arg for arg in z)
+        self._xs = tuple(
+            slice(0, None, None) if arg is None else arg for arg in x
+        )
+        self._ys = tuple(
+            slice(0, None, None) if arg is None else arg for arg in y
+        )
+        self._zs = tuple(
+            slice(0, None, None) if arg is None else arg for arg in z
+        )
 
         assert_sequence(self._xs, reflen=2, reftype=slice)
         assert_sequence(self._ys, reflen=2, reftype=slice)
@@ -250,8 +270,16 @@ class RMSD(OfflineDiagnosticComponent):
         return_list = ({}, {})
 
         for name, units in self._fields.items():
-            dimx = g1.x_at_u_locations.dims[0] if "u_locations" in name else g1.x.dims[0]
-            dimy = g1.y_at_v_locations.dims[0] if "v_locations" in name else g1.y.dims[0]
+            dimx = (
+                g1.x_at_u_locations.dims[0]
+                if "u_locations" in name
+                else g1.x.dims[0]
+            )
+            dimy = (
+                g1.y_at_v_locations.dims[0]
+                if "v_locations" in name
+                else g1.y.dims[0]
+            )
             dimz = (
                 g1.z_on_interface_levels.dims[0]
                 if "interface_levels" in name
@@ -259,8 +287,16 @@ class RMSD(OfflineDiagnosticComponent):
             )
             return_list[0][name] = {"dims": (dimx, dimy, dimz), "units": units}
 
-            dimx = g2.x_at_u_locations.dims[0] if "u_locations" in name else g2.x.dims[0]
-            dimy = g2.y_at_v_locations.dims[0] if "v_locations" in name else g2.y.dims[0]
+            dimx = (
+                g2.x_at_u_locations.dims[0]
+                if "u_locations" in name
+                else g2.x.dims[0]
+            )
+            dimy = (
+                g2.y_at_v_locations.dims[0]
+                if "v_locations" in name
+                else g2.y.dims[0]
+            )
             dimz = (
                 g2.z_on_interface_levels.dims[0]
                 if "interface_levels" in name
@@ -289,7 +325,9 @@ class RMSD(OfflineDiagnosticComponent):
             arr1 = state1[name][x1, y1, z1]
             arr2 = state2[name][x2, y2, z2]
             tmp = np.linalg.norm(arr1 - arr2) / np.sqrt(arr1.size)
-            diags["rmsd_of_" + name] = np.array(tmp)[np.newaxis, np.newaxis, np.newaxis]
+            diags["rmsd_of_" + name] = np.array(tmp)[
+                np.newaxis, np.newaxis, np.newaxis
+            ]
 
         return diags
 
@@ -346,9 +384,15 @@ class RRMSD(OfflineDiagnosticComponent):
         y = y if isinstance(y, SequenceType) else (y, y)
         z = z if isinstance(z, SequenceType) else (z, z)
 
-        self._xs = tuple(slice(0, None, None) if arg is None else arg for arg in x)
-        self._ys = tuple(slice(0, None, None) if arg is None else arg for arg in y)
-        self._zs = tuple(slice(0, None, None) if arg is None else arg for arg in z)
+        self._xs = tuple(
+            slice(0, None, None) if arg is None else arg for arg in x
+        )
+        self._ys = tuple(
+            slice(0, None, None) if arg is None else arg for arg in y
+        )
+        self._zs = tuple(
+            slice(0, None, None) if arg is None else arg for arg in z
+        )
 
         assert_sequence(self._xs, reflen=2, reftype=slice)
         assert_sequence(self._ys, reflen=2, reftype=slice)
@@ -363,8 +407,16 @@ class RRMSD(OfflineDiagnosticComponent):
         return_list = ({}, {})
 
         for name, units in self._fields.items():
-            dimx = g1.x_at_u_locations.dims[0] if "u_locations" in name else g1.x.dims[0]
-            dimy = g1.y_at_v_locations.dims[0] if "v_locations" in name else g1.y.dims[0]
+            dimx = (
+                g1.x_at_u_locations.dims[0]
+                if "u_locations" in name
+                else g1.x.dims[0]
+            )
+            dimy = (
+                g1.y_at_v_locations.dims[0]
+                if "v_locations" in name
+                else g1.y.dims[0]
+            )
             dimz = (
                 g1.z_on_interface_levels.dims[0]
                 if "interface_levels" in name
@@ -372,8 +424,16 @@ class RRMSD(OfflineDiagnosticComponent):
             )
             return_list[0][name] = {"dims": (dimx, dimy, dimz), "units": units}
 
-            dimx = g2.x_at_u_locations.dims[0] if "u_locations" in name else g2.x.dims[0]
-            dimy = g2.y_at_v_locations.dims[0] if "v_locations" in name else g2.y.dims[0]
+            dimx = (
+                g2.x_at_u_locations.dims[0]
+                if "u_locations" in name
+                else g2.x.dims[0]
+            )
+            dimy = (
+                g2.y_at_v_locations.dims[0]
+                if "v_locations" in name
+                else g2.y.dims[0]
+            )
             dimz = (
                 g2.z_on_interface_levels.dims[0]
                 if "interface_levels" in name
@@ -402,7 +462,9 @@ class RRMSD(OfflineDiagnosticComponent):
             arr1 = state1[name][x1, y1, z1]
             arr2 = state2[name][x2, y2, z2]
             tmp = np.linalg.norm(arr1 - arr2) / np.linalg.norm(arr2)
-            diags["rrmsd_of_" + name] = np.array(tmp)[np.newaxis, np.newaxis, np.newaxis]
+            diags["rrmsd_of_" + name] = np.array(tmp)[
+                np.newaxis, np.newaxis, np.newaxis
+            ]
 
         return diags
 
@@ -422,10 +484,14 @@ class ColumnSum(OfflineDiagnosticComponent):
     def input_properties(self) -> Tuple[taz_types.properties_dict_t]:
         g = self._grid
         dimx = (
-            g.x_at_u_locations.dims[0] if "u_locations" in self._fname else g.x.dims[0]
+            g.x_at_u_locations.dims[0]
+            if "u_locations" in self._fname
+            else g.x.dims[0]
         )
         dimy = (
-            g.y_at_v_locations.dims[0] if "v_locations" in self._fname else g.y.dims[0]
+            g.y_at_v_locations.dims[0]
+            if "v_locations" in self._fname
+            else g.y.dims[0]
         )
         dimz = (
             g.z_on_interface_levels[0]
@@ -441,10 +507,14 @@ class ColumnSum(OfflineDiagnosticComponent):
     def diagnostic_properties(self) -> taz_types.properties_dict_t:
         g = self._grid
         dimx = (
-            g.x_at_u_locations.dims[0] if "u_locations" in self._fname else g.x.dims[0]
+            g.x_at_u_locations.dims[0]
+            if "u_locations" in self._fname
+            else g.x.dims[0]
         )
         dimy = (
-            g.y_at_v_locations.dims[0] if "v_locations" in self._fname else g.y.dims[0]
+            g.y_at_v_locations.dims[0]
+            if "v_locations" in self._fname
+            else g.y.dims[0]
         )
         dimz = (
             g.z_on_interface_levels[0]
@@ -454,7 +524,9 @@ class ColumnSum(OfflineDiagnosticComponent):
         dimz += "_at_surface_level"
         return {"dims": (dimx, dimy, dimz), "units": self._funits}
 
-    def array_call(self, state: taz_types.array_dict_t) -> taz_types.array_dict_t:
+    def array_call(
+        self, state: taz_types.array_dict_t
+    ) -> taz_types.array_dict_t:
         field = state[self._fname]
         out = np.zeros((field.shape[0], field.shape[1], 1), dtype=field.dtype)
         np.sum(field, axis=2, out=out)

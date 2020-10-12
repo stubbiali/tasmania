@@ -28,7 +28,9 @@ from tasmania.python.utils import taz_types
 
 
 class FakeTendencyComponent(TendencyComponent):
-    def __init__(self, domain: Domain, grid_type: str = "numerical", **kwargs) -> None:
+    def __init__(
+        self, domain: Domain, grid_type: str = "numerical", **kwargs
+    ) -> None:
         super().__init__(domain, grid_type, **kwargs)
 
     @property
@@ -43,7 +45,9 @@ class FakeTendencyComponent(TendencyComponent):
     def diagnostic_properties(self) -> taz_types.properties_dict_t:
         return {}
 
-    def array_call(self, state) -> Tuple[taz_types.array_dict_t, taz_types.array_dict_t]:
+    def array_call(
+        self, state
+    ) -> Tuple[taz_types.array_dict_t, taz_types.array_dict_t]:
         return {}, {}
 
 

@@ -38,7 +38,10 @@ from tasmania.python.framework._base import (
     BaseConcurrentCoupling,
     BaseDiagnosticComponentComposite,
 )
-from tasmania.python.framework.promoters import Diagnostic2Tendency, Tendency2Diagnostic
+from tasmania.python.framework.promoters import (
+    Diagnostic2Tendency,
+    Tendency2Diagnostic,
+)
 from tasmania.python.utils import taz_types
 from tasmania.python.utils.dict_utils import DataArrayDictOperator
 from tasmania.python.utils.framework_utils import (
@@ -104,11 +107,10 @@ class ConcurrentCoupling(BaseConcurrentCoupling):
             taz_types.promoter_component_t,
         ],
         execution_policy: str = "serial",
-        gt_powered: bool = False,
         backend: str = "numpy",
         backend_opts: Optional[taz_types.options_dict_t] = None,
-        build_info: Optional[taz_types.options_dict_t] = None,
         dtype: taz_types.dtype_t = np.float64,
+        build_info: Optional[taz_types.options_dict_t] = None,
         rebuild: bool = False,
         **kwargs
     ) -> None:
@@ -143,20 +145,18 @@ class ConcurrentCoupling(BaseConcurrentCoupling):
                     are passed to this object, and diagnostics computed by
                     a component are not usable by any other component.
 
-        gt_powered : `bool`, optional
-            ``True`` to add the tendencies using GT4Py (leveraging field versioning),
-            ``False`` to perform the summation in plain Python.
         backend : `str`, optional
-            The GT4Py backend.
+            The backend.
         backend_opts : `dict`, optional
             Dictionary of backend-specific options.
-        build_info : `dict`, optional
-            Dictionary of building options.
         dtype : `data-type`, optional
             Data type of the storages passed to the stencil.
+        build_info : `dict`, optional
+            Dictionary of building options.
         rebuild : `bool`, optional
-            ``True`` to trigger the stencils compilation at any class instantiation,
-            ``False`` to rely on the caching mechanism implemented by GT4Py.
+            ``True`` to trigger the stencils compilation at any class
+            instantiation, ``False`` to rely on the caching mechanism
+            implemented by the backend.
         **kwargs:
             Catch-all for unused keyword arguments.
         """
@@ -165,7 +165,9 @@ class ConcurrentCoupling(BaseConcurrentCoupling):
 
         self._policy = execution_policy
         self._call = (
-            self._call_serial if execution_policy == "serial" else self._call_asparallel
+            self._call_serial
+            if execution_policy == "serial"
+            else self._call_asparallel
         )
 
         # ensure that a tendency is actually computed before it gets moved around
@@ -193,11 +195,10 @@ class ConcurrentCoupling(BaseConcurrentCoupling):
         )
 
         self._dict_op = DataArrayDictOperator(
-            gt_powered,
             backend=backend,
             backend_opts=backend_opts,
-            build_info=build_info,
             dtype=dtype,
+            build_info=build_info,
             rebuild=rebuild,
         )
 
@@ -221,7 +222,9 @@ class ConcurrentCoupling(BaseConcurrentCoupling):
         return get_tendency_properties(self.component_list, t2d_type)
 
     def _init_diagnostic_properties(self) -> taz_types.properties_dict_t:
-        return combine_component_properties(self.component_list, "diagnostic_properties")
+        return combine_component_properties(
+            self.component_list, "diagnostic_properties"
+        )
 
     @property
     def component_list(
@@ -242,7 +245,9 @@ class ConcurrentCoupling(BaseConcurrentCoupling):
         return self._component_list
 
     def __call__(
-        self, state: taz_types.dataarray_dict_t, timestep: taz_types.timedelta_t
+        self,
+        state: taz_types.dataarray_dict_t,
+        timestep: taz_types.timedelta_t,
     ) -> Tuple[taz_types.dataarray_dict_t, taz_types.dataarray_dict_t]:
         """
         Execute the wrapped components to calculate tendencies and retrieve
@@ -251,18 +256,19 @@ class ConcurrentCoupling(BaseConcurrentCoupling):
         Parameters
         ----------
         state : dict[str, sympl.DataArray]
-            The input model state as a dictionary whose keys are strings denoting
-            model variables, and whose values are :class:`sympl.DataArray`\s storing
-            data for those variables.
+            The input model state as a dictionary whose keys are strings
+            denoting model variables, and whose values are
+            :class:`sympl.DataArray`\s storing data for those variables.
         timestep : `timedelta`, optional
             The time step size.
 
         Return
         ------
         dict[str, sympl.DataArray]
-            Dictionary whose keys are strings denoting the model variables for which
-            tendencies have been computed, and whose values are :class:`sympl.DataArray`\s
-            storing the tendencies for those variables.
+            Dictionary whose keys are strings denoting the model variables for
+            which tendencies have been computed, and whose values are
+            :class:`sympl.DataArray`\s storing the tendencies for those
+            variables.
         """
         tendencies, diagnostics = self._call(state, timestep)
 
@@ -275,7 +281,9 @@ class ConcurrentCoupling(BaseConcurrentCoupling):
         return tendencies, diagnostics
 
     def _call_serial(
-        self, state: taz_types.dataarray_dict_t, timestep: taz_types.timedelta_t
+        self,
+        state: taz_types.dataarray_dict_t,
+        timestep: taz_types.timedelta_t,
     ) -> Tuple[taz_types.dataarray_dict_t, taz_types.dataarray_dict_t]:
         """ Process the components in 'serial' runtime mode. """
         aux_state = {}
@@ -319,7 +327,9 @@ class ConcurrentCoupling(BaseConcurrentCoupling):
         return out_tendencies, out_diagnostics
 
     def _call_asparallel(
-        self, state: taz_types.dataarray_dict_t, timestep: taz_types.timedelta_t
+        self,
+        state: taz_types.dataarray_dict_t,
+        timestep: taz_types.timedelta_t,
     ) -> Tuple[taz_types.dataarray_dict_t, taz_types.dataarray_dict_t]:
         """ Process the components in 'as_parallel' runtime mode. """
         out_tendencies = {}

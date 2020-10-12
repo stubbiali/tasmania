@@ -24,33 +24,32 @@ from copy import deepcopy
 from datetime import timedelta
 from hypothesis import (
     given,
-    HealthCheck,
-    settings,
     strategies as hyp_st,
     reproduce_failure,
 )
 import pytest
 from sympl._core.exceptions import InvalidStateError
 
-import gt4py as gt
-
 from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
 from tasmania.python.framework.promoters import Tendency2Diagnostic
 from tasmania.python.utils.storage_utils import deepcopy_dataarray_dict
+from tasmania.python.utils.utils import is_gt
 
 from tests.conf import (
     backend as conf_backend,
-    datatype as conf_dtype,
+    dtype as conf_dtype,
     default_origin as conf_dorigin,
 )
-from tests.strategies import st_domain, st_isentropic_state_f, st_one_of, st_timedeltas
-from tests.utilities import compare_arrays
-
-
-@settings(
-    suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
-    deadline=None,
+from tests.strategies import (
+    st_domain,
+    st_isentropic_state_f,
+    st_one_of,
+    st_timedeltas,
 )
+from tests.utilities import compare_arrays, hyp_settings
+
+
+@hyp_settings
 @given(data=hyp_st.data())
 def test_compatibility(
     data, make_fake_tendency_component_1, make_fake_tendency_component_2
@@ -67,7 +66,6 @@ def test_compatibility(
             cgrid,
             moist=True,
             precipitation=True,
-            gt_powered=False,
             backend="numpy",
             storage_shape=(nx + 1, ny + 1, nz + 1),
         ),
@@ -75,7 +73,9 @@ def test_compatibility(
     )
 
     dt = data.draw(
-        st_timedeltas(min_value=timedelta(seconds=0), max_value=timedelta(minutes=60))
+        st_timedeltas(
+            min_value=timedelta(seconds=0), max_value=timedelta(minutes=60)
+        )
     )
 
     # ========================================
@@ -118,31 +118,28 @@ def test_compatibility(
         assert False
 
 
-@settings(
-    suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
-    deadline=None,
-)
+@hyp_settings
 @given(data=hyp_st.data())
-def test_serial(data, make_fake_tendency_component_1, make_fake_tendency_component_2):
+@pytest.mark.parametrize("backend", conf_backend)
+@pytest.mark.parametrize("dtype", conf_dtype)
+def test_serial(
+    data,
+    backend,
+    dtype,
+    make_fake_tendency_component_1,
+    make_fake_tendency_component_2,
+):
     # ========================================
     # random data generation
     # ========================================
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-    gt_powered_cc = gt_powered and data.draw(hyp_st.booleans(), label="gt_powered_cc")
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
     same_shape = data.draw(hyp_st.booleans(), label="same_shape")
-
-    if gt_powered:
-        gt.storage.prepare_numpy()
 
     domain = data.draw(
         st_domain(
             xaxis_length=(1, 20),
             yaxis_length=(1, 20),
             zaxis_length=(1, 20),
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
         ),
@@ -160,7 +157,6 @@ def test_serial(data, make_fake_tendency_component_1, make_fake_tendency_compone
             cgrid,
             moist=False,
             precipitation=False,
-            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
             storage_shape=storage_shape if same_shape else None,
@@ -169,7 +165,9 @@ def test_serial(data, make_fake_tendency_component_1, make_fake_tendency_compone
     )
 
     dt = data.draw(
-        st_timedeltas(min_value=timedelta(seconds=0), max_value=timedelta(minutes=60))
+        st_timedeltas(
+            min_value=timedelta(seconds=0), max_value=timedelta(minutes=60)
+        )
     )
 
     # ========================================
@@ -182,7 +180,6 @@ def test_serial(data, make_fake_tendency_component_1, make_fake_tendency_compone
         tc1,
         tc2,
         execution_policy="serial",
-        gt_powered=gt_powered_cc,
         backend=backend,
         dtype=dtype,
         rebuild=False,
@@ -190,26 +187,28 @@ def test_serial(data, make_fake_tendency_component_1, make_fake_tendency_compone
     tendencies, diagnostics = cc(state, dt)
 
     assert "fake_variable" in diagnostics
-    s = state["air_isentropic_density"].to_units("kg m^-2 K^-1").values
-    f = diagnostics["fake_variable"].to_units("kg m^-2 K^-1").values
+    s = state["air_isentropic_density"].to_units("kg m^-2 K^-1").data
+    f = diagnostics["fake_variable"].to_units("kg m^-2 K^-1").data
     compare_arrays(f, 2 * s)
 
     assert "air_isentropic_density" in tendencies
     compare_arrays(
-        tendencies["air_isentropic_density"].to_units("kg m^-2 K^-1 s^-1").values,
+        tendencies["air_isentropic_density"]
+        .to_units("kg m^-2 K^-1 s^-1")
+        .data,
         1e-3 * s + 1e-2 * f,
     )
 
     assert "x_momentum_isentropic" in tendencies
-    su = state["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").values
+    su = state["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").data
     compare_arrays(
-        tendencies["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-2").values,
+        tendencies["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-2").data,
         300 * su,
     )
 
     assert "y_momentum_isentropic" in tendencies
-    v = state["y_velocity_at_v_locations"].to_units("m s^-1").values
-    if same_shape or gt_powered:
+    v = state["y_velocity_at_v_locations"].to_units("m s^-1").data
+    if same_shape or is_gt(backend):
         v_val = deepcopy(v)
         v_val[:-1, :-1, :-1] = (
             0.5 * s[:-1, :-1, :-1] * (v[:-1, :-1, :-1] + v[:-1, 1:, :-1])
@@ -217,20 +216,23 @@ def test_serial(data, make_fake_tendency_component_1, make_fake_tendency_compone
         compare_arrays(
             tendencies["y_momentum_isentropic"]
             .to_units("kg m^-1 K^-1 s^-2")
-            .values[:-1, :-1, :-1],
+            .data[:-1, :-1, :-1],
             v_val[:-1, :-1, :-1],
         )
     else:
         v_val = 0.5 * s * (v[:, :-1] + v[:, 1:])
         compare_arrays(
-            tendencies["y_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-2").values,
+            tendencies["y_momentum_isentropic"]
+            .to_units("kg m^-1 K^-1 s^-2")
+            .data,
             v_val,
         )
 
     assert "x_velocity_at_u_locations" in tendencies
-    u = state["x_velocity_at_u_locations"].to_units("m s^-1").values
+    u = state["x_velocity_at_u_locations"].to_units("m s^-1").data
     compare_arrays(
-        tendencies["x_velocity_at_u_locations"].to_units("m s^-2").values, 50 * u
+        tendencies["x_velocity_at_u_locations"].to_units("m s^-2").data,
+        50 * u,
     )
 
 
@@ -245,7 +247,10 @@ class FakeTendency2Diagnostic(Tendency2Diagnostic):
         dims_stgx = (g.x_at_u_locations.dims[0], g.y.dims[0], g.z.dims[0])
 
         return_dict = {
-            "air_isentropic_density": {"dims": dims, "units": "kg m^-2 K^-1 s^-1"},
+            "air_isentropic_density": {
+                "dims": dims,
+                "units": "kg m^-2 K^-1 s^-1",
+            },
             "x_velocity_at_u_locations": {
                 "dims": dims_stgx,
                 "units": "m s^-2",
@@ -256,33 +261,28 @@ class FakeTendency2Diagnostic(Tendency2Diagnostic):
         return return_dict
 
 
-@settings(
-    suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
-    deadline=None,
-)
+@hyp_settings
 @given(data=hyp_st.data())
+@pytest.mark.parametrize("backend", conf_backend)
+@pytest.mark.parametrize("dtype", conf_dtype)
 def test_tendency_to_diagnostic(
-    data, make_fake_tendency_component_1, make_fake_tendency_component_2
+    data,
+    backend,
+    dtype,
+    make_fake_tendency_component_1,
+    make_fake_tendency_component_2,
 ):
     # ========================================
     # random data generation
     # ========================================
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-    gt_powered_cc = gt_powered and data.draw(hyp_st.booleans(), label="gt_powered_cc")
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
     same_shape = data.draw(hyp_st.booleans(), label="same_shape")
-
-    if gt_powered:
-        gt.storage.prepare_numpy()
 
     domain = data.draw(
         st_domain(
             xaxis_length=(1, 20),
             yaxis_length=(1, 20),
             zaxis_length=(1, 20),
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
         ),
@@ -300,7 +300,6 @@ def test_tendency_to_diagnostic(
             cgrid,
             moist=False,
             precipitation=False,
-            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
             storage_shape=storage_shape if same_shape else None,
@@ -309,7 +308,9 @@ def test_tendency_to_diagnostic(
     )
 
     dt = data.draw(
-        st_timedeltas(min_value=timedelta(seconds=0), max_value=timedelta(minutes=60))
+        st_timedeltas(
+            min_value=timedelta(seconds=0), max_value=timedelta(minutes=60)
+        )
     )
 
     # ========================================
@@ -324,7 +325,6 @@ def test_tendency_to_diagnostic(
         tc2,
         t2d,
         execution_policy="serial",
-        gt_powered=gt_powered_cc,
         backend=backend,
         dtype=dtype,
         rebuild=False,
@@ -332,13 +332,15 @@ def test_tendency_to_diagnostic(
     tendencies, diagnostics = cc(state, dt)
 
     assert "fake_variable" in diagnostics
-    s = state["air_isentropic_density"].to_units("kg m^-2 K^-1").values
-    f = diagnostics["fake_variable"].to_units("kg m^-2 K^-1").values
+    s = state["air_isentropic_density"].to_units("kg m^-2 K^-1").data
+    f = diagnostics["fake_variable"].to_units("kg m^-2 K^-1").data
     compare_arrays(f, 2 * s)
 
     assert "air_isentropic_density" in tendencies
     compare_arrays(
-        tendencies["air_isentropic_density"].to_units("kg m^-2 K^-1 s^-1").values,
+        tendencies["air_isentropic_density"]
+        .to_units("kg m^-2 K^-1 s^-1")
+        .data,
         1e-3 * s + 1e-2 * f,
     )
 
@@ -346,20 +348,20 @@ def test_tendency_to_diagnostic(
     compare_arrays(
         diagnostics["tendency_of_air_isentropic_density"]
         .to_units("kg m^-2 K^-1 s^-1")
-        .values,
+        .data,
         1e-3 * s + 1e-2 * f,
     )
 
     assert "x_momentum_isentropic" in tendencies
-    su = state["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").values
+    su = state["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").data
     compare_arrays(
-        tendencies["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-2").values,
+        tendencies["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-2").data,
         300 * su,
     )
 
     assert "y_momentum_isentropic" in tendencies
-    v = state["y_velocity_at_v_locations"].to_units("m s^-1").values
-    if same_shape or gt_powered:
+    v = state["y_velocity_at_v_locations"].to_units("m s^-1").data
+    if same_shape or is_gt(backend):
         v_val = deepcopy(v)
         v_val[:-1, :-1, :-1] = (
             0.5 * s[:-1, :-1, :-1] * (v[:-1, :-1, :-1] + v[:-1, 1:, :-1])
@@ -367,26 +369,32 @@ def test_tendency_to_diagnostic(
         compare_arrays(
             tendencies["y_momentum_isentropic"]
             .to_units("kg m^-1 K^-1 s^-2")
-            .values[:-1, :-1, :-1],
+            .data[:-1, :-1, :-1],
             v_val[:-1, :-1, :-1],
         )
     else:
         v_val = 0.5 * s * (v[:, :-1] + v[:, 1:])
         compare_arrays(
-            tendencies["y_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-2").values,
+            tendencies["y_momentum_isentropic"]
+            .to_units("kg m^-1 K^-1 s^-2")
+            .data,
             v_val,
         )
 
     assert "x_velocity_at_u_locations" in tendencies
-    u = state["x_velocity_at_u_locations"].to_units("m s^-1").values
+    u = state["x_velocity_at_u_locations"].to_units("m s^-1").data
     compare_arrays(
-        tendencies["x_velocity_at_u_locations"].to_units("m s^-2").values, 50 * u
+        tendencies["x_velocity_at_u_locations"].to_units("m s^-2").data,
+        50 * u,
     )
 
     assert "tnd_of_x_velocity_at_u_locations" in diagnostics
-    u = state["x_velocity_at_u_locations"].to_units("m s^-1").values
+    u = state["x_velocity_at_u_locations"].to_units("m s^-1").data
     compare_arrays(
-        diagnostics["tnd_of_x_velocity_at_u_locations"].to_units("m s^-2").values, 50 * u
+        diagnostics["tnd_of_x_velocity_at_u_locations"]
+        .to_units("m s^-2")
+        .data,
+        50 * u,
     )
 
     assert len(tendencies) == 5

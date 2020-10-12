@@ -39,7 +39,10 @@ from tasmania.python.framework.composite import (
 from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
 from tasmania.python.framework.tendency_checkers import SubsetTendencyChecker
 from tasmania.python.utils import taz_types
-from tasmania.python.utils.storage_utils import get_array_dict, get_dataarray_dict
+from tasmania.python.utils.storage_utils import (
+    get_array_dict,
+    get_dataarray_dict,
+)
 from tasmania.python.utils.dict_utils import DataArrayDictOperator
 from tasmania.python.utils.framework_utils import (
     check_properties_compatibility,
@@ -73,19 +76,27 @@ class DynamicalCore(abc.ABC):
         self,
         domain: "Domain",
         grid_type: str,
-        intermediate_tendency_component: Optional[taz_types.tendency_component_t] = None,
+        intermediate_tendency_component: Optional[
+            taz_types.tendency_component_t
+        ] = None,
         intermediate_diagnostic_component: Optional[
-            Union[taz_types.diagnostic_component_t, taz_types.tendency_component_t]
+            Union[
+                taz_types.diagnostic_component_t,
+                taz_types.tendency_component_t,
+            ]
         ] = None,
         substeps: int = 0,
-        fast_tendency_component: Optional[taz_types.tendency_component_t] = None,
-        fast_diagnostic_component: Optional[taz_types.diagnostic_component_t] = None,
-        gt_powered: bool = False,
+        fast_tendency_component: Optional[
+            taz_types.tendency_component_t
+        ] = None,
+        fast_diagnostic_component: Optional[
+            taz_types.diagnostic_component_t
+        ] = None,
         *,
         backend: str = "numpy",
         backend_opts: Optional[taz_types.options_dict_t] = None,
-        build_info: Optional[taz_types.options_dict_t] = None,
         dtype: taz_types.dtype_t = np.float64,
+        build_info: Optional[taz_types.options_dict_t] = None,
         rebuild: bool = False
     ) -> None:
         """
@@ -149,22 +160,23 @@ class DynamicalCore(abc.ABC):
             prescribing physics tendencies and retrieving diagnostic quantities.
             This object is called at the end of each substep on the latest
             provisional state.
-        gt_powered : `bool`, optional
-            ``True`` to harness GT4Py, ``False`` for a vanilla NumPy implementation.
         backend : `str`, optional
-            The GT4Py backend.
+            The backend.
         backend_opts : `dict`, optional
             Dictionary of backend-specific options.
-        build_info : `dict`, optional
-            Dictionary of building options.
         dtype : `data-type`, optional
             Data type of the storages.
+        build_info : `dict`, optional
+            Dictionary of building options.
         rebuild : `bool`, optional
-            ``True`` to trigger the stencils compilation at any class instantiation,
-            ``False`` to rely on the caching mechanism implemented by GT4Py.
+            ``True`` to trigger the stencils compilation at any class
+            instantiation, ``False`` to rely on the caching mechanism
+            implemented by the backend.
         """
         self._grid = (
-            domain.physical_grid if grid_type == "physical" else domain.numerical_grid
+            domain.physical_grid
+            if grid_type == "physical"
+            else domain.numerical_grid
         )
         self._hb = domain.horizontal_boundary
         self._dtype = dtype
@@ -226,9 +238,7 @@ class DynamicalCore(abc.ABC):
         self._output_checker = OutputChecker(self)
 
         # instantiate the dictionary operator
-        self._gt_powered = gt_powered
         self._dict_op = DataArrayDictOperator(
-            gt_powered,
             backend=backend,
             backend_opts=backend_opts,
             build_info=build_info,
@@ -594,7 +604,9 @@ class DynamicalCore(abc.ABC):
             unshared_vars = tuple(
                 name
                 for name in stage_input_properties
-                if not (name in inter_params_diag_properties or name in return_dict)
+                if not (
+                    name in inter_params_diag_properties or name in return_dict
+                )
             )
             for name in unshared_vars:
                 return_dict[name] = {}
@@ -605,13 +617,17 @@ class DynamicalCore(abc.ABC):
                 {} if self._fast_tc is None else self._fast_tc.input_properties
             )
             fast_params_diag_properties = (
-                {} if self._fast_tc is None else self._fast_tc.diagnostic_properties
+                {}
+                if self._fast_tc is None
+                else self._fast_tc.diagnostic_properties
             )
 
             # Add to the requirements the variables to feed the fast
             # parameterizations with
             unshared_vars = tuple(
-                name for name in fast_params_input_properties if name not in return_dict
+                name
+                for name in fast_params_input_properties
+                if name not in return_dict
             )
             for name in unshared_vars:
                 return_dict[name] = {}
@@ -623,7 +639,9 @@ class DynamicalCore(abc.ABC):
             unshared_vars = tuple(
                 name
                 for name in self.substep_input_properties
-                if not (name in fast_params_diag_properties or name in return_dict)
+                if not (
+                    name in fast_params_diag_properties or name in return_dict
+                )
             )
             for name in unshared_vars:
                 return_dict[name] = {}
@@ -738,7 +756,10 @@ class DynamicalCore(abc.ABC):
 
             if self._fast_dc is not None:
                 # Add the fast diagnostics to the return dictionary
-                for name, properties in self._fast_dc.diagnostic_properties.items():
+                for (
+                    name,
+                    properties,
+                ) in self._fast_dc.diagnostic_properties.items():
                     return_dict[name] = {}
                     return_dict[name].update(properties)
 
@@ -747,7 +768,10 @@ class DynamicalCore(abc.ABC):
 
         if self._inter_dc is not None:
             # Add the retrieved diagnostics to the return dictionary
-            for name, properties in self._inter_dc.diagnostic_properties.items():
+            for (
+                name,
+                properties,
+            ) in self._inter_dc.diagnostic_properties.items():
                 return_dict[name] = {}
                 return_dict[name].update(properties)
 
@@ -803,7 +827,7 @@ class DynamicalCore(abc.ABC):
         tendencies: taz_types.dataarray_dict_t,
         timestep: taz_types.timedelta_t,
     ) -> taz_types.dataarray_dict_t:
-        """ Advance the input state one timestep forward.
+        """Advance the input state one timestep forward.
 
         Parameters
         ----------
@@ -835,11 +859,23 @@ class DynamicalCore(abc.ABC):
         out_state = self._out_state
 
         inter_tends = self.call(
-            0, timestep, state, state, tendencies, self._inter_tendencies, out_state
+            0,
+            timestep,
+            state,
+            state,
+            tendencies,
+            self._inter_tendencies,
+            out_state,
         )
         for stage in range(1, self.stages):
             inter_tends = self.call(
-                stage, timestep, state, out_state, tendencies, inter_tends, out_state
+                stage,
+                timestep,
+                state,
+                out_state,
+                tendencies,
+                inter_tends,
+                out_state,
             )
 
         return_state = {"time": out_state["time"]}
@@ -860,7 +896,7 @@ class DynamicalCore(abc.ABC):
         inter_tendencies: taz_types.dataarray_dict_t,
         out_state: taz_types.mutable_dataarray_dict_t,
     ) -> taz_types.dataarray_dict_t:
-        """ Perform a single stage of the time integration algorithm.
+        """Perform a single stage of the time integration algorithm.
 
         Parameters
         ----------
@@ -948,7 +984,9 @@ class DynamicalCore(abc.ABC):
             # ============================================================
             # Create dataarrays out of the numpy arrays contained in the stepped state
             stage_state_properties = {
-                name: dict(**self.stage_output_properties[name], set_coordinates=False)
+                name: dict(
+                    **self.stage_output_properties[name], set_coordinates=False
+                )
                 for name in self.stage_output_properties
             }
             stage_state = get_dataarray_dict(
@@ -1065,7 +1103,9 @@ class DynamicalCore(abc.ABC):
         # Retrieving the intermediate diagnostics
         # ============================================================
         if self._inter_dc is not None:
-            if isinstance(self._inter_dc, self.__class__.allowed_diagnostic_type):
+            if isinstance(
+                self._inter_dc, self.__class__.allowed_diagnostic_type
+            ):
                 inter_tends = {}
                 try:
                     inter_diags = self._inter_dc(out_state)
@@ -1075,7 +1115,9 @@ class DynamicalCore(abc.ABC):
                 try:
                     inter_tends, inter_diags = self._inter_dc(out_state)
                 except TypeError:
-                    inter_tends, inter_diags = self._inter_dc(out_state, timestep)
+                    inter_tends, inter_diags = self._inter_dc(
+                        out_state, timestep
+                    )
 
             diagnostic_fields = {}
             for name in inter_diags:
@@ -1112,7 +1154,7 @@ class DynamicalCore(abc.ABC):
         raw_tendencies: taz_types.array_dict_t,
         timestep: taz_types.timedelta_t,
     ) -> taz_types.array_dict_t:
-        """ Integrate the state over a stage.
+        """Integrate the state over a stage.
 
         Parameters
         ----------
@@ -1143,7 +1185,7 @@ class DynamicalCore(abc.ABC):
         raw_tendencies: taz_types.array_dict_t,
         timestep: taz_types.timedelta_t,
     ) -> taz_types.array_dict_t:
-        """ Integrate the state over a substep.
+        """Integrate the state over a substep.
 
         Parameters
         ----------
@@ -1171,7 +1213,7 @@ class DynamicalCore(abc.ABC):
         pass
 
     def update_topography(self, time: taz_types.datetime_t) -> None:
-        """ Update the underlying (time-dependent) topography.
+        """Update the underlying (time-dependent) topography.
 
         Parameters
         ----------

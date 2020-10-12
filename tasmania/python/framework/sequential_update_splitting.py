@@ -113,26 +113,16 @@ class SequentialUpdateSplitting:
                         - :class:`sympl.ImplicitTendencyComponentComposite`, or
                         - :class:`tasmania.ConcurrentCoupling`,
 
-                    'time_integrator' is a string specifying the scheme to integrate
-                    the process forward in time. Available options:
+                    'time_integrator' is a string specifying the scheme to
+                    integrate the process forward in time. Available options:
 
                         - 'forward_euler', for the forward Euler scheme;
-                        - 'rk2', for the two-stage second-order Runge-Kutta (RK) scheme;
+                        - 'rk2', for the two-stage second-order Runge-Kutta
+                            (RK) scheme;
                         - 'rk3ws', for the three-stage RK scheme as used in the
-                            `COSMO model <http://www.cosmo-model.org>`_; this method is
-                            nominally second-order, and third-order for linear problems.
-
-                * if 'component' is a
-
-                        - :class:`sympl.TendencyComponent`,
-                        - :class:`sympl.TendencyComponentComposite`,
-                        - :class:`sympl.ImplicitTendencyComponent`,
-                        - :class:`sympl.ImplicitTendencyComponentComposite`, or
-                        - :class:`tasmania.ConcurrentCoupling`,
-
-                    'gt_powered' specifies if all the time-intensive math
-                    operations performed inside 'time_integrator' should harness
-                    GT4Py. Defaults to ``False``.
+                            `COSMO model <http://www.cosmo-model.org>`_; this
+                            method is nominally second-order, and third-order
+                            for linear problems.
 
                 * if 'component' is a
 
@@ -146,18 +136,21 @@ class SequentialUpdateSplitting:
                     options for 'time_integrator'. The dictionary may include
                     the following keys:
 
-                        - backend (str): The GT4Py backend;
-                        - backend_opts (dict): Dictionary of backend-specific options;
+                        - backend (str): The backend;
+                        - backend_opts (dict): Dictionary of backend-specific
+                            options;
                         - build_info (dict): Dictionary of building options;
                         - dtype (data-type): Data type of the storages;
-                        - exec_info (dict): Dictionary which will store statistics
-                            and diagnostics gathered at run time;
+                        - exec_info (dict): Dictionary which will store
+                            statistics and diagnostics gathered at run time;
                         - default_origin (tuple): Storage default origin;
-                        - rebuild (bool): ``True`` to trigger the stencils compilation
-                            at any class instantiation, ``False`` to rely on the caching
-                            mechanism implemented by GT4Py.
+                        - rebuild (bool): ``True`` to trigger the stencils
+                            compilation at any class instantiation,
+                            ``False`` to rely on the caching
+                            mechanism implemented by the backend.
 
-                * if 'component' is either an instance of or wraps objects of class
+                * if 'component' is either an instance of or wraps objects of
+                    class
 
                         - :class:`tasmania.TendencyComponent`,
                         - :class:`tasmania.ImplicitTendencyComponent`, or
@@ -191,19 +184,23 @@ class SequentialUpdateSplitting:
             assert isinstance(
                 bare_component, self.__class__.allowed_component_type
             ), "''component'' value should be either a {}.".format(
-                ", ".join(str(ctype) for ctype in self.__class__.allowed_component_type)
+                ", ".join(
+                    str(ctype)
+                    for ctype in self.__class__.allowed_component_type
+                )
             )
 
-            if isinstance(bare_component, self.__class__.allowed_diagnostic_type):
+            if isinstance(
+                bare_component, self.__class__.allowed_diagnostic_type
+            ):
                 self._component_list.append(bare_component)
                 self._substeps.append(1)
             else:
                 integrator = process.get("time_integrator", "forward_euler")
                 enforce_hb = process.get("enforce_horizontal_boundary", False)
-                gt_powered = process.get("gt_powered", False)
                 integrator_kwargs = process.get(
                     "time_integrator_kwargs",
-                    {"backend": None, "dtype": np.float32, "rebuild": False},
+                    {"backend": "numpy", "dtype": np.float64, "rebuild": False},
                 )
 
                 self._component_list.append(
@@ -212,7 +209,6 @@ class SequentialUpdateSplitting:
                         bare_component,
                         execution_policy="serial",
                         enforce_horizontal_boundary=enforce_hb,
-                        gt_powered=gt_powered,
                         **integrator_kwargs
                     )
                 )
@@ -259,7 +255,9 @@ class SequentialUpdateSplitting:
         )
 
     def __call__(
-        self, state: taz_types.mutable_dataarray_dict_t, timestep: taz_types.timedelta_t
+        self,
+        state: taz_types.mutable_dataarray_dict_t,
+        timestep: taz_types.timedelta_t,
     ) -> None:
         """
         Advance the model state one timestep forward in time by pursuing
@@ -281,7 +279,9 @@ class SequentialUpdateSplitting:
         current_time = state["time"]
 
         for component, substeps in zip(self._component_list, self._substeps):
-            if not isinstance(component, self.__class__.allowed_diagnostic_type):
+            if not isinstance(
+                component, self.__class__.allowed_diagnostic_type
+            ):
                 diagnostics, state_tmp = component(state, timestep / substeps)
 
                 if substeps > 1:
@@ -294,7 +294,9 @@ class SequentialUpdateSplitting:
                     )
 
                     for _ in range(1, substeps):
-                        _, state_aux = component(state_tmp, timestep / substeps)
+                        _, state_aux = component(
+                            state_tmp, timestep / substeps
+                        )
                         state_tmp.update(state_aux)
 
                 state.update(state_tmp)

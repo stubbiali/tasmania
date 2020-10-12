@@ -35,11 +35,10 @@ class Implicit(TendencyStepper):
         *args,
         execution_policy="serial",
         enforce_horizontal_boundary=False,
-        gt_powered=False,
         backend="numpy",
         backend_opts=None,
-        build_info=None,
         dtype=np.float64,
+        build_info=None,
         rebuild=False,
         **kwargs
     ):
@@ -47,11 +46,10 @@ class Implicit(TendencyStepper):
             *args,
             execution_policy=execution_policy,
             enforce_horizontal_boundary=enforce_horizontal_boundary,
-            gt_powered=gt_powered,
             backend=backend,
             backend_opts=backend_opts,
-            build_info=build_info,
             dtype=dtype,
+            build_info=build_info,
             rebuild=rebuild
         )
 

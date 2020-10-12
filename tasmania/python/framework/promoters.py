@@ -61,7 +61,9 @@ class Diagnostic2Tendency(BaseDiagnostic2Tendency):
         )
         self._grid_type = grid_type
         self._grid = (
-            domain.physical_grid if grid_type == "physical" else domain.numerical_grid
+            domain.physical_grid
+            if grid_type == "physical"
+            else domain.numerical_grid
         )
 
         self._input_checker = InputChecker(self)
@@ -102,7 +104,9 @@ class Diagnostic2Tendency(BaseDiagnostic2Tendency):
         """
         return_dict = {}
         for name, props in self.input_properties.items():
-            tend_name = props.get("tendency_name", name.replace("tendency_of_", ""))
+            tend_name = props.get(
+                "tendency_name", name.replace("tendency_of_", "")
+            )
             return_dict[tend_name] = {
                 "dims": props["dims"],
                 "units": props["units"],
@@ -138,10 +142,14 @@ class Diagnostic2Tendency(BaseDiagnostic2Tendency):
         for name, props in self.input_properties.items():
             dims = props["dims"]
             units = props["units"]
-            tend_name = props.get("tendency_name", name.replace("tendency_of_", ""))
+            tend_name = props.get(
+                "tendency_name", name.replace("tendency_of_", "")
+            )
             rm = props.get("remove_from_diagnostics", False)
 
-            if any(src != trg for src, trg in zip(diagnostics[name].dims, dims)):
+            if any(
+                src != trg for src, trg in zip(diagnostics[name].dims, dims)
+            ):
                 tendencies[tend_name] = (
                     diagnostics[name].transpose(*dims).to_units(units)
                 )
@@ -176,7 +184,9 @@ class Tendency2Diagnostic(BaseTendency2Diagnostic):
         )
         self._grid_type = grid_type
         self._grid = (
-            domain.physical_grid if grid_type == "physical" else domain.numerical_grid
+            domain.physical_grid
+            if grid_type == "physical"
+            else domain.numerical_grid
         )
 
         self._input_checker = InputChecker(self)
@@ -256,7 +266,9 @@ class Tendency2Diagnostic(BaseTendency2Diagnostic):
             diag_name = props.get("diagnostic_name", "tendency_of_" + name)
             rm = props.get("remove_from_tendencies", False)
 
-            if any(src != trg for src, trg in zip(tendencies[name].dims, dims)):
+            if any(
+                src != trg for src, trg in zip(tendencies[name].dims, dims)
+            ):
                 diagnostics[diag_name] = (
                     tendencies[name].transpose(*dims).to_units(units)
                 )

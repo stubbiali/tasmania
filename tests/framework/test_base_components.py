@@ -22,8 +22,6 @@
 #
 from hypothesis import (
     given,
-    HealthCheck,
-    settings,
     strategies as hyp_st,
     reproduce_failure,
 )
@@ -36,6 +34,7 @@ from tasmania.python.framework.base_components import (
 )
 
 from tests.strategies import st_domain
+from tests.utilities import hyp_settings
 
 
 class FakeDiagnosticComponent(DiagnosticComponent):
@@ -54,10 +53,7 @@ class FakeDiagnosticComponent(DiagnosticComponent):
         return {}
 
 
-@settings(
-    suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
-    deadline=None,
-)
+@hyp_settings
 @given(hyp_st.data())
 def test_diagnostic_component(data):
     # ========================================
@@ -95,10 +91,7 @@ class FakeImplicitTendencyComponent(ImplicitTendencyComponent):
         return {}, {}
 
 
-@settings(
-    suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
-    deadline=None,
-)
+@hyp_settings
 @given(hyp_st.data())
 def test_implicit_tendency_component(data):
     # ========================================
@@ -136,10 +129,7 @@ class FakeTendencyComponent(TendencyComponent):
         return {}, {}
 
 
-@settings(
-    suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
-    deadline=None,
-)
+@hyp_settings
 @given(hyp_st.data())
 def test_tendency_component(data):
     # ========================================

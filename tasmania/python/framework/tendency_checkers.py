@@ -33,7 +33,9 @@ class SubsetTendencyChecker(SymplTendencyChecker):
     def __init__(self, component: taz_types.tendency_component_t) -> None:
         super().__init__(component)
 
-    def check_tendencies(self, tendency_dict: taz_types.properties_mapping_t) -> None:
+    def check_tendencies(
+        self, tendency_dict: taz_types.properties_mapping_t
+    ) -> None:
         __tendency_dict = {
             key: value for key, value in tendency_dict.items() if key != "time"
         }
@@ -48,7 +50,9 @@ class SupersetTendencyChecker(SymplTendencyChecker):
     def __init__(self, component: taz_types.tendency_component_t) -> None:
         super().__init__(component)
 
-    def check_tendencies(self, tendency_dict: taz_types.properties_mapping_t) -> None:
+    def check_tendencies(
+        self, tendency_dict: taz_types.properties_mapping_t
+    ) -> None:
         __tendency_dict = {
             key: value for key, value in tendency_dict.items() if key != "time"
         }

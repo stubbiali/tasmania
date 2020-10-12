@@ -28,7 +28,11 @@ from sympl import (
     ImplicitTendencyComponent,
     ImplicitTendencyComponentComposite,
 )
-from sympl._core.base_components import InputChecker, DiagnosticChecker, OutputChecker
+from sympl._core.base_components import (
+    InputChecker,
+    DiagnosticChecker,
+    OutputChecker,
+)
 from sympl._core.units import clean_units
 from typing import Optional, Tuple
 
@@ -36,7 +40,10 @@ from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
 from tasmania.python.framework.fakes import FakeComponent
 from tasmania.python.utils import taz_types
 from tasmania.python.utils.dict_utils import DataArrayDictOperator
-from tasmania.python.utils.framework_utils import check_property_compatibility, factorize
+from tasmania.python.utils.framework_utils import (
+    check_property_compatibility,
+    factorize,
+)
 from tasmania.python.utils.storage_utils import deepcopy_dataarray
 from tasmania.python.utils.utils import assert_sequence
 
@@ -63,11 +70,10 @@ class STSTendencyStepper(abc.ABC):
         *args: taz_types.tendency_component_t,
         execution_policy: str = "serial",
         enforce_horizontal_boundary: bool = False,
-        gt_powered: bool = False,
         backend: str = "numpy",
         backend_opts: Optional[taz_types.options_dict_t] = None,
-        build_info: Optional[taz_types.options_dict_t] = None,
         dtype: taz_types.dtype_t = np.float64,
+        build_info: Optional[taz_types.options_dict_t] = None,
         rebuild: bool = False
     ) -> None:
         """
@@ -96,10 +102,8 @@ class STSTendencyStepper(abc.ABC):
                 * :class:`tasmania.TendencyComponent`, or
                 * :class:`tasmania.ImplicitTendencyComponent`.
 
-        gt_powered : `bool`, optional
-            ``True`` to perform all the intensive math operations harnessing GT4Py.
         backend : `str`, optional
-            The GT4Py backend.
+            The backend.
         backend_opts : `dict`, optional
             Dictionary of backend-specific options.
         build_info : `dict`, optional
@@ -107,8 +111,9 @@ class STSTendencyStepper(abc.ABC):
         dtype : `data-type`, optional
             Data type of the storages.
         rebuild : `bool`, optional
-            ``True`` to trigger the stencils compilation at any class instantiation,
-            ``False`` to rely on the caching mechanism implemented by GT4Py.
+            ``True`` to trigger the stencils compilation at any class
+            instantiation, ``False`` to rely on the caching mechanism
+            implemented by the backend.
         """
         assert_sequence(args, reftype=self.__class__.allowed_component_type)
 
@@ -120,7 +125,9 @@ class STSTendencyStepper(abc.ABC):
         )
 
         self.input_properties = self._get_input_properties()
-        self.provisional_input_properties = self._get_provisional_input_properties()
+        self.provisional_input_properties = (
+            self._get_provisional_input_properties()
+        )
         self.diagnostic_properties = self._get_diagnostic_properties()
         self.output_properties = self._get_output_properties()
 
@@ -158,7 +165,6 @@ class STSTendencyStepper(abc.ABC):
             self._enforce_hb = False
 
         self._dict_op = DataArrayDictOperator(
-            gt_powered,
             backend=backend,
             backend_opts=backend_opts,
             build_info=build_info,
@@ -227,7 +233,9 @@ class STSTendencyStepper(abc.ABC):
         for key, val in self._prognostic.tendency_properties.items():
             return_dict[key] = val.copy()
             if "units" in return_dict[key]:
-                return_dict[key]["units"] = clean_units(return_dict[key]["units"] + " s")
+                return_dict[key]["units"] = clean_units(
+                    return_dict[key]["units"] + " s"
+                )
 
         return return_dict
 
@@ -303,15 +311,14 @@ class STSTendencyStepper(abc.ABC):
         *args: taz_types.tendency_component_t,
         execution_policy: str = "serial",
         enforce_horizontal_boundary: bool = False,
-        gt_powered: bool = False,
         backend: str = "numpy",
         backend_opts: Optional[taz_types.options_dict_t] = None,
-        build_info: Optional[taz_types.options_dict_t] = None,
         dtype: taz_types.dtype_t = np.float64,
+        build_info: Optional[taz_types.options_dict_t] = None,
         rebuild: bool = False,
         **kwargs
     ) -> "STSTendencyStepper":
-        """ Get an instance of the desired derived class.
+        """Get an instance of the desired derived class.
 
         Parameters
         ----------
@@ -340,10 +347,8 @@ class STSTendencyStepper(abc.ABC):
                 * :class:`tasmania.TendencyComponent`, or
                 * :class:`tasmania.ImplicitTendencyComponent`.
 
-        gt_powered : `bool`, optional
-            ``True`` to perform all the intensive math operations harnessing GT4Py.
         backend : `str`, optional
-            The GT4Py backend.
+            The backend.
         backend_opts : `dict`, optional
             Dictionary of backend-specific options.
         build_info : `dict`, optional
@@ -351,8 +356,9 @@ class STSTendencyStepper(abc.ABC):
         dtype : `data-type`, optional
             Data type of the storages.
         rebuild : `bool`, optional
-            ``True`` to trigger the stencils compilation at any class instantiation,
-            ``False`` to rely on the caching mechanism implemented by GT4Py.
+            ``True`` to trigger the stencils compilation at any class
+            instantiation, ``False`` to rely on the caching mechanism
+            implemented by the backend.
         **kwargs :
             Scheme-specific arguments.
 
@@ -364,11 +370,10 @@ class STSTendencyStepper(abc.ABC):
         child_kwargs = {
             "execution_policy": execution_policy,
             "enforce_horizontal_boundary": enforce_horizontal_boundary,
-            "gt_powered": gt_powered,
             "backend": backend,
             "backend_opts": backend_opts,
-            "build_info": build_info,
             "dtype": dtype,
+            "build_info": build_info,
             "rebuild": rebuild,
         }
         child_kwargs.update(kwargs)
@@ -411,7 +416,9 @@ class STSTendencyStepper(abc.ABC):
         if not out_state:
             for name in self.output_properties:
                 units = self.output_properties[name]["units"]
-                out_state[name] = deepcopy_dataarray(state[name].to_units(units))
+                out_state[name] = deepcopy_dataarray(
+                    state[name].to_units(units)
+                )
                 out_state[name].data[...] = 0.0
 
         return out_state
