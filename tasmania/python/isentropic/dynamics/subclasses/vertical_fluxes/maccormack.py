@@ -21,29 +21,29 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 from tasmania.python.isentropic.dynamics.vertical_fluxes import (
-    IsentropicBoussinesqMinimalVerticalFlux,
+    IsentropicVerticalFlux,
 )
+from tasmania.python.utils.framework_utils import register
 
 
-class Upwind(IsentropicBoussinesqMinimalVerticalFlux):
+@register(name="maccormack")
+class MacCormack(IsentropicVerticalFlux):
     @staticmethod
-    def __call__(dt, dz, w, s, su, sv, ddmtg, sqv=None, sqc=None, sqr=None):
-        raise NotImplementedError()
-
-
-class Centered(IsentropicBoussinesqMinimalVerticalFlux):
-    @staticmethod
-    def __call__(dt, dz, w, s, su, sv, ddmtg, sqv=None, sqc=None, sqr=None):
-        raise NotImplementedError()
-
-
-class ThirdOrderUpwind(IsentropicBoussinesqMinimalVerticalFlux):
-    @staticmethod
-    def __call__(dt, dz, w, s, su, sv, ddmtg, sqv=None, sqc=None, sqr=None):
-        raise NotImplementedError()
-
-
-class FifthOrderUpwind(IsentropicBoussinesqMinimalVerticalFlux):
-    @staticmethod
-    def __call__(dt, dz, w, s, su, sv, ddmtg, sqv=None, sqc=None, sqr=None):
+    def __call__(
+        dt,
+        dz,
+        w,
+        s,
+        s_prv,
+        su,
+        su_prv,
+        sv,
+        sv_prv,
+        sqv=None,
+        sqv_prv=None,
+        sqc=None,
+        sqc_prv=None,
+        sqr=None,
+        sqr_prv=None,
+    ):
         raise NotImplementedError()

@@ -24,9 +24,7 @@ from copy import deepcopy
 from datetime import datetime
 from hypothesis import (
     given,
-    HealthCheck,
     reproduce_failure,
-    settings,
     strategies as hyp_st,
 )
 from hypothesis.extra.numpy import arrays as st_arrays
@@ -44,7 +42,7 @@ from tasmania.python.utils.storage_utils import get_dataarray_3d, zeros
 
 from tests.conf import (
     backend as conf_backend,
-    datatype as conf_dtype,
+    dtype as conf_dtype,
     default_origin as conf_dorigin,
 )
 from tests.isentropic.test_isentropic_minimal_vertical_fluxes import (
@@ -60,7 +58,7 @@ from tests.strategies import (
     st_one_of,
     st_raw_field,
 )
-from tests.utilities import compare_arrays, compare_dataarrays
+from tests.utilities import compare_arrays, compare_dataarrays, hyp_settings
 
 
 mfwv = "mass_fraction_of_water_vapor_in_air"
@@ -70,7 +68,9 @@ mfpw = "mass_fraction_of_precipitation_water_in_air"
 
 def set_lower_layers_first_order(nb, dz, w, phi, out, staggering=False):
     wm = deepcopy(w)
-    wm[:, :, :-1] = 0.5 * (w[:, :, :-1] + w[:, :, 1:]) if staggering else w[:, :, :-1]
+    wm[:, :, :-1] = (
+        0.5 * (w[:, :, :-1] + w[:, :, 1:]) if staggering else w[:, :, :-1]
+    )
     out[:, :, -nb - 1 : -1] = (
         1
         / dz
@@ -82,9 +82,13 @@ def set_lower_layers_first_order(nb, dz, w, phi, out, staggering=False):
 
 
 def set_lower_layers_second_order(nb, dz, w, phi, out, staggering=False):
-    wm = w if w.shape[2] == phi.shape[2] else 0.5 * (w[:, :, :-1] + w[:, :, 1:])
+    wm = (
+        w if w.shape[2] == phi.shape[2] else 0.5 * (w[:, :, :-1] + w[:, :, 1:])
+    )
     wm = deepcopy(w)
-    wm[:, :, :-1] = 0.5 * (w[:, :, :-1] + w[:, :, 1:]) if staggering else w[:, :, :-1]
+    wm[:, :, :-1] = (
+        0.5 * (w[:, :, :-1] + w[:, :, 1:]) if staggering else w[:, :, :-1]
+    )
     out[:, :, -nb - 1 : -1] = (
         0.5
         * (
@@ -125,7 +129,6 @@ def validation(
     flux_scheme,
     moist,
     toaptoil,
-    gt_powered,
     backend,
     default_origin,
     rebuild,
@@ -150,7 +153,6 @@ def validation(
         flux_scheme,
         moist,
         tendency_of_air_potential_temperature_on_interface_levels=toaptoil,
-        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -164,7 +166,9 @@ def validation(
         "y_momentum_isentropic",
     ]
     if toaptoil:
-        input_names.append("tendency_of_air_potential_temperature_on_interface_levels")
+        input_names.append(
+            "tendency_of_air_potential_temperature_on_interface_levels"
+        )
     else:
         input_names.append("tendency_of_air_potential_temperature")
     if moist:
@@ -203,7 +207,6 @@ def validation(
         w = state[name].to_units("K s^-1").values
         w_hl = zeros(
             (nx + 1, ny + 1, nz + 1),
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -225,7 +228,6 @@ def validation(
 
     out = zeros(
         (nx + 1, ny + 1, nz + 1),
-        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -238,7 +240,8 @@ def validation(
     # set_lower_layers(nb, dz, w, s, out, staggering=toaptoil)
     assert "air_isentropic_density" in tendencies
     compare_arrays(
-        out[:nx, :ny, :nz], tendencies["air_isentropic_density"].values[:nx, :ny, :nz]
+        out[:nx, :ny, :nz],
+        tendencies["air_isentropic_density"].values[:nx, :ny, :nz],
     )
 
     flux = get_flux(w_hl, su)
@@ -246,7 +249,8 @@ def validation(
     # set_lower_layers(nb, dz, w, su, out, staggering=toaptoil)
     assert "x_momentum_isentropic" in tendencies
     compare_arrays(
-        out[:nx, :ny, :nz], tendencies["x_momentum_isentropic"].values[:nx, :ny, :nz]
+        out[:nx, :ny, :nz],
+        tendencies["x_momentum_isentropic"].values[:nx, :ny, :nz],
     )
 
     flux = get_flux(w_hl, sv)
@@ -254,7 +258,8 @@ def validation(
     # set_lower_layers(nb, dz, w, sv, out, staggering=toaptoil)
     assert "y_momentum_isentropic" in tendencies
     compare_arrays(
-        out[:nx, :ny, :nz], tendencies["y_momentum_isentropic"].values[:nx, :ny, :nz]
+        out[:nx, :ny, :nz],
+        tendencies["y_momentum_isentropic"].values[:nx, :ny, :nz],
     )
 
     if moist:
@@ -263,52 +268,45 @@ def validation(
         # set_lower_layers(nb, dz, w, sqv, out, staggering=toaptoil)
         out /= s
         assert mfwv in tendencies
-        compare_arrays(out[:nx, :ny, :nz], tendencies[mfwv].values[:nx, :ny, :nz])
+        compare_arrays(
+            out[:nx, :ny, :nz], tendencies[mfwv].values[:nx, :ny, :nz]
+        )
 
         flux = get_flux(w_hl, sqc)
         out[:, :, up] = -(flux[:, :, up] - flux[:, :, down]) / dz
         # set_lower_layers(nb, dz, w, sqc, out, staggering=toaptoil)
         out /= s
         assert mfcw in tendencies
-        compare_arrays(out[:nx, :ny, :nz], tendencies[mfcw].values[:nx, :ny, :nz])
+        compare_arrays(
+            out[:nx, :ny, :nz], tendencies[mfcw].values[:nx, :ny, :nz]
+        )
 
         flux = get_flux(w_hl, sqr)
         out[:, :, up] = -(flux[:, :, up] - flux[:, :, down]) / dz
         # set_lower_layers(nb, dz, w, sqr, out, staggering=toaptoil)
         out /= s
         assert mfpw in tendencies
-        compare_arrays(out[:nx, :ny, :nz], tendencies[mfpw].values[:nx, :ny, :nz])
+        compare_arrays(
+            out[:nx, :ny, :nz], tendencies[mfpw].values[:nx, :ny, :nz]
+        )
 
     assert len(tendencies) == len(output_names)
 
     assert diagnostics == {}
 
 
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
+@hyp_settings
 @given(data=hyp_st.data())
-def test_upwind(data, subtests):
+@pytest.mark.parametrize("backend", conf_backend)
+@pytest.mark.parametrize("dtype", conf_dtype)
+def test_upwind(data, backend, dtype, subtests):
     # ========================================
     # random data generation
     # ========================================
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
-    if gt_powered:
-        gt.storage.prepare_numpy()
-
     domain = data.draw(
-        st_domain(
-            zaxis_length=(3, 20), gt_powered=gt_powered, backend=backend, dtype=dtype
-        ),
+        st_domain(zaxis_length=(3, 20), backend=backend, dtype=dtype),
         label="domain",
     )
     grid = domain.numerical_grid
@@ -320,7 +318,6 @@ def test_upwind(data, subtests):
         st_isentropic_state_f(
             grid,
             moist=True,
-            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
             storage_shape=storage_shape,
@@ -332,7 +329,6 @@ def test_upwind(data, subtests):
             storage_shape,
             -1e4,
             1e4,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -345,7 +341,11 @@ def test_upwind(data, subtests):
     state[
         "tendency_of_air_potential_temperature_on_interface_levels"
     ] = get_dataarray_3d(
-        field, grid, "K s^-1", grid_shape=(nx, ny, nz + 1), set_coordinates=False
+        field,
+        grid,
+        "K s^-1",
+        grid_shape=(nx, ny, nz + 1),
+        set_coordinates=False,
     )
 
     # ========================================
@@ -356,7 +356,6 @@ def test_upwind(data, subtests):
         "upwind",
         False,
         False,
-        gt_powered,
         backend,
         default_origin,
         False,
@@ -368,7 +367,6 @@ def test_upwind(data, subtests):
         "upwind",
         False,
         True,
-        gt_powered,
         backend,
         default_origin,
         False,
@@ -380,7 +378,6 @@ def test_upwind(data, subtests):
         "upwind",
         True,
         False,
-        gt_powered,
         backend,
         default_origin,
         False,
@@ -392,7 +389,6 @@ def test_upwind(data, subtests):
         "upwind",
         True,
         True,
-        gt_powered,
         backend,
         default_origin,
         False,
@@ -401,31 +397,18 @@ def test_upwind(data, subtests):
     )
 
 
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
+@hyp_settings
 @given(data=hyp_st.data())
-def test_centered(data, subtests):
+@pytest.mark.parametrize("backend", conf_backend)
+@pytest.mark.parametrize("dtype", conf_dtype)
+def test_centered(data, backend, dtype, subtests):
     # ========================================
     # random data generation
     # ========================================
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
-    if gt_powered:
-        gt.storage.prepare_numpy()
-
     domain = data.draw(
-        st_domain(
-            zaxis_length=(3, 20), gt_powered=gt_powered, backend=backend, dtype=dtype
-        ),
+        st_domain(zaxis_length=(3, 20), backend=backend, dtype=dtype),
         label="domain",
     )
     grid = domain.numerical_grid
@@ -437,7 +420,6 @@ def test_centered(data, subtests):
         st_isentropic_state_f(
             grid,
             moist=True,
-            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
             storage_shape=storage_shape,
@@ -449,7 +431,6 @@ def test_centered(data, subtests):
             storage_shape,
             -1e4,
             1e4,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -462,7 +443,11 @@ def test_centered(data, subtests):
     state[
         "tendency_of_air_potential_temperature_on_interface_levels"
     ] = get_dataarray_3d(
-        field, grid, "K s^-1", grid_shape=(nx, ny, nz + 1), set_coordinates=False
+        field,
+        grid,
+        "K s^-1",
+        grid_shape=(nx, ny, nz + 1),
+        set_coordinates=False,
     )
 
     # ========================================
@@ -473,7 +458,6 @@ def test_centered(data, subtests):
         "centered",
         False,
         False,
-        gt_powered,
         backend,
         default_origin,
         False,
@@ -485,7 +469,6 @@ def test_centered(data, subtests):
         "centered",
         False,
         True,
-        gt_powered,
         backend,
         default_origin,
         False,
@@ -497,7 +480,6 @@ def test_centered(data, subtests):
         "centered",
         True,
         False,
-        gt_powered,
         backend,
         default_origin,
         False,
@@ -509,7 +491,6 @@ def test_centered(data, subtests):
         "centered",
         True,
         True,
-        gt_powered,
         backend,
         default_origin,
         False,
@@ -518,31 +499,18 @@ def test_centered(data, subtests):
     )
 
 
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
+@hyp_settings
 @given(data=hyp_st.data())
-def test_third_order_upwind(data, subtests):
+@pytest.mark.parametrize("backend", conf_backend)
+@pytest.mark.parametrize("dtype", conf_dtype)
+def test_third_order_upwind(data, backend, dtype, subtests):
     # ========================================
     # random data generation
     # ========================================
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
-    if gt_powered:
-        gt.storage.prepare_numpy()
-
     domain = data.draw(
-        st_domain(
-            zaxis_length=(5, 20), gt_powered=gt_powered, backend=backend, dtype=dtype
-        ),
+        st_domain(zaxis_length=(5, 20), backend=backend, dtype=dtype),
         label="domain",
     )
     grid = domain.numerical_grid
@@ -554,113 +522,6 @@ def test_third_order_upwind(data, subtests):
         st_isentropic_state_f(
             grid,
             moist=True,
-            gt_powered=gt_powered,
-            backend=backend,
-            default_origin=default_origin,
-            storage_shape=storage_shape,
-        ),
-        label="state",
-    )
-    field = data.draw(
-        st_raw_field(
-            storage_shape,
-            -1e4,
-            1e4,
-            gt_powered=gt_powered,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-        ),
-        label="field",
-    )
-    state["tendency_of_air_potential_temperature"] = get_dataarray_3d(
-        field, grid, "K s^-1", grid_shape=(nx, ny, nz), set_coordinates=False
-    )
-    state[
-        "tendency_of_air_potential_temperature_on_interface_levels"
-    ] = get_dataarray_3d(
-        field, grid, "K s^-1", grid_shape=(nx, ny, nz + 1), set_coordinates=False
-    )
-
-    # ========================================
-    # test bed
-    # ========================================
-    validation(
-        domain,
-        "third_order_upwind",
-        False,
-        False,
-        gt_powered,
-        backend,
-        default_origin,
-        False,
-        state,
-        subtests=subtests,
-    )
-    validation(
-        domain,
-        "third_order_upwind",
-        False,
-        True,
-        gt_powered,
-        backend,
-        default_origin,
-        False,
-        state,
-        subtests=subtests,
-    )
-    validation(
-        domain,
-        "third_order_upwind",
-        True,
-        False,
-        gt_powered,
-        backend,
-        default_origin,
-        False,
-        state,
-        subtests=subtests,
-    )
-    validation(
-        domain,
-        "third_order_upwind",
-        True,
-        True,
-        gt_powered,
-        backend,
-        default_origin,
-        False,
-        state,
-        subtests=subtests,
-    )
-
-
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
-@given(data=hyp_st.data())
-def _test_fifth_order_upwind(data, subtests):
-    # ========================================
-    # random data generation
-    # ========================================
-    domain = data.draw(st_domain(zaxis_length=(7, 20)), label="domain")
-    grid = domain.numerical_grid
-
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-    nx, ny, nz = grid.nx, grid.ny, grid.nz
-    storage_shape = (nx + 1, ny + 1, nz + 1)
-
-    state = data.draw(
-        st_isentropic_state_f(
-            grid,
-            moist=True,
             backend=backend,
             default_origin=default_origin,
             storage_shape=storage_shape,
@@ -684,7 +545,11 @@ def _test_fifth_order_upwind(data, subtests):
     state[
         "tendency_of_air_potential_temperature_on_interface_levels"
     ] = get_dataarray_3d(
-        field, grid, "K s^-1", grid_shape=(nx, ny, nz + 1), set_coordinates=False
+        field,
+        grid,
+        "K s^-1",
+        grid_shape=(nx, ny, nz + 1),
+        set_coordinates=False,
     )
 
     # ========================================
@@ -692,7 +557,7 @@ def _test_fifth_order_upwind(data, subtests):
     # ========================================
     validation(
         domain,
-        "fifth_order_upwind",
+        "third_order_upwind",
         False,
         False,
         backend,
@@ -703,7 +568,7 @@ def _test_fifth_order_upwind(data, subtests):
     )
     validation(
         domain,
-        "fifth_order_upwind",
+        "third_order_upwind",
         False,
         True,
         backend,
@@ -714,7 +579,7 @@ def _test_fifth_order_upwind(data, subtests):
     )
     validation(
         domain,
-        "fifth_order_upwind",
+        "third_order_upwind",
         True,
         False,
         backend,
@@ -725,7 +590,7 @@ def _test_fifth_order_upwind(data, subtests):
     )
     validation(
         domain,
-        "fifth_order_upwind",
+        "third_order_upwind",
         True,
         True,
         backend,
@@ -736,409 +601,500 @@ def _test_fifth_order_upwind(data, subtests):
     )
 
 
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
-@given(hyp_st.data())
-def _test_prescribed_surface_heating(data):
-    # ========================================
-    # random data generation
-    # ========================================
-    domain = data.draw(st_domain(), label="domain")
-    grid = domain.numerical_grid
-
-    time = data.draw(
-        hyp_st.datetimes(
-            min_value=datetime(1992, 2, 20), max_value=datetime(2010, 7, 21)
-        )
-    )
-    field = data.draw(
-        st_arrays(
-            grid.x.dtype,
-            (grid.nx, grid.ny, grid.nz + 1),
-            elements=st_floats(min_value=1, max_value=1e4),
-            fill=hyp_st.nothing(),
-        )
-    )
-    state = {
-        "time": time,
-        "air_pressure": get_dataarray_3d(field[:, :, : grid.nz], grid, "Pa"),
-        "air_pressure_on_interface_levels": get_dataarray_3d(field, grid, "Pa"),
-        "height_on_interface_levels": get_dataarray_3d(field, grid, "m"),
-    }
-
-    f0d_sw = data.draw(st_floats(min_value=0, max_value=100))
-    f0d_fw = data.draw(st_floats(min_value=0, max_value=100))
-    f0n_sw = data.draw(st_floats(min_value=0, max_value=100))
-    f0n_fw = data.draw(st_floats(min_value=0, max_value=100))
-    w_sw = data.draw(st_floats(min_value=0.1, max_value=100))
-    w_fw = data.draw(st_floats(min_value=0.1, max_value=100))
-    ad = data.draw(st_floats(min_value=0, max_value=100))
-    an = data.draw(st_floats(min_value=0, max_value=100))
-    cl = data.draw(st_floats(min_value=0, max_value=100))
-    t0 = data.draw(
-        hyp_st.datetimes(
-            min_value=datetime(1992, 2, 20), max_value=datetime(2010, 7, 21)
-        )
-    )
-
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-
-    # ========================================
-    # test bed
-    # ========================================
-    f0d_sw_da = DataArray(f0d_sw, attrs={"units": "W m^-2"})
-    f0d_fw_da = DataArray(f0d_fw, attrs={"units": "W m^-2"})
-    f0n_sw_da = DataArray(f0n_sw, attrs={"units": "W m^-2"})
-    f0n_fw_da = DataArray(f0n_fw, attrs={"units": "W m^-2"})
-    w_sw_da = DataArray(w_sw, attrs={"units": "hr^-1"})
-    w_fw_da = DataArray(w_fw, attrs={"units": "hr^-1"})
-    ad_da = DataArray(ad, attrs={"units": "m^-1"})
-    an_da = DataArray(an, attrs={"units": "m^-1"})
-    cl_da = DataArray(cl, attrs={"units": "m"})
-
-    rd = 287.0
-    cp = 1004.0
-
-    nx, ny, nz = grid.nx, grid.ny, grid.nz
-    dtype = grid.x.dtype
-
-    x1d = grid.x.to_units("m").values
-    y1d = grid.y.to_units("m").values
-    x = np.tile(x1d[:, np.newaxis, np.newaxis], (1, ny, 1))
-    y = np.tile(y1d[np.newaxis, :, np.newaxis], (nx, 1, 1))
-
-    dt = (state["time"] - t0).total_seconds() / 3600.0
-
-    t = state["time"].hour * 3600 + state["time"].minute * 60 + state["time"].second
-    t_sw = 2 * np.pi / w_sw * 3600
-    isday = int(t / t_sw) % 2 == 0
-    f0_sw = f0d_sw if isday else f0n_sw
-    f0_fw = f0d_fw if isday else f0n_fw
-    a = ad if isday else an
-
-    #
-    # tendency_of_air_potential_temperature_on_interface_levels=False
-    # air_pressure_on_interface_levels=False
-    #
-    if state["time"] > t0:
-        theta = grid.z.to_units("K").values[np.newaxis, np.newaxis, :]
-        p = state["air_pressure"].values
-        z = 0.5 * (
-            state["height_on_interface_levels"].values[:, :, :-1]
-            + state["height_on_interface_levels"].values[:, :, 1:]
-        )
-        h = state["height_on_interface_levels"].values[:, :, -1:]
-
-        out = (
-            theta
-            * rd
-            * a
-            / (p * cp)
-            * np.exp(-a * (z - h))
-            * (f0_sw * np.sin(w_sw * dt) + f0_fw * np.sin(w_fw * dt))
-            * (x ** 2 + y ** 2 < cl ** 2)
-        )
-    else:
-        out = np.zeros((nx, ny, nz), dtype=dtype)
-
-    # tendency_of_air_potential_temperature_in_diagnostics=False
-    psf = PrescribedSurfaceHeating(
-        domain,
-        tendency_of_air_potential_temperature_in_diagnostics=False,
-        tendency_of_air_potential_temperature_on_interface_levels=False,
-        air_pressure_on_interface_levels=False,
-        amplitude_at_day_sw=f0d_sw_da,
-        amplitude_at_day_fw=f0d_fw_da,
-        amplitude_at_night_sw=f0n_sw_da,
-        amplitude_at_night_fw=f0n_fw_da,
-        frequency_sw=w_sw_da,
-        frequency_fw=w_fw_da,
-        attenuation_coefficient_at_day=ad_da,
-        attenuation_coefficient_at_night=an_da,
-        characteristic_length=cl_da,
-        starting_time=t0,
-        backend=backend,
-    )
-    assert "air_pressure" in psf.input_properties
-    assert "height_on_interface_levels" in psf.input_properties
-    assert "air_potential_temperature" in psf.tendency_properties
-    tendencies, diagnostics = psf(state)
-    assert "air_potential_temperature" in tendencies
-    compare_dataarrays(
-        out, tendencies["air_potential_temperature"], compare_coordinate_values=False
-    )
-    assert diagnostics == {}
-
-    # tendency_of_air_potential_temperature_in_diagnostics=True
-    psf = PrescribedSurfaceHeating(
-        domain,
-        tendency_of_air_potential_temperature_in_diagnostics=True,
-        tendency_of_air_potential_temperature_on_interface_levels=False,
-        air_pressure_on_interface_levels=False,
-        amplitude_at_day_sw=f0d_sw_da,
-        amplitude_at_day_fw=f0d_fw_da,
-        amplitude_at_night_sw=f0n_sw_da,
-        amplitude_at_night_fw=f0n_fw_da,
-        frequency_sw=w_sw_da,
-        frequency_fw=w_fw_da,
-        attenuation_coefficient_at_day=ad_da,
-        attenuation_coefficient_at_night=an_da,
-        characteristic_length=cl_da,
-        starting_time=t0,
-        backend=backend,
-    )
-    assert "air_pressure" in psf.input_properties
-    assert "height_on_interface_levels" in psf.input_properties
-    assert "tendency_of_air_potential_temperature" in psf.diagnostic_properties
-    tendencies, diagnostics = psf(state)
-    assert tendencies == {}
-    assert "tendency_of_air_potential_temperature" in diagnostics
-    compare_dataarrays(
-        out,
-        diagnostics["tendency_of_air_potential_temperature"],
-        compare_coordinate_values=False,
-    )
-
-    #
-    # tendency_of_air_potential_temperature_on_interface_levels=True
-    # air_pressure_on_interface_levels=False
-    #
-    # tendency_of_air_potential_temperature_in_diagnostics=False
-    psf = PrescribedSurfaceHeating(
-        domain,
-        tendency_of_air_potential_temperature_in_diagnostics=False,
-        tendency_of_air_potential_temperature_on_interface_levels=True,
-        air_pressure_on_interface_levels=False,
-        amplitude_at_day_sw=f0d_sw_da,
-        amplitude_at_day_fw=f0d_fw_da,
-        amplitude_at_night_sw=f0n_sw_da,
-        amplitude_at_night_fw=f0n_fw_da,
-        frequency_sw=w_sw_da,
-        frequency_fw=w_fw_da,
-        attenuation_coefficient_at_day=ad_da,
-        attenuation_coefficient_at_night=an_da,
-        characteristic_length=cl_da,
-        starting_time=t0,
-        backend=backend,
-    )
-    assert "air_pressure" in psf.input_properties
-    assert "height_on_interface_levels" in psf.input_properties
-    assert "air_potential_temperature" in psf.tendency_properties
-    tendencies, diagnostics = psf(state)
-    assert "air_potential_temperature" in tendencies
-    compare_dataarrays(
-        out, tendencies["air_potential_temperature"], compare_coordinate_values=False
-    )
-    assert diagnostics == {}
-
-    # tendency_of_air_potential_temperature_in_diagnostics=True
-    psf = PrescribedSurfaceHeating(
-        domain,
-        tendency_of_air_potential_temperature_in_diagnostics=True,
-        tendency_of_air_potential_temperature_on_interface_levels=True,
-        air_pressure_on_interface_levels=False,
-        amplitude_at_day_sw=f0d_sw_da,
-        amplitude_at_day_fw=f0d_fw_da,
-        amplitude_at_night_sw=f0n_sw_da,
-        amplitude_at_night_fw=f0n_fw_da,
-        frequency_sw=w_sw_da,
-        frequency_fw=w_fw_da,
-        attenuation_coefficient_at_day=ad_da,
-        attenuation_coefficient_at_night=an_da,
-        characteristic_length=cl_da,
-        starting_time=t0,
-        backend=backend,
-    )
-    assert "air_pressure" in psf.input_properties
-    assert "height_on_interface_levels" in psf.input_properties
-    assert "tendency_of_air_potential_temperature" in psf.diagnostic_properties
-    tendencies, diagnostics = psf(state)
-    assert tendencies == {}
-    assert "tendency_of_air_potential_temperature" in diagnostics
-    compare_dataarrays(
-        out,
-        diagnostics["tendency_of_air_potential_temperature"],
-        compare_coordinate_values=False,
-    )
-
-    #
-    # tendency_of_air_potential_temperature_on_interface_levels=False
-    # air_pressure_on_interface_levels=True
-    #
-    if state["time"] > t0:
-        theta = grid.z.to_units("K").values[np.newaxis, np.newaxis, :]
-        p = 0.5 * (
-            state["air_pressure_on_interface_levels"].values[:, :, :-1]
-            + state["air_pressure_on_interface_levels"].values[:, :, 1:]
-        )
-        z = 0.5 * (
-            state["height_on_interface_levels"].values[:, :, :-1]
-            + state["height_on_interface_levels"].values[:, :, 1:]
-        )
-        h = state["height_on_interface_levels"].values[:, :, -1:]
-
-        out = (
-            theta
-            * rd
-            * a
-            / (p * cp)
-            * np.exp(-a * (z - h))
-            * (f0_sw * np.sin(w_sw * dt) + f0_fw * np.sin(w_fw * dt))
-            * (x ** 2 + y ** 2 < cl ** 2)
-        )
-    else:
-        out = np.zeros((nx, ny, nz), dtype=dtype)
-
-    # tendency_of_air_potential_temperature_in_diagnostics=False
-    psf = PrescribedSurfaceHeating(
-        domain,
-        tendency_of_air_potential_temperature_in_diagnostics=False,
-        tendency_of_air_potential_temperature_on_interface_levels=False,
-        air_pressure_on_interface_levels=True,
-        amplitude_at_day_sw=f0d_sw_da,
-        amplitude_at_day_fw=f0d_fw_da,
-        amplitude_at_night_sw=f0n_sw_da,
-        amplitude_at_night_fw=f0n_fw_da,
-        frequency_sw=w_sw_da,
-        frequency_fw=w_fw_da,
-        attenuation_coefficient_at_day=ad_da,
-        attenuation_coefficient_at_night=an_da,
-        characteristic_length=cl_da,
-        starting_time=t0,
-        backend=backend,
-    )
-    assert "air_pressure_on_interface_levels" in psf.input_properties
-    assert "height_on_interface_levels" in psf.input_properties
-    assert "air_potential_temperature" in psf.tendency_properties
-    tendencies, diagnostics = psf(state)
-    assert "air_potential_temperature" in tendencies
-    compare_dataarrays(
-        out, tendencies["air_potential_temperature"], compare_coordinate_values=False
-    )
-    assert diagnostics == {}
-
-    # tendency_of_air_potential_temperature_in_diagnostics=True
-    psf = PrescribedSurfaceHeating(
-        domain,
-        tendency_of_air_potential_temperature_in_diagnostics=True,
-        tendency_of_air_potential_temperature_on_interface_levels=False,
-        air_pressure_on_interface_levels=True,
-        amplitude_at_day_sw=f0d_sw_da,
-        amplitude_at_day_fw=f0d_fw_da,
-        amplitude_at_night_sw=f0n_sw_da,
-        amplitude_at_night_fw=f0n_fw_da,
-        frequency_sw=w_sw_da,
-        frequency_fw=w_fw_da,
-        attenuation_coefficient_at_day=ad_da,
-        attenuation_coefficient_at_night=an_da,
-        characteristic_length=cl_da,
-        starting_time=t0,
-        backend=backend,
-    )
-    assert "air_pressure_on_interface_levels" in psf.input_properties
-    assert "height_on_interface_levels" in psf.input_properties
-    assert "tendency_of_air_potential_temperature" in psf.diagnostic_properties
-    tendencies, diagnostics = psf(state)
-    assert tendencies == {}
-    assert "tendency_of_air_potential_temperature" in diagnostics
-    compare_dataarrays(
-        out,
-        diagnostics["tendency_of_air_potential_temperature"],
-        compare_coordinate_values=False,
-    )
-
-    #
-    # tendency_of_air_potential_temperature_on_interface_levels=True
-    # air_pressure_on_interface_levels=True
-    #
-    if state["time"] > t0:
-        theta = grid.z_on_interface_levels.to_units("K").values[
-            np.newaxis, np.newaxis, :
-        ]
-        p = state["air_pressure_on_interface_levels"].values
-        z = state["height_on_interface_levels"].values
-        h = state["height_on_interface_levels"].values[:, :, -1:]
-
-        out = (
-            theta
-            * rd
-            * a
-            / (p * cp)
-            * np.exp(-a * (z - h))
-            * (f0_sw * np.sin(w_sw * dt) + f0_fw * np.sin(w_fw * dt))
-            * (x ** 2 + y ** 2 < cl ** 2)
-        )
-    else:
-        out = np.zeros((nx, ny, nz + 1), dtype=dtype)
-
-    # tendency_of_air_potential_temperature_in_diagnostics=False
-    psf = PrescribedSurfaceHeating(
-        domain,
-        tendency_of_air_potential_temperature_in_diagnostics=False,
-        tendency_of_air_potential_temperature_on_interface_levels=True,
-        air_pressure_on_interface_levels=True,
-        amplitude_at_day_sw=f0d_sw_da,
-        amplitude_at_day_fw=f0d_fw_da,
-        amplitude_at_night_sw=f0n_sw_da,
-        amplitude_at_night_fw=f0n_fw_da,
-        frequency_sw=w_sw_da,
-        frequency_fw=w_fw_da,
-        attenuation_coefficient_at_day=ad_da,
-        attenuation_coefficient_at_night=an_da,
-        characteristic_length=cl_da,
-        starting_time=t0,
-        backend=backend,
-    )
-    assert "air_pressure_on_interface_levels" in psf.input_properties
-    assert "height_on_interface_levels" in psf.input_properties
-    assert "air_potential_temperature_on_interface_levels" in psf.tendency_properties
-    tendencies, diagnostics = psf(state)
-    assert "air_potential_temperature_on_interface_levels" in tendencies
-    compare_dataarrays(
-        out,
-        tendencies["air_potential_temperature_on_interface_levels"],
-        compare_coordinate_values=False,
-    )
-    assert diagnostics == {}
-
-    # tendency_of_air_potential_temperature_in_diagnostics=True
-    psf = PrescribedSurfaceHeating(
-        domain,
-        tendency_of_air_potential_temperature_in_diagnostics=True,
-        tendency_of_air_potential_temperature_on_interface_levels=True,
-        air_pressure_on_interface_levels=True,
-        amplitude_at_day_sw=f0d_sw_da,
-        amplitude_at_day_fw=f0d_fw_da,
-        amplitude_at_night_sw=f0n_sw_da,
-        amplitude_at_night_fw=f0n_fw_da,
-        frequency_sw=w_sw_da,
-        frequency_fw=w_fw_da,
-        attenuation_coefficient_at_day=ad_da,
-        attenuation_coefficient_at_night=an_da,
-        characteristic_length=cl_da,
-        starting_time=t0,
-        backend=backend,
-    )
-    assert "air_pressure_on_interface_levels" in psf.input_properties
-    assert "height_on_interface_levels" in psf.input_properties
-    assert (
-        "tendency_of_air_potential_temperature_on_interface_levels"
-        in psf.diagnostic_properties
-    )
-    tendencies, diagnostics = psf(state)
-    assert tendencies == {}
-    assert "tendency_of_air_potential_temperature_on_interface_levels" in diagnostics
-    compare_dataarrays(
-        out,
-        diagnostics["tendency_of_air_potential_temperature_on_interface_levels"],
-        compare_coordinate_values=False,
-    )
+# @hyp_settings
+# @given(data=hyp_st.data())
+# @pytest.mark.parametrize("backend", conf_backend)
+# @pytest.mark.parametrize("dtype", conf_dtype)
+# def _test_fifth_order_upwind(data, backend, dtype, subtests):
+#     # ========================================
+#     # random data generation
+#     # ========================================
+#     domain = data.draw(st_domain(zaxis_length=(7, 20)), label="domain")
+#     grid = domain.numerical_grid
+#
+#     backend = data.draw(st_one_of(conf_backend), label="backend")
+#     dtype = grid.x.dtype
+#     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+#     nx, ny, nz = grid.nx, grid.ny, grid.nz
+#     storage_shape = (nx + 1, ny + 1, nz + 1)
+#
+#     state = data.draw(
+#         st_isentropic_state_f(
+#             grid,
+#             moist=True,
+#             backend=backend,
+#             default_origin=default_origin,
+#             storage_shape=storage_shape,
+#         ),
+#         label="state",
+#     )
+#     field = data.draw(
+#         st_raw_field(
+#             storage_shape,
+#             -1e4,
+#             1e4,
+#             backend=backend,
+#             dtype=dtype,
+#             default_origin=default_origin,
+#         ),
+#         label="field",
+#     )
+#     state["tendency_of_air_potential_temperature"] = get_dataarray_3d(
+#         field, grid, "K s^-1", grid_shape=(nx, ny, nz), set_coordinates=False
+#     )
+#     state[
+#         "tendency_of_air_potential_temperature_on_interface_levels"
+#     ] = get_dataarray_3d(
+#         field, grid, "K s^-1", grid_shape=(nx, ny, nz + 1), set_coordinates=False
+#     )
+#
+#     # ========================================
+#     # test bed
+#     # ========================================
+#     validation(
+#         domain,
+#         "fifth_order_upwind",
+#         False,
+#         False,
+#         backend,
+#         default_origin,
+#         False,
+#         state,
+#         subtests=subtests,
+#     )
+#     validation(
+#         domain,
+#         "fifth_order_upwind",
+#         False,
+#         True,
+#         backend,
+#         default_origin,
+#         False,
+#         state,
+#         subtests=subtests,
+#     )
+#     validation(
+#         domain,
+#         "fifth_order_upwind",
+#         True,
+#         False,
+#         backend,
+#         default_origin,
+#         False,
+#         state,
+#         subtests=subtests,
+#     )
+#     validation(
+#         domain,
+#         "fifth_order_upwind",
+#         True,
+#         True,
+#         backend,
+#         default_origin,
+#         False,
+#         state,
+#         subtests=subtests,
+#     )
+#
+#
+# @hyp_settings
+# @given(data=hyp_st.data())
+# @pytest.mark.parametrize("backend", conf_backend)
+# @pytest.mark.parametrize("dtype", conf_dtype)
+# def _test_prescribed_surface_heating(data):
+#     # ========================================
+#     # random data generation
+#     # ========================================
+#     domain = data.draw(st_domain(), label="domain")
+#     grid = domain.numerical_grid
+#
+#     time = data.draw(
+#         hyp_st.datetimes(
+#             min_value=datetime(1992, 2, 20), max_value=datetime(2010, 7, 21)
+#         )
+#     )
+#     field = data.draw(
+#         st_arrays(
+#             grid.x.dtype,
+#             (grid.nx, grid.ny, grid.nz + 1),
+#             elements=st_floats(min_value=1, max_value=1e4),
+#             fill=hyp_st.nothing(),
+#         )
+#     )
+#     state = {
+#         "time": time,
+#         "air_pressure": get_dataarray_3d(field[:, :, : grid.nz], grid, "Pa"),
+#         "air_pressure_on_interface_levels": get_dataarray_3d(field, grid, "Pa"),
+#         "height_on_interface_levels": get_dataarray_3d(field, grid, "m"),
+#     }
+#
+#     f0d_sw = data.draw(st_floats(min_value=0, max_value=100))
+#     f0d_fw = data.draw(st_floats(min_value=0, max_value=100))
+#     f0n_sw = data.draw(st_floats(min_value=0, max_value=100))
+#     f0n_fw = data.draw(st_floats(min_value=0, max_value=100))
+#     w_sw = data.draw(st_floats(min_value=0.1, max_value=100))
+#     w_fw = data.draw(st_floats(min_value=0.1, max_value=100))
+#     ad = data.draw(st_floats(min_value=0, max_value=100))
+#     an = data.draw(st_floats(min_value=0, max_value=100))
+#     cl = data.draw(st_floats(min_value=0, max_value=100))
+#     t0 = data.draw(
+#         hyp_st.datetimes(
+#             min_value=datetime(1992, 2, 20), max_value=datetime(2010, 7, 21)
+#         )
+#     )
+#
+#     backend = data.draw(st_one_of(conf_backend), label="backend")
+#
+#     # ========================================
+#     # test bed
+#     # ========================================
+#     f0d_sw_da = DataArray(f0d_sw, attrs={"units": "W m^-2"})
+#     f0d_fw_da = DataArray(f0d_fw, attrs={"units": "W m^-2"})
+#     f0n_sw_da = DataArray(f0n_sw, attrs={"units": "W m^-2"})
+#     f0n_fw_da = DataArray(f0n_fw, attrs={"units": "W m^-2"})
+#     w_sw_da = DataArray(w_sw, attrs={"units": "hr^-1"})
+#     w_fw_da = DataArray(w_fw, attrs={"units": "hr^-1"})
+#     ad_da = DataArray(ad, attrs={"units": "m^-1"})
+#     an_da = DataArray(an, attrs={"units": "m^-1"})
+#     cl_da = DataArray(cl, attrs={"units": "m"})
+#
+#     rd = 287.0
+#     cp = 1004.0
+#
+#     nx, ny, nz = grid.nx, grid.ny, grid.nz
+#     dtype = grid.x.dtype
+#
+#     x1d = grid.x.to_units("m").values
+#     y1d = grid.y.to_units("m").values
+#     x = np.tile(x1d[:, np.newaxis, np.newaxis], (1, ny, 1))
+#     y = np.tile(y1d[np.newaxis, :, np.newaxis], (nx, 1, 1))
+#
+#     dt = (state["time"] - t0).total_seconds() / 3600.0
+#
+#     t = state["time"].hour * 3600 + state["time"].minute * 60 + state["time"].second
+#     t_sw = 2 * np.pi / w_sw * 3600
+#     isday = int(t / t_sw) % 2 == 0
+#     f0_sw = f0d_sw if isday else f0n_sw
+#     f0_fw = f0d_fw if isday else f0n_fw
+#     a = ad if isday else an
+#
+#     #
+#     # tendency_of_air_potential_temperature_on_interface_levels=False
+#     # air_pressure_on_interface_levels=False
+#     #
+#     if state["time"] > t0:
+#         theta = grid.z.to_units("K").values[np.newaxis, np.newaxis, :]
+#         p = state["air_pressure"].values
+#         z = 0.5 * (
+#             state["height_on_interface_levels"].values[:, :, :-1]
+#             + state["height_on_interface_levels"].values[:, :, 1:]
+#         )
+#         h = state["height_on_interface_levels"].values[:, :, -1:]
+#
+#         out = (
+#             theta
+#             * rd
+#             * a
+#             / (p * cp)
+#             * np.exp(-a * (z - h))
+#             * (f0_sw * np.sin(w_sw * dt) + f0_fw * np.sin(w_fw * dt))
+#             * (x ** 2 + y ** 2 < cl ** 2)
+#         )
+#     else:
+#         out = np.zeros((nx, ny, nz), dtype=dtype)
+#
+#     # tendency_of_air_potential_temperature_in_diagnostics=False
+#     psf = PrescribedSurfaceHeating(
+#         domain,
+#         tendency_of_air_potential_temperature_in_diagnostics=False,
+#         tendency_of_air_potential_temperature_on_interface_levels=False,
+#         air_pressure_on_interface_levels=False,
+#         amplitude_at_day_sw=f0d_sw_da,
+#         amplitude_at_day_fw=f0d_fw_da,
+#         amplitude_at_night_sw=f0n_sw_da,
+#         amplitude_at_night_fw=f0n_fw_da,
+#         frequency_sw=w_sw_da,
+#         frequency_fw=w_fw_da,
+#         attenuation_coefficient_at_day=ad_da,
+#         attenuation_coefficient_at_night=an_da,
+#         characteristic_length=cl_da,
+#         starting_time=t0,
+#         backend=backend,
+#     )
+#     assert "air_pressure" in psf.input_properties
+#     assert "height_on_interface_levels" in psf.input_properties
+#     assert "air_potential_temperature" in psf.tendency_properties
+#     tendencies, diagnostics = psf(state)
+#     assert "air_potential_temperature" in tendencies
+#     compare_dataarrays(
+#         out, tendencies["air_potential_temperature"], compare_coordinate_values=False
+#     )
+#     assert diagnostics == {}
+#
+#     # tendency_of_air_potential_temperature_in_diagnostics=True
+#     psf = PrescribedSurfaceHeating(
+#         domain,
+#         tendency_of_air_potential_temperature_in_diagnostics=True,
+#         tendency_of_air_potential_temperature_on_interface_levels=False,
+#         air_pressure_on_interface_levels=False,
+#         amplitude_at_day_sw=f0d_sw_da,
+#         amplitude_at_day_fw=f0d_fw_da,
+#         amplitude_at_night_sw=f0n_sw_da,
+#         amplitude_at_night_fw=f0n_fw_da,
+#         frequency_sw=w_sw_da,
+#         frequency_fw=w_fw_da,
+#         attenuation_coefficient_at_day=ad_da,
+#         attenuation_coefficient_at_night=an_da,
+#         characteristic_length=cl_da,
+#         starting_time=t0,
+#         backend=backend,
+#     )
+#     assert "air_pressure" in psf.input_properties
+#     assert "height_on_interface_levels" in psf.input_properties
+#     assert "tendency_of_air_potential_temperature" in psf.diagnostic_properties
+#     tendencies, diagnostics = psf(state)
+#     assert tendencies == {}
+#     assert "tendency_of_air_potential_temperature" in diagnostics
+#     compare_dataarrays(
+#         out,
+#         diagnostics["tendency_of_air_potential_temperature"],
+#         compare_coordinate_values=False,
+#     )
+#
+#     #
+#     # tendency_of_air_potential_temperature_on_interface_levels=True
+#     # air_pressure_on_interface_levels=False
+#     #
+#     # tendency_of_air_potential_temperature_in_diagnostics=False
+#     psf = PrescribedSurfaceHeating(
+#         domain,
+#         tendency_of_air_potential_temperature_in_diagnostics=False,
+#         tendency_of_air_potential_temperature_on_interface_levels=True,
+#         air_pressure_on_interface_levels=False,
+#         amplitude_at_day_sw=f0d_sw_da,
+#         amplitude_at_day_fw=f0d_fw_da,
+#         amplitude_at_night_sw=f0n_sw_da,
+#         amplitude_at_night_fw=f0n_fw_da,
+#         frequency_sw=w_sw_da,
+#         frequency_fw=w_fw_da,
+#         attenuation_coefficient_at_day=ad_da,
+#         attenuation_coefficient_at_night=an_da,
+#         characteristic_length=cl_da,
+#         starting_time=t0,
+#         backend=backend,
+#     )
+#     assert "air_pressure" in psf.input_properties
+#     assert "height_on_interface_levels" in psf.input_properties
+#     assert "air_potential_temperature" in psf.tendency_properties
+#     tendencies, diagnostics = psf(state)
+#     assert "air_potential_temperature" in tendencies
+#     compare_dataarrays(
+#         out, tendencies["air_potential_temperature"], compare_coordinate_values=False
+#     )
+#     assert diagnostics == {}
+#
+#     # tendency_of_air_potential_temperature_in_diagnostics=True
+#     psf = PrescribedSurfaceHeating(
+#         domain,
+#         tendency_of_air_potential_temperature_in_diagnostics=True,
+#         tendency_of_air_potential_temperature_on_interface_levels=True,
+#         air_pressure_on_interface_levels=False,
+#         amplitude_at_day_sw=f0d_sw_da,
+#         amplitude_at_day_fw=f0d_fw_da,
+#         amplitude_at_night_sw=f0n_sw_da,
+#         amplitude_at_night_fw=f0n_fw_da,
+#         frequency_sw=w_sw_da,
+#         frequency_fw=w_fw_da,
+#         attenuation_coefficient_at_day=ad_da,
+#         attenuation_coefficient_at_night=an_da,
+#         characteristic_length=cl_da,
+#         starting_time=t0,
+#         backend=backend,
+#     )
+#     assert "air_pressure" in psf.input_properties
+#     assert "height_on_interface_levels" in psf.input_properties
+#     assert "tendency_of_air_potential_temperature" in psf.diagnostic_properties
+#     tendencies, diagnostics = psf(state)
+#     assert tendencies == {}
+#     assert "tendency_of_air_potential_temperature" in diagnostics
+#     compare_dataarrays(
+#         out,
+#         diagnostics["tendency_of_air_potential_temperature"],
+#         compare_coordinate_values=False,
+#     )
+#
+#     #
+#     # tendency_of_air_potential_temperature_on_interface_levels=False
+#     # air_pressure_on_interface_levels=True
+#     #
+#     if state["time"] > t0:
+#         theta = grid.z.to_units("K").values[np.newaxis, np.newaxis, :]
+#         p = 0.5 * (
+#             state["air_pressure_on_interface_levels"].values[:, :, :-1]
+#             + state["air_pressure_on_interface_levels"].values[:, :, 1:]
+#         )
+#         z = 0.5 * (
+#             state["height_on_interface_levels"].values[:, :, :-1]
+#             + state["height_on_interface_levels"].values[:, :, 1:]
+#         )
+#         h = state["height_on_interface_levels"].values[:, :, -1:]
+#
+#         out = (
+#             theta
+#             * rd
+#             * a
+#             / (p * cp)
+#             * np.exp(-a * (z - h))
+#             * (f0_sw * np.sin(w_sw * dt) + f0_fw * np.sin(w_fw * dt))
+#             * (x ** 2 + y ** 2 < cl ** 2)
+#         )
+#     else:
+#         out = np.zeros((nx, ny, nz), dtype=dtype)
+#
+#     # tendency_of_air_potential_temperature_in_diagnostics=False
+#     psf = PrescribedSurfaceHeating(
+#         domain,
+#         tendency_of_air_potential_temperature_in_diagnostics=False,
+#         tendency_of_air_potential_temperature_on_interface_levels=False,
+#         air_pressure_on_interface_levels=True,
+#         amplitude_at_day_sw=f0d_sw_da,
+#         amplitude_at_day_fw=f0d_fw_da,
+#         amplitude_at_night_sw=f0n_sw_da,
+#         amplitude_at_night_fw=f0n_fw_da,
+#         frequency_sw=w_sw_da,
+#         frequency_fw=w_fw_da,
+#         attenuation_coefficient_at_day=ad_da,
+#         attenuation_coefficient_at_night=an_da,
+#         characteristic_length=cl_da,
+#         starting_time=t0,
+#         backend=backend,
+#     )
+#     assert "air_pressure_on_interface_levels" in psf.input_properties
+#     assert "height_on_interface_levels" in psf.input_properties
+#     assert "air_potential_temperature" in psf.tendency_properties
+#     tendencies, diagnostics = psf(state)
+#     assert "air_potential_temperature" in tendencies
+#     compare_dataarrays(
+#         out, tendencies["air_potential_temperature"], compare_coordinate_values=False
+#     )
+#     assert diagnostics == {}
+#
+#     # tendency_of_air_potential_temperature_in_diagnostics=True
+#     psf = PrescribedSurfaceHeating(
+#         domain,
+#         tendency_of_air_potential_temperature_in_diagnostics=True,
+#         tendency_of_air_potential_temperature_on_interface_levels=False,
+#         air_pressure_on_interface_levels=True,
+#         amplitude_at_day_sw=f0d_sw_da,
+#         amplitude_at_day_fw=f0d_fw_da,
+#         amplitude_at_night_sw=f0n_sw_da,
+#         amplitude_at_night_fw=f0n_fw_da,
+#         frequency_sw=w_sw_da,
+#         frequency_fw=w_fw_da,
+#         attenuation_coefficient_at_day=ad_da,
+#         attenuation_coefficient_at_night=an_da,
+#         characteristic_length=cl_da,
+#         starting_time=t0,
+#         backend=backend,
+#     )
+#     assert "air_pressure_on_interface_levels" in psf.input_properties
+#     assert "height_on_interface_levels" in psf.input_properties
+#     assert "tendency_of_air_potential_temperature" in psf.diagnostic_properties
+#     tendencies, diagnostics = psf(state)
+#     assert tendencies == {}
+#     assert "tendency_of_air_potential_temperature" in diagnostics
+#     compare_dataarrays(
+#         out,
+#         diagnostics["tendency_of_air_potential_temperature"],
+#         compare_coordinate_values=False,
+#     )
+#
+#     #
+#     # tendency_of_air_potential_temperature_on_interface_levels=True
+#     # air_pressure_on_interface_levels=True
+#     #
+#     if state["time"] > t0:
+#         theta = grid.z_on_interface_levels.to_units("K").values[
+#             np.newaxis, np.newaxis, :
+#         ]
+#         p = state["air_pressure_on_interface_levels"].values
+#         z = state["height_on_interface_levels"].values
+#         h = state["height_on_interface_levels"].values[:, :, -1:]
+#
+#         out = (
+#             theta
+#             * rd
+#             * a
+#             / (p * cp)
+#             * np.exp(-a * (z - h))
+#             * (f0_sw * np.sin(w_sw * dt) + f0_fw * np.sin(w_fw * dt))
+#             * (x ** 2 + y ** 2 < cl ** 2)
+#         )
+#     else:
+#         out = np.zeros((nx, ny, nz + 1), dtype=dtype)
+#
+#     # tendency_of_air_potential_temperature_in_diagnostics=False
+#     psf = PrescribedSurfaceHeating(
+#         domain,
+#         tendency_of_air_potential_temperature_in_diagnostics=False,
+#         tendency_of_air_potential_temperature_on_interface_levels=True,
+#         air_pressure_on_interface_levels=True,
+#         amplitude_at_day_sw=f0d_sw_da,
+#         amplitude_at_day_fw=f0d_fw_da,
+#         amplitude_at_night_sw=f0n_sw_da,
+#         amplitude_at_night_fw=f0n_fw_da,
+#         frequency_sw=w_sw_da,
+#         frequency_fw=w_fw_da,
+#         attenuation_coefficient_at_day=ad_da,
+#         attenuation_coefficient_at_night=an_da,
+#         characteristic_length=cl_da,
+#         starting_time=t0,
+#         backend=backend,
+#     )
+#     assert "air_pressure_on_interface_levels" in psf.input_properties
+#     assert "height_on_interface_levels" in psf.input_properties
+#     assert "air_potential_temperature_on_interface_levels" in psf.tendency_properties
+#     tendencies, diagnostics = psf(state)
+#     assert "air_potential_temperature_on_interface_levels" in tendencies
+#     compare_dataarrays(
+#         out,
+#         tendencies["air_potential_temperature_on_interface_levels"],
+#         compare_coordinate_values=False,
+#     )
+#     assert diagnostics == {}
+#
+#     # tendency_of_air_potential_temperature_in_diagnostics=True
+#     psf = PrescribedSurfaceHeating(
+#         domain,
+#         tendency_of_air_potential_temperature_in_diagnostics=True,
+#         tendency_of_air_potential_temperature_on_interface_levels=True,
+#         air_pressure_on_interface_levels=True,
+#         amplitude_at_day_sw=f0d_sw_da,
+#         amplitude_at_day_fw=f0d_fw_da,
+#         amplitude_at_night_sw=f0n_sw_da,
+#         amplitude_at_night_fw=f0n_fw_da,
+#         frequency_sw=w_sw_da,
+#         frequency_fw=w_fw_da,
+#         attenuation_coefficient_at_day=ad_da,
+#         attenuation_coefficient_at_night=an_da,
+#         characteristic_length=cl_da,
+#         starting_time=t0,
+#         backend=backend,
+#     )
+#     assert "air_pressure_on_interface_levels" in psf.input_properties
+#     assert "height_on_interface_levels" in psf.input_properties
+#     assert (
+#         "tendency_of_air_potential_temperature_on_interface_levels"
+#         in psf.diagnostic_properties
+#     )
+#     tendencies, diagnostics = psf(state)
+#     assert tendencies == {}
+#     assert "tendency_of_air_potential_temperature_on_interface_levels" in diagnostics
+#     compare_dataarrays(
+#         out,
+#         diagnostics["tendency_of_air_potential_temperature_on_interface_levels"],
+#         compare_coordinate_values=False,
+#     )
 
 
 if __name__ == "__main__":

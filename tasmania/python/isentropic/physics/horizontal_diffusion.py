@@ -57,12 +57,11 @@ class IsentropicHorizontalDiffusion(TendencyComponent):
         diffusion_moist_coeff: Optional[DataArray] = None,
         diffusion_moist_coeff_max: Optional[DataArray] = None,
         diffusion_moist_damp_depth: Optional[int] = None,
-        gt_powered: bool = True,
         *,
         backend: str = "numpy",
         backend_opts: Optional[taz_types.options_dict_t] = None,
-        build_info: Optional[taz_types.options_dict_t] = None,
         dtype: taz_types.dtype_t = np.float64,
+        build_info: Optional[taz_types.options_dict_t] = None,
         exec_info: Optional[taz_types.mutable_options_dict_t] = None,
         default_origin: Optional[taz_types.triplet_int_t] = None,
         rebuild: bool = False,
@@ -95,33 +94,35 @@ class IsentropicHorizontalDiffusion(TendencyComponent):
             water species; in units compatible with [s^-1].
         diffusion_moist_coeff_max : `sympl.DataArray`, optional
             1-item array representing the maximum value assumed by the
-            diffusion coefficient for the water species close to the upper boundary;
-            in units compatible with [s^-1].
+            diffusion coefficient for the water species close to the upper
+            boundary; in units compatible with [s^-1].
         diffusion_damp_depth : int
             Depth of the damping region for the water species.
-        gt_powered : `bool`, optional
-            TODO
         backend : `str`, optional
-            The GT4Py backend.
+            The backend.
         backend_opts : `dict`, optional
             Dictionary of backend-specific options.
-        build_info : `dict`, optional
-            Dictionary of building options.
         dtype : `data-type`, optional
             Data type of the storages.
+        build_info : `dict`, optional
+            Dictionary of building options.
         exec_info : `dict`, optional
-            Dictionary which will store statistics and diagnostics gathered at run time.
+            Dictionary which will store statistics and diagnostics gathered at
+            run time.
         default_origin : `tuple[int]`, optional
             Storage default origin.
         rebuild : `bool`, optional
-            ``True`` to trigger the stencils compilation at any class instantiation,
-            ``False`` to rely on the caching mechanism implemented by GT4Py.
+            ``True`` to trigger the stencils compilation at any class
+            instantiation, ``False`` to rely on the caching mechanism
+            implemented by the backend.
         storage_shape : `tuple[int]`, optional
             Shape of the storages.
         managed_memory : `bool`, optional
-            ``True`` to allocate the storages as managed memory, ``False`` otherwise.
+            ``True`` to allocate the storages as managed memory,
+            ``False`` otherwise.
         **kwargs :
-            Keyword arguments to be directly forwarded to the parent's constructor.
+            Keyword arguments to be directly forwarded to the parent's
+            constructor.
         """
         self._moist = moist and diffusion_moist_coeff is not None
 
@@ -147,11 +148,10 @@ class IsentropicHorizontalDiffusion(TendencyComponent):
             diff_coeff_max,
             diffusion_damp_depth,
             nb,
-            gt_powered=gt_powered,
             backend=backend,
             backend_opts=backend_opts,
-            build_info=build_info,
             dtype=dtype,
+            build_info=build_info,
             exec_info=exec_info,
             default_origin=default_origin,
             rebuild=rebuild,
@@ -159,14 +159,18 @@ class IsentropicHorizontalDiffusion(TendencyComponent):
         )
 
         if self._moist:
-            diff_moist_coeff = diffusion_moist_coeff.to_units("s^-1").values.item()
+            diff_moist_coeff = diffusion_moist_coeff.to_units(
+                "s^-1"
+            ).values.item()
             diff_moist_coeff_max = (
                 diff_moist_coeff
                 if diffusion_moist_coeff_max is None
                 else diffusion_moist_coeff_max.to_units("s^-1").values.item()
             )
             diff_moist_damp_depth = (
-                0 if diffusion_moist_damp_depth is None else diffusion_moist_damp_depth
+                0
+                if diffusion_moist_damp_depth is None
+                else diffusion_moist_damp_depth
             )
 
             self._core_moist = HorizontalDiffusion.factory(
@@ -178,11 +182,10 @@ class IsentropicHorizontalDiffusion(TendencyComponent):
                 diff_moist_coeff_max,
                 diff_moist_damp_depth,
                 nb,
-                gt_powered=gt_powered,
                 backend=backend,
                 backend_opts=backend_opts,
-                build_info=build_info,
                 dtype=dtype,
+                build_info=build_info,
                 exec_info=exec_info,
                 default_origin=default_origin,
                 rebuild=rebuild,
@@ -193,7 +196,6 @@ class IsentropicHorizontalDiffusion(TendencyComponent):
 
         self._s_tnd = zeros(
             shape,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -201,7 +203,6 @@ class IsentropicHorizontalDiffusion(TendencyComponent):
         )
         self._su_tnd = zeros(
             shape,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -209,7 +210,6 @@ class IsentropicHorizontalDiffusion(TendencyComponent):
         )
         self._sv_tnd = zeros(
             shape,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -218,7 +218,6 @@ class IsentropicHorizontalDiffusion(TendencyComponent):
         if self._moist:
             self._qv_tnd = zeros(
                 shape,
-                gt_powered=gt_powered,
                 backend=backend,
                 dtype=dtype,
                 default_origin=default_origin,
@@ -226,7 +225,6 @@ class IsentropicHorizontalDiffusion(TendencyComponent):
             )
             self._qc_tnd = zeros(
                 shape,
-                gt_powered=gt_powered,
                 backend=backend,
                 dtype=dtype,
                 default_origin=default_origin,
@@ -234,7 +232,6 @@ class IsentropicHorizontalDiffusion(TendencyComponent):
             )
             self._qr_tnd = zeros(
                 shape,
-                gt_powered=gt_powered,
                 backend=backend,
                 dtype=dtype,
                 default_origin=default_origin,
@@ -247,8 +244,14 @@ class IsentropicHorizontalDiffusion(TendencyComponent):
 
         return_dict = {
             "air_isentropic_density": {"dims": dims, "units": "kg m^-2 K^-1"},
-            "x_momentum_isentropic": {"dims": dims, "units": "kg m^-1 K^-1 s^-1"},
-            "y_momentum_isentropic": {"dims": dims, "units": "kg m^-1 K^-1 s^-1"},
+            "x_momentum_isentropic": {
+                "dims": dims,
+                "units": "kg m^-1 K^-1 s^-1",
+            },
+            "y_momentum_isentropic": {
+                "dims": dims,
+                "units": "kg m^-1 K^-1 s^-1",
+            },
         }
 
         if self._moist:
@@ -263,9 +266,18 @@ class IsentropicHorizontalDiffusion(TendencyComponent):
         dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])
 
         return_dict = {
-            "air_isentropic_density": {"dims": dims, "units": "kg m^-2 K^-1 s^-1"},
-            "x_momentum_isentropic": {"dims": dims, "units": "kg m^-1 K^-1 s^-2"},
-            "y_momentum_isentropic": {"dims": dims, "units": "kg m^-1 K^-1 s^-2"},
+            "air_isentropic_density": {
+                "dims": dims,
+                "units": "kg m^-2 K^-1 s^-1",
+            },
+            "x_momentum_isentropic": {
+                "dims": dims,
+                "units": "kg m^-1 K^-1 s^-2",
+            },
+            "y_momentum_isentropic": {
+                "dims": dims,
+                "units": "kg m^-1 K^-1 s^-2",
+            },
         }
 
         if self._moist:

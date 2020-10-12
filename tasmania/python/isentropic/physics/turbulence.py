@@ -45,12 +45,11 @@ class IsentropicSmagorinsky(Smagorinsky2d):
         self,
         domain: "Domain",
         smagorinsky_constant: float = 0.18,
-        gt_powered: bool = True,
         *,
         backend: str = "numpy",
         backend_opts: Optional[taz_types.options_dict_t] = None,
-        build_info: Optional[taz_types.options_dict_t] = None,
         dtype: taz_types.dtype_t = np.float64,
+        build_info: Optional[taz_types.options_dict_t] = None,
         exec_info: Optional[taz_types.mutable_options_dict_t] = None,
         default_origin: Optional[taz_types.triplet_int_t] = None,
         rebuild: bool = False,
@@ -68,38 +67,39 @@ class IsentropicSmagorinsky(Smagorinsky2d):
             Either "physical" or "numerical" (default).
         smagorinsky_constant : `float`, optional
             The Smagorinsky constant. Defaults to 0.18.
-        gt_powered : `bool`, optional
-            TODO
         backend : `str`, optional
-            The GT4Py backend.
+            The backend.
         backend_opts : `dict`, optional
             Dictionary of backend-specific options.
-        build_info : `dict`, optional
-            Dictionary of building options.
         dtype : `data-type`, optional
             Data type of the storages.
+        build_info : `dict`, optional
+            Dictionary of building options.
         exec_info : `dict`, optional
-            Dictionary which will store statistics and diagnostics gathered at run time.
+            Dictionary which will store statistics and diagnostics gathered at
+            run time.
         default_origin : `tuple[int]`, optional
             Storage default origin.
         rebuild : `bool`, optional
-            ``True`` to trigger the stencils compilation at any class instantiation,
-            ``False`` to rely on the caching mechanism implemented by GT4Py.
+            ``True`` to trigger the stencils compilation at any class
+            instantiation, ``False`` to rely on the caching mechanism
+            implemented by the backend.
         storage_shape : `tuple[int]`, optional
             Shape of the storages.
         managed_memory : `bool`, optional
-            ``True`` to allocate the storages as managed memory, ``False`` otherwise.
+            ``True`` to allocate the storages as managed memory,
+            ``False`` otherwise.
         **kwargs :
-            Keyword arguments to be directly forwarded to the parent's constructor.
+            Keyword arguments to be directly forwarded to the parent's
+            constructor.
         """
         super().__init__(
             domain,
             smagorinsky_constant,
-            gt_powered=gt_powered,
             backend=backend,
             backend_opts=backend_opts,
-            build_info=build_info,
             dtype=dtype,
+            build_info=build_info,
             exec_info=exec_info,
             default_origin=default_origin,
             rebuild=rebuild,
@@ -111,18 +111,16 @@ class IsentropicSmagorinsky(Smagorinsky2d):
         self._hv = HorizontalVelocity(
             self.grid,
             staggering=False,
-            gt_powered=gt_powered,
             backend=backend,
             backend_opts=backend_opts,
-            build_info=build_info,
             dtype=dtype,
+            build_info=build_info,
             exec_info=exec_info,
             rebuild=rebuild,
         )
 
         self._in_u = zeros(
             self._storage_shape,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -130,7 +128,6 @@ class IsentropicSmagorinsky(Smagorinsky2d):
         )
         self._in_v = zeros(
             self._storage_shape,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -138,7 +135,6 @@ class IsentropicSmagorinsky(Smagorinsky2d):
         )
         self._out_su_tnd = zeros(
             self._storage_shape,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -146,7 +142,6 @@ class IsentropicSmagorinsky(Smagorinsky2d):
         )
         self._out_sv_tnd = zeros(
             self._storage_shape,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -158,16 +153,28 @@ class IsentropicSmagorinsky(Smagorinsky2d):
         dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])
         return {
             "air_isentropic_density": {"dims": dims, "units": "kg m^-2 K^-1"},
-            "x_momentum_isentropic": {"dims": dims, "units": "kg m^-1 K^-1 s^-1"},
-            "y_momentum_isentropic": {"dims": dims, "units": "kg m^-1 K^-1 s^-1"},
+            "x_momentum_isentropic": {
+                "dims": dims,
+                "units": "kg m^-1 K^-1 s^-1",
+            },
+            "y_momentum_isentropic": {
+                "dims": dims,
+                "units": "kg m^-1 K^-1 s^-1",
+            },
         }
 
     @property
     def tendency_properties(self) -> taz_types.properties_dict_t:
         dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])
         return {
-            "x_momentum_isentropic": {"dims": dims, "units": "kg m^-1 K^-1 s^-2"},
-            "y_momentum_isentropic": {"dims": dims, "units": "kg m^-1 K^-1 s^-2"},
+            "x_momentum_isentropic": {
+                "dims": dims,
+                "units": "kg m^-1 K^-1 s^-2",
+            },
+            "y_momentum_isentropic": {
+                "dims": dims,
+                "units": "kg m^-1 K^-1 s^-2",
+            },
         }
 
     @property
@@ -186,7 +193,9 @@ class IsentropicSmagorinsky(Smagorinsky2d):
         in_su = state["x_momentum_isentropic"]
         in_sv = state["y_momentum_isentropic"]
 
-        self._hv.get_velocity_components(in_s, in_su, in_sv, self._in_u, self._in_v)
+        self._hv.get_velocity_components(
+            in_s, in_su, in_sv, self._in_u, self._in_v
+        )
 
         self._stencil(
             in_u=self._in_u,
@@ -199,10 +208,15 @@ class IsentropicSmagorinsky(Smagorinsky2d):
             origin=(nb, nb, 0),
             domain=(nx - 2 * nb, ny - 2 * nb, nz),
             exec_info=self._exec_info,
+            validate_args=True,
         )
 
         self._hv.get_momenta(
-            in_s, self._out_u_tnd, self._out_v_tnd, self._out_su_tnd, self._out_sv_tnd
+            in_s,
+            self._out_u_tnd,
+            self._out_v_tnd,
+            self._out_su_tnd,
+            self._out_sv_tnd,
         )
 
         tendencies = {

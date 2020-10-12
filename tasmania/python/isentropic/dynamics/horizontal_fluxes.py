@@ -26,7 +26,9 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from gt4py import gtscript
 
+from tasmania.python.utils.framework_utils import factorize
 from tasmania.python.utils import taz_types
+from tasmania.python.utils.utils import is_gt
 
 
 class IsentropicHorizontalFlux(abc.ABC):
@@ -41,10 +43,11 @@ class IsentropicHorizontalFlux(abc.ABC):
     extent: int = None
     order: int = None
     externals: Dict[str, Any] = None
+    registry: Dict[str, "IsentropicHorizontalFlux"] = {}
 
-    def __init__(self, moist, gt_powered):
+    def __init__(self, moist: bool, backend: str) -> None:
         self.moist = moist
-        self.call = self.call_gt if gt_powered else self.call_numpy
+        self.call = self.call_gt if is_gt(backend) else self.call_numpy
 
     @abc.abstractmethod
     def call_numpy(
@@ -179,7 +182,7 @@ class IsentropicHorizontalFlux(abc.ABC):
 
     @staticmethod
     def factory(
-        scheme: str, moist: bool, gt_powered: bool = True
+        scheme: str, moist: bool, backend: str = "numpy"
     ) -> "IsentropicHorizontalFlux":
         """
         Static method which returns an instance of the derived class
@@ -198,8 +201,8 @@ class IsentropicHorizontalFlux(abc.ABC):
 
         moist : bool
             TODO
-        gt_powered : `bool`, optional
-            ``True`` to harness GT4Py, ``False`` for a vanilla Numpy implementation.
+        backend : `str`, optional
+            The backend.
 
         Return
         ------
@@ -215,25 +218,7 @@ class IsentropicHorizontalFlux(abc.ABC):
         Zeman, C. (2016). An isentropic mountain flow model with iterative \
             synchronous flux correction. *Master thesis, ETH Zurich*.
         """
-        from .implementations.horizontal_fluxes import (
-            Upwind,
-            Centered,
-            ThirdOrderUpwind,
-            FifthOrderUpwind,
-        )
-
-        if scheme == "upwind":
-            return Upwind(moist, gt_powered)
-        elif scheme == "centered":
-            return Centered(moist, gt_powered)
-        elif scheme == "third_order_upwind":
-            return ThirdOrderUpwind(moist, gt_powered)
-        elif scheme == "fifth_order_upwind":
-            return FifthOrderUpwind(moist, gt_powered)
-        else:
-            raise ValueError(
-                "Unsupported horizontal flux scheme " "{}" "".format(scheme)
-            )
+        return factorize(scheme, IsentropicHorizontalFlux, (moist, backend))
 
 
 class IsentropicNonconservativeHorizontalFlux(abc.ABC):
@@ -247,6 +232,7 @@ class IsentropicNonconservativeHorizontalFlux(abc.ABC):
     extent: int = None
     order: int = None
     externals: Dict[str, Any] = None
+    registry: Dict[str, "IsentropicNonconservativeHorizontalFlux"] = {}
 
     @staticmethod
     @gtscript.function
@@ -340,10 +326,7 @@ class IsentropicNonconservativeHorizontalFlux(abc.ABC):
             Instance of the derived class implementing the scheme
             specified by `scheme`.
         """
-        from .implementations.nonconservative_horizontal_fluxes import Centered
-
-        if scheme == "centered":
-            return Centered()
+        return factorize(scheme, IsentropicNonconservativeHorizontalFlux, ())
 
 
 class IsentropicMinimalHorizontalFlux(abc.ABC):
@@ -358,10 +341,11 @@ class IsentropicMinimalHorizontalFlux(abc.ABC):
     extent: int = None
     order: int = None
     externals: Dict[str, Any] = None
+    registry: Dict[str, "IsentropicMinimalHorizontalFlux"] = {}
 
-    def __init__(self, moist, gt_powered):
+    def __init__(self, moist: bool, backend: str) -> None:
         self.moist = moist
-        self.call = self.call_gt if gt_powered else self.call_numpy
+        self.call = self.call_gt if is_gt(backend) else self.call_numpy
 
     @staticmethod
     @abc.abstractmethod
@@ -494,7 +478,7 @@ class IsentropicMinimalHorizontalFlux(abc.ABC):
 
     @staticmethod
     def factory(
-        scheme: str, moist: bool, gt_powered: bool = True
+        scheme: str, moist: bool, backend: str = "numpy"
     ) -> "IsentropicMinimalHorizontalFlux":
         """
         Static method which returns an instance of the derived class
@@ -513,8 +497,8 @@ class IsentropicMinimalHorizontalFlux(abc.ABC):
 
         moist : bool
             TODO
-        gt_powered : `bool`, optional
-            ``True`` to harness GT4Py, ``False`` for a vanilla Numpy implementation.
+        backend : `str`, optional
+            The backend.
 
         Return
         ------
@@ -530,25 +514,9 @@ class IsentropicMinimalHorizontalFlux(abc.ABC):
         Zeman, C. (2016). An isentropic mountain flow model with iterative \
             synchronous flux correction. *Master thesis, ETH Zurich*.
         """
-        from .implementations.minimal_horizontal_fluxes import (
-            Upwind,
-            Centered,
-            ThirdOrderUpwind,
-            FifthOrderUpwind,
+        return factorize(
+            scheme, IsentropicMinimalHorizontalFlux, (moist, backend)
         )
-
-        if scheme == "upwind":
-            return Upwind(moist, gt_powered)
-        elif scheme == "centered":
-            return Centered(moist, gt_powered)
-        elif scheme == "third_order_upwind":
-            return ThirdOrderUpwind(moist, gt_powered)
-        elif scheme == "fifth_order_upwind":
-            return FifthOrderUpwind(moist, gt_powered)
-        else:
-            raise ValueError(
-                "Unsupported horizontal flux scheme " "{}" "".format(scheme)
-            )
 
 
 class IsentropicBoussinesqMinimalHorizontalFlux(abc.ABC):
@@ -563,6 +531,7 @@ class IsentropicBoussinesqMinimalHorizontalFlux(abc.ABC):
     extent: int = None
     order: int = None
     externals: Dict[str, Any] = None
+    registry: Dict[str, "IsentropicBoussinesqMinimalHorizontalFlux"] = {}
 
     @staticmethod
     @gtscript.function
@@ -704,22 +673,4 @@ class IsentropicBoussinesqMinimalHorizontalFlux(abc.ABC):
         Zeman, C. (2016). An isentropic mountain flow model with iterative \
             synchronous flux correction. *Master thesis, ETH Zurich*.
         """
-        from .implementations.boussinesq_minimal_horizontal_fluxes import (
-            Upwind,
-            Centered,
-            ThirdOrderUpwind,
-            FifthOrderUpwind,
-        )
-
-        if scheme == "upwind":
-            return Upwind()
-        elif scheme == "centered":
-            return Centered()
-        elif scheme == "third_order_upwind":
-            return ThirdOrderUpwind()
-        elif scheme == "fifth_order_upwind":
-            return FifthOrderUpwind()
-        else:
-            raise ValueError(
-                "Unsupported horizontal flux scheme " "{}" "".format(scheme)
-            )
+        return factorize(scheme, IsentropicBoussinesqMinimalHorizontalFlux, ())

@@ -24,9 +24,7 @@ from copy import deepcopy
 from datetime import timedelta
 from hypothesis import (
     given,
-    HealthCheck,
     reproduce_failure,
-    settings,
     strategies as hyp_st,
 )
 import pytest
@@ -41,7 +39,7 @@ from tasmania.python.utils.storage_utils import get_dataarray_3d, zeros
 
 from tests.conf import (
     backend as conf_backend,
-    datatype as conf_dtype,
+    dtype as conf_dtype,
     default_origin as conf_dorigin,
 )
 from tests.utils.test_gtscript_utils import thomas_validation
@@ -52,7 +50,7 @@ from tests.strategies import (
     st_raw_field,
     st_timedeltas,
 )
-from tests.utilities import compare_arrays
+from tests.utilities import compare_arrays, hyp_settings
 
 
 mfwv = "mass_fraction_of_water_vapor_in_air"
@@ -80,7 +78,8 @@ def setup_tridiagonal_system(gamma, w, phi, a=None, b=None, c=None, d=None):
                 b[i, j, k] = 1.0
                 c[i, j, k] = -gamma * w[i, j, k + 1]
                 d[i, j, k] = phi[i, j, k] - gamma * (
-                    w[i, j, k - 1] * phi[i, j, k - 1] - w[i, j, k + 1] * phi[i, j, k + 1]
+                    w[i, j, k - 1] * phi[i, j, k - 1]
+                    - w[i, j, k + 1] * phi[i, j, k + 1]
                 )
 
             a[i, j, nk - 1] = 0.0
@@ -95,7 +94,6 @@ def validation_diagnostic(
     domain,
     moist,
     toaptoil,
-    gt_powered,
     backend,
     default_origin,
     rebuild,
@@ -114,7 +112,6 @@ def validation_diagnostic(
         domain,
         moist,
         tendency_of_air_potential_temperature_on_interface_levels=toaptoil,
-        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -128,7 +125,9 @@ def validation_diagnostic(
         "y_momentum_isentropic",
     ]
     if toaptoil:
-        input_names.append("tendency_of_air_potential_temperature_on_interface_levels")
+        input_names.append(
+            "tendency_of_air_potential_temperature_on_interface_levels"
+        )
     else:
         input_names.append("tendency_of_air_potential_temperature")
     if moist:
@@ -160,10 +159,9 @@ def validation_diagnostic(
 
     if toaptoil:
         name = "tendency_of_air_potential_temperature_on_interface_levels"
-        w_hl = state[name].to_units("K s^-1").values
+        w_hl = state[name].to_units("K s^-1").data
         w = zeros(
             (nx, ny, nz),
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -171,25 +169,29 @@ def validation_diagnostic(
         w[...] = 0.5 * (w_hl[:nx, :ny, :nz] + w_hl[:nx, :ny, 1 : nz + 1])
     else:
         name = "tendency_of_air_potential_temperature"
-        w = state[name].to_units("K s^-1").values[:nx, :ny, :nz]
+        w = state[name].to_units("K s^-1").data[:nx, :ny, :nz]
 
-    s = state["air_isentropic_density"].to_units("kg m^-2 K^-1").values[:nx, :ny, :nz]
+    s = (
+        state["air_isentropic_density"]
+        .to_units("kg m^-2 K^-1")
+        .data[:nx, :ny, :nz]
+    )
     su = (
         state["x_momentum_isentropic"]
         .to_units("kg m^-1 K^-1 s^-1")
-        .values[:nx, :ny, :nz]
+        .data[:nx, :ny, :nz]
     )
     sv = (
         state["y_momentum_isentropic"]
         .to_units("kg m^-1 K^-1 s^-1")
-        .values[:nx, :ny, :nz]
+        .data[:nx, :ny, :nz]
     )
     if moist:
-        qv = state[mfwv].to_units("g g^-1").values[:nx, :ny, :nz]
+        qv = state[mfwv].to_units("g g^-1").data[:nx, :ny, :nz]
         sqv = s * qv
-        qc = state[mfcw].to_units("g g^-1").values[:nx, :ny, :nz]
+        qc = state[mfcw].to_units("g g^-1").data[:nx, :ny, :nz]
         sqc = s * qc
-        qr = state[mfpw].to_units("g g^-1").values[:nx, :ny, :nz]
+        qr = state[mfpw].to_units("g g^-1").data[:nx, :ny, :nz]
         sqr = s * qr
 
     tendencies, diagnostics = fluxer(state, timestep)
@@ -202,35 +204,30 @@ def validation_diagnostic(
 
     a = zeros(
         (nx, ny, nz),
-        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
     )
     b = zeros(
         (nx, ny, nz),
-        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
     )
     c = zeros(
         (nx, ny, nz),
-        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
     )
     d = zeros(
         (nx, ny, nz),
-        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
     )
     out = zeros(
         (nx, ny, nz),
-        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -240,65 +237,58 @@ def validation_diagnostic(
     thomas_validation(a, b, c, d, x=out)
     out_s = deepcopy(out)
     assert "air_isentropic_density" in diagnostics
-    compare_arrays(out, diagnostics["air_isentropic_density"].values[:nx, :ny, :nz])
+    compare_arrays(
+        out, diagnostics["air_isentropic_density"].data[:nx, :ny, :nz]
+    )
 
     setup_tridiagonal_system(gamma, w, su, a=a, b=b, c=c, d=d)
     thomas_validation(a, b, c, d, x=out)
     assert "x_momentum_isentropic" in diagnostics
-    compare_arrays(out, diagnostics["x_momentum_isentropic"].values[:nx, :ny, :nz])
+    compare_arrays(
+        out, diagnostics["x_momentum_isentropic"].data[:nx, :ny, :nz]
+    )
 
     setup_tridiagonal_system(gamma, w, sv, a=a, b=b, c=c, d=d)
     thomas_validation(a, b, c, d, x=out)
     assert "y_momentum_isentropic" in diagnostics
-    compare_arrays(out, diagnostics["y_momentum_isentropic"].values[:nx, :ny, :nz])
+    compare_arrays(
+        out, diagnostics["y_momentum_isentropic"].data[:nx, :ny, :nz]
+    )
 
     if moist:
         setup_tridiagonal_system(gamma, w, sqv, a=a, b=b, c=c, d=d)
         thomas_validation(a, b, c, d, x=out)
         out[...] = out / out_s
         assert mfwv in diagnostics
-        compare_arrays(out, diagnostics[mfwv].values[:nx, :ny, :nz])
+        compare_arrays(out, diagnostics[mfwv].data[:nx, :ny, :nz])
 
         setup_tridiagonal_system(gamma, w, sqc, a=a, b=b, c=c, d=d)
         thomas_validation(a, b, c, d, x=out)
         out[...] = out / out_s
         assert mfcw in diagnostics
-        compare_arrays(out, diagnostics[mfcw].values[:nx, :ny, :nz])
+        compare_arrays(out, diagnostics[mfcw].data[:nx, :ny, :nz])
 
         setup_tridiagonal_system(gamma, w, sqr, a=a, b=b, c=c, d=d)
         thomas_validation(a, b, c, d, x=out)
         out[...] = out / out_s
         assert mfpw in diagnostics
-        compare_arrays(out, diagnostics[mfpw].values[:nx, :ny, :nz])
+        compare_arrays(out, diagnostics[mfpw].data[:nx, :ny, :nz])
 
     assert len(diagnostics) == len(output_names)
 
 
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
+@hyp_settings
 @given(data=hyp_st.data())
-def test_diagnostic_dry(data, subtests):
+@pytest.mark.parametrize("backend", conf_backend)
+@pytest.mark.parametrize("dtype", conf_dtype)
+def test_diagnostic_dry(data, backend, dtype, subtests):
     # ========================================
     # random data generation
     # ========================================
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
-    if gt_powered:
-        gt.storage.prepare_numpy()
-
     domain = data.draw(
-        st_domain(
-            zaxis_length=(3, 20), gt_powered=gt_powered, backend=backend, dtype=dtype
-        ),
+        st_domain(zaxis_length=(3, 20), backend=backend, dtype=dtype),
         label="domain",
     )
     grid = domain.numerical_grid
@@ -310,7 +300,6 @@ def test_diagnostic_dry(data, subtests):
         st_isentropic_state_f(
             grid,
             moist=False,
-            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
             storage_shape=storage_shape,
@@ -322,7 +311,6 @@ def test_diagnostic_dry(data, subtests):
             storage_shape,
             -1e4,
             1e4,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -335,11 +323,17 @@ def test_diagnostic_dry(data, subtests):
     state[
         "tendency_of_air_potential_temperature_on_interface_levels"
     ] = get_dataarray_3d(
-        field, grid, "K s^-1", grid_shape=(nx, ny, nz + 1), set_coordinates=False
+        field,
+        grid,
+        "K s^-1",
+        grid_shape=(nx, ny, nz + 1),
+        set_coordinates=False,
     )
 
     timestep = data.draw(
-        st_timedeltas(min_value=timedelta(seconds=1), max_value=timedelta(hours=1)),
+        st_timedeltas(
+            min_value=timedelta(seconds=1), max_value=timedelta(hours=1)
+        ),
         label="timestep",
     )
 
@@ -350,7 +344,6 @@ def test_diagnostic_dry(data, subtests):
         domain,
         False,
         False,
-        gt_powered,
         backend,
         default_origin,
         False,
@@ -362,7 +355,6 @@ def test_diagnostic_dry(data, subtests):
         domain,
         False,
         True,
-        gt_powered,
         backend,
         default_origin,
         False,
@@ -372,31 +364,18 @@ def test_diagnostic_dry(data, subtests):
     )
 
 
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
+@hyp_settings
 @given(data=hyp_st.data())
-def test_diagnostic_moist(data, subtests):
+@pytest.mark.parametrize("backend", conf_backend)
+@pytest.mark.parametrize("dtype", conf_dtype)
+def test_diagnostic_moist(data, backend, dtype, subtests):
     # ========================================
     # random data generation
     # ========================================
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
-    if gt_powered:
-        gt.storage.prepare_numpy()
-
     domain = data.draw(
-        st_domain(
-            zaxis_length=(3, 20), gt_powered=gt_powered, backend=backend, dtype=dtype
-        ),
+        st_domain(zaxis_length=(3, 20), backend=backend, dtype=dtype),
         label="domain",
     )
     grid = domain.numerical_grid
@@ -408,7 +387,6 @@ def test_diagnostic_moist(data, subtests):
         st_isentropic_state_f(
             grid,
             moist=True,
-            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
             storage_shape=storage_shape,
@@ -420,7 +398,6 @@ def test_diagnostic_moist(data, subtests):
             storage_shape,
             -1e4,
             1e4,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -433,11 +410,17 @@ def test_diagnostic_moist(data, subtests):
     state[
         "tendency_of_air_potential_temperature_on_interface_levels"
     ] = get_dataarray_3d(
-        field, grid, "K s^-1", grid_shape=(nx, ny, nz + 1), set_coordinates=False
+        field,
+        grid,
+        "K s^-1",
+        grid_shape=(nx, ny, nz + 1),
+        set_coordinates=False,
     )
 
     timestep = data.draw(
-        st_timedeltas(min_value=timedelta(seconds=1), max_value=timedelta(hours=1)),
+        st_timedeltas(
+            min_value=timedelta(seconds=1), max_value=timedelta(hours=1)
+        ),
         label="timestep",
     )
 
@@ -448,7 +431,6 @@ def test_diagnostic_moist(data, subtests):
         domain,
         True,
         False,
-        gt_powered,
         backend,
         default_origin,
         False,
@@ -460,7 +442,6 @@ def test_diagnostic_moist(data, subtests):
         domain,
         True,
         True,
-        gt_powered,
         backend,
         default_origin,
         False,
@@ -471,7 +452,7 @@ def test_diagnostic_moist(data, subtests):
 
 
 def check_consistency(
-    domain, moist, gt_powered, backend, default_origin, rebuild, state, timestep
+    domain, moist, backend, default_origin, rebuild, state, timestep
 ):
     grid = domain.numerical_grid
     nx, ny, nz = grid.nx, grid.ny, grid.nz
@@ -483,7 +464,6 @@ def check_consistency(
         domain,
         moist,
         tendency_of_air_potential_temperature_on_interface_levels=False,
-        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -515,7 +495,6 @@ def check_consistency(
     state["tendency_of_air_potential_temperature"] = get_dataarray_3d(
         zeros(
             storage_shape,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -531,65 +510,54 @@ def check_consistency(
     compare_arrays(
         diagnostics["air_isentropic_density"]
         .to_units("kg m^-2 K^-1")
-        .values[:nx, :ny, :nz],
-        state["air_isentropic_density"].to_units("kg m^-2 K^-1").values[:nx, :ny, :nz],
+        .data[:nx, :ny, :nz],
+        state["air_isentropic_density"]
+        .to_units("kg m^-2 K^-1")
+        .data[:nx, :ny, :nz],
     )
     compare_arrays(
         diagnostics["x_momentum_isentropic"]
         .to_units("kg m^-1 K^-1 s^-1")
-        .values[:nx, :ny, :nz],
+        .data[:nx, :ny, :nz],
         state["x_momentum_isentropic"]
         .to_units("kg m^-1 K^-1 s^-1")
-        .values[:nx, :ny, :nz],
+        .data[:nx, :ny, :nz],
     )
     compare_arrays(
         diagnostics["y_momentum_isentropic"]
         .to_units("kg m^-1 K^-1 s^-1")
-        .values[:nx, :ny, :nz],
+        .data[:nx, :ny, :nz],
         state["y_momentum_isentropic"]
         .to_units("kg m^-1 K^-1 s^-1")
-        .values[:nx, :ny, :nz],
+        .data[:nx, :ny, :nz],
     )
     if moist:
         compare_arrays(
-            diagnostics[mfwv].to_units("g g^-1").values[:nx, :ny, :nz],
-            state[mfwv].to_units("g g^-1").values[:nx, :ny, :nz],
+            diagnostics[mfwv].to_units("g g^-1").data[:nx, :ny, :nz],
+            state[mfwv].to_units("g g^-1").data[:nx, :ny, :nz],
         )
         compare_arrays(
-            diagnostics[mfcw].to_units("g g^-1").values[:nx, :ny, :nz],
-            state[mfcw].to_units("g g^-1").values[:nx, :ny, :nz],
+            diagnostics[mfcw].to_units("g g^-1").data[:nx, :ny, :nz],
+            state[mfcw].to_units("g g^-1").data[:nx, :ny, :nz],
         )
         compare_arrays(
-            diagnostics[mfpw].to_units("g g^-1").values[:nx, :ny, :nz],
-            state[mfpw].to_units("g g^-1").values[:nx, :ny, :nz],
+            diagnostics[mfpw].to_units("g g^-1").data[:nx, :ny, :nz],
+            state[mfpw].to_units("g g^-1").data[:nx, :ny, :nz],
         )
 
 
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
-@given(hyp_st.data())
-def test_diagnostic_consistency(data):
+@hyp_settings
+@given(data=hyp_st.data())
+@pytest.mark.parametrize("backend", conf_backend)
+@pytest.mark.parametrize("dtype", conf_dtype)
+def test_diagnostic_consistency(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
-    if gt_powered:
-        gt.storage.prepare_numpy()
-
     domain = data.draw(
-        st_domain(
-            zaxis_length=(3, 20), gt_powered=gt_powered, backend=backend, dtype=dtype
-        ),
+        st_domain(zaxis_length=(3, 20), backend=backend, dtype=dtype),
         label="domain",
     )
     grid = domain.numerical_grid
@@ -601,7 +569,6 @@ def test_diagnostic_consistency(data):
         st_isentropic_state_f(
             grid,
             moist=True,
-            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
             storage_shape=storage_shape,
@@ -610,7 +577,9 @@ def test_diagnostic_consistency(data):
     )
 
     timestep = data.draw(
-        st_timedeltas(min_value=timedelta(seconds=1), max_value=timedelta(hours=1)),
+        st_timedeltas(
+            min_value=timedelta(seconds=1), max_value=timedelta(hours=1)
+        ),
         label="timestep",
     )
 
@@ -618,7 +587,7 @@ def test_diagnostic_consistency(data):
     # test bed
     # ========================================
     check_consistency(
-        domain, True, gt_powered, backend, default_origin, False, state, timestep
+        domain, True, backend, default_origin, False, state, timestep
     )
 
 
@@ -626,7 +595,6 @@ def validation_prognostic(
     domain,
     moist,
     toaptoil,
-    gt_powered,
     backend,
     default_origin,
     rebuild,
@@ -644,7 +612,6 @@ def validation_prognostic(
     fluxer = IsentropicImplicitVerticalAdvectionPrognostic(
         domain,
         moist,
-        gt_powered=gt_powered,
         tendency_of_air_potential_temperature_on_interface_levels=toaptoil,
         backend=backend,
         dtype=dtype,
@@ -659,7 +626,9 @@ def validation_prognostic(
         "y_momentum_isentropic",
     ]
     if toaptoil:
-        input_names.append("tendency_of_air_potential_temperature_on_interface_levels")
+        input_names.append(
+            "tendency_of_air_potential_temperature_on_interface_levels"
+        )
     else:
         input_names.append("tendency_of_air_potential_temperature")
     if moist:
@@ -691,10 +660,9 @@ def validation_prognostic(
 
     if toaptoil:
         name = "tendency_of_air_potential_temperature_on_interface_levels"
-        w_hl = state[name].to_units("K s^-1").values
+        w_hl = state[name].to_units("K s^-1").data
         w = zeros(
             (nx, ny, nz),
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -702,25 +670,29 @@ def validation_prognostic(
         w[...] = 0.5 * (w_hl[:nx, :ny, :nz] + w_hl[:nx, :ny, 1 : nz + 1])
     else:
         name = "tendency_of_air_potential_temperature"
-        w = state[name].to_units("K s^-1").values[:nx, :ny, :nz]
+        w = state[name].to_units("K s^-1").data[:nx, :ny, :nz]
 
-    s = state["air_isentropic_density"].to_units("kg m^-2 K^-1").values[:nx, :ny, :nz]
+    s = (
+        state["air_isentropic_density"]
+        .to_units("kg m^-2 K^-1")
+        .data[:nx, :ny, :nz]
+    )
     su = (
         state["x_momentum_isentropic"]
         .to_units("kg m^-1 K^-1 s^-1")
-        .values[:nx, :ny, :nz]
+        .data[:nx, :ny, :nz]
     )
     sv = (
         state["y_momentum_isentropic"]
         .to_units("kg m^-1 K^-1 s^-1")
-        .values[:nx, :ny, :nz]
+        .data[:nx, :ny, :nz]
     )
     if moist:
-        qv = state[mfwv].to_units("g g^-1").values[:nx, :ny, :nz]
+        qv = state[mfwv].to_units("g g^-1").data[:nx, :ny, :nz]
         sqv = s * qv
-        qc = state[mfcw].to_units("g g^-1").values[:nx, :ny, :nz]
+        qc = state[mfcw].to_units("g g^-1").data[:nx, :ny, :nz]
         sqc = s * qc
-        qr = state[mfpw].to_units("g g^-1").values[:nx, :ny, :nz]
+        qr = state[mfpw].to_units("g g^-1").data[:nx, :ny, :nz]
         sqr = s * qr
 
     tendencies, diagnostics = fluxer(state, timestep)
@@ -733,35 +705,30 @@ def validation_prognostic(
 
     a = zeros(
         (nx, ny, nz),
-        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
     )
     b = zeros(
         (nx, ny, nz),
-        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
     )
     c = zeros(
         (nx, ny, nz),
-        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
     )
     d = zeros(
         (nx, ny, nz),
-        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
     )
     out = zeros(
         (nx, ny, nz),
-        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -772,67 +739,60 @@ def validation_prognostic(
     out_s = deepcopy(out)
     out[...] = (out - s) / dt
     assert "air_isentropic_density" in tendencies
-    compare_arrays(out, tendencies["air_isentropic_density"].values[:nx, :ny, :nz])
+    compare_arrays(
+        out, tendencies["air_isentropic_density"].data[:nx, :ny, :nz]
+    )
 
     setup_tridiagonal_system(gamma, w, su, a=a, b=b, c=c, d=d)
     thomas_validation(a, b, c, d, x=out)
     out[...] = (out - su) / dt
     assert "x_momentum_isentropic" in tendencies
-    compare_arrays(out, tendencies["x_momentum_isentropic"].values[:nx, :ny, :nz])
+    compare_arrays(
+        out, tendencies["x_momentum_isentropic"].data[:nx, :ny, :nz]
+    )
 
     setup_tridiagonal_system(gamma, w, sv, a=a, b=b, c=c, d=d)
     thomas_validation(a, b, c, d, x=out)
     out[...] = (out - sv) / dt
     assert "y_momentum_isentropic" in tendencies
-    compare_arrays(out, tendencies["y_momentum_isentropic"].values[:nx, :ny, :nz])
+    compare_arrays(
+        out, tendencies["y_momentum_isentropic"].data[:nx, :ny, :nz]
+    )
 
     if moist:
         setup_tridiagonal_system(gamma, w, sqv, a=a, b=b, c=c, d=d)
         thomas_validation(a, b, c, d, x=out)
         out[...] = (out / out_s - qv) / dt
         assert mfwv in tendencies
-        compare_arrays(out, tendencies[mfwv].values[:nx, :ny, :nz])
+        compare_arrays(out, tendencies[mfwv].data[:nx, :ny, :nz])
 
         setup_tridiagonal_system(gamma, w, sqc, a=a, b=b, c=c, d=d)
         thomas_validation(a, b, c, d, x=out)
         out[...] = (out / out_s - qc) / dt
         assert mfcw in tendencies
-        compare_arrays(out, tendencies[mfcw].values[:nx, :ny, :nz])
+        compare_arrays(out, tendencies[mfcw].data[:nx, :ny, :nz])
 
         setup_tridiagonal_system(gamma, w, sqr, a=a, b=b, c=c, d=d)
         thomas_validation(a, b, c, d, x=out)
         out[...] = (out / out_s - qr) / dt
         assert mfpw in tendencies
-        compare_arrays(out, tendencies[mfpw].values[:nx, :ny, :nz])
+        compare_arrays(out, tendencies[mfpw].data[:nx, :ny, :nz])
 
     assert len(tendencies) == len(output_names)
 
 
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
+@hyp_settings
 @given(data=hyp_st.data())
-def test_prognostic_dry(data, subtests):
+@pytest.mark.parametrize("backend", conf_backend)
+@pytest.mark.parametrize("dtype", conf_dtype)
+def test_prognostic_dry(data, backend, dtype, subtests):
     # ========================================
     # random data generation
     # ========================================
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
-    if gt_powered:
-        gt.storage.prepare_numpy()
-
     domain = data.draw(
-        st_domain(
-            zaxis_length=(3, 20), gt_powered=gt_powered, backend=backend, dtype=dtype
-        ),
+        st_domain(zaxis_length=(3, 20), backend=backend, dtype=dtype),
         label="domain",
     )
     grid = domain.numerical_grid
@@ -844,7 +804,6 @@ def test_prognostic_dry(data, subtests):
         st_isentropic_state_f(
             grid,
             moist=False,
-            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
             storage_shape=storage_shape,
@@ -856,7 +815,6 @@ def test_prognostic_dry(data, subtests):
             storage_shape,
             -1e4,
             1e4,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -869,11 +827,17 @@ def test_prognostic_dry(data, subtests):
     state[
         "tendency_of_air_potential_temperature_on_interface_levels"
     ] = get_dataarray_3d(
-        field, grid, "K s^-1", grid_shape=(nx, ny, nz + 1), set_coordinates=False
+        field,
+        grid,
+        "K s^-1",
+        grid_shape=(nx, ny, nz + 1),
+        set_coordinates=False,
     )
 
     timestep = data.draw(
-        st_timedeltas(min_value=timedelta(seconds=1), max_value=timedelta(hours=1)),
+        st_timedeltas(
+            min_value=timedelta(seconds=1), max_value=timedelta(hours=1)
+        ),
         label="timestep",
     )
 
@@ -884,7 +848,6 @@ def test_prognostic_dry(data, subtests):
         domain,
         False,
         False,
-        gt_powered,
         backend,
         default_origin,
         False,
@@ -896,7 +859,6 @@ def test_prognostic_dry(data, subtests):
         domain,
         False,
         True,
-        gt_powered,
         backend,
         default_origin,
         False,
@@ -906,31 +868,18 @@ def test_prognostic_dry(data, subtests):
     )
 
 
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
+@hyp_settings
 @given(data=hyp_st.data())
-def test_prognostic_moist(data, subtests):
+@pytest.mark.parametrize("backend", conf_backend)
+@pytest.mark.parametrize("dtype", conf_dtype)
+def test_prognostic_moist(data, backend, dtype, subtests):
     # ========================================
     # random data generation
     # ========================================
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
-    if gt_powered:
-        gt.storage.prepare_numpy()
-
     domain = data.draw(
-        st_domain(
-            zaxis_length=(3, 20), gt_powered=gt_powered, backend=backend, dtype=dtype
-        ),
+        st_domain(zaxis_length=(3, 20), backend=backend, dtype=dtype),
         label="domain",
     )
     grid = domain.numerical_grid
@@ -942,7 +891,6 @@ def test_prognostic_moist(data, subtests):
         st_isentropic_state_f(
             grid,
             moist=True,
-            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
             storage_shape=storage_shape,
@@ -954,7 +902,6 @@ def test_prognostic_moist(data, subtests):
             storage_shape,
             -1e4,
             1e4,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -967,11 +914,17 @@ def test_prognostic_moist(data, subtests):
     state[
         "tendency_of_air_potential_temperature_on_interface_levels"
     ] = get_dataarray_3d(
-        field, grid, "K s^-1", grid_shape=(nx, ny, nz + 1), set_coordinates=False
+        field,
+        grid,
+        "K s^-1",
+        grid_shape=(nx, ny, nz + 1),
+        set_coordinates=False,
     )
 
     timestep = data.draw(
-        st_timedeltas(min_value=timedelta(seconds=1), max_value=timedelta(hours=1)),
+        st_timedeltas(
+            min_value=timedelta(seconds=1), max_value=timedelta(hours=1)
+        ),
         label="timestep",
     )
 
@@ -982,7 +935,6 @@ def test_prognostic_moist(data, subtests):
         domain,
         True,
         False,
-        gt_powered,
         backend,
         default_origin,
         False,
@@ -994,7 +946,6 @@ def test_prognostic_moist(data, subtests):
         domain,
         True,
         True,
-        gt_powered,
         backend,
         default_origin,
         False,

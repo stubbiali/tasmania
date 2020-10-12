@@ -22,9 +22,7 @@
 #
 from hypothesis import (
     given,
-    HealthCheck,
     reproduce_failure,
-    settings,
     strategies as hyp_st,
 )
 import pytest
@@ -36,44 +34,34 @@ from tasmania import get_dataarray_3d
 
 from tests.conf import (
     backend as conf_backend,
-    datatype as conf_dtype,
+    dtype as conf_dtype,
     default_origin as conf_dorigin,
     nb as conf_nb,
 )
 from tests.physics.test_turbulence import smagorinsky2d_validation
 from tests.strategies import st_domain, st_one_of, st_isentropic_state_f
-from tests.utilities import compare_dataarrays
+from tests.utilities import compare_dataarrays, hyp_settings
 
 
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
-@given(hyp_st.data())
-def test_smagorinsky(data):
+@hyp_settings
+@given(data=hyp_st.data())
+@pytest.mark.parametrize("backend", conf_backend)
+@pytest.mark.parametrize("dtype", conf_dtype)
+def test_smagorinsky(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
-    if gt_powered:
-        gt.storage.prepare_numpy()
-
-    nb = data.draw(hyp_st.integers(min_value=2, max_value=max(2, conf_nb)), label="nb")
+    nb = data.draw(
+        hyp_st.integers(min_value=2, max_value=max(2, conf_nb)), label="nb"
+    )
     domain = data.draw(
         st_domain(
             xaxis_length=(1, 30),
             yaxis_length=(1, 30),
             zaxis_length=(1, 20),
             nb=nb,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
         ),
@@ -90,7 +78,6 @@ def test_smagorinsky(data):
         st_isentropic_state_f(
             grid,
             moist=False,
-            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
             storage_shape=storage_shape,
@@ -104,9 +91,9 @@ def test_smagorinsky(data):
     dx = grid.dx.to_units("m").values.item()
     dy = grid.dy.to_units("m").values.item()
 
-    s = state["air_isentropic_density"].to_units("kg m^-2 K^-1").values
-    su = state["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").values
-    sv = state["y_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").values
+    s = state["air_isentropic_density"].to_units("kg m^-2 K^-1").data
+    su = state["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").data
+    sv = state["y_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").data
 
     u = su / s
     v = sv / s
@@ -115,7 +102,6 @@ def test_smagorinsky(data):
     smag = IsentropicSmagorinsky(
         domain,
         smagorinsky_constant=cs,
-        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,

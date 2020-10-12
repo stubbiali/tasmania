@@ -27,6 +27,8 @@ from typing import Any, Dict, List, Optional, Tuple
 from gt4py import gtscript
 
 from tasmania.python.utils import taz_types
+from tasmania.python.utils.framework_utils import factorize
+from tasmania.python.utils.utils import is_gt
 
 
 class IsentropicVerticalFlux(abc.ABC):
@@ -40,6 +42,7 @@ class IsentropicVerticalFlux(abc.ABC):
     extent: int = None
     order: int = None
     externals: Dict[str, Any] = None
+    registry: Dict[str, "IsentropicVerticalFlux"] = {}
 
     @staticmethod
     @gtscript.function
@@ -148,14 +151,7 @@ class IsentropicVerticalFlux(abc.ABC):
             Instance of the derived class implementing the scheme
             specified by `scheme`.
         """
-        from .implementations.vertical_fluxes import Upwind, Centered, MacCormack
-
-        if scheme == "upwind":
-            return Upwind()
-        elif scheme == "centered":
-            return Centered()
-        else:
-            return MacCormack()
+        return factorize(scheme, IsentropicVerticalFlux, ())
 
 
 class IsentropicNonconservativeVerticalFlux(abc.ABC):
@@ -169,6 +165,7 @@ class IsentropicNonconservativeVerticalFlux(abc.ABC):
     extent: int = None
     order: int = None
     externals: Dict[str, Any] = None
+    registry: Dict[str, "IsentropicNonconservativeVerticalFlux"] = {}
 
     @staticmethod
     @gtscript.function
@@ -275,10 +272,7 @@ class IsentropicNonconservativeVerticalFlux(abc.ABC):
             Instance of the derived class implementing the scheme
             specified by `scheme`.
         """
-        from .implementations.nonconservative_vertical_fluxes import Centered
-
-        if scheme == "centered":
-            return Centered()
+        return factorize(scheme, IsentropicNonconservativeVerticalFlux, ())
 
 
 class IsentropicMinimalVerticalFlux(abc.ABC):
@@ -293,23 +287,24 @@ class IsentropicMinimalVerticalFlux(abc.ABC):
     extent: int = None
     order: int = None
     externals: Dict[str, Any] = None
+    registry: Dict[str, "IsentropicMinimalVerticalFlux"] = {}
 
-    def __init__(self, moist, gt_powered):
+    def __init__(self, moist, backend):
         self.moist = moist
-        self.call = self.call_gt if gt_powered else self.call_numpy
+        self.call = self.call_gt if is_gt(backend) else self.call_numpy
 
     @abc.abstractmethod
     def call_numpy(
-            self,
-            dt: float,
-            dz: float,
-            w: np.ndarray,
-            s: np.ndarray,
-            su: np.ndarray,
-            sv: np.ndarray,
-            sqv: Optional[np.ndarray] = None,
-            sqc: Optional[np.ndarray] = None,
-            sqr: Optional[np.ndarray] = None,
+        self,
+        dt: float,
+        dz: float,
+        w: np.ndarray,
+        s: np.ndarray,
+        su: np.ndarray,
+        sv: np.ndarray,
+        sqv: Optional[np.ndarray] = None,
+        sqc: Optional[np.ndarray] = None,
+        sqr: Optional[np.ndarray] = None,
     ) -> List[np.ndarray]:
         pass
 
@@ -373,7 +368,9 @@ class IsentropicMinimalVerticalFlux(abc.ABC):
         pass
 
     @staticmethod
-    def factory(scheme: str, moist: bool, gt_powered: bool) -> "IsentropicMinimalVerticalFlux":
+    def factory(
+        scheme: str, moist: bool, backend: str
+    ) -> "IsentropicMinimalVerticalFlux":
         """
         Static method which returns an instance of the derived class
         implementing the numerical scheme specified by `scheme`.
@@ -389,9 +386,11 @@ class IsentropicMinimalVerticalFlux(abc.ABC):
                 * 'fifth_order_upwind', for the fifth-order upwind scheme.
 
         moist : bool
-            TODO
-        gt_powered : bool
-            TODO
+            ``True`` to calculate the fluxes for the water species too,
+            ``False`` to restrict the computations to the dry dynamics
+            variables.
+        backend : str
+            The backend.
 
         Return
         ------
@@ -407,23 +406,9 @@ class IsentropicMinimalVerticalFlux(abc.ABC):
         Zeman, C. (2016). An isentropic mountain flow model with iterative \
             synchronous flux correction. *Master thesis, ETH Zurich*.
         """
-        from .implementations.minimal_vertical_fluxes import (
-            Upwind,
-            Centered,
-            ThirdOrderUpwind,
-            FifthOrderUpwind,
+        return factorize(
+            scheme, IsentropicMinimalVerticalFlux, (moist, backend)
         )
-
-        if scheme == "upwind":
-            return Upwind(moist, gt_powered)
-        elif scheme == "centered":
-            return Centered(moist, gt_powered)
-        elif scheme == "third_order_upwind":
-            return ThirdOrderUpwind(moist, gt_powered)
-        elif scheme == "fifth_order_upwind":
-            return FifthOrderUpwind(moist, gt_powered)
-        else:
-            raise ValueError("Unsupported vertical flux scheme " "{}" "".format(scheme))
 
 
 class IsentropicBoussinesqMinimalVerticalFlux(abc.ABC):
@@ -438,6 +423,7 @@ class IsentropicBoussinesqMinimalVerticalFlux(abc.ABC):
     extent: int = None
     order: int = None
     externals: Dict[str, Any] = None
+    registry: Dict[str, "IsentropicBoussinesqMinimalVerticalFlux"] = {}
 
     @staticmethod
     @gtscript.function
@@ -535,20 +521,4 @@ class IsentropicBoussinesqMinimalVerticalFlux(abc.ABC):
         Zeman, C. (2016). An isentropic mountain flow model with iterative \
             synchronous flux correction. *Master thesis, ETH Zurich*.
         """
-        from .implementations.boussinesq_minimal_vertical_fluxes import (
-            Upwind,
-            Centered,
-            ThirdOrderUpwind,
-            FifthOrderUpwind,
-        )
-
-        if scheme == "upwind":
-            return Upwind()
-        elif scheme == "centered":
-            return Centered()
-        elif scheme == "third_order_upwind":
-            return ThirdOrderUpwind()
-        elif scheme == "fifth_order_upwind":
-            return FifthOrderUpwind()
-        else:
-            raise ValueError("Unsupported vertical flux scheme " "{}" "".format(scheme))
+        return factorize(scheme, IsentropicBoussinesqMinimalVerticalFlux, ())

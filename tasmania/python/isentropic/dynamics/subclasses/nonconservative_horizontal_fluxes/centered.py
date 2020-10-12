@@ -20,28 +20,14 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from tasmania.python.isentropic.dynamics.vertical_fluxes import (
-    IsentropicNonconservativeVerticalFlux,
+from tasmania.python.isentropic.dynamics.horizontal_fluxes import (
+    IsentropicNonconservativeHorizontalFlux,
 )
+from tasmania.python.utils.framework_utils import register
 
 
-class Centered(IsentropicNonconservativeVerticalFlux):
+@register(name="centered")
+class Centered(IsentropicNonconservativeHorizontalFlux):
     @staticmethod
-    def __call__(
-        dt,
-        dz,
-        w,
-        s,
-        s_prv,
-        u,
-        u_prv,
-        v,
-        v_prv,
-        qv=None,
-        qv_prv=None,
-        qc=None,
-        qc_prv=None,
-        qr=None,
-        qr_prv=None,
-    ):
+    def __call__(dt, dx, dy, s, u, v, mtg, qv=None, qc=None, qr=None):
         raise NotImplementedError()

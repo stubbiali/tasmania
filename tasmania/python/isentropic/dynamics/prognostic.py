@@ -22,9 +22,10 @@
 #
 import abc
 import numpy as np
-from typing import Optional, Sequence, TYPE_CHECKING, Type, Union
+from typing import Dict, Optional, Sequence, TYPE_CHECKING, Type, Union
 
 from tasmania.python.utils import taz_types
+from tasmania.python.utils.framework_utils import factorize
 from tasmania.python.utils.storage_utils import zeros
 
 if TYPE_CHECKING:
@@ -52,6 +53,8 @@ class IsentropicPrognostic(abc.ABC):
     parameterized. The conservative form of the governing equations is used.
     """
 
+    registry: Dict[str, "IsentropicPrognostic"] = {}
+
     def __init__(
         self,
         horizontal_flux_class: "Union[Type[IsentropicHorizontalFlux], Type[IsentropicMinimalHorizontalFlux]]",
@@ -59,11 +62,10 @@ class IsentropicPrognostic(abc.ABC):
         grid: "Grid",
         hb: "HorizontalBoundary",
         moist: bool,
-        gt_powered: bool,
         backend: str,
         backend_opts: taz_types.options_dict_t,
-        build_info: taz_types.options_dict_t,
         dtype: taz_types.dtype_t,
+        build_info: taz_types.options_dict_t,
         exec_info: taz_types.mutable_options_dict_t,
         default_origin: taz_types.triplet_int_t,
         rebuild: bool,
@@ -87,44 +89,46 @@ class IsentropicPrognostic(abc.ABC):
             The object handling the lateral boundary conditions.
         moist : bool
             ``True`` for a moist dynamical core, ``False`` otherwise.
-        gt_powered : bool
-            ``True`` to harness GT4Py, ``False`` for a vanilla Numpy implementation.
         backend : str
-            The GT4Py backend.
+            The backend.
         backend_opts : dict
             Dictionary of backend-specific options.
-        build_info : dict
-            Dictionary of building options.
         dtype : data-type
             Data type of the storages.
+        build_info : dict
+            Dictionary of building options.
         exec_info : dict
-            Dictionary which will store statistics and diagnostics gathered at run time.
+            Dictionary which will store statistics and diagnostics gathered at
+            run time.
         default_origin : `tuple[int]
             Storage default origin.
         rebuild : bool
-            ``True`` to trigger the stencils compilation at any class instantiation,
-            ``False`` to rely on the caching mechanism implemented by GT4Py.
+            ``True`` to trigger the stencils compilation at any class
+            instantiation, ``False`` to rely on the caching mechanism
+            implemented by the backend.
         storage_shape : tuple[int]
             Shape of the storages.
         managed_memory : bool
-            ``True`` to allocate the storages as managed memory, ``False`` otherwise.
+            ``True`` to allocate the storages as managed memory,
+            ``False`` otherwise.
         """
         # store input arguments needed at compile- and run-time
         self._grid = grid
         self._hb = hb
         self._moist = moist
-        self._gt_powered = gt_powered
         self._backend = backend
         self._backend_opts = backend_opts or {}
-        self._build_info = build_info
         self._dtype = dtype
+        self._build_info = build_info
         self._exec_info = exec_info
         self._default_origin = default_origin
         self._rebuild = rebuild
         self._managed_memory = managed_memory
 
         nx, ny, nz = grid.nx, grid.ny, grid.nz
-        storage_shape = (nx, ny, nz + 1) if storage_shape is None else storage_shape
+        storage_shape = (
+            (nx, ny, nz + 1) if storage_shape is None else storage_shape
+        )
         error_msg = "storage_shape must be larger or equal than {}.".format(
             (nx, ny, nz + 1)
         )
@@ -135,7 +139,7 @@ class IsentropicPrognostic(abc.ABC):
 
         # instantiate the class computing the numerical horizontal fluxes
         self._hflux = horizontal_flux_class.factory(
-            horizontal_flux_scheme, moist, gt_powered
+            horizontal_flux_scheme, moist, backend
         )
         assert hb.nb >= self._hflux.extent, (
             "The number of lateral boundary layers is {}, but should be "
@@ -187,8 +191,8 @@ class IsentropicPrognostic(abc.ABC):
         self,
         stage: int,
         timestep: taz_types.timedelta_t,
-        state: taz_types.gtstorage_dict_t,
-        tendencies: Optional[taz_types.gtstorage_dict_t] = None,
+        state: taz_types.array_dict_t,
+        tendencies: Optional[taz_types.array_dict_t] = None,
     ) -> taz_types.gtstorage_dict_t:
         """
         Perform a stage.
@@ -199,14 +203,14 @@ class IsentropicPrognostic(abc.ABC):
             The stage to perform.
         timestep : datetime.timedelta
             The time step.
-        state : dict[str, gt4py.storage.storage.Storage]
+        state : dict[str, array-like]
             The (raw) state at the current stage.
-        tendencies : dict[str, gt4py.storage.storage.Storage]
+        tendencies : dict[str, array-like]
             The (raw) tendencies for the prognostic model variables.
 
         Return
         ------
-        dict[str, gt4py.storage.storage.Storage] :
+        dict[str, array-like] :
             The (raw) state at the next stage.
         """
         pass
@@ -218,12 +222,11 @@ class IsentropicPrognostic(abc.ABC):
         grid: "Grid",
         hb: "HorizontalBoundary",
         moist: bool = False,
-        gt_powered: bool = True,
         *,
         backend: str = "numpy",
         backend_opts: Optional[taz_types.options_dict_t] = None,
-        build_info: Optional[taz_types.options_dict_t] = None,
         dtype: taz_types.dtype_t = np.float64,
+        build_info: Optional[taz_types.options_dict_t] = None,
         exec_info: Optional[taz_types.mutable_options_dict_t] = None,
         default_origin: Optional[taz_types.triplet_int_t] = None,
         rebuild: bool = False,
@@ -257,67 +260,53 @@ class IsentropicPrognostic(abc.ABC):
         moist : `bool`, optional
             ``True`` for a moist dynamical core, ``False`` otherwise.
             Defaults to ``False``.
-        gt_powered : `bool`, optional
-            ``True`` to harness GT4Py, ``False`` for a vanilla Numpy implementation.
         backend : `str`, optional
-            The GT4Py backend.
+            The backend.
         backend_opts : `dict`, optional
             Dictionary of backend-specific options.
-        build_info : `dict`, optional
-            Dictionary of building options.
         dtype : `data-type`, optional
             Data type of the storages.
+        build_info : `dict`, optional
+            Dictionary of building options.
         exec_info : `dict`, optional
-            Dictionary which will store statistics and diagnostics gathered at run time.
+            Dictionary which will store statistics and diagnostics gathered at
+            run time.
         default_origin : `tuple[int]`, optional
             Storage default origin.
         rebuild : `bool`, optional
-            ``True`` to trigger the stencils compilation at any class instantiation,
-            ``False`` to rely on the caching mechanism implemented by GT4Py.
+            ``True`` to trigger the stencils compilation at any class
+            instantiation, ``False`` to rely on the caching mechanism
+            implemented by the backend.
         storage_shape : `tuple[int]`, optional
             Shape of the storages.
         managed_memory : `bool`, optional
-            ``True`` to allocate the storages as managed memory, ``False`` otherwise.
+            ``True`` to allocate the storages as managed memory,
+            ``False`` otherwise.
 
         Return
         ------
         obj :
-            An instance of the derived class implementing ``time_integration_scheme``.
+            An instance of the derived class implementing
+            ``time_integration_scheme``.
         """
-        from .implementations.prognostic import ForwardEulerSI, CenteredSI, RK3WSSI, SIL3
-
         args = (
             horizontal_flux_scheme,
             grid,
             hb,
             moist,
-            gt_powered,
             backend,
             backend_opts,
-            build_info,
             dtype,
+            build_info,
             exec_info,
             default_origin,
             rebuild,
             storage_shape,
             managed_memory,
         )
-
-        available = ("forward_euler_si", "centered_si", "rk3ws_si", "sil3")
-
-        if time_integration_scheme == "forward_euler_si":
-            return ForwardEulerSI(*args, **kwargs)
-        elif time_integration_scheme == "centered_si":
-            return CenteredSI(*args, **kwargs)
-        elif time_integration_scheme == "rk3ws_si":
-            return RK3WSSI(*args, **kwargs)
-        elif time_integration_scheme == "sil3":
-            return SIL3(*args, **kwargs)
-        else:
-            raise ValueError(
-                "Unknown time integration scheme {}. Available options are: "
-                "{}.".format(time_integration_scheme, ", ".join(available))
-            )
+        return factorize(
+            time_integration_scheme, IsentropicPrognostic, args, kwargs
+        )
 
     def _stencils_allocate_outputs(self) -> None:
         """
@@ -325,7 +314,6 @@ class IsentropicPrognostic(abc.ABC):
         by the underlying gt4py stencils.
         """
         storage_shape = self._storage_shape
-        gt_powered = self._gt_powered
         backend = self._backend
         dtype = self._dtype
         default_origin = self._default_origin
@@ -333,7 +321,6 @@ class IsentropicPrognostic(abc.ABC):
 
         self._s_new = zeros(
             storage_shape,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -341,7 +328,6 @@ class IsentropicPrognostic(abc.ABC):
         )
         self._su_new = zeros(
             storage_shape,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -349,7 +335,6 @@ class IsentropicPrognostic(abc.ABC):
         )
         self._sv_new = zeros(
             storage_shape,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -358,7 +343,6 @@ class IsentropicPrognostic(abc.ABC):
         if self._moist:
             self._sqv_new = zeros(
                 storage_shape,
-                gt_powered=gt_powered,
                 backend=backend,
                 dtype=dtype,
                 default_origin=default_origin,
@@ -366,7 +350,6 @@ class IsentropicPrognostic(abc.ABC):
             )
             self._sqc_new = zeros(
                 storage_shape,
-                gt_powered=gt_powered,
                 backend=backend,
                 dtype=dtype,
                 default_origin=default_origin,
@@ -374,7 +357,6 @@ class IsentropicPrognostic(abc.ABC):
             )
             self._sqr_new = zeros(
                 storage_shape,
-                gt_powered=gt_powered,
                 backend=backend,
                 dtype=dtype,
                 default_origin=default_origin,

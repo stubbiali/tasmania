@@ -21,11 +21,8 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 from hypothesis import (
-    assume,
     given,
-    HealthCheck,
     reproduce_failure,
-    settings,
     strategies as hyp_st,
 )
 import pytest
@@ -33,47 +30,53 @@ from sympl import DataArray
 
 import gt4py as gt
 
-from tasmania.python.isentropic.physics.coriolis import IsentropicConservativeCoriolis
+from tasmania.python.isentropic.physics.coriolis import (
+    IsentropicConservativeCoriolis,
+)
 from tasmania import get_dataarray_3d
 
 from tests.conf import (
     backend as conf_backend,
-    datatype as conf_dtype,
+    dtype as conf_dtype,
     default_origin as conf_default_origin,
     nb as conf_nb,
 )
-from tests.strategies import st_domain, st_floats, st_isentropic_state_f, st_one_of
-from tests.utilities import compare_dataarrays
-
-
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
+from tests.strategies import (
+    st_domain,
+    st_floats,
+    st_isentropic_state_f,
+    st_one_of,
 )
-@given(hyp_st.data())
-def test_conservative(data):
+from tests.utilities import compare_dataarrays, hyp_settings
+
+
+@hyp_settings
+@given(data=hyp_st.data())
+@pytest.mark.parametrize("backend", conf_backend)
+@pytest.mark.parametrize("dtype", conf_dtype)
+def test_conservative(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-    backend = data.draw((st_one_of(conf_backend)), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
-    default_origin = data.draw((st_one_of(conf_default_origin)), label="default_origin")
+    default_origin = data.draw(
+        (st_one_of(conf_default_origin)), label="default_origin"
+    )
 
-    if gt_powered:
-        gt.storage.prepare_numpy()
-
-    nb = data.draw(hyp_st.integers(min_value=1, max_value=max(1, conf_nb)), label="nb")
+    nb = data.draw(
+        hyp_st.integers(min_value=1, max_value=max(1, conf_nb)), label="nb"
+    )
     domain = data.draw(
-        st_domain(nb=nb, gt_powered=gt_powered, backend=backend, dtype=dtype),
+        st_domain(nb=nb, backend=backend, dtype=dtype),
         label="domain",
     )
-    grid_type = data.draw(st_one_of(("physical", "numerical")), label="grid_type")
-    grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
+    grid_type = data.draw(
+        st_one_of(("physical", "numerical")), label="grid_type"
+    )
+    grid = (
+        domain.physical_grid
+        if grid_type == "physical"
+        else domain.numerical_grid
+    )
     f = data.draw(st_floats(min_value=0, max_value=1), label="f")
 
     time = data.draw(hyp_st.datetimes(), label="time")
@@ -84,7 +87,6 @@ def test_conservative(data):
             grid,
             time=time,
             moist=False,
-            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
             storage_shape=storage_shape,
@@ -103,7 +105,6 @@ def test_conservative(data):
         domain,
         grid_type,
         coriolis_parameter,
-        gt_powered=gt_powered,
         backend=backend,
         dtype=grid.x.dtype,
         default_origin=default_origin,
@@ -121,7 +122,8 @@ def test_conservative(data):
     tendencies, diagnostics = icc(state)
 
     su_val = get_dataarray_3d(
-        f * state["y_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").values,
+        f
+        * state["y_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").values,
         grid,
         "kg m^-1 K^-1 s^-2",
         grid_shape=(grid.nx, grid.ny, grid.nz),
@@ -135,7 +137,8 @@ def test_conservative(data):
     )
 
     sv_val = get_dataarray_3d(
-        -f * state["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").values,
+        -f
+        * state["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").values,
         grid,
         "kg m^-1 K^-1 s^-2",
         grid_shape=(grid.nx, grid.ny, grid.nz),

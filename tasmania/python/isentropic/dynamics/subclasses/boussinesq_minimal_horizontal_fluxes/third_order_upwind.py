@@ -23,84 +23,11 @@
 from tasmania.python.isentropic.dynamics.horizontal_fluxes import (
     IsentropicBoussinesqMinimalHorizontalFlux,
 )
+from tasmania.python.utils.framework_utils import register
 
 
-class Upwind(IsentropicBoussinesqMinimalHorizontalFlux):
-    @staticmethod
-    def __call__(
-        dt,
-        dx,
-        dy,
-        s,
-        u,
-        v,
-        su,
-        sv,
-        ddmtg,
-        sqv=None,
-        sqc=None,
-        sqr=None,
-        s_tnd=None,
-        su_tnd=None,
-        sv_tnd=None,
-        qv_tnd=None,
-        qc_tnd=None,
-        qr_tnd=None,
-    ):
-        raise NotImplementedError()
-
-
-class Centered(IsentropicBoussinesqMinimalHorizontalFlux):
-    @staticmethod
-    def __call__(
-        dt,
-        dx,
-        dy,
-        s,
-        u,
-        v,
-        su,
-        sv,
-        ddmtg,
-        sqv=None,
-        sqc=None,
-        sqr=None,
-        s_tnd=None,
-        su_tnd=None,
-        sv_tnd=None,
-        qv_tnd=None,
-        qc_tnd=None,
-        qr_tnd=None,
-    ):
-        raise NotImplementedError()
-
-
+@register(name="third_order_upwind")
 class ThirdOrderUpwind(IsentropicBoussinesqMinimalHorizontalFlux):
-    @staticmethod
-    def __call__(
-        dt,
-        dx,
-        dy,
-        s,
-        u,
-        v,
-        su,
-        sv,
-        ddmtg,
-        sqv=None,
-        sqc=None,
-        sqr=None,
-        s_tnd=None,
-        su_tnd=None,
-        sv_tnd=None,
-        qv_tnd=None,
-        qc_tnd=None,
-        qr_tnd=None,
-    ):
-        raise NotImplementedError()
-
-
-class FifthOrderUpwind(IsentropicBoussinesqMinimalHorizontalFlux):
     @staticmethod
     def __call__(
         dt,

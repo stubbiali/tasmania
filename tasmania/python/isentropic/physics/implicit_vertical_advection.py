@@ -20,26 +20,17 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from copy import deepcopy
 import numpy as np
-from sympl import DataArray
 from typing import Optional, TYPE_CHECKING, Tuple, Union
 
-from gt4py import gtscript, __externals__
-
-# from gt4py.__gtscript__ import computation, interval, PARALLEL
+from gt4py import gtscript
 
 from tasmania.python.framework.base_components import (
     ImplicitTendencyComponent,
-    TendencyComponent,
-)
-from tasmania.python.isentropic.dynamics.vertical_fluxes import (
-    IsentropicMinimalVerticalFlux,
 )
 from tasmania.python.utils import taz_types
-from tasmania.python.utils.data_utils import get_physical_constants
 from tasmania.python.utils.storage_utils import zeros
-from tasmania.python.utils.utils import thomas_numpy
+from tasmania.python.utils.utils import get_gt_backend, is_gt, thomas_numpy
 
 if TYPE_CHECKING:
     from tasmania.python.domain.domain import Domain
@@ -70,7 +61,9 @@ def setup_tridiagonal_system_numpy(
     c[i, j, kstart + 1 : kstop - 1] = -gamma * w[i, j, kstart + 2 : kstop]
 
     d[i, j, kstart] = phi[i, j, kstart]
-    d[i, j, kstart + 1 : kstop - 1] = phi[i, j, kstart + 1 : kstop - 1] - gamma * (
+    d[i, j, kstart + 1 : kstop - 1] = phi[
+        i, j, kstart + 1 : kstop - 1
+    ] - gamma * (
         w[i, j, kstart : kstop - 2] * phi[i, j, kstart : kstop - 2]
         - w[i, j, kstart + 2 : kstop] * phi[i, j, kstart + 2 : kstop]
     )
@@ -83,7 +76,9 @@ def setup_tridiagonal_system(
 ) -> "Tuple[taz_types.gtfield_t, taz_types.gtfield_t, taz_types.gtfield_t]":
     a = gamma * w[0, 0, -1]
     c = -gamma * w[0, 0, 1]
-    d = phi[0, 0, 0] - gamma * (w[0, 0, -1] * phi[0, 0, -1] - w[0, 0, 1] * phi[0, 0, 1])
+    d = phi[0, 0, 0] - gamma * (
+        w[0, 0, -1] * phi[0, 0, -1] - w[0, 0, 1] * phi[0, 0, 1]
+    )
     return a, c, d
 
 
@@ -108,12 +103,11 @@ class IsentropicImplicitVerticalAdvectionDiagnostic(ImplicitTendencyComponent):
         domain: "Domain",
         moist: bool = False,
         tendency_of_air_potential_temperature_on_interface_levels: bool = False,
-        gt_powered: bool = True,
         *,
         backend: str = "numpy",
         backend_opts: Optional[taz_types.options_dict_t] = None,
-        build_info: Optional[taz_types.options_dict_t] = None,
         dtype: taz_types.dtype_t = np.float64,
+        build_info: Optional[taz_types.options_dict_t] = None,
         exec_info: Optional[taz_types.mutable_options_dict_t] = None,
         default_origin: Optional[taz_types.triplet_int_t] = None,
         rebuild: bool = False,
@@ -133,29 +127,31 @@ class IsentropicImplicitVerticalAdvectionDiagnostic(ImplicitTendencyComponent):
             ``True`` if the input tendency of air potential temperature
             is defined at the interface levels, ``False`` otherwise.
             Defaults to ``False``.
-        gt_powered : `bool`, optional
-            TODO
         backend : `str`, optional
-            The GT4Py backend.
+            The backend.
         backend_opts : `dict`, optional
             Dictionary of backend-specific options.
-        build_info : `dict`, optional
-            Dictionary of building options.
         dtype : `data-type`, optional
             Data type of the storages.
+        build_info : `dict`, optional
+            Dictionary of building options.
         exec_info : `dict`, optional
-            Dictionary which will store statistics and diagnostics gathered at run time.
+            Dictionary which will store statistics and diagnostics gathered at
+            run time.
         default_origin : `tuple[int]`, optional
             Storage default origin.
         rebuild : `bool`, optional
-            ``True`` to trigger the stencils compilation at any class instantiation,
-            ``False`` to rely on the caching mechanism implemented by GT4Py.
+            ``True`` to trigger the stencils compilation at any class
+            instantiation, ``False`` to rely on the caching mechanism
+            implemented by the backend.
         storage_shape : `tuple[int]`, optional
             Shape of the storages.
         managed_memory : `bool`, optional
-            ``True`` to allocate the storages as managed memory, ``False`` otherwise.
+            ``True`` to allocate the storages as managed memory,
+            ``False`` otherwise.
         **kwargs :
-            Additional keyword arguments to be directly forwarded to the parent class.
+            Additional keyword arguments to be directly forwarded to the parent
+            class.
         """
         # keep track of the input arguments needed at run-time
         self._moist = moist
@@ -167,7 +163,9 @@ class IsentropicImplicitVerticalAdvectionDiagnostic(ImplicitTendencyComponent):
 
         # set the storage shape
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
-        storage_shape = (nx, ny, nz + 1) if storage_shape is None else storage_shape
+        storage_shape = (
+            (nx, ny, nz + 1) if storage_shape is None else storage_shape
+        )
         error_msg = "storage_shape must be larger or equal than {}.".format(
             (nx, ny, nz + 1)
         )
@@ -178,7 +176,6 @@ class IsentropicImplicitVerticalAdvectionDiagnostic(ImplicitTendencyComponent):
         # allocate the gt4py storages collecting the stencil outputs
         self._out_s = zeros(
             storage_shape,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -186,7 +183,6 @@ class IsentropicImplicitVerticalAdvectionDiagnostic(ImplicitTendencyComponent):
         )
         self._out_su = zeros(
             storage_shape,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -194,7 +190,6 @@ class IsentropicImplicitVerticalAdvectionDiagnostic(ImplicitTendencyComponent):
         )
         self._out_sv = zeros(
             storage_shape,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -203,7 +198,6 @@ class IsentropicImplicitVerticalAdvectionDiagnostic(ImplicitTendencyComponent):
         if moist:
             self._out_qv = zeros(
                 storage_shape,
-                gt_powered=gt_powered,
                 backend=backend,
                 dtype=dtype,
                 default_origin=default_origin,
@@ -211,7 +205,6 @@ class IsentropicImplicitVerticalAdvectionDiagnostic(ImplicitTendencyComponent):
             )
             self._out_qc = zeros(
                 storage_shape,
-                gt_powered=gt_powered,
                 backend=backend,
                 dtype=dtype,
                 default_origin=default_origin,
@@ -219,7 +212,6 @@ class IsentropicImplicitVerticalAdvectionDiagnostic(ImplicitTendencyComponent):
             )
             self._out_qr = zeros(
                 storage_shape,
-                gt_powered=gt_powered,
                 backend=backend,
                 dtype=dtype,
                 default_origin=default_origin,
@@ -227,7 +219,7 @@ class IsentropicImplicitVerticalAdvectionDiagnostic(ImplicitTendencyComponent):
             )
 
         # instantiate the underlying stencil object
-        if gt_powered:
+        if is_gt(backend):
             externals = {
                 "moist": moist,
                 "vstaggering": self._stgz,
@@ -236,7 +228,7 @@ class IsentropicImplicitVerticalAdvectionDiagnostic(ImplicitTendencyComponent):
             }
             self._stencil = gtscript.stencil(
                 definition=self._stencil_gt_defs,
-                backend=backend,
+                backend=get_gt_backend(backend),
                 build_info=build_info,
                 dtypes={"dtype": dtype},
                 externals=externals,
@@ -253,8 +245,14 @@ class IsentropicImplicitVerticalAdvectionDiagnostic(ImplicitTendencyComponent):
 
         return_dict = {
             "air_isentropic_density": {"dims": dims, "units": "kg m^-2 K^-1"},
-            "x_momentum_isentropic": {"dims": dims, "units": "kg m^-1 K^-1 s^-1"},
-            "y_momentum_isentropic": {"dims": dims, "units": "kg m^-1 K^-1 s^-1"},
+            "x_momentum_isentropic": {
+                "dims": dims,
+                "units": "kg m^-1 K^-1 s^-1",
+            },
+            "y_momentum_isentropic": {
+                "dims": dims,
+                "units": "kg m^-1 K^-1 s^-1",
+            },
         }
 
         if self._stgz:
@@ -263,7 +261,9 @@ class IsentropicImplicitVerticalAdvectionDiagnostic(ImplicitTendencyComponent):
                 grid.y.dims[0],
                 grid.z_on_interface_levels.dims[0],
             )
-            return_dict["tendency_of_air_potential_temperature_on_interface_levels"] = {
+            return_dict[
+                "tendency_of_air_potential_temperature_on_interface_levels"
+            ] = {
                 "dims": dims_stgz,
                 "units": "K s^-1",
             }
@@ -300,8 +300,14 @@ class IsentropicImplicitVerticalAdvectionDiagnostic(ImplicitTendencyComponent):
 
         return_dict = {
             "air_isentropic_density": {"dims": dims, "units": "kg m^-2 K^-1"},
-            "x_momentum_isentropic": {"dims": dims, "units": "kg m^-1 K^-1 s^-1"},
-            "y_momentum_isentropic": {"dims": dims, "units": "kg m^-1 K^-1 s^-1"},
+            "x_momentum_isentropic": {
+                "dims": dims,
+                "units": "kg m^-1 K^-1 s^-1",
+            },
+            "y_momentum_isentropic": {
+                "dims": dims,
+                "units": "kg m^-1 K^-1 s^-1",
+            },
         }
         if self._moist:
             return_dict["mass_fraction_of_water_vapor_in_air"] = {
@@ -369,7 +375,8 @@ class IsentropicImplicitVerticalAdvectionDiagnostic(ImplicitTendencyComponent):
             **stencil_args,
             origin=(0, 0, 0),
             domain=(nx, ny, nz),
-            exec_info=self._exec_info
+            exec_info=self._exec_info,
+            validate_args=True
         )
 
         # collect the output arrays in a dictionary
@@ -484,7 +491,9 @@ class IsentropicImplicitVerticalAdvectionDiagnostic(ImplicitTendencyComponent):
 
             # solve the tridiagonal system
             out_sqv = np.zeros_like(sqv)
-            thomas_numpy(a, b, c, d, out_sqv, i=i, j=j, kstart=kstart, kstop=kstop)
+            thomas_numpy(
+                a, b, c, d, out_sqv, i=i, j=j, kstart=kstart, kstop=kstop
+            )
 
             #
             # isentropic density of cloud liquid water
@@ -496,7 +505,9 @@ class IsentropicImplicitVerticalAdvectionDiagnostic(ImplicitTendencyComponent):
 
             # solve the tridiagonal system
             out_sqc = np.zeros_like(sqc)
-            thomas_numpy(a, b, c, d, out_sqc, i=i, j=j, kstart=kstart, kstop=kstop)
+            thomas_numpy(
+                a, b, c, d, out_sqc, i=i, j=j, kstart=kstart, kstop=kstop
+            )
 
             #
             # isentropic density of precipitation water
@@ -508,7 +519,9 @@ class IsentropicImplicitVerticalAdvectionDiagnostic(ImplicitTendencyComponent):
 
             # solve the tridiagonal system
             out_sqr = np.zeros_like(sqr)
-            thomas_numpy(a, b, c, d, out_sqr, i=i, j=j, kstart=kstart, kstop=kstop)
+            thomas_numpy(
+                a, b, c, d, out_sqr, i=i, j=j, kstart=kstart, kstop=kstop
+            )
 
             #
             # mass fraction of the water species
@@ -594,7 +607,8 @@ class IsentropicImplicitVerticalAdvectionDiagnostic(ImplicitTendencyComponent):
             )
         with computation(BACKWARD), interval(0, -1):
             out_s = (
-                (delta_s[0, 0, 0] - c_s[0, 0, 0] * out_s[0, 0, 1]) / beta_s[0, 0, 0]
+                (delta_s[0, 0, 0] - c_s[0, 0, 0] * out_s[0, 0, 1])
+                / beta_s[0, 0, 0]
                 if beta_s[0, 0, 0] != 0.0
                 else (delta_s[0, 0, 0] - c_s[0, 0, 0] * out_s[0, 0, 1])
             )
@@ -631,7 +645,8 @@ class IsentropicImplicitVerticalAdvectionDiagnostic(ImplicitTendencyComponent):
             )
         with computation(BACKWARD), interval(0, -1):
             out_su = (
-                (delta_su[0, 0, 0] - c_su[0, 0, 0] * out_su[0, 0, 1]) / beta_su[0, 0, 0]
+                (delta_su[0, 0, 0] - c_su[0, 0, 0] * out_su[0, 0, 1])
+                / beta_su[0, 0, 0]
                 if beta_su[0, 0, 0] != 0.0
                 else (delta_su[0, 0, 0] - c_su[0, 0, 0] * out_su[0, 0, 1])
             )
@@ -668,7 +683,8 @@ class IsentropicImplicitVerticalAdvectionDiagnostic(ImplicitTendencyComponent):
             )
         with computation(BACKWARD), interval(0, -1):
             out_sv = (
-                (delta_sv[0, 0, 0] - c_sv[0, 0, 0] * out_sv[0, 0, 1]) / beta_sv[0, 0, 0]
+                (delta_sv[0, 0, 0] - c_sv[0, 0, 0] * out_sv[0, 0, 1])
+                / beta_sv[0, 0, 0]
                 if beta_sv[0, 0, 0] != 0.0
                 else (delta_sv[0, 0, 0] - c_sv[0, 0, 0] * out_sv[0, 0, 1])
             )
@@ -697,7 +713,9 @@ class IsentropicImplicitVerticalAdvectionDiagnostic(ImplicitTendencyComponent):
                     else a_sqv[0, 0, 0]
                 )
                 beta_sqv = 1.0 - omega_sqv[0, 0, 0] * c_sqv[0, 0, -1]
-                delta_sqv = d_sqv[0, 0, 0] - omega_sqv[0, 0, 0] * delta_sqv[0, 0, -1]
+                delta_sqv = (
+                    d_sqv[0, 0, 0] - omega_sqv[0, 0, 0] * delta_sqv[0, 0, -1]
+                )
             with computation(BACKWARD), interval(-1, None):
                 out_sqv = (
                     delta_sqv[0, 0, 0] / beta_sqv[0, 0, 0]
@@ -709,7 +727,9 @@ class IsentropicImplicitVerticalAdvectionDiagnostic(ImplicitTendencyComponent):
                     (delta_sqv[0, 0, 0] - c_sqv[0, 0, 0] * out_sqv[0, 0, 1])
                     / beta_sqv[0, 0, 0]
                     if beta_sqv[0, 0, 0] != 0.0
-                    else (delta_sqv[0, 0, 0] - c_sqv[0, 0, 0] * out_sqv[0, 0, 1])
+                    else (
+                        delta_sqv[0, 0, 0] - c_sqv[0, 0, 0] * out_sqv[0, 0, 1]
+                    )
                 )
 
             #
@@ -735,7 +755,9 @@ class IsentropicImplicitVerticalAdvectionDiagnostic(ImplicitTendencyComponent):
                     else a_sqc[0, 0, 0]
                 )
                 beta_sqc = 1.0 - omega_sqc[0, 0, 0] * c_sqc[0, 0, -1]
-                delta_sqc = d_sqc[0, 0, 0] - omega_sqc[0, 0, 0] * delta_sqc[0, 0, -1]
+                delta_sqc = (
+                    d_sqc[0, 0, 0] - omega_sqc[0, 0, 0] * delta_sqc[0, 0, -1]
+                )
             with computation(BACKWARD), interval(-1, None):
                 out_sqc = (
                     delta_sqc[0, 0, 0] / beta_sqc[0, 0, 0]
@@ -747,7 +769,9 @@ class IsentropicImplicitVerticalAdvectionDiagnostic(ImplicitTendencyComponent):
                     (delta_sqc[0, 0, 0] - c_sqc[0, 0, 0] * out_sqc[0, 0, 1])
                     / beta_sqc[0, 0, 0]
                     if beta_sqc[0, 0, 0] != 0.0
-                    else (delta_sqc[0, 0, 0] - c_sqc[0, 0, 0] * out_sqc[0, 0, 1])
+                    else (
+                        delta_sqc[0, 0, 0] - c_sqc[0, 0, 0] * out_sqc[0, 0, 1]
+                    )
                 )
 
             #
@@ -773,7 +797,9 @@ class IsentropicImplicitVerticalAdvectionDiagnostic(ImplicitTendencyComponent):
                     else a_sqr[0, 0, 0]
                 )
                 beta_sqr = 1.0 - omega_sqr[0, 0, 0] * c_sqr[0, 0, -1]
-                delta_sqr = d_sqr[0, 0, 0] - omega_sqr[0, 0, 0] * delta_sqr[0, 0, -1]
+                delta_sqr = (
+                    d_sqr[0, 0, 0] - omega_sqr[0, 0, 0] * delta_sqr[0, 0, -1]
+                )
             with computation(BACKWARD), interval(-1, None):
                 out_sqr = (
                     delta_sqr[0, 0, 0] / beta_sqr[0, 0, 0]
@@ -785,7 +811,9 @@ class IsentropicImplicitVerticalAdvectionDiagnostic(ImplicitTendencyComponent):
                     (delta_sqr[0, 0, 0] - c_sqr[0, 0, 0] * out_sqr[0, 0, 1])
                     / beta_sqr[0, 0, 0]
                     if beta_sqr[0, 0, 0] != 0.0
-                    else (delta_sqr[0, 0, 0] - c_sqr[0, 0, 0] * out_sqr[0, 0, 1])
+                    else (
+                        delta_sqr[0, 0, 0] - c_sqr[0, 0, 0] * out_sqr[0, 0, 1]
+                    )
                 )
 
         # calculate the output mass fraction of the water species
@@ -807,12 +835,11 @@ class IsentropicImplicitVerticalAdvectionPrognostic(ImplicitTendencyComponent):
         domain: "Domain",
         moist: bool = False,
         tendency_of_air_potential_temperature_on_interface_levels: bool = False,
-        gt_powered: bool = True,
         *,
         backend: str = "numpy",
         backend_opts: Optional[taz_types.options_dict_t] = None,
-        build_info: Optional[taz_types.options_dict_t] = None,
         dtype: taz_types.dtype_t = np.float64,
+        build_info: Optional[taz_types.options_dict_t] = None,
         exec_info: Optional[taz_types.mutable_options_dict_t] = None,
         default_origin: Optional[taz_types.triplet_int_t] = None,
         rebuild: bool = False,
@@ -832,29 +859,31 @@ class IsentropicImplicitVerticalAdvectionPrognostic(ImplicitTendencyComponent):
             ``True`` if the input tendency of air potential temperature
             is defined at the interface levels, ``False`` otherwise.
             Defaults to ``False``.
-        gt_powered : `bool`, optional
-            TODO
         backend : `str`, optional
-            The GT4Py backend.
+            The backend.
         backend_opts : `dict`, optional
             Dictionary of backend-specific options.
-        build_info : `dict`, optional
-            Dictionary of building options.
         dtype : `data-type`, optional
             Data type of the storages.
+        build_info : `dict`, optional
+            Dictionary of building options.
         exec_info : `dict`, optional
-            Dictionary which will store statistics and diagnostics gathered at run time.
+            Dictionary which will store statistics and diagnostics gathered at
+            run time.
         default_origin : `tuple[int]`, optional
             Storage default origin.
         rebuild : `bool`, optional
-            ``True`` to trigger the stencils compilation at any class instantiation,
-            ``False`` to rely on the caching mechanism implemented by GT4Py.
+            ``True`` to trigger the stencils compilation at any class
+            instantiation, ``False`` to rely on the caching mechanism
+            implemented by the backend.
         storage_shape : `tuple[int]`, optional
             Shape of the storages.
         managed_memory : `bool`, optional
-            ``True`` to allocate the storages as managed memory, ``False`` otherwise.
+            ``True`` to allocate the storages as managed memory,
+            ``False`` otherwise.
         **kwargs :
-            Additional keyword arguments to be directly forwarded to the parent class.
+            Additional keyword arguments to be directly forwarded to the parent
+            class.
         """
         # keep track of the input arguments needed at run-time
         self._moist = moist
@@ -866,7 +895,9 @@ class IsentropicImplicitVerticalAdvectionPrognostic(ImplicitTendencyComponent):
 
         # set the storage shape
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
-        storage_shape = (nx, ny, nz + 1) if storage_shape is None else storage_shape
+        storage_shape = (
+            (nx, ny, nz + 1) if storage_shape is None else storage_shape
+        )
         error_msg = "storage_shape must be larger or equal than {}.".format(
             (nx, ny, nz + 1)
         )
@@ -877,7 +908,6 @@ class IsentropicImplicitVerticalAdvectionPrognostic(ImplicitTendencyComponent):
         # allocate the gt4py storages collecting the stencil outputs
         self._tnd_s = zeros(
             storage_shape,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -885,7 +915,6 @@ class IsentropicImplicitVerticalAdvectionPrognostic(ImplicitTendencyComponent):
         )
         self._tnd_su = zeros(
             storage_shape,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -893,7 +922,6 @@ class IsentropicImplicitVerticalAdvectionPrognostic(ImplicitTendencyComponent):
         )
         self._tnd_sv = zeros(
             storage_shape,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -902,7 +930,6 @@ class IsentropicImplicitVerticalAdvectionPrognostic(ImplicitTendencyComponent):
         if moist:
             self._tnd_qv = zeros(
                 storage_shape,
-                gt_powered=gt_powered,
                 backend=backend,
                 dtype=dtype,
                 default_origin=default_origin,
@@ -910,7 +937,6 @@ class IsentropicImplicitVerticalAdvectionPrognostic(ImplicitTendencyComponent):
             )
             self._tnd_qc = zeros(
                 storage_shape,
-                gt_powered=gt_powered,
                 backend=backend,
                 dtype=dtype,
                 default_origin=default_origin,
@@ -918,14 +944,13 @@ class IsentropicImplicitVerticalAdvectionPrognostic(ImplicitTendencyComponent):
             )
             self._tnd_qr = zeros(
                 storage_shape,
-                gt_powered=gt_powered,
                 backend=backend,
                 dtype=dtype,
                 default_origin=default_origin,
                 managed_memory=managed_memory,
             )
 
-        if gt_powered:
+        if is_gt(backend):
             # instantiate the underlying stencil object
             externals = {
                 "moist": moist,
@@ -935,7 +960,7 @@ class IsentropicImplicitVerticalAdvectionPrognostic(ImplicitTendencyComponent):
             }
             self._stencil = gtscript.stencil(
                 definition=self._stencil_gt_defs,
-                backend=backend,
+                backend=get_gt_backend(backend),
                 build_info=build_info,
                 dtypes={"dtype": dtype},
                 externals=externals,
@@ -952,8 +977,14 @@ class IsentropicImplicitVerticalAdvectionPrognostic(ImplicitTendencyComponent):
 
         return_dict = {
             "air_isentropic_density": {"dims": dims, "units": "kg m^-2 K^-1"},
-            "x_momentum_isentropic": {"dims": dims, "units": "kg m^-1 K^-1 s^-1"},
-            "y_momentum_isentropic": {"dims": dims, "units": "kg m^-1 K^-1 s^-1"},
+            "x_momentum_isentropic": {
+                "dims": dims,
+                "units": "kg m^-1 K^-1 s^-1",
+            },
+            "y_momentum_isentropic": {
+                "dims": dims,
+                "units": "kg m^-1 K^-1 s^-1",
+            },
         }
 
         if self._stgz:
@@ -962,7 +993,9 @@ class IsentropicImplicitVerticalAdvectionPrognostic(ImplicitTendencyComponent):
                 grid.y.dims[0],
                 grid.z_on_interface_levels.dims[0],
             )
-            return_dict["tendency_of_air_potential_temperature_on_interface_levels"] = {
+            return_dict[
+                "tendency_of_air_potential_temperature_on_interface_levels"
+            ] = {
                 "dims": dims_stgz,
                 "units": "K s^-1",
             }
@@ -994,9 +1027,18 @@ class IsentropicImplicitVerticalAdvectionPrognostic(ImplicitTendencyComponent):
         dims = (grid.x.dims[0], grid.y.dims[0], grid.z.dims[0])
 
         return_dict = {
-            "air_isentropic_density": {"dims": dims, "units": "kg m^-2 K^-1 s^-1"},
-            "x_momentum_isentropic": {"dims": dims, "units": "kg m^-1 K^-1 s^-2"},
-            "y_momentum_isentropic": {"dims": dims, "units": "kg m^-1 K^-1 s^-2"},
+            "air_isentropic_density": {
+                "dims": dims,
+                "units": "kg m^-2 K^-1 s^-1",
+            },
+            "x_momentum_isentropic": {
+                "dims": dims,
+                "units": "kg m^-1 K^-1 s^-2",
+            },
+            "y_momentum_isentropic": {
+                "dims": dims,
+                "units": "kg m^-1 K^-1 s^-2",
+            },
         }
         if self._moist:
             return_dict["mass_fraction_of_water_vapor_in_air"] = {
@@ -1067,7 +1109,8 @@ class IsentropicImplicitVerticalAdvectionPrognostic(ImplicitTendencyComponent):
             **stencil_args,
             origin=(0, 0, 0),
             domain=(nx, ny, nz),
-            exec_info=self._exec_info
+            exec_info=self._exec_info,
+            validate_args=True
         )
 
         # collect the output arrays in a dictionary
@@ -1186,7 +1229,9 @@ class IsentropicImplicitVerticalAdvectionPrognostic(ImplicitTendencyComponent):
 
             # solve the tridiagonal system
             out_sqv = np.zeros_like(sqv)
-            thomas_numpy(a, b, c, d, out_sqv, i=i, j=j, kstart=kstart, kstop=kstop)
+            thomas_numpy(
+                a, b, c, d, out_sqv, i=i, j=j, kstart=kstart, kstop=kstop
+            )
 
             #
             # isentropic density of cloud liquid water
@@ -1198,7 +1243,9 @@ class IsentropicImplicitVerticalAdvectionPrognostic(ImplicitTendencyComponent):
 
             # solve the tridiagonal system
             out_sqc = np.zeros_like(sqc)
-            thomas_numpy(a, b, c, d, out_sqc, i=i, j=j, kstart=kstart, kstop=kstop)
+            thomas_numpy(
+                a, b, c, d, out_sqc, i=i, j=j, kstart=kstart, kstop=kstop
+            )
 
             #
             # isentropic density of precipitation water
@@ -1210,7 +1257,9 @@ class IsentropicImplicitVerticalAdvectionPrognostic(ImplicitTendencyComponent):
 
             # solve the tridiagonal system
             out_sqr = np.zeros_like(sqr)
-            thomas_numpy(a, b, c, d, out_sqr, i=i, j=j, kstart=kstart, kstop=kstop)
+            thomas_numpy(
+                a, b, c, d, out_sqr, i=i, j=j, kstart=kstart, kstop=kstop
+            )
 
         # compute the tendencies
         tnd_s[i, j, kstart:kstop] = (
@@ -1308,7 +1357,8 @@ class IsentropicImplicitVerticalAdvectionPrognostic(ImplicitTendencyComponent):
             )
         with computation(BACKWARD), interval(0, -1):
             out_s = (
-                (delta_s[0, 0, 0] - c_s[0, 0, 0] * out_s[0, 0, 1]) / beta_s[0, 0, 0]
+                (delta_s[0, 0, 0] - c_s[0, 0, 0] * out_s[0, 0, 1])
+                / beta_s[0, 0, 0]
                 if beta_s[0, 0, 0] != 0.0
                 else (delta_s[0, 0, 0] - c_s[0, 0, 0] * out_s[0, 0, 1])
             )
@@ -1345,7 +1395,8 @@ class IsentropicImplicitVerticalAdvectionPrognostic(ImplicitTendencyComponent):
             )
         with computation(BACKWARD), interval(0, -1):
             out_su = (
-                (delta_su[0, 0, 0] - c_su[0, 0, 0] * out_su[0, 0, 1]) / beta_su[0, 0, 0]
+                (delta_su[0, 0, 0] - c_su[0, 0, 0] * out_su[0, 0, 1])
+                / beta_su[0, 0, 0]
                 if beta_su[0, 0, 0] != 0.0
                 else (delta_su[0, 0, 0] - c_su[0, 0, 0] * out_su[0, 0, 1])
             )
@@ -1382,7 +1433,8 @@ class IsentropicImplicitVerticalAdvectionPrognostic(ImplicitTendencyComponent):
             )
         with computation(BACKWARD), interval(0, -1):
             out_sv = (
-                (delta_sv[0, 0, 0] - c_sv[0, 0, 0] * out_sv[0, 0, 1]) / beta_sv[0, 0, 0]
+                (delta_sv[0, 0, 0] - c_sv[0, 0, 0] * out_sv[0, 0, 1])
+                / beta_sv[0, 0, 0]
                 if beta_sv[0, 0, 0] != 0.0
                 else (delta_sv[0, 0, 0] - c_sv[0, 0, 0] * out_sv[0, 0, 1])
             )
@@ -1411,7 +1463,9 @@ class IsentropicImplicitVerticalAdvectionPrognostic(ImplicitTendencyComponent):
                     else a_sqv[0, 0, 0]
                 )
                 beta_sqv = 1.0 - omega_sqv[0, 0, 0] * c_sqv[0, 0, -1]
-                delta_sqv = d_sqv[0, 0, 0] - omega_sqv[0, 0, 0] * delta_sqv[0, 0, -1]
+                delta_sqv = (
+                    d_sqv[0, 0, 0] - omega_sqv[0, 0, 0] * delta_sqv[0, 0, -1]
+                )
             with computation(BACKWARD), interval(-1, None):
                 out_sqv = (
                     delta_sqv[0, 0, 0] / beta_sqv[0, 0, 0]
@@ -1423,7 +1477,9 @@ class IsentropicImplicitVerticalAdvectionPrognostic(ImplicitTendencyComponent):
                     (delta_sqv[0, 0, 0] - c_sqv[0, 0, 0] * out_sqv[0, 0, 1])
                     / beta_sqv[0, 0, 0]
                     if beta_sqv[0, 0, 0] != 0.0
-                    else (delta_sqv[0, 0, 0] - c_sqv[0, 0, 0] * out_sqv[0, 0, 1])
+                    else (
+                        delta_sqv[0, 0, 0] - c_sqv[0, 0, 0] * out_sqv[0, 0, 1]
+                    )
                 )
 
             #
@@ -1449,7 +1505,9 @@ class IsentropicImplicitVerticalAdvectionPrognostic(ImplicitTendencyComponent):
                     else a_sqc[0, 0, 0]
                 )
                 beta_sqc = 1.0 - omega_sqc[0, 0, 0] * c_sqc[0, 0, -1]
-                delta_sqc = d_sqc[0, 0, 0] - omega_sqc[0, 0, 0] * delta_sqc[0, 0, -1]
+                delta_sqc = (
+                    d_sqc[0, 0, 0] - omega_sqc[0, 0, 0] * delta_sqc[0, 0, -1]
+                )
             with computation(BACKWARD), interval(-1, None):
                 out_sqc = (
                     delta_sqc[0, 0, 0] / beta_sqc[0, 0, 0]
@@ -1461,7 +1519,9 @@ class IsentropicImplicitVerticalAdvectionPrognostic(ImplicitTendencyComponent):
                     (delta_sqc[0, 0, 0] - c_sqc[0, 0, 0] * out_sqc[0, 0, 1])
                     / beta_sqc[0, 0, 0]
                     if beta_sqc[0, 0, 0] != 0.0
-                    else (delta_sqc[0, 0, 0] - c_sqc[0, 0, 0] * out_sqc[0, 0, 1])
+                    else (
+                        delta_sqc[0, 0, 0] - c_sqc[0, 0, 0] * out_sqc[0, 0, 1]
+                    )
                 )
 
             #
@@ -1487,7 +1547,9 @@ class IsentropicImplicitVerticalAdvectionPrognostic(ImplicitTendencyComponent):
                     else a_sqr[0, 0, 0]
                 )
                 beta_sqr = 1.0 - omega_sqr[0, 0, 0] * c_sqr[0, 0, -1]
-                delta_sqr = d_sqr[0, 0, 0] - omega_sqr[0, 0, 0] * delta_sqr[0, 0, -1]
+                delta_sqr = (
+                    d_sqr[0, 0, 0] - omega_sqr[0, 0, 0] * delta_sqr[0, 0, -1]
+                )
             with computation(BACKWARD), interval(-1, None):
                 out_sqr = (
                     delta_sqr[0, 0, 0] / beta_sqr[0, 0, 0]
@@ -1499,7 +1561,9 @@ class IsentropicImplicitVerticalAdvectionPrognostic(ImplicitTendencyComponent):
                     (delta_sqr[0, 0, 0] - c_sqr[0, 0, 0] * out_sqr[0, 0, 1])
                     / beta_sqr[0, 0, 0]
                     if beta_sqr[0, 0, 0] != 0.0
-                    else (delta_sqr[0, 0, 0] - c_sqr[0, 0, 0] * out_sqr[0, 0, 1])
+                    else (
+                        delta_sqr[0, 0, 0] - c_sqr[0, 0, 0] * out_sqr[0, 0, 1]
+                    )
                 )
 
         # compute the tendencies

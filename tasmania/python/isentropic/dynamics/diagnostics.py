@@ -25,13 +25,12 @@ import numpy as np
 from sympl import DataArray
 from typing import Mapping, Optional, TYPE_CHECKING
 
-from gt4py import gtscript, __externals__
-
-# from gt4py.__gtscript__ import computation, interval, PARALLEL, FORWARD, BACKWARD
+from gt4py import gtscript
 
 from tasmania.python.utils import taz_types
 from tasmania.python.utils.data_utils import get_physical_constants
 from tasmania.python.utils.storage_utils import get_asarray_function, zeros
+from tasmania.python.utils.utils import get_gt_backend, is_gt
 
 if TYPE_CHECKING:
     from tasmania.python.domain.grid import Grid
@@ -46,8 +45,12 @@ class IsentropicDiagnostics:
     # Default values for the physical constants used in the class
     _d_physical_constants = {
         "air_pressure_at_sea_level": DataArray(1e5, attrs={"units": "Pa"}),
-        "gas_constant_of_dry_air": DataArray(287.05, attrs={"units": "J K^-1 kg^-1"}),
-        "gravitational_acceleration": DataArray(9.80665, attrs={"units": "m s^-2"}),
+        "gas_constant_of_dry_air": DataArray(
+            287.05, attrs={"units": "J K^-1 kg^-1"}
+        ),
+        "gravitational_acceleration": DataArray(
+            9.80665, attrs={"units": "m s^-2"}
+        ),
         "specific_heat_of_dry_air_at_constant_pressure": DataArray(
             1004.0, attrs={"units": "J K^-1 kg^-1"}
         ),
@@ -57,12 +60,11 @@ class IsentropicDiagnostics:
         self,
         grid: "Grid",
         physical_constants: Optional[Mapping[str, DataArray]] = None,
-        gt_powered: bool = True,
         *,
         backend: str = "numpy",
         backend_opts: Optional[taz_types.options_dict_t] = None,
-        build_info: Optional[taz_types.options_dict_t] = None,
         dtype: taz_types.dtype_t = np.float64,
+        build_info: Optional[taz_types.options_dict_t] = None,
         exec_info: Optional[taz_types.mutable_options_dict_t] = None,
         default_origin: Optional[taz_types.triplet_int_t] = None,
         rebuild: bool = False,
@@ -80,37 +82,39 @@ class IsentropicDiagnostics:
             storing the values and units of those constants. The constants might be:
 
                 * 'air_pressure_at_sea_level', in units compatible with [Pa];
-                * 'gas_constant_of_dry_air', in units compatible with \
+                * 'gas_constant_of_dry_air', in units compatible with
                     [J K^-1 kg^-1];
-                * 'gravitational acceleration', in units compatible with [m s^-2].
-                * 'specific_heat_of_dry_air_at_constant_pressure', in units compatible \
-                    with [J K^-1 kg^-1].
+                * 'gravitational acceleration', in units compatible with
+                    [m s^-2];
+                * 'specific_heat_of_dry_air_at_constant_pressure', in units
+                    compatible with [J K^-1 kg^-1].
 
             Please refer to
             :func:`tasmania.utils.data_utils.get_physical_constants` and
             :obj:`tasmania.IsentropicDiagnostics._d_physical_constants`
             for the default values.
-        gt_powered : `bool`, True
-            ``True`` to harness GT4Py, ``False`` for a vanilla Numpy implementation.
         backend : `str`, optional
-            The GT4Py backend.
+            The backend.
         backend_opts : `dict`, optional
             Dictionary of backend-specific options.
-        build_info : `dict`, optional
-            Dictionary of building options.
         dtype : `data-type`, optional
             Data type of the storages.
+        build_info : `dict`, optional
+            Dictionary of building options.
         exec_info : `dict`, optional
-            Dictionary which will store statistics and diagnostics gathered at run time.
+            Dictionary which will store statistics and diagnostics gathered at
+            run time.
         default_origin : `tuple[int]`, optional
             Storage default origin.
         rebuild : `bool`, optional
-            ``True`` to trigger the stencils compilation at any class instantiation,
-            ``False`` to rely on the caching mechanism implemented by GT4Py.
+            ``True`` to trigger the stencils compilation at any class
+            instantiation, ``False`` to rely on the caching mechanism
+            implemented by the backend.
         storage_shape : `tuple[int]`, optional
             Shape of the storages.
         managed_memory : `bool`, optional
-            ``True`` to allocate the storages as managed memory, ``False`` otherwise.
+            ``True`` to allocate the storages as managed memory,
+            ``False`` otherwise.
         """
         # store the input arguments needed at run-time
         self._grid = grid
@@ -119,13 +123,17 @@ class IsentropicDiagnostics:
         self._exec_info = exec_info
 
         # set the values of the physical constants
-        pcs = get_physical_constants(self._d_physical_constants, physical_constants)
+        pcs = get_physical_constants(
+            self._d_physical_constants, physical_constants
+        )
         self._pcs = pcs
 
         # set storage shape
         nx, ny, nz = grid.nx, grid.ny, grid.nz
         storage_shape = (
-            (nx + 1, ny + 1, nz + 1) if storage_shape is None else storage_shape
+            (nx + 1, ny + 1, nz + 1)
+            if storage_shape is None
+            else storage_shape
         )
         error_msg = "storage_shape must be larger or equal than {}.".format(
             (nx, ny, nz + 1)
@@ -135,12 +143,11 @@ class IsentropicDiagnostics:
         assert storage_shape[2] >= nz + 1, error_msg
 
         # get proper asarray function
-        self._asarray = get_asarray_function(gt_powered, backend)
+        self._asarray = get_asarray_function(backend)
 
         # allocate auxiliary fields
         self._theta = zeros(
             storage_shape,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -148,11 +155,12 @@ class IsentropicDiagnostics:
             managed_memory=managed_memory,
         )
         self._theta[:nx, :ny, : nz + 1] = self._asarray(
-            grid.z_on_interface_levels.to_units("K").values[np.newaxis, np.newaxis, :]
+            grid.z_on_interface_levels.to_units("K").values[
+                np.newaxis, np.newaxis, :
+            ]
         )
         self._topo = zeros(
             storage_shape,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -168,10 +176,10 @@ class IsentropicDiagnostics:
         }
 
         # instantiate the underlying stencils
-        if gt_powered:
+        if is_gt(backend):
             self._stencil_diagnostic_variables = gtscript.stencil(
                 definition=self._stencil_diagnostic_variables_gt_defs,
-                backend=backend,
+                backend=get_gt_backend(backend),
                 build_info=build_info,
                 rebuild=rebuild,
                 dtypes={"dtype": dtype},
@@ -180,7 +188,7 @@ class IsentropicDiagnostics:
             )
             self._stencil_density_and_temperature = gtscript.stencil(
                 definition=self._stencil_density_and_temperature_gt_defs,
-                backend=backend,
+                backend=get_gt_backend(backend),
                 build_info=build_info,
                 rebuild=rebuild,
                 dtypes={"dtype": dtype},
@@ -189,7 +197,7 @@ class IsentropicDiagnostics:
             )
             self._stencil_montgomery = gtscript.stencil(
                 definition=self._stencil_montgomery_gt_defs,
-                backend=backend,
+                backend=get_gt_backend(backend),
                 build_info=build_info,
                 rebuild=rebuild,
                 dtypes={"dtype": dtype},
@@ -198,7 +206,7 @@ class IsentropicDiagnostics:
             )
             self._stencil_height = gtscript.stencil(
                 definition=self._stencil_height_gt_defs,
-                backend=backend,
+                backend=get_gt_backend(backend),
                 build_info=build_info,
                 rebuild=rebuild,
                 dtypes={"dtype": dtype},
@@ -206,7 +214,9 @@ class IsentropicDiagnostics:
                 **(backend_opts or {})
             )
         else:
-            self._stencil_diagnostic_variables = self._stencil_diagnostic_variables_numpy
+            self._stencil_diagnostic_variables = (
+                self._stencil_diagnostic_variables_numpy
+            )
             self._stencil_density_and_temperature = (
                 self._stencil_density_and_temperature_numpy
             )
@@ -215,12 +225,12 @@ class IsentropicDiagnostics:
 
     def get_diagnostic_variables(
         self,
-        s: taz_types.gtstorage_t,
+        s: taz_types.array_t,
         pt: float,
-        p: taz_types.gtstorage_t,
-        exn: taz_types.gtstorage_t,
-        mtg: taz_types.gtstorage_t,
-        h: taz_types.gtstorage_t,
+        p: taz_types.array_t,
+        exn: taz_types.array_t,
+        mtg: taz_types.array_t,
+        h: taz_types.array_t,
     ) -> None:
         """
         With the help of the isentropic density and the upper boundary
@@ -230,19 +240,19 @@ class IsentropicDiagnostics:
 
         Parameters
         ----------
-        s : gt4py.storage.storage.Storage
+        s : array-like
             The isentropic density, in units of [kg m^-2 K^-1].
         pt : float
             The upper boundary condition on the pressure distribution,
             in units of [Pa].
-        p : gt4py.storage.storage.Storage
+        p : array-like
             The buffer for the pressure at the interface levels, in units of [Pa].
-        exn : gt4py.storage.storage.Storage
+        exn : array-like
             The buffer for the Exner function at the interface levels,
             in units of [J K^-1 kg^-1].
-        mtg : gt4py.storage.storage.Storage
+        mtg : array-like
             The buffer for the Montgomery potential, in units of [J kg^-1].
-        h : gt4py.storage.storage.Storage
+        h : array-like
             The buffer for the geometric height of the interface levels,
             in units of [m].
         """
@@ -269,6 +279,7 @@ class IsentropicDiagnostics:
             origin=(0, 0, 0),
             domain=(nx, ny, nz + 1),
             exec_info=self._exec_info,
+            validate_args=True,
         )
 
     def get_montgomery_potential(
@@ -281,12 +292,12 @@ class IsentropicDiagnostics:
 
         Parameters
         ----------
-        s : gt4py.storage.storage.Storage
+        s : array-like
             The isentropic density, in units of [kg m^-2 K^-1].
         pt : float
             The upper boundary condition on the pressure distribution,
             in units of [Pa].
-        mtg : gt4py.storage.storage.Storage
+        mtg : array-like
             The buffer for the Montgomery potential, in units of [J kg^-1].
         """
         # shortcuts
@@ -310,6 +321,7 @@ class IsentropicDiagnostics:
             origin=(0, 0, 0),
             domain=(nx, ny, nz + 1),
             exec_info=self._exec_info,
+            validate_args=True,
         )
 
     def get_height(
@@ -322,12 +334,12 @@ class IsentropicDiagnostics:
 
         Parameters
         ----------
-        s : gt4py.storage.storage.Storage
+        s : array-like
             The isentropic density, in units of [kg m^-2 K^-1].
         pt : float
             The upper boundary condition on the pressure distribution,
             in units of [Pa].
-        h : gt4py.storage.storage.Storage
+        h : array-like
             The buffer for the geometric height of the interface levels,
             in units of [m].
         """
@@ -351,6 +363,7 @@ class IsentropicDiagnostics:
             origin=(0, 0, 0),
             domain=(nx, ny, nz + 1),
             exec_info=self._exec_info,
+            validate_args=True,
         )
 
     def get_density_and_temperature(
@@ -367,16 +380,16 @@ class IsentropicDiagnostics:
 
         Parameters
         ----------
-        s : gt4py.storage.storage.Storage
+        s : array-like
             The isentropic density, in units of [kg m^-2 K^-1].
-        exn : gt4py.storage.storage.Storage
+        exn : array-like
             The buffer for the Exner function at the interface levels,
             in units of [J K^-1 kg^-1].
-        h : gt4py.storage.storage.Storage
+        h : array-like
             The geometric height of the interface levels, in units of [m].
-        rho : gt4py.storage.storage.Storage
+        rho : array-like
             The buffer for the air density, in units of [kg m^-3].
-        t : gt4py.storage.storage.Storage
+        t : array-like
             The buffer for the air temperature, in units of [K].
         """
         # shortcuts
@@ -393,6 +406,7 @@ class IsentropicDiagnostics:
             origin=(0, 0, 0),
             domain=(nx, ny, nz),
             exec_info=self._exec_info,
+            validate_args=True,
         )
 
     def _stencil_diagnostic_variables_numpy(
@@ -423,21 +437,27 @@ class IsentropicDiagnostics:
         # retrieve the pressure
         inout_p[i, j, kstart] = pt
         for k in range(kstart + 1, kstop):
-            inout_p[i, j, k] = inout_p[i, j, k - 1] + g * dz * in_s[i, j, k - 1]
+            inout_p[i, j, k] = (
+                inout_p[i, j, k - 1] + g * dz * in_s[i, j, k - 1]
+            )
 
         # compute the Exner function
-        out_exn[i, j, kstart:kstop] = cp * (inout_p[i, j, kstart:kstop] / pref) ** (
-            rd / cp
-        )
+        out_exn[i, j, kstart:kstop] = cp * (
+            inout_p[i, j, kstart:kstop] / pref
+        ) ** (rd / cp)
 
         # compute the Montgomery potential
         mtg_s = (
             in_theta[i, j, kstop - 1] * out_exn[i, j, kstop - 1]
             + g * in_hs[i, j, kstop - 1]
         )
-        inout_mtg[i, j, kstop - 2] = mtg_s + 0.5 * dz * out_exn[i, j, kstop - 1]
+        inout_mtg[i, j, kstop - 2] = (
+            mtg_s + 0.5 * dz * out_exn[i, j, kstop - 1]
+        )
         for k in range(kstop - 3, kstart - 1, -1):
-            inout_mtg[i, j, k] = inout_mtg[i, j, k + 1] + dz * out_exn[i, j, k + 1]
+            inout_mtg[i, j, k] = (
+                inout_mtg[i, j, k + 1] + dz * out_exn[i, j, k + 1]
+            )
 
         # compute the geometric height of the isentropes
         inout_h[i, j, kstop - 1] = in_hs[i, j, kstop - 1]
@@ -595,7 +615,9 @@ class IsentropicDiagnostics:
             inout_h[i, j, k] = inout_h[i, j, k + 1] - rd * (
                 in_theta[i, j, k] * exn[i, j, k]
                 + in_theta[i, j, k + 1] * exn[i, j, k + 1]
-            ) * (p[i, j, k] - p[i, j, k + 1]) / (cp * g * (p[i, j, k] + p[i, j, k + 1]))
+            ) * (p[i, j, k] - p[i, j, k + 1]) / (
+                cp * g * (p[i, j, k] + p[i, j, k + 1])
+            )
 
     @staticmethod
     def _stencil_height_gt_defs(

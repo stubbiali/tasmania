@@ -31,7 +31,7 @@ from tasmania.python.isentropic.physics.implicit_vertical_advection import (
 )
 from tasmania.python.utils import taz_types
 from tasmania.python.utils.framework_utils import register
-from tasmania.python.utils.utils import thomas_numpy
+from tasmania.python.utils.utils import get_gt_backend, is_gt, thomas_numpy
 
 
 mfwv = "mass_fraction_of_water_vapor_in_air"
@@ -60,7 +60,9 @@ def setup_tridiagonal_system_numpy(
     c[i, j, kstart + 1 : kstop - 1] = -gamma * w[i, j, kstart + 2 : kstop]
 
     d[i, j, kstart] = phi_prv[i, j, kstart]
-    d[i, j, kstart + 1 : kstop - 1] = phi_prv[i, j, kstart + 1 : kstop - 1] - gamma * (
+    d[i, j, kstart + 1 : kstop - 1] = phi_prv[
+        i, j, kstart + 1 : kstop - 1
+    ] - gamma * (
         w[i, j, kstart : kstop - 2] * phi[i, j, kstart : kstop - 2]
         - w[i, j, kstart + 2 : kstop] * phi[i, j, kstart + 2 : kstop]
     )
@@ -94,19 +96,18 @@ def setup_tridiagonal_system_bc(
 
 @register(name="isentropic_vertical_advection")
 class IsentropicVerticalAdvection(STSTendencyStepper):
-    """ Couple the Crank-Nicholson integrator with centered finite differences
-    in space to discretize the vertical advection in the isentropic model. """
+    """Couple the Crank-Nicholson integrator with centered finite differences
+    in space to discretize the vertical advection in the isentropic model."""
 
     def __init__(
         self,
         *args,
         execution_policy="serial",
         enforce_horizontal_boundary=False,
-        gt_powered=True,
         backend="numpy",
         backend_opts=None,
-        build_info=None,
         dtype=np.float64,
+        build_info=None,
         rebuild=False,
         **kwargs
     ):
@@ -114,7 +115,9 @@ class IsentropicVerticalAdvection(STSTendencyStepper):
         for arg in args:
             core = (
                 arg
-                if isinstance(arg, IsentropicImplicitVerticalAdvectionDiagnostic)
+                if isinstance(
+                    arg, IsentropicImplicitVerticalAdvectionDiagnostic
+                )
                 else None
             )
         assert core is not None
@@ -123,11 +126,10 @@ class IsentropicVerticalAdvection(STSTendencyStepper):
             core,
             execution_policy=execution_policy,
             enforce_horizontal_boundary=enforce_horizontal_boundary,
-            gt_powered=gt_powered,
             backend=backend,
             backend_opts=backend_opts,
-            build_info=build_info,
             dtype=dtype,
+            build_info=build_info,
             rebuild=rebuild,
         )
 
@@ -156,7 +158,7 @@ class IsentropicVerticalAdvection(STSTendencyStepper):
         self._nz = core.grid.nz
         self._dz = core.grid.dz.to_units("K").values.item()
 
-        if gt_powered:
+        if is_gt(backend):
             # instantiate stencil object
             externals = {
                 "moist": self._moist,
@@ -166,7 +168,7 @@ class IsentropicVerticalAdvection(STSTendencyStepper):
             }
             self._stencil = gtscript.stencil(
                 definition=self._stencil_gt_defs,
-                backend=backend,
+                backend=get_gt_backend(backend),
                 build_info=build_info,
                 dtypes={"dtype": dtype},
                 externals=externals,
@@ -184,7 +186,9 @@ class IsentropicVerticalAdvection(STSTendencyStepper):
         # grab arrays from input state
         in_w = (
             (
-                state["tendency_of_air_potential_temperature_on_interface_levels"]
+                state[
+                    "tendency_of_air_potential_temperature_on_interface_levels"
+                ]
                 if self._stgz
                 else state["tendency_of_air_potential_temperature"]
             )
@@ -192,17 +196,31 @@ class IsentropicVerticalAdvection(STSTendencyStepper):
             .data
         )
         in_s = state["air_isentropic_density"].to_units("kg m^-2 K^-1").data
-        in_su = state["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").data
-        in_sv = state["y_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").data
+        in_su = (
+            state["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").data
+        )
+        in_sv = (
+            state["y_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").data
+        )
         if self._moist:
             in_qv = state[mfwv].to_units("g g^-1").data
             in_qc = state[mfcw].to_units("g g^-1").data
             in_qr = state[mfpw].to_units("g g^-1").data
 
         # grab arrays from provisional state
-        in_s_prv = prv_state["air_isentropic_density"].to_units("kg m^-2 K^-1").data
-        in_su_prv = prv_state["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").data
-        in_sv_prv = prv_state["y_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").data
+        in_s_prv = (
+            prv_state["air_isentropic_density"].to_units("kg m^-2 K^-1").data
+        )
+        in_su_prv = (
+            prv_state["x_momentum_isentropic"]
+            .to_units("kg m^-1 K^-1 s^-1")
+            .data
+        )
+        in_sv_prv = (
+            prv_state["y_momentum_isentropic"]
+            .to_units("kg m^-1 K^-1 s^-1")
+            .data
+        )
         if self._moist:
             in_qv_prv = prv_state[mfwv].to_units("g g^-1").data
             in_qc_prv = prv_state[mfcw].to_units("g g^-1").data
@@ -248,7 +266,10 @@ class IsentropicVerticalAdvection(STSTendencyStepper):
 
         # run the stencil
         self._stencil(
-            **stencil_args, origin=(0, 0, 0), domain=(self._nx, self._ny, self._nz)
+            **stencil_args,
+            origin=(0, 0, 0),
+            domain=(self._nx, self._ny, self._nz),
+            validate_args=True
         )
 
         return {}, out_state
@@ -332,7 +353,17 @@ class IsentropicVerticalAdvection(STSTendencyStepper):
         c = np.zeros_like(in_s)
         d = np.zeros_like(in_s)
         setup_tridiagonal_system_numpy(
-            gamma, w, in_s, in_s_prv, a, c, d, i=i, j=j, kstart=kstart, kstop=kstop
+            gamma,
+            w,
+            in_s,
+            in_s_prv,
+            a,
+            c,
+            d,
+            i=i,
+            j=j,
+            kstart=kstart,
+            kstop=kstop,
         )
 
         # solve the tridiagonal system
@@ -343,7 +374,17 @@ class IsentropicVerticalAdvection(STSTendencyStepper):
         #
         # set up the tridiagonal system
         setup_tridiagonal_system_numpy(
-            gamma, w, in_su, in_su_prv, a, c, d, i=i, j=j, kstart=kstart, kstop=kstop
+            gamma,
+            w,
+            in_su,
+            in_su_prv,
+            a,
+            c,
+            d,
+            i=i,
+            j=j,
+            kstart=kstart,
+            kstop=kstop,
         )
 
         # solve the tridiagonal system
@@ -354,7 +395,17 @@ class IsentropicVerticalAdvection(STSTendencyStepper):
         #
         # set up the tridiagonal system
         setup_tridiagonal_system_numpy(
-            gamma, w, in_sv, in_sv_prv, a, c, d, i=i, j=j, kstart=kstart, kstop=kstop
+            gamma,
+            w,
+            in_sv,
+            in_sv_prv,
+            a,
+            c,
+            d,
+            i=i,
+            j=j,
+            kstart=kstart,
+            kstop=kstop,
         )
 
         # solve the tridiagonal system
@@ -366,36 +417,72 @@ class IsentropicVerticalAdvection(STSTendencyStepper):
             #
             # set up the tridiagonal system
             setup_tridiagonal_system_numpy(
-                gamma, w, sqv, sqv_prv, a, c, d, i=i, j=j, kstart=kstart, kstop=kstop
+                gamma,
+                w,
+                sqv,
+                sqv_prv,
+                a,
+                c,
+                d,
+                i=i,
+                j=j,
+                kstart=kstart,
+                kstop=kstop,
             )
 
             # solve the tridiagonal system
             out_sqv = np.zeros_like(sqv)
-            thomas_numpy(a, b, c, d, out_sqv, i=i, j=j, kstart=kstart, kstop=kstop)
+            thomas_numpy(
+                a, b, c, d, out_sqv, i=i, j=j, kstart=kstart, kstop=kstop
+            )
 
             #
             # isentropic density of cloud liquid water
             #
             # set up the tridiagonal system
             setup_tridiagonal_system_numpy(
-                gamma, w, sqc, sqc_prv, a, c, d, i=i, j=j, kstart=kstart, kstop=kstop
+                gamma,
+                w,
+                sqc,
+                sqc_prv,
+                a,
+                c,
+                d,
+                i=i,
+                j=j,
+                kstart=kstart,
+                kstop=kstop,
             )
 
             # solve the tridiagonal system
             out_sqc = np.zeros_like(sqc)
-            thomas_numpy(a, b, c, d, out_sqc, i=i, j=j, kstart=kstart, kstop=kstop)
+            thomas_numpy(
+                a, b, c, d, out_sqc, i=i, j=j, kstart=kstart, kstop=kstop
+            )
 
             #
             # isentropic density of precipitation water
             #
             # set up the tridiagonal system
             setup_tridiagonal_system_numpy(
-                gamma, w, sqr, sqr_prv, a, c, d, i=i, j=j, kstart=kstart, kstop=kstop
+                gamma,
+                w,
+                sqr,
+                sqr_prv,
+                a,
+                c,
+                d,
+                i=i,
+                j=j,
+                kstart=kstart,
+                kstop=kstop,
             )
 
             # solve the tridiagonal system
             out_sqr = np.zeros_like(sqr)
-            thomas_numpy(a, b, c, d, out_sqr, i=i, j=j, kstart=kstart, kstop=kstop)
+            thomas_numpy(
+                a, b, c, d, out_sqr, i=i, j=j, kstart=kstart, kstop=kstop
+            )
 
             #
             # mass fraction of the water species
@@ -490,7 +577,8 @@ class IsentropicVerticalAdvection(STSTendencyStepper):
             )
         with computation(BACKWARD), interval(0, -1):
             out_s = (
-                (delta_s[0, 0, 0] - c_s[0, 0, 0] * out_s[0, 0, 1]) / beta_s[0, 0, 0]
+                (delta_s[0, 0, 0] - c_s[0, 0, 0] * out_s[0, 0, 1])
+                / beta_s[0, 0, 0]
                 if beta_s[0, 0, 0] != 0.0
                 else (delta_s[0, 0, 0] - c_s[0, 0, 0] * out_s[0, 0, 1])
             )
@@ -502,7 +590,9 @@ class IsentropicVerticalAdvection(STSTendencyStepper):
         with computation(PARALLEL), interval(0, 1):
             a_su, c_su, d_su = setup_tridiagonal_system_bc(in_su_prv)
         with computation(PARALLEL), interval(1, -1):
-            a_su, c_su, d_su = setup_tridiagonal_system(gamma, w, in_su, in_su_prv)
+            a_su, c_su, d_su = setup_tridiagonal_system(
+                gamma, w, in_su, in_su_prv
+            )
         with computation(PARALLEL), interval(-1, None):
             a_su, c_su, d_su = setup_tridiagonal_system_bc(in_su_prv)
 
@@ -527,7 +617,8 @@ class IsentropicVerticalAdvection(STSTendencyStepper):
             )
         with computation(BACKWARD), interval(0, -1):
             out_su = (
-                (delta_su[0, 0, 0] - c_su[0, 0, 0] * out_su[0, 0, 1]) / beta_su[0, 0, 0]
+                (delta_su[0, 0, 0] - c_su[0, 0, 0] * out_su[0, 0, 1])
+                / beta_su[0, 0, 0]
                 if beta_su[0, 0, 0] != 0.0
                 else (delta_su[0, 0, 0] - c_su[0, 0, 0] * out_su[0, 0, 1])
             )
@@ -539,7 +630,9 @@ class IsentropicVerticalAdvection(STSTendencyStepper):
         with computation(PARALLEL), interval(0, 1):
             a_sv, c_sv, d_sv = setup_tridiagonal_system_bc(in_sv_prv)
         with computation(PARALLEL), interval(1, -1):
-            a_sv, c_sv, d_sv = setup_tridiagonal_system(gamma, w, in_sv, in_sv_prv)
+            a_sv, c_sv, d_sv = setup_tridiagonal_system(
+                gamma, w, in_sv, in_sv_prv
+            )
         with computation(PARALLEL), interval(-1, None):
             a_sv, c_sv, d_sv = setup_tridiagonal_system_bc(in_sv_prv)
 
@@ -564,7 +657,8 @@ class IsentropicVerticalAdvection(STSTendencyStepper):
             )
         with computation(BACKWARD), interval(0, -1):
             out_sv = (
-                (delta_sv[0, 0, 0] - c_sv[0, 0, 0] * out_sv[0, 0, 1]) / beta_sv[0, 0, 0]
+                (delta_sv[0, 0, 0] - c_sv[0, 0, 0] * out_sv[0, 0, 1])
+                / beta_sv[0, 0, 0]
                 if beta_sv[0, 0, 0] != 0.0
                 else (delta_sv[0, 0, 0] - c_sv[0, 0, 0] * out_sv[0, 0, 1])
             )
@@ -577,7 +671,9 @@ class IsentropicVerticalAdvection(STSTendencyStepper):
             with computation(PARALLEL), interval(0, 1):
                 a_sqv, c_sqv, d_sqv = setup_tridiagonal_system_bc(sqv_prv)
             with computation(PARALLEL), interval(1, -1):
-                a_sqv, c_sqv, d_sqv = setup_tridiagonal_system(gamma, w, sqv, sqv_prv)
+                a_sqv, c_sqv, d_sqv = setup_tridiagonal_system(
+                    gamma, w, sqv, sqv_prv
+                )
             with computation(PARALLEL), interval(-1, None):
                 a_sqv, c_sqv, d_sqv = setup_tridiagonal_system_bc(sqv_prv)
 
@@ -593,7 +689,9 @@ class IsentropicVerticalAdvection(STSTendencyStepper):
                     else a_sqv[0, 0, 0]
                 )
                 beta_sqv = 1.0 - omega_sqv[0, 0, 0] * c_sqv[0, 0, -1]
-                delta_sqv = d_sqv[0, 0, 0] - omega_sqv[0, 0, 0] * delta_sqv[0, 0, -1]
+                delta_sqv = (
+                    d_sqv[0, 0, 0] - omega_sqv[0, 0, 0] * delta_sqv[0, 0, -1]
+                )
             with computation(BACKWARD), interval(-1, None):
                 out_sqv = (
                     delta_sqv[0, 0, 0] / beta_sqv[0, 0, 0]
@@ -605,7 +703,9 @@ class IsentropicVerticalAdvection(STSTendencyStepper):
                     (delta_sqv[0, 0, 0] - c_sqv[0, 0, 0] * out_sqv[0, 0, 1])
                     / beta_sqv[0, 0, 0]
                     if beta_sqv[0, 0, 0] != 0.0
-                    else (delta_sqv[0, 0, 0] - c_sqv[0, 0, 0] * out_sqv[0, 0, 1])
+                    else (
+                        delta_sqv[0, 0, 0] - c_sqv[0, 0, 0] * out_sqv[0, 0, 1]
+                    )
                 )
 
             #
@@ -615,7 +715,9 @@ class IsentropicVerticalAdvection(STSTendencyStepper):
             with computation(PARALLEL), interval(0, 1):
                 a_sqc, c_sqc, d_sqc = setup_tridiagonal_system_bc(sqc_prv)
             with computation(PARALLEL), interval(1, -1):
-                a_sqc, c_sqc, d_sqc = setup_tridiagonal_system(gamma, w, sqc, sqc_prv)
+                a_sqc, c_sqc, d_sqc = setup_tridiagonal_system(
+                    gamma, w, sqc, sqc_prv
+                )
             with computation(PARALLEL), interval(-1, None):
                 a_sqc, c_sqc, d_sqc = setup_tridiagonal_system_bc(sqc_prv)
 
@@ -631,7 +733,9 @@ class IsentropicVerticalAdvection(STSTendencyStepper):
                     else a_sqc[0, 0, 0]
                 )
                 beta_sqc = 1.0 - omega_sqc[0, 0, 0] * c_sqc[0, 0, -1]
-                delta_sqc = d_sqc[0, 0, 0] - omega_sqc[0, 0, 0] * delta_sqc[0, 0, -1]
+                delta_sqc = (
+                    d_sqc[0, 0, 0] - omega_sqc[0, 0, 0] * delta_sqc[0, 0, -1]
+                )
             with computation(BACKWARD), interval(-1, None):
                 out_sqc = (
                     delta_sqc[0, 0, 0] / beta_sqc[0, 0, 0]
@@ -643,7 +747,9 @@ class IsentropicVerticalAdvection(STSTendencyStepper):
                     (delta_sqc[0, 0, 0] - c_sqc[0, 0, 0] * out_sqc[0, 0, 1])
                     / beta_sqc[0, 0, 0]
                     if beta_sqc[0, 0, 0] != 0.0
-                    else (delta_sqc[0, 0, 0] - c_sqc[0, 0, 0] * out_sqc[0, 0, 1])
+                    else (
+                        delta_sqc[0, 0, 0] - c_sqc[0, 0, 0] * out_sqc[0, 0, 1]
+                    )
                 )
 
             #
@@ -653,7 +759,9 @@ class IsentropicVerticalAdvection(STSTendencyStepper):
             with computation(PARALLEL), interval(0, 1):
                 a_sqr, c_sqr, d_sqr = setup_tridiagonal_system_bc(sqr_prv)
             with computation(PARALLEL), interval(1, -1):
-                a_sqr, c_sqr, d_sqr = setup_tridiagonal_system(gamma, w, sqr, sqr_prv)
+                a_sqr, c_sqr, d_sqr = setup_tridiagonal_system(
+                    gamma, w, sqr, sqr_prv
+                )
             with computation(PARALLEL), interval(-1, None):
                 a_sqr, c_sqr, d_sqr = setup_tridiagonal_system_bc(sqr_prv)
 
@@ -669,7 +777,9 @@ class IsentropicVerticalAdvection(STSTendencyStepper):
                     else a_sqr[0, 0, 0]
                 )
                 beta_sqr = 1.0 - omega_sqr[0, 0, 0] * c_sqr[0, 0, -1]
-                delta_sqr = d_sqr[0, 0, 0] - omega_sqr[0, 0, 0] * delta_sqr[0, 0, -1]
+                delta_sqr = (
+                    d_sqr[0, 0, 0] - omega_sqr[0, 0, 0] * delta_sqr[0, 0, -1]
+                )
             with computation(BACKWARD), interval(-1, None):
                 out_sqr = (
                     delta_sqr[0, 0, 0] / beta_sqr[0, 0, 0]
@@ -681,7 +791,9 @@ class IsentropicVerticalAdvection(STSTendencyStepper):
                     (delta_sqr[0, 0, 0] - c_sqr[0, 0, 0] * out_sqr[0, 0, 1])
                     / beta_sqr[0, 0, 0]
                     if beta_sqr[0, 0, 0] != 0.0
-                    else (delta_sqr[0, 0, 0] - c_sqr[0, 0, 0] * out_sqr[0, 0, 1])
+                    else (
+                        delta_sqr[0, 0, 0] - c_sqr[0, 0, 0] * out_sqr[0, 0, 1]
+                    )
                 )
 
         # calculate the output mass fraction of the water species

@@ -55,12 +55,11 @@ class IsentropicHorizontalSmoothing(DiagnosticComponent):
         smooth_moist_coeff: Optional[float] = None,
         smooth_moist_coeff_max: Optional[float] = None,
         smooth_moist_damp_depth: Optional[int] = None,
-        gt_powered: bool = None,
         *,
         backend: str = "numpy",
         backend_opts: Optional[taz_types.options_dict_t] = None,
-        build_info: Optional[taz_types.options_dict_t] = None,
         dtype: taz_types.dtype_t = np.float64,
+        build_info: Optional[taz_types.options_dict_t] = None,
         exec_info: Optional[taz_types.mutable_options_dict_t] = None,
         default_origin: Optional[taz_types.triplet_int_t] = None,
         rebuild: bool = False,
@@ -92,25 +91,26 @@ class IsentropicHorizontalSmoothing(DiagnosticComponent):
             species close to the upper boundary.
         smooth_damp_depth : int
             Depth of the damping region for the water species.
-        gt_powered : `bool`, optional
-            TODO
         backend : `str`, optional
             The GT4Py backend.
         backend_opts : `dict`, optional
             Dictionary of backend-specific options.
-        build_info : `dict`, optional
-            Dictionary of building options.
         dtype : `data-type`, optional
             Data type of the storages.
+        build_info : `dict`, optional
+            Dictionary of building options.
         exec_info : `dict`, optional
-            Dictionary which will store statistics and diagnostics gathered at run time.
+            Dictionary which will store statistics and diagnostics gathered at
+            run time.
         default_origin : `tuple[int]`, optional
             Storage default origin.
         rebuild : `bool`, optional
-            ``True`` to trigger the stencils compilation at any class instantiation,
-            ``False`` to rely on the caching mechanism implemented by GT4Py.
+            ``True`` to trigger the stencils compilation at any class
+            instantiation, ``False`` to rely on the caching mechanism
+            implemented by the backend.
         managed_memory : `bool`, optional
-            ``True`` to allocate the storages as managed memory, ``False`` otherwise.
+            ``True`` to allocate the storages as managed memory,
+            ``False`` otherwise.
         storage_shape : `tuple[int]`, optional
             Shape of the storages.
         """
@@ -121,7 +121,9 @@ class IsentropicHorizontalSmoothing(DiagnosticComponent):
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
         nb = self.horizontal_boundary.nb
 
-        shape = get_storage_shape(storage_shape, min_shape=(nx + 1, ny + 1, nz + 1))
+        shape = get_storage_shape(
+            storage_shape, min_shape=(nx + 1, ny + 1, nz + 1)
+        )
 
         self._core = HorizontalSmoothing.factory(
             smooth_type,
@@ -130,11 +132,10 @@ class IsentropicHorizontalSmoothing(DiagnosticComponent):
             smooth_coeff_max,
             smooth_damp_depth,
             nb,
-            gt_powered=gt_powered,
             backend=backend,
             backend_opts=backend_opts,
-            build_info=build_info,
             dtype=dtype,
+            build_info=build_info,
             exec_info=exec_info,
             default_origin=default_origin,
             rebuild=rebuild,
@@ -148,7 +149,9 @@ class IsentropicHorizontalSmoothing(DiagnosticComponent):
                 else smooth_moist_coeff_max
             )
             smooth_moist_damp_depth = (
-                0 if smooth_moist_damp_depth is None else smooth_moist_damp_depth
+                0
+                if smooth_moist_damp_depth is None
+                else smooth_moist_damp_depth
             )
 
             self._core_moist = HorizontalSmoothing.factory(
@@ -158,11 +161,10 @@ class IsentropicHorizontalSmoothing(DiagnosticComponent):
                 smooth_moist_coeff_max,
                 smooth_moist_damp_depth,
                 nb,
-                gt_powered=gt_powered,
                 backend=backend,
                 backend_opts=backend_opts,
-                build_info=build_info,
                 dtype=dtype,
+                build_info=build_info,
                 exec_info=exec_info,
                 default_origin=default_origin,
                 rebuild=rebuild,
@@ -173,7 +175,6 @@ class IsentropicHorizontalSmoothing(DiagnosticComponent):
 
         self._out_s = zeros(
             shape,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -181,7 +182,6 @@ class IsentropicHorizontalSmoothing(DiagnosticComponent):
         )
         self._out_su = zeros(
             shape,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -189,7 +189,6 @@ class IsentropicHorizontalSmoothing(DiagnosticComponent):
         )
         self._out_sv = zeros(
             shape,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -198,7 +197,6 @@ class IsentropicHorizontalSmoothing(DiagnosticComponent):
         if self._moist:
             self._out_qv = zeros(
                 shape,
-                gt_powered=gt_powered,
                 backend=backend,
                 dtype=dtype,
                 default_origin=default_origin,
@@ -206,7 +204,6 @@ class IsentropicHorizontalSmoothing(DiagnosticComponent):
             )
             self._out_qc = zeros(
                 shape,
-                gt_powered=gt_powered,
                 backend=backend,
                 dtype=dtype,
                 default_origin=default_origin,
@@ -214,7 +211,6 @@ class IsentropicHorizontalSmoothing(DiagnosticComponent):
             )
             self._out_qr = zeros(
                 shape,
-                gt_powered=gt_powered,
                 backend=backend,
                 dtype=dtype,
                 default_origin=default_origin,
@@ -227,8 +223,14 @@ class IsentropicHorizontalSmoothing(DiagnosticComponent):
 
         return_dict = {
             "air_isentropic_density": {"dims": dims, "units": "kg m^-2 K^-1"},
-            "x_momentum_isentropic": {"dims": dims, "units": "kg m^-1 K^-1 s^-1"},
-            "y_momentum_isentropic": {"dims": dims, "units": "kg m^-1 K^-1 s^-1"},
+            "x_momentum_isentropic": {
+                "dims": dims,
+                "units": "kg m^-1 K^-1 s^-1",
+            },
+            "y_momentum_isentropic": {
+                "dims": dims,
+                "units": "kg m^-1 K^-1 s^-1",
+            },
         }
 
         if self._moist:
@@ -242,7 +244,9 @@ class IsentropicHorizontalSmoothing(DiagnosticComponent):
     def diagnostic_properties(self) -> taz_types.properties_dict_t:
         return self.input_properties
 
-    def array_call(self, state: taz_types.array_dict_t) -> taz_types.array_dict_t:
+    def array_call(
+        self, state: taz_types.array_dict_t
+    ) -> taz_types.array_dict_t:
         in_s = state["air_isentropic_density"]
         in_su = state["x_momentum_isentropic"]
         in_sv = state["y_momentum_isentropic"]

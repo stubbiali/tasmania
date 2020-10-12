@@ -31,7 +31,9 @@ except (ImportError, ModuleNotFoundError):
 
 from tasmania.python.utils import taz_types
 from tasmania.python.utils.data_utils import get_physical_constants
-from tasmania.python.utils.meteo_utils import convert_relative_humidity_to_water_vapor
+from tasmania.python.utils.meteo_utils import (
+    convert_relative_humidity_to_water_vapor,
+)
 from tasmania.python.utils.storage_utils import (
     get_asarray_function,
     get_dataarray_3d,
@@ -45,7 +47,9 @@ if TYPE_CHECKING:
 
 
 _d_physical_constants = {
-    "gas_constant_of_dry_air": DataArray(287.05, attrs={"units": "J K^-1 kg^-1"}),
+    "gas_constant_of_dry_air": DataArray(
+        287.05, attrs={"units": "J K^-1 kg^-1"}
+    ),
     "gravitational_acceleration": DataArray(9.81, attrs={"units": "m s^-2"}),
     "reference_air_pressure": DataArray(1.0e5, attrs={"units": "Pa"}),
     "specific_heat_of_dry_air_at_constant_pressure": DataArray(
@@ -70,7 +74,6 @@ def get_isentropic_state_from_brunt_vaisala_frequency(
     precipitation: bool = False,
     relative_humidity: float = 0.5,
     physical_constants: Optional[Mapping[str, DataArray]] = None,
-    gt_powered: bool = True,
     *,
     backend: str = "numpy",
     dtype: taz_types.dtype_t = np.float64,
@@ -116,10 +119,8 @@ def get_isentropic_state_from_brunt_vaisala_frequency(
             * 'specific_heat_of_dry_air_at_constant_pressure', \
                 in units compatible with [J kg^-1 K^-1].
 
-    gt_powered : `bool`, optional
-        TODO
     backend : `str`, optional
-        The GT4Py backend.
+        The backend.
     dtype : `data-type`, optional
         Data type of the storages.
     default_origin : `tuple[int]`, optional
@@ -127,7 +128,8 @@ def get_isentropic_state_from_brunt_vaisala_frequency(
     storage_shape : `tuple[int]`, optional
         Shape of the storages.
     managed_memory : `bool`, optional
-        ``True`` to allocate the storages as managed memory, ``False`` otherwise.
+        ``True`` to allocate the storages as managed memory,
+        ``False`` otherwise.
 
     Return
     ------
@@ -153,14 +155,13 @@ def get_isentropic_state_from_brunt_vaisala_frequency(
     def allocate():
         return zeros(
             storage_shape,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
             managed_memory=managed_memory,
         )
 
-    asarray = get_asarray_function(gt_powered, backend)
+    asarray = get_asarray_function(backend)
 
     # initialize the velocity components
     u = allocate()
@@ -170,7 +171,9 @@ def get_isentropic_state_from_brunt_vaisala_frequency(
 
     # compute the geometric height of the half levels
     theta1d = allocate()
-    theta1d[:, :, :nz] = asarray(grid.z.to_units("K").values[np.newaxis, np.newaxis, :])
+    theta1d[:, :, :nz] = asarray(
+        grid.z.to_units("K").values[np.newaxis, np.newaxis, :]
+    )
     h = allocate()
     h[:nx, :ny, nz] = asarray(hs)
     for k in range(nz - 1, -1, -1):
@@ -182,18 +185,21 @@ def get_isentropic_state_from_brunt_vaisala_frequency(
     exn = allocate()
     exn[:nx, :ny, nz] = cp
     for k in range(nz - 1, -1, -1):
-        exn[:nx, :ny, k : k + 1] = exn[:nx, :ny, k + 1 : k + 2] - dz * (g ** 2) / (
-            (bv ** 2) * (theta1d[:nx, :ny, k : k + 1] ** 2)
-        )
+        exn[:nx, :ny, k : k + 1] = exn[:nx, :ny, k + 1 : k + 2] - dz * (
+            g ** 2
+        ) / ((bv ** 2) * (theta1d[:nx, :ny, k : k + 1] ** 2))
 
     # diagnose the air pressure
     p = allocate()
-    p[:nx, :ny, : nz + 1] = pref * ((exn[:nx, :ny, : nz + 1] / cp) ** (cp / Rd))
+    p[:nx, :ny, : nz + 1] = pref * (
+        (exn[:nx, :ny, : nz + 1] / cp) ** (cp / Rd)
+    )
 
     # diagnose the Montgomery potential
     mtg_s = (
         g * h[:, :, nz : nz + 1]
-        + grid.z_on_interface_levels.to_units("K").values[-1] * exn[:, :, nz : nz + 1]
+        + grid.z_on_interface_levels.to_units("K").values[-1]
+        * exn[:, :, nz : nz + 1]
     )
     mtg = allocate()
     mtg[:nx, :ny, nz - 1] = mtg_s[:nx, :ny, 0] + 0.5 * dz * exn[:nx, :ny, nz]
@@ -293,7 +299,9 @@ def get_isentropic_state_from_brunt_vaisala_frequency(
         # diagnose the air density and temperature
         rho = allocate()
         rho[:nx, :ny, :nz] = (
-            s[:nx, :ny, :nz] * dz / (h[:nx, :ny, :nz] - h[:nx, :ny, 1 : nz + 1])
+            s[:nx, :ny, :nz]
+            * dz
+            / (h[:nx, :ny, :nz] - h[:nx, :ny, 1 : nz + 1])
         )
         state["air_density"] = get_dataarray_3d(
             rho,
@@ -322,7 +330,6 @@ def get_isentropic_state_from_brunt_vaisala_frequency(
         # initialize the relative humidity
         rh = relative_humidity * ones(
             storage_shape,
-            gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -331,28 +338,45 @@ def get_isentropic_state_from_brunt_vaisala_frequency(
 
         # interpolate the pressure at the main levels
         p_unstg = allocate()
-        p_unstg[:nx, :ny, :nz] = 0.5 * (p[:nx, :ny, :nz] + p[:nx, :ny, 1 : nz + 1])
+        p_unstg[:nx, :ny, :nz] = 0.5 * (
+            p[:nx, :ny, :nz] + p[:nx, :ny, 1 : nz + 1]
+        )
         p_unstg_ = get_dataarray_3d(
             p_unstg, grid, "Pa", grid_shape=(nx, ny, nz), set_coordinates=False
         )
 
         # diagnose the mass fraction of water vapor
-        # qv = convert_relative_humidity_to_water_vapor(
-        #     "tetens", p_unstg_, state["air_temperature"], rh_
-        # )
-        qv = allocate()
+        qv = convert_relative_humidity_to_water_vapor(
+            "tetens", p_unstg_, state["air_temperature"], rh_
+        )
+        # qv = allocate()
         state[mfwv] = get_dataarray_3d(
-            qv, grid, "g g^-1", name=mfwv, grid_shape=(nx, ny, nz), set_coordinates=False
+            qv,
+            grid,
+            "g g^-1",
+            name=mfwv,
+            grid_shape=(nx, ny, nz),
+            set_coordinates=False,
         )
 
         # initialize the mass fraction of cloud liquid water and precipitation water
         qc = allocate()
         state[mfcw] = get_dataarray_3d(
-            qc, grid, "g g^-1", name=mfcw, grid_shape=(nx, ny, nz), set_coordinates=False
+            qc,
+            grid,
+            "g g^-1",
+            name=mfcw,
+            grid_shape=(nx, ny, nz),
+            set_coordinates=False,
         )
         qr = allocate()
         state[mfpw] = get_dataarray_3d(
-            qr, grid, "g g^-1", name=mfpw, grid_shape=(nx, ny, nz), set_coordinates=False
+            qr,
+            grid,
+            "g g^-1",
+            name=mfpw,
+            grid_shape=(nx, ny, nz),
+            set_coordinates=False,
         )
 
         # precipitation and accumulated precipitation
@@ -360,7 +384,6 @@ def get_isentropic_state_from_brunt_vaisala_frequency(
             state["precipitation"] = get_dataarray_3d(
                 zeros(
                     (storage_shape[0], storage_shape[1], 1),
-                    gt_powered=gt_powered,
                     backend=backend,
                     dtype=dtype,
                     default_origin=default_origin,
@@ -374,7 +397,6 @@ def get_isentropic_state_from_brunt_vaisala_frequency(
             state["accumulated_precipitation"] = get_dataarray_3d(
                 zeros(
                     (storage_shape[0], storage_shape[1], 1),
-                    gt_powered=gt_powered,
                     backend=backend,
                     dtype=dtype,
                     default_origin=default_origin,
@@ -403,7 +425,6 @@ def get_isentropic_state_from_temperature(
     moist: bool = False,
     precipitation: bool = False,
     physical_constants: Optional[Mapping[str, DataArray]] = None,
-    gt_powered: bool = True,
     *,
     backend: str = "numpy",
     dtype: taz_types.dtype_t = np.float64,
@@ -463,10 +484,8 @@ def get_isentropic_state_from_temperature(
             * 'specific_heat_of_dry_air_at_constant_pressure', \
                 in units compatible with [J kg^-1 K^-1].
 
-    gt_powered : `bool`, optional
-        TODO
     backend : `str`, optional
-        The GT4Py backend.
+        The backend.
     dtype : `data-type`, optional
         Data type of the storages.
     default_origin : `tuple[int]`, optional
@@ -474,7 +493,8 @@ def get_isentropic_state_from_temperature(
     storage_shape : `tuple[int]`, optional
         Shape of the storages.
     managed_memory : `bool`, optional
-        ``True`` to allocate the storages as managed memory, ``False`` otherwise.
+        ``True`` to allocate the storages as managed memory,
+        ``False`` otherwise.
 
     Return
     ------
@@ -498,7 +518,6 @@ def get_isentropic_state_from_temperature(
     def allocate():
         return zeros(
             storage_shape,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -511,7 +530,9 @@ def get_isentropic_state_from_temperature(
     theta[:nx, :ny, : nz + 1] = theta1d[np.newaxis, np.newaxis, :]
     temp = background_temperature.to_units("K").values.item()
     p = allocate()
-    p[:nx, :ny, : nz + 1] = pref * ((temp / theta[:nx, :ny, : nz + 1]) ** (cp / Rd))
+    p[:nx, :ny, : nz + 1] = pref * (
+        (temp / theta[:nx, :ny, : nz + 1]) ** (cp / Rd)
+    )
 
     # initialize the Exner function
     exn = allocate()
@@ -525,7 +546,9 @@ def get_isentropic_state_from_temperature(
         h[:nx, :ny, k] = h[:nx, :ny, k + 1] - Rd / (cp * g) * (
             theta[:nx, :ny, k] * exn[:nx, :ny, k]
             + theta[:nx, :ny, k + 1] * exn[:nx, :ny, k + 1]
-        ) * (p[:nx, :ny, k] - p[:nx, :ny, k + 1]) / (p[:nx, :ny, k] + p[:nx, :ny, k + 1])
+        ) * (p[:nx, :ny, k] - p[:nx, :ny, k + 1]) / (
+            p[:nx, :ny, k] + p[:nx, :ny, k + 1]
+        )
 
     # warm/cool bubble
     if bubble_maximum_perturbation is not None:
@@ -661,9 +684,14 @@ def get_isentropic_state_from_temperature(
 
         # diagnose the air density and temperature
         rho = s * dz / (h[:, :, :-1] - h[:, :, 1:])
-        state["air_density"] = get_dataarray_3d(rho, grid, "kg m^-3", name="air_density")
+        state["air_density"] = get_dataarray_3d(
+            rho, grid, "kg m^-3", name="air_density"
+        )
         state["air_temperature"] = get_dataarray_3d(
-            0.5 * (t[:, :, :-1] + t[:, :, 1:]), grid, "K", name="air_temperature"
+            0.5 * (t[:, :, :-1] + t[:, :, 1:]),
+            grid,
+            "K",
+            name="air_temperature",
         )
 
         # initialize the relative humidity
@@ -692,7 +720,10 @@ def get_isentropic_state_from_temperature(
         # precipitation and accumulated precipitation
         if precipitation:
             state["precipitation"] = get_dataarray_3d(
-                np.zeros((nx, ny), dtype=dtype), grid, "mm hr^-1", name="precipitation"
+                np.zeros((nx, ny), dtype=dtype),
+                grid,
+                "mm hr^-1",
+                name="precipitation",
             )
             state["accumulated_precipitation"] = get_dataarray_3d(
                 np.zeros((nx, ny), dtype=dtype),

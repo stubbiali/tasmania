@@ -22,41 +22,72 @@
 #
 from hypothesis import (
     given,
-    HealthCheck,
     reproduce_failure,
-    settings,
     strategies as hyp_st,
 )
 import pytest
 
-from gt4py import gtscript, storage as gt_storage
-from gt4py.gtscript import PARALLEL, __INLINED, computation, interval
+from gt4py import gtscript
 
 from tasmania.python.isentropic.dynamics.horizontal_fluxes import (
     IsentropicMinimalHorizontalFlux,
 )
-from tasmania.python.isentropic.dynamics.implementations.minimal_horizontal_fluxes import (
+from tasmania.python.isentropic.dynamics.subclasses.minimal_horizontal_fluxes import (
     Upwind,
     Centered,
     ThirdOrderUpwind,
     FifthOrderUpwind,
 )
 from tasmania.python.utils.storage_utils import zeros
+from tasmania.python.utils.utils import get_gt_backend
 
 from tests.conf import (
     backend as conf_backend,
-    datatype as conf_dtype,
+    dtype as conf_dtype,
     default_origin as conf_dorigin,
     nb as conf_nb,
 )
 from tests.isentropic.test_isentropic_horizontal_fluxes import (
-    get_upwind_fluxes,
     get_centered_fluxes,
-    get_third_order_upwind_fluxes,
     get_fifth_order_upwind_fluxes,
+    get_third_order_upwind_fluxes,
+    get_upwind_fluxes,
+    validation,
 )
 from tests.strategies import st_domain, st_floats, st_one_of, st_raw_field
-from tests.utilities import compare_arrays
+from tests.utilities import hyp_settings
+
+
+def test_registry():
+    assert "upwind" in IsentropicMinimalHorizontalFlux.registry
+    assert IsentropicMinimalHorizontalFlux.registry["upwind"] == Upwind
+    assert "centered" in IsentropicMinimalHorizontalFlux.registry
+    assert IsentropicMinimalHorizontalFlux.registry["centered"] == Centered
+    assert "third_order_upwind" in IsentropicMinimalHorizontalFlux.registry
+    assert (
+        IsentropicMinimalHorizontalFlux.registry["third_order_upwind"]
+        == ThirdOrderUpwind
+    )
+    assert "fifth_order_upwind" in IsentropicMinimalHorizontalFlux.registry
+    assert (
+        IsentropicMinimalHorizontalFlux.registry["fifth_order_upwind"]
+        == FifthOrderUpwind
+    )
+
+
+def test_factory():
+    obj = IsentropicMinimalHorizontalFlux.factory("upwind", False, "numpy")
+    assert isinstance(obj, Upwind)
+    obj = IsentropicMinimalHorizontalFlux.factory("centered", False, "numpy")
+    assert isinstance(obj, Centered)
+    obj = IsentropicMinimalHorizontalFlux.factory(
+        "third_order_upwind", False, "numpy"
+    )
+    assert isinstance(obj, ThirdOrderUpwind)
+    obj = IsentropicMinimalHorizontalFlux.factory(
+        "fifth_order_upwind", False, "numpy"
+    )
+    assert isinstance(obj, FifthOrderUpwind)
 
 
 class WrappingStencil:
@@ -98,42 +129,36 @@ class WrappingStencil:
             "sv": sv,
             "flux_s_x": zeros(
                 (mi, mj, mk),
-                True,
                 backend=self.backend,
                 dtype=s.dtype,
                 default_origin=self.default_origin,
             ),
             "flux_s_y": zeros(
                 (mi, mj, mk),
-                True,
                 backend=self.backend,
                 dtype=s.dtype,
                 default_origin=self.default_origin,
             ),
             "flux_su_x": zeros(
                 (mi, mj, mk),
-                True,
                 backend=self.backend,
                 dtype=s.dtype,
                 default_origin=self.default_origin,
             ),
             "flux_su_y": zeros(
                 (mi, mj, mk),
-                True,
                 backend=self.backend,
                 dtype=s.dtype,
                 default_origin=self.default_origin,
             ),
             "flux_sv_x": zeros(
                 (mi, mj, mk),
-                True,
                 backend=self.backend,
                 dtype=s.dtype,
                 default_origin=self.default_origin,
             ),
             "flux_sv_y": zeros(
                 (mi, mj, mk),
-                True,
                 backend=self.backend,
                 dtype=s.dtype,
                 default_origin=self.default_origin,
@@ -155,14 +180,12 @@ class WrappingStencil:
             stencil_args["sqv"] = sqv
             stencil_args["flux_sqv_x"] = zeros(
                 (mi, mj, mk),
-                True,
                 backend=self.backend,
                 dtype=s.dtype,
                 default_origin=self.default_origin,
             )
             stencil_args["flux_sqv_y"] = zeros(
                 (mi, mj, mk),
-                True,
                 backend=self.backend,
                 dtype=s.dtype,
                 default_origin=self.default_origin,
@@ -170,14 +193,12 @@ class WrappingStencil:
             stencil_args["sqc"] = sqc
             stencil_args["flux_sqc_x"] = zeros(
                 (mi, mj, mk),
-                True,
                 backend=self.backend,
                 dtype=s.dtype,
                 default_origin=self.default_origin,
             )
             stencil_args["flux_sqc_y"] = zeros(
                 (mi, mj, mk),
-                True,
                 backend=self.backend,
                 dtype=s.dtype,
                 default_origin=self.default_origin,
@@ -185,14 +206,12 @@ class WrappingStencil:
             stencil_args["sqr"] = sqr
             stencil_args["flux_sqr_x"] = zeros(
                 (mi, mj, mk),
-                True,
                 backend=self.backend,
                 dtype=s.dtype,
                 default_origin=self.default_origin,
             )
             stencil_args["flux_sqr_y"] = zeros(
                 (mi, mj, mk),
-                True,
                 backend=self.backend,
                 dtype=s.dtype,
                 default_origin=self.default_origin,
@@ -219,11 +238,15 @@ class WrappingStencil:
         }
         if moist:
             externals.update(
-                {"qv_tnd_on": qv_tnd_on, "qc_tnd_on": qc_tnd_on, "qr_tnd_on": qr_tnd_on}
+                {
+                    "qv_tnd_on": qv_tnd_on,
+                    "qc_tnd_on": qc_tnd_on,
+                    "qr_tnd_on": qr_tnd_on,
+                }
             )
 
         decorator = gtscript.stencil(
-            self.backend,
+            get_gt_backend(self.backend),
             dtypes={"dtype": self.dtype},
             externals=externals,
             rebuild=self.rebuild,
@@ -236,7 +259,7 @@ class WrappingStencil:
             dt=dt,
             dx=dx,
             dy=dy,
-            origin={"_all_": (nb - 1, nb - 1, 0)},
+            origin={"_all_": (nb, nb, 0)},
             domain=(mi - 2 * nb, mj - 2 * nb, mk)
         )
 
@@ -298,7 +321,14 @@ class WrappingStencil:
 
         with computation(PARALLEL), interval(...):
             if __INLINED(not moist):
-                flux_s_x, flux_s_y, flux_su_x, flux_su_y, flux_sv_x, flux_sv_y = core(
+                (
+                    flux_s_x,
+                    flux_s_y,
+                    flux_su_x,
+                    flux_su_y,
+                    flux_sv_x,
+                    flux_sv_y,
+                ) = core(
                     dt=dt,
                     dx=dx,
                     dy=dy,
@@ -360,301 +390,25 @@ flux_properties = {
 }
 
 
-def validation_numpy(flux_scheme, domain, field, timestep, dtype):
-    grid = domain.numerical_grid
-    nx, ny, nz = grid.nx, grid.ny, grid.nz
-    flux_type = flux_properties[flux_scheme]["type"]
-    get_fluxes = flux_properties[flux_scheme]["get_fluxes"]
-
-    dx = grid.dx.to_units("m").values.item()
-    dy = grid.dy.to_units("m").values.item()
-
-    s = zeros((nx + 1, ny + 1, nz), False, dtype=dtype)
-    s[...] = field[: nx + 1, : ny + 1, :nz]
-    u = zeros((nx + 1, ny + 1, nz), False, dtype=dtype)
-    u[...] = field[1 : nx + 2, : ny + 1, :nz]
-    v = zeros((nx + 1, ny + 1, nz), False, dtype=dtype)
-    v[...] = field[: nx + 1, 1 : ny + 2, :nz]
-    su = zeros((nx + 1, ny + 1, nz), False, dtype=dtype)
-    su[...] = field[1 : nx + 2, : ny + 1, :nz]
-    sv = zeros((nx + 1, ny + 1, nz), False, dtype=dtype)
-    sv[...] = field[1 : nx + 2, 1 : ny + 2, :nz]
-    sqv = zeros((nx + 1, ny + 1, nz), False, dtype=dtype)
-    sqv[...] = field[: nx + 1, : ny + 1, 1 : nz + 1]
-    sqc = zeros((nx + 1, ny + 1, nz), False, dtype=dtype)
-    sqc[...] = field[1 : nx + 2, : ny + 1, 1 : nz + 1]
-    sqr = zeros((nx + 1, ny + 1, nz), False, dtype=dtype)
-    sqr[...] = field[1 : nx + 2, 1 : ny + 2, 1 : nz + 1]
-
-    #
-    # dry
-    #
-    core = IsentropicMinimalHorizontalFlux.factory(flux_scheme, False, False)
-    assert isinstance(core, flux_type)
-    nb = core.extent
-
-    fsx, fsy, fsux, fsuy, fsvx, fsvy = core.call(timestep, dx, dy, s, u, v, su, sv)
-
-    flux_s_x, flux_s_y = get_fluxes(u, v, s)
-    x = slice(nb - 1, grid.nx - nb)
-    y = slice(nb - 1, grid.ny - nb)
-    compare_arrays(fsx[:, y], flux_s_x[x, y])
-    compare_arrays(fsy[x, :], flux_s_y[x, y])
-
-    flux_su_x, flux_su_y = get_fluxes(u, v, su)
-    compare_arrays(fsux[:, y], flux_su_x[x, y])
-    compare_arrays(fsuy[x, :], flux_su_y[x, y])
-
-    flux_sv_x, flux_sv_y = get_fluxes(u, v, sv)
-    compare_arrays(fsvx[:, y], flux_sv_x[x, y])
-    compare_arrays(fsvy[x, :], flux_sv_y[x, y])
-
-    #
-    # moist
-    #
-    core = IsentropicMinimalHorizontalFlux.factory(flux_scheme, True, False)
-    assert isinstance(core, flux_type)
-
-    (
-        fsx,
-        fsy,
-        fsux,
-        fsuy,
-        fsvx,
-        fsvy,
-        fsqvx,
-        fsqvy,
-        fsqcx,
-        fsqcy,
-        fsqrx,
-        fsqry,
-    ) = core.call(timestep, dx, dy, s, u, v, su, sv, sqv=sqv, sqc=sqc, sqr=sqr)
-
-    compare_arrays(fsx[:, y], flux_s_x[x, y])
-    compare_arrays(fsy[x, :], flux_s_y[x, y])
-
-    compare_arrays(fsux[:, y], flux_su_x[x, y])
-    compare_arrays(fsuy[x, :], flux_su_y[x, y])
-
-    compare_arrays(fsvx[:, y], flux_sv_x[x, y])
-    compare_arrays(fsvy[x, :], flux_sv_y[x, y])
-
-    flux_sqv_x, flux_sqv_y = get_fluxes(u, v, sqv)
-    compare_arrays(fsqvx[:, y], flux_sqv_x[x, y])
-    compare_arrays(fsqvy[x, :], flux_sqv_y[x, y])
-
-    flux_sqc_x, flux_sqc_y = get_fluxes(u, v, sqc)
-    compare_arrays(fsqcx[:, y], flux_sqc_x[x, y])
-    compare_arrays(fsqcy[x, :], flux_sqc_y[x, y])
-
-    flux_sqr_x, flux_sqr_y = get_fluxes(u, v, sqr)
-    compare_arrays(fsqrx[:, y], flux_sqr_x[x, y])
-    compare_arrays(fsqry[x, :], flux_sqr_y[x, y])
-
-
-def validation_gt(
-    flux_scheme, domain, field, timestep, backend, dtype, default_origin, rebuild
-):
-    grid = domain.numerical_grid
-    nx, ny, nz = grid.nx, grid.ny, grid.nz
-    nb = domain.horizontal_boundary.nb
-    flux_type = flux_properties[flux_scheme]["type"]
-    get_fluxes = flux_properties[flux_scheme]["get_fluxes"]
-
-    dx = grid.dx.to_units("m").values.item()
-    dy = grid.dy.to_units("m").values.item()
-
-    s = zeros(
-        (nx + 1, ny + 1, nz),
-        True,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
-    s[...] = field[: nx + 1, : ny + 1, :nz]
-    u = zeros(
-        (nx + 1, ny + 1, nz),
-        True,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
-    u[...] = field[1 : nx + 2, : ny + 1, :nz]
-    v = zeros(
-        (nx + 1, ny + 1, nz),
-        True,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
-    v[...] = field[: nx + 1, 1 : ny + 2, :nz]
-    su = zeros(
-        (nx + 1, ny + 1, nz),
-        True,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
-    su[...] = field[1 : nx + 2, : ny + 1, :nz]
-    sv = zeros(
-        (nx + 1, ny + 1, nz),
-        True,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
-    sv[...] = field[1 : nx + 2, 1 : ny + 2, :nz]
-    sqv = zeros(
-        (nx + 1, ny + 1, nz),
-        True,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
-    sqv[...] = field[: nx + 1, : ny + 1, 1 : nz + 1]
-    sqc = zeros(
-        (nx + 1, ny + 1, nz),
-        True,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
-    sqc[...] = field[1 : nx + 2, : ny + 1, 1 : nz + 1]
-    sqr = zeros(
-        (nx + 1, ny + 1, nz),
-        True,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
-    sqr[...] = field[1 : nx + 2, 1 : ny + 2, 1 : nz + 1]
-
-    #
-    # dry
-    #
-    core = IsentropicMinimalHorizontalFlux.factory(flux_scheme, False, True)
-    assert isinstance(core, flux_type)
-    ws = WrappingStencil(core, nb, backend, dtype, default_origin, rebuild)
-
-    fsx, fsy, fsux, fsuy, fsvx, fsvy = ws(timestep, dx, dy, s, u, v, su, sv)
-
-    flux_s_x, flux_s_y = get_fluxes(u, v, s)
-    x = slice(nb - 1, grid.nx - nb)
-    y = slice(nb - 1, grid.ny - nb)
-    compare_arrays(fsx[x, y], flux_s_x[x, y])
-    compare_arrays(fsy[x, y], flux_s_y[x, y])
-
-    flux_su_x, flux_su_y = get_fluxes(u, v, su)
-    compare_arrays(fsux[x, y], flux_su_x[x, y])
-    compare_arrays(fsuy[x, y], flux_su_y[x, y])
-
-    flux_sv_x, flux_sv_y = get_fluxes(u, v, sv)
-    compare_arrays(fsvx[x, y], flux_sv_x[x, y])
-    compare_arrays(fsvy[x, y], flux_sv_y[x, y])
-
-    #
-    # moist
-    #
-    core = IsentropicMinimalHorizontalFlux.factory(flux_scheme, True, True)
-    assert isinstance(core, flux_type)
-    ws = WrappingStencil(core, nb, backend, dtype, default_origin, rebuild)
-
-    fsx, fsy, fsux, fsuy, fsvx, fsvy, fsqvx, fsqvy, fsqcx, fsqcy, fsqrx, fsqry = ws(
-        timestep, dx, dy, s, u, v, su, sv, sqv=sqv, sqc=sqc, sqr=sqr
-    )
-
-    compare_arrays(fsx[x, y], flux_s_x[x, y])
-    compare_arrays(fsy[x, y], flux_s_y[x, y])
-
-    compare_arrays(fsux[x, y], flux_su_x[x, y])
-    compare_arrays(fsuy[x, y], flux_su_y[x, y])
-
-    compare_arrays(fsvx[x, y], flux_sv_x[x, y])
-    compare_arrays(fsvy[x, y], flux_sv_y[x, y])
-
-    flux_sqv_x, flux_sqv_y = get_fluxes(u, v, sqv)
-    compare_arrays(fsqvx[x, y], flux_sqv_x[x, y])
-    compare_arrays(fsqvy[x, y], flux_sqv_y[x, y])
-
-    flux_sqc_x, flux_sqc_y = get_fluxes(u, v, sqc)
-    compare_arrays(fsqcx[x, y], flux_sqc_x[x, y])
-    compare_arrays(fsqcy[x, y], flux_sqc_y[x, y])
-
-    flux_sqr_x, flux_sqr_y = get_fluxes(u, v, sqr)
-    compare_arrays(fsqrx[x, y], flux_sqr_x[x, y])
-    compare_arrays(fsqry[x, y], flux_sqr_y[x, y])
-
-
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
-@given(hyp_st.data())
-def test_upwind_numpy(data):
+@hyp_settings
+@given(data=hyp_st.data())
+@pytest.mark.parametrize("backend", conf_backend)
+@pytest.mark.parametrize("dtype", conf_dtype)
+def test_upwind(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
-
-    nb = data.draw(hyp_st.integers(min_value=1, max_value=max(1, conf_nb)), label="nb")
-    domain = data.draw(
-        st_domain(
-            xaxis_length=(1, 20),
-            yaxis_length=(1, 20),
-            zaxis_length=(1, 20),
-            nb=nb,
-            gt_powered=False,
-            dtype=dtype,
-        ),
-        label="domain",
-    )
-    grid = domain.numerical_grid
-    nx, ny, nz = grid.nx, grid.ny, grid.nz
-
-    field = data.draw(
-        st_raw_field((nx + 2, ny + 2, nz + 1), -1e4, 1e4, gt_powered=False, dtype=dtype),
-        label="field",
-    )
-
-    timestep = data.draw(st_floats(min_value=0, max_value=3600), label="timestep")
-
-    # ========================================
-    # test bed
-    # ========================================
-    validation_numpy("upwind", domain, field, timestep, dtype)
-
-
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
-@given(hyp_st.data())
-def test_upwind_gt(data):
-    gt_storage.prepare_numpy()
-
-    # ========================================
-    # random data generation
-    # ========================================
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
-    nb = data.draw(hyp_st.integers(min_value=1, max_value=max(1, conf_nb)), label="nb")
+    nb = data.draw(
+        hyp_st.integers(min_value=1, max_value=max(1, conf_nb)), label="nb"
+    )
     domain = data.draw(
         st_domain(
             xaxis_length=(1, 20),
             yaxis_length=(1, 20),
             zaxis_length=(1, 20),
             nb=nb,
-            gt_powered=True,
             backend=backend,
             dtype=dtype,
         ),
@@ -668,7 +422,6 @@ def test_upwind_gt(data):
             (nx + 2, ny + 2, nz + 1),
             -1e4,
             1e4,
-            gt_powered=True,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -676,86 +429,44 @@ def test_upwind_gt(data):
         label="field",
     )
 
-    timestep = data.draw(st_floats(min_value=0, max_value=3600), label="timestep")
+    timestep = data.draw(
+        st_floats(min_value=0, max_value=3600), label="timestep"
+    )
 
     # ========================================
     # test bed
     # ========================================
-    validation_gt(
-        "upwind", domain, field, timestep, backend, dtype, default_origin, rebuild=False
+    validation(
+        "upwind",
+        domain,
+        field,
+        timestep,
+        backend,
+        dtype,
+        default_origin,
+        rebuild=False,
     )
 
 
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
-@given(hyp_st.data())
-def test_centered_numpy(data):
+@hyp_settings
+@given(data=hyp_st.data())
+@pytest.mark.parametrize("backend", conf_backend)
+@pytest.mark.parametrize("dtype", conf_dtype)
+def test_centered(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
-
-    nb = data.draw(hyp_st.integers(min_value=1, max_value=max(1, conf_nb)), label="nb")
-    domain = data.draw(
-        st_domain(
-            xaxis_length=(1, 20),
-            yaxis_length=(1, 20),
-            zaxis_length=(1, 20),
-            nb=nb,
-            gt_powered=False,
-            dtype=dtype,
-        ),
-        label="domain",
-    )
-    grid = domain.numerical_grid
-    nx, ny, nz = grid.nx, grid.ny, grid.nz
-
-    field = data.draw(
-        st_raw_field((nx + 2, ny + 2, nz + 1), -1e4, 1e4, gt_powered=False, dtype=dtype),
-        label="field",
-    )
-
-    timestep = data.draw(st_floats(min_value=0, max_value=3600), label="timestep")
-
-    # ========================================
-    # test bed
-    # ========================================
-    validation_numpy("centered", domain, field, timestep, dtype)
-
-
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
-@given(hyp_st.data())
-def test_centered_gt(data):
-    gt_storage.prepare_numpy()
-
-    # ========================================
-    # random data generation
-    # ========================================
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
-    nb = data.draw(hyp_st.integers(min_value=1, max_value=max(1, conf_nb)), label="nb")
+    nb = data.draw(
+        hyp_st.integers(min_value=1, max_value=max(1, conf_nb)), label="nb"
+    )
     domain = data.draw(
         st_domain(
             xaxis_length=(1, 20),
             yaxis_length=(1, 20),
             zaxis_length=(1, 20),
             nb=nb,
-            gt_powered=True,
             backend=backend,
             dtype=dtype,
         ),
@@ -769,7 +480,6 @@ def test_centered_gt(data):
             (nx + 2, ny + 2, nz + 1),
             -1e4,
             1e4,
-            gt_powered=True,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -777,12 +487,14 @@ def test_centered_gt(data):
         label="field",
     )
 
-    timestep = data.draw(st_floats(min_value=0, max_value=3600), label="timestep")
+    timestep = data.draw(
+        st_floats(min_value=0, max_value=3600), label="timestep"
+    )
 
     # ========================================
     # test bed
     # ========================================
-    validation_gt(
+    validation(
         "centered",
         domain,
         field,
@@ -794,81 +506,25 @@ def test_centered_gt(data):
     )
 
 
-def _test_maccormack():
-    ### TODO ###
-    pass
-
-
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
-@given(hyp_st.data())
-def test_third_order_upwind_numpy(data):
+@hyp_settings
+@given(data=hyp_st.data())
+@pytest.mark.parametrize("backend", conf_backend)
+@pytest.mark.parametrize("dtype", conf_dtype)
+def test_third_order_upwind(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
-
-    nb = data.draw(hyp_st.integers(min_value=2, max_value=max(2, conf_nb)), label="nb")
-    domain = data.draw(
-        st_domain(
-            xaxis_length=(1, 20),
-            yaxis_length=(1, 20),
-            zaxis_length=(1, 20),
-            nb=nb,
-            gt_powered=False,
-            dtype=dtype,
-        ),
-        label="domain",
-    )
-    grid = domain.numerical_grid
-    nx, ny, nz = grid.nx, grid.ny, grid.nz
-
-    field = data.draw(
-        st_raw_field((nx + 2, ny + 2, nz + 1), -1e4, 1e4, gt_powered=False, dtype=dtype),
-        label="field",
-    )
-
-    timestep = data.draw(st_floats(min_value=0, max_value=3600), label="timestep")
-
-    # ========================================
-    # test bed
-    # ========================================
-    validation_numpy("third_order_upwind", domain, field, timestep, dtype)
-
-
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
-@given(hyp_st.data())
-def test_third_order_upwind_gt(data):
-    gt_storage.prepare_numpy()
-
-    # ========================================
-    # random data generation
-    # ========================================
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
-    nb = data.draw(hyp_st.integers(min_value=2, max_value=max(2, conf_nb)), label="nb")
+    nb = data.draw(
+        hyp_st.integers(min_value=2, max_value=max(2, conf_nb)), label="nb"
+    )
     domain = data.draw(
         st_domain(
             xaxis_length=(1, 20),
             yaxis_length=(1, 20),
             zaxis_length=(1, 20),
             nb=nb,
-            gt_powered=True,
             backend=backend,
             dtype=dtype,
         ),
@@ -882,7 +538,6 @@ def test_third_order_upwind_gt(data):
             (nx + 2, ny + 2, nz + 1),
             -1e4,
             1e4,
-            gt_powered=True,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -890,12 +545,14 @@ def test_third_order_upwind_gt(data):
         label="field",
     )
 
-    timestep = data.draw(st_floats(min_value=0, max_value=3600), label="timestep")
+    timestep = data.draw(
+        st_floats(min_value=0, max_value=3600), label="timestep"
+    )
 
     # ========================================
     # test bed
     # ========================================
-    validation_gt(
+    validation(
         "third_order_upwind",
         domain,
         field,
@@ -907,76 +564,25 @@ def test_third_order_upwind_gt(data):
     )
 
 
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
-@given(hyp_st.data())
-def test_fifth_order_upwind_numpy(data):
+@hyp_settings
+@given(data=hyp_st.data())
+@pytest.mark.parametrize("backend", conf_backend)
+@pytest.mark.parametrize("dtype", conf_dtype)
+def test_fifth_order_upwind(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
-
-    nb = data.draw(hyp_st.integers(min_value=3, max_value=max(3, conf_nb)), label="nb")
-    domain = data.draw(
-        st_domain(
-            xaxis_length=(1, 20),
-            yaxis_length=(1, 20),
-            zaxis_length=(1, 20),
-            nb=nb,
-            gt_powered=False,
-            dtype=dtype,
-        ),
-        label="domain",
-    )
-    grid = domain.numerical_grid
-    nx, ny, nz = grid.nx, grid.ny, grid.nz
-
-    field = data.draw(
-        st_raw_field((nx + 2, ny + 2, nz + 1), -1e4, 1e4, gt_powered=False, dtype=dtype),
-        label="field",
-    )
-
-    timestep = data.draw(st_floats(min_value=0, max_value=3600), label="timestep")
-
-    # ========================================
-    # test bed
-    # ========================================
-    validation_numpy("fifth_order_upwind", domain, field, timestep, dtype)
-
-
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
-@given(hyp_st.data())
-def test_fifth_order_upwind_gt(data):
-    gt_storage.prepare_numpy()
-
-    # ========================================
-    # random data generation
-    # ========================================
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
-    nb = data.draw(hyp_st.integers(min_value=3, max_value=max(3, conf_nb)), label="nb")
+    nb = data.draw(
+        hyp_st.integers(min_value=3, max_value=max(3, conf_nb)), label="nb"
+    )
     domain = data.draw(
         st_domain(
             xaxis_length=(1, 20),
             yaxis_length=(1, 20),
             zaxis_length=(1, 20),
             nb=nb,
-            gt_powered=True,
             backend=backend,
             dtype=dtype,
         ),
@@ -990,7 +596,6 @@ def test_fifth_order_upwind_gt(data):
             (nx + 2, ny + 2, nz + 1),
             -1e4,
             1e4,
-            gt_powered=True,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -998,12 +603,14 @@ def test_fifth_order_upwind_gt(data):
         label="field",
     )
 
-    timestep = data.draw(st_floats(min_value=0, max_value=3600), label="timestep")
+    timestep = data.draw(
+        st_floats(min_value=0, max_value=3600), label="timestep"
+    )
 
     # ========================================
     # test bed
     # ========================================
-    validation_gt(
+    validation(
         "fifth_order_upwind",
         domain,
         field,

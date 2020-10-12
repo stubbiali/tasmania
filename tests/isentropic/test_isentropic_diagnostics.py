@@ -21,18 +21,13 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 from hypothesis import (
-    assume,
     given,
-    HealthCheck,
     reproduce_failure,
-    settings,
     strategies as hyp_st,
 )
 import numpy as np
 from pint import UnitRegistry
 import pytest
-
-import gt4py as gt
 
 from tasmania.python.isentropic.dynamics.diagnostics import (
     IsentropicDiagnostics as DynamicsIsentropicDiagnostics,
@@ -45,7 +40,7 @@ from tasmania.python.utils.storage_utils import get_dataarray_3d, zeros
 
 from tests.conf import (
     backend as conf_backend,
-    datatype as conf_dtype,
+    dtype as conf_dtype,
     default_origin as conf_dorigin,
 )
 from tests.strategies import (
@@ -56,32 +51,22 @@ from tests.strategies import (
     st_isentropic_state_f,
     st_raw_field,
 )
-from tests.utilities import compare_arrays, compare_dataarrays
+from tests.utilities import compare_arrays, compare_dataarrays, hyp_settings
 
 
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
-@given(hyp_st.data())
-def test_diagnostic_variables(data):
+@hyp_settings
+@given(data=hyp_st.data())
+@pytest.mark.parametrize("backend", conf_backend)
+@pytest.mark.parametrize("dtype", conf_dtype)
+def test_diagnostic_variables(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
-    if gt_powered:
-        gt.storage.prepare_numpy()
-
     grid = data.draw(
-        st_physical_grid(zaxis_name="z", zaxis_length=(2, 20), dtype=dtype), label="grid"
+        st_physical_grid(zaxis_name="z", zaxis_length=(2, 20), dtype=dtype),
+        label="grid",
     )
     nx, ny, nz = grid.nx, grid.ny, grid.nz
 
@@ -94,7 +79,6 @@ def test_diagnostic_variables(data):
             storage_shape,
             min_value=1,
             max_value=1e4,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -108,28 +92,24 @@ def test_diagnostic_variables(data):
     # ========================================
     p = zeros(
         storage_shape,
-        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
     )
     exn = zeros(
         storage_shape,
-        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
     )
     mtg = zeros(
         storage_shape,
-        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
     )
     h = zeros(
         storage_shape,
-        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -137,7 +117,6 @@ def test_diagnostic_variables(data):
 
     did = DynamicsIsentropicDiagnostics(
         grid,
-        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -151,8 +130,8 @@ def test_diagnostic_variables(data):
     rd = did._pcs["gas_constant_of_dry_air"]
     g = did._pcs["gravitational_acceleration"]
 
-    dz = grid.dz.to_units("K").values.item()
-    topo = grid.topography.profile.to_units("m").values
+    dz = grid.dz.to_units("K").data.item()
+    topo = grid.topography.profile.to_units("m").data
 
     # pressure
     p_val = np.zeros((nx, ny, nz + 1), dtype=dtype)
@@ -167,7 +146,7 @@ def test_diagnostic_variables(data):
 
     # montgomery
     mtg_val = np.zeros((nx, ny, nz), dtype=dtype)
-    theta_s = grid.z_on_interface_levels.to_units("K").values[-1]
+    theta_s = grid.z_on_interface_levels.to_units("K").data[-1]
     mtg_s = theta_s * exn_val[:, :, -1] + g * topo
     mtg_val[:, :, -1] = mtg_s + 0.5 * dz * exn_val[:, :, -1]
     for k in range(nz - 2, -1, -1):
@@ -175,39 +154,31 @@ def test_diagnostic_variables(data):
     compare_arrays(mtg[:nx, :ny, :nz], mtg_val)
 
     # height
-    theta = grid.z_on_interface_levels.to_units("K").values
+    theta = grid.z_on_interface_levels.to_units("K").data
     h_val = np.zeros((nx, ny, nz + 1), dtype=dtype)
     h_val[:, :, -1] = topo
     for k in range(nz - 1, -1, -1):
         h_val[:, :, k] = h_val[:, :, k + 1] - (rd / (cp * g)) * (
             theta[k] * exn_val[:, :, k] + theta[k + 1] * exn_val[:, :, k + 1]
-        ) * (p_val[:, :, k] - p_val[:, :, k + 1]) / (p_val[:, :, k] + p_val[:, :, k + 1])
+        ) * (p_val[:, :, k] - p_val[:, :, k + 1]) / (
+            p_val[:, :, k] + p_val[:, :, k + 1]
+        )
     compare_arrays(h[:nx, :ny, :], h_val)
 
 
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
-@given(hyp_st.data())
-def test_montgomery(data):
+@hyp_settings
+@given(data=hyp_st.data())
+@pytest.mark.parametrize("backend", conf_backend)
+@pytest.mark.parametrize("dtype", conf_dtype)
+def test_montgomery(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
-    if gt_powered:
-        gt.storage.prepare_numpy()
-
     grid = data.draw(
-        st_physical_grid(zaxis_name="z", zaxis_length=(2, 20), dtype=dtype), label="grid"
+        st_physical_grid(zaxis_name="z", zaxis_length=(2, 20), dtype=dtype),
+        label="grid",
     )
     nx, ny, nz = grid.nx, grid.ny, grid.nz
 
@@ -220,7 +191,6 @@ def test_montgomery(data):
             storage_shape,
             min_value=1,
             max_value=1e4,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -234,7 +204,6 @@ def test_montgomery(data):
     # ========================================
     mtg = zeros(
         storage_shape,
-        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -242,7 +211,6 @@ def test_montgomery(data):
 
     did = DynamicsIsentropicDiagnostics(
         grid,
-        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -256,8 +224,8 @@ def test_montgomery(data):
     rd = did._pcs["gas_constant_of_dry_air"]
     g = did._pcs["gravitational_acceleration"]
 
-    dz = grid.dz.to_units("K").values.item()
-    topo = grid.topography.profile.to_units("m").values
+    dz = grid.dz.to_units("K").data.item()
+    topo = grid.topography.profile.to_units("m").data
 
     # pressure
     p_val = np.zeros((nx, ny, nz + 1), dtype=dtype)
@@ -270,7 +238,7 @@ def test_montgomery(data):
 
     # montgomery
     mtg_val = np.zeros((nx, ny, nz), dtype=dtype)
-    theta_s = grid.z_on_interface_levels.to_units("K").values[-1]
+    theta_s = grid.z_on_interface_levels.to_units("K").data[-1]
     mtg_s = theta_s * exn_val[:, :, -1] + g * topo
     mtg_val[:, :, -1] = mtg_s + 0.5 * dz * exn_val[:, :, -1]
     for k in range(nz - 2, -1, -1):
@@ -278,29 +246,19 @@ def test_montgomery(data):
     compare_arrays(mtg[:nx, :ny, :nz], mtg_val)
 
 
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
-@given(hyp_st.data())
-def test_height(data):
+@hyp_settings
+@given(data=hyp_st.data())
+@pytest.mark.parametrize("backend", conf_backend)
+@pytest.mark.parametrize("dtype", conf_dtype)
+def test_height(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
-    if gt_powered:
-        gt.storage.prepare_numpy()
-
     grid = data.draw(
-        st_physical_grid(zaxis_name="z", zaxis_length=(2, 20), dtype=dtype), label="grid"
+        st_physical_grid(zaxis_name="z", zaxis_length=(2, 20), dtype=dtype),
+        label="grid",
     )
     nx, ny, nz = grid.nx, grid.ny, grid.nz
 
@@ -313,7 +271,6 @@ def test_height(data):
             storage_shape,
             min_value=1,
             max_value=1e4,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -327,7 +284,6 @@ def test_height(data):
     # ========================================
     h = zeros(
         storage_shape,
-        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -335,7 +291,6 @@ def test_height(data):
 
     did = DynamicsIsentropicDiagnostics(
         grid,
-        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -349,8 +304,8 @@ def test_height(data):
     rd = did._pcs["gas_constant_of_dry_air"]
     g = did._pcs["gravitational_acceleration"]
 
-    dz = grid.dz.to_units("K").values.item()
-    topo = grid.topography.profile.to_units("m").values
+    dz = grid.dz.to_units("K").data.item()
+    topo = grid.topography.profile.to_units("m").data
 
     # pressure
     p_val = np.zeros((nx, ny, nz + 1), dtype=dtype)
@@ -362,36 +317,27 @@ def test_height(data):
     exn_val = cp * (p_val / p_ref) ** (rd / cp)
 
     # height
-    theta = grid.z_on_interface_levels.to_units("K").values
+    theta = grid.z_on_interface_levels.to_units("K").data
     h_val = np.zeros((nx, ny, nz + 1), dtype=dtype)
     h_val[:, :, -1] = topo
     for k in range(nz - 1, -1, -1):
         h_val[:, :, k] = h_val[:, :, k + 1] - (rd / (cp * g)) * (
             theta[k] * exn_val[:, :, k] + theta[k + 1] * exn_val[:, :, k + 1]
-        ) * (p_val[:, :, k] - p_val[:, :, k + 1]) / (p_val[:, :, k] + p_val[:, :, k + 1])
+        ) * (p_val[:, :, k] - p_val[:, :, k + 1]) / (
+            p_val[:, :, k] + p_val[:, :, k + 1]
+        )
     compare_arrays(h[:nx, :ny, :], h_val)
 
 
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
-@given(hyp_st.data())
-def test_density_and_temperature(data):
+@hyp_settings
+@given(data=hyp_st.data())
+@pytest.mark.parametrize("backend", conf_backend)
+@pytest.mark.parametrize("dtype", conf_dtype)
+def test_density_and_temperature(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-
-    if gt_powered:
-        gt.storage.prepare_numpy()
 
     grid = data.draw(
         st_physical_grid(zaxis_name="z", zaxis_length=(2, 20)), label="grid"
@@ -407,7 +353,6 @@ def test_density_and_temperature(data):
             storage_shape,
             min_value=1,
             max_value=1e4,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -421,42 +366,36 @@ def test_density_and_temperature(data):
     # ========================================
     p = zeros(
         storage_shape,
-        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
     )
     exn = zeros(
         storage_shape,
-        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
     )
     mtg = zeros(
         storage_shape,
-        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
     )
     h = zeros(
         storage_shape,
-        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
     )
     rho = zeros(
         storage_shape,
-        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
     )
     t = zeros(
         storage_shape,
-        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -464,7 +403,6 @@ def test_density_and_temperature(data):
 
     did = DynamicsIsentropicDiagnostics(
         grid,
-        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -479,8 +417,8 @@ def test_density_and_temperature(data):
     rd = did._pcs["gas_constant_of_dry_air"]
     g = did._pcs["gravitational_acceleration"]
 
-    dz = grid.dz.to_units("K").values.item()
-    topo = grid.topography.profile.to_units("m").values
+    dz = grid.dz.to_units("K").data.item()
+    topo = grid.topography.profile.to_units("m").data
 
     # pressure
     p_val = np.zeros((nx, ny, nz + 1), dtype=dtype)
@@ -495,7 +433,7 @@ def test_density_and_temperature(data):
 
     # montgomery
     mtg_val = np.zeros((nx, ny, nz), dtype=dtype)
-    theta_s = grid.z_on_interface_levels.to_units("K").values[-1]
+    theta_s = grid.z_on_interface_levels.to_units("K").data[-1]
     mtg_s = theta_s * exn_val[:, :, -1] + g * topo
     mtg_val[:, :, -1] = mtg_s + 0.5 * dz * exn_val[:, :, -1]
     for k in range(nz - 2, -1, -1):
@@ -503,13 +441,15 @@ def test_density_and_temperature(data):
     compare_arrays(mtg[:nx, :ny, :nz], mtg_val)
 
     # height
-    theta = grid.z_on_interface_levels.to_units("K").values
+    theta = grid.z_on_interface_levels.to_units("K").data
     h_val = np.zeros((nx, ny, nz + 1), dtype=dtype)
     h_val[:, :, -1] = topo
     for k in range(nz - 1, -1, -1):
         h_val[:, :, k] = h_val[:, :, k + 1] - (rd / (cp * g)) * (
             theta[k] * exn_val[:, :, k] + theta[k + 1] * exn_val[:, :, k + 1]
-        ) * (p_val[:, :, k] - p_val[:, :, k + 1]) / (p_val[:, :, k] + p_val[:, :, k + 1])
+        ) * (p_val[:, :, k] - p_val[:, :, k + 1]) / (
+            p_val[:, :, k] + p_val[:, :, k + 1]
+        )
     compare_arrays(h[:nx, :ny, :], h_val)
 
     # density
@@ -525,7 +465,10 @@ def test_density_and_temperature(data):
     t_val = (
         0.5
         / cp
-        * (theta[:, :, :-1] * exn_val[:, :, :-1] + theta[:, :, 1:] * exn_val[:, :, 1:])
+        * (
+            theta[:, :, :-1] * exn_val[:, :, :-1]
+            + theta[:, :, 1:] * exn_val[:, :, 1:]
+        )
     )
     compare_arrays(t[:nx, :ny, :nz], t_val)
 
@@ -533,30 +476,17 @@ def test_density_and_temperature(data):
 unit_registry = UnitRegistry()
 
 
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
-@given(hyp_st.data())
-def test_isentropic_diagnostics(data):
+@hyp_settings
+@given(data=hyp_st.data())
+@pytest.mark.parametrize("backend", conf_backend)
+@pytest.mark.parametrize("dtype", conf_dtype)
+def test_isentropic_diagnostics(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
-    if gt_powered:
-        gt.storage.prepare_numpy()
-
-    domain = data.draw(
-        st_domain(gt_powered=gt_powered, backend=backend, dtype=dtype), label="domain"
-    )
+    domain = data.draw(st_domain(backend=backend, dtype=dtype), label="domain")
     grid = domain.numerical_grid
 
     nx, ny, nz = grid.nx, grid.ny, grid.nz
@@ -566,7 +496,6 @@ def test_isentropic_diagnostics(data):
         st_isentropic_state_f(
             grid,
             moist=True,
-            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
             storage_shape=storage_shape,
@@ -582,42 +511,36 @@ def test_isentropic_diagnostics(data):
     #
     p = zeros(
         storage_shape,
-        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
     )
     exn = zeros(
         storage_shape,
-        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
     )
     mtg = zeros(
         storage_shape,
-        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
     )
     h = zeros(
         storage_shape,
-        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
     )
     rho = zeros(
         storage_shape,
-        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
     )
     t = zeros(
         storage_shape,
-        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -625,7 +548,6 @@ def test_isentropic_diagnostics(data):
 
     did = DynamicsIsentropicDiagnostics(
         grid,
-        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -633,8 +555,8 @@ def test_isentropic_diagnostics(data):
         storage_shape=storage_shape,
     )
 
-    s = state["air_isentropic_density"].to_units("kg m^-2 K^-1").values
-    pt = state["air_pressure_on_interface_levels"].to_units("Pa").values[0, 0, 0]
+    s = state["air_isentropic_density"].to_units("kg m^-2 K^-1").data
+    pt = state["air_pressure_on_interface_levels"].to_units("Pa").data[0, 0, 0]
 
     did.get_diagnostic_variables(s, pt, p, exn, mtg, h)
     did.get_density_and_temperature(s, exn, h, rho, t)
@@ -647,7 +569,6 @@ def test_isentropic_diagnostics(data):
         "numerical",
         moist=False,
         pt=state["air_pressure_on_interface_levels"][0, 0, 0],
-        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -703,7 +624,6 @@ def test_isentropic_diagnostics(data):
         "numerical",
         moist=True,
         pt=state["air_pressure_on_interface_levels"][0, 0, 0],
-        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -715,8 +635,16 @@ def test_isentropic_diagnostics(data):
 
     validation_dict.update(
         {
-            "air_density": {"storage": rho, "shape": (nx, ny, nz), "units": "kg m^-3"},
-            "air_temperature": {"storage": t, "shape": (nx, ny, nz), "units": "K"},
+            "air_density": {
+                "storage": rho,
+                "shape": (nx, ny, nz),
+                "units": "kg m^-3",
+            },
+            "air_temperature": {
+                "storage": t,
+                "shape": (nx, ny, nz),
+                "units": "K",
+            },
         }
     )
 
@@ -735,26 +663,15 @@ def test_isentropic_diagnostics(data):
     assert len(diags) == len(validation_dict)
 
 
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
-@given(hyp_st.data())
-def test_horizontal_velocity(data):
+@hyp_settings
+@given(data=hyp_st.data())
+@pytest.mark.parametrize("backend", conf_backend)
+@pytest.mark.parametrize("dtype", conf_dtype)
+def test_horizontal_velocity(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-
-    if gt_powered:
-        gt.storage.prepare_numpy()
 
     domain = data.draw(st_domain(), label="domain")
     hb = domain.horizontal_boundary
@@ -767,7 +684,6 @@ def test_horizontal_velocity(data):
         st_isentropic_state_f(
             grid,
             moist=True,
-            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
             storage_shape=storage_shape,
@@ -782,7 +698,6 @@ def test_horizontal_velocity(data):
     # ========================================
     ivc = IsentropicVelocityComponents(
         domain,
-        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -792,20 +707,18 @@ def test_horizontal_velocity(data):
 
     diags = ivc(state)
 
-    s = state["air_isentropic_density"].to_units("kg m^-2 K^-1").values
-    su = state["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").values
-    sv = state["y_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").values
+    s = state["air_isentropic_density"].to_units("kg m^-2 K^-1").data
+    su = state["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").data
+    sv = state["y_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").data
 
     u = zeros(
         storage_shape,
-        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
     )
     v = zeros(
         storage_shape,
-        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -850,7 +763,8 @@ def test_horizontal_velocity(data):
         set_coordinates=False,
     )
     compare_dataarrays(
-        diags["y_velocity_at_v_locations"][:nx, : ny + 1, :nz], v_val[:nx, : ny + 1, :nz]
+        diags["y_velocity_at_v_locations"][:nx, : ny + 1, :nz],
+        v_val[:nx, : ny + 1, :nz],
     )
 
 

@@ -23,7 +23,10 @@
 import numpy as np
 from typing import Optional, TYPE_CHECKING, Tuple, Union
 
-from tasmania.python.dwarfs.diagnostics import HorizontalVelocity, WaterConstituent
+from tasmania.python.dwarfs.diagnostics import (
+    HorizontalVelocity,
+    WaterConstituent,
+)
 from tasmania.python.dwarfs.horizontal_smoothing import HorizontalSmoothing
 from tasmania.python.dwarfs.vertical_damping import VerticalDamping
 from tasmania.python.framework.dycore import DynamicalCore
@@ -53,13 +56,22 @@ class IsentropicDynamicalCore(DynamicalCore):
     def __init__(
         self,
         domain: "Domain",
-        intermediate_tendency_component: Optional[taz_types.tendency_component_t] = None,
+        intermediate_tendency_component: Optional[
+            taz_types.tendency_component_t
+        ] = None,
         intermediate_diagnostic_component: Optional[
-            Union[taz_types.diagnostic_component_t, taz_types.tendency_component_t]
+            Union[
+                taz_types.diagnostic_component_t,
+                taz_types.tendency_component_t,
+            ]
         ] = None,
         substeps: int = 0,
-        fast_tendency_component: Optional[taz_types.tendency_component_t] = None,
-        fast_diagnostic_component: Optional[taz_types.diagnostic_component_t] = None,
+        fast_tendency_component: Optional[
+            taz_types.tendency_component_t
+        ] = None,
+        fast_diagnostic_component: Optional[
+            taz_types.diagnostic_component_t
+        ] = None,
         moist: bool = False,
         time_integration_scheme: str = "forward_euler_si",
         horizontal_flux_scheme: str = "upwind",
@@ -81,12 +93,11 @@ class IsentropicDynamicalCore(DynamicalCore):
         smooth_moist_coeff: float = 0.03,
         smooth_moist_coeff_max: float = 0.24,
         smooth_moist_damp_depth: int = 10,
-        gt_powered: bool = True,
         *,
         backend: str = "numpy",
         backend_opts: Optional[taz_types.options_dict_t] = None,
-        build_info: Optional[taz_types.options_dict_t] = None,
         dtype: taz_types.dtype_t = np.float64,
+        build_info: Optional[taz_types.options_dict_t] = None,
         exec_info: Optional[taz_types.mutable_options_dict_t] = None,
         default_origin: Optional[taz_types.triplet_int_t] = None,
         rebuild: bool = False,
@@ -181,7 +192,8 @@ class IsentropicDynamicalCore(DynamicalCore):
         damp_max : `float`, optional
             Maximum value for the damping coefficient. Defaults to 0.0002.
         smooth : `bool`, optional
-            ``True`` to enable horizontal numerical smoothing, ``False`` otherwise.
+            ``True`` to enable horizontal numerical smoothing,
+            ``False`` otherwise.
             Defaults to ``True``.
         smooth_at_every_stage : `bool`, optional
             ``True`` to apply numerical smoothing at each stage of the time-
@@ -189,8 +201,8 @@ class IsentropicDynamicalCore(DynamicalCore):
             of each timestep. Defaults to ``True``.
         smooth_type: `str`, optional
             String specifying the smoothing technique to implement.
-            See :class:`~tasmania.HorizontalSmoothing` for all available options.
-            Defaults to "first_order".
+            See :class:`~tasmania.HorizontalSmoothing` for all available
+            options. Defaults to "first_order".
         smooth_coeff : `float`, optional
             Smoothing coefficient. Defaults to 0.03.
         smooth_coeff_max : `float`, optional
@@ -198,48 +210,50 @@ class IsentropicDynamicalCore(DynamicalCore):
             See :class:`~tasmania.HorizontalSmoothing` for further details.
             Defaults to 0.24.
         smooth_damp_depth : `int`, optional
-            Number of vertical layers in the smoothing damping region. Defaults to 10.
+            Number of vertical layers in the smoothing damping region.
+            Defaults to 10.
         smooth_moist : `bool`, optional
-            ``True`` to enable horizontal numerical smoothing on the water constituents,
-            ``False`` otherwise. Defaults to ``True``.
+            ``True`` to enable horizontal numerical smoothing on the water
+            constituents, ``False`` otherwise. Defaults to ``True``.
         smooth_moist_at_every_stage : `bool`, optional
             ``True`` to apply numerical smoothing on the water constituents
             at each stage of the time-integrator, ``False`` to apply numerical
             smoothing only at the end of each timestep. Defaults to ``True``.
         smooth_moist_type: `str`, optional
-            String specifying the smoothing technique to apply on the water constituents.
-            See :class:`~tasmania.HorizontalSmoothing` for all available options.
-            Defaults to "first-order".
+            String specifying the smoothing technique to apply on the water
+            constituents. See :class:`~tasmania.HorizontalSmoothing` for all
+            available options. Defaults to "first-order".
         smooth_moist_coeff : `float`, optional
             Smoothing coefficient for the water constituents. Defaults to 0.03.
         smooth_moist_coeff_max : `float`, optional
-            Maximum value for the smoothing coefficient for the water constituents.
-            See :class:`tasmania.HorizontalSmoothing` for further details.
-            Defaults to 0.24.
+            Maximum value for the smoothing coefficient for the water
+            constituents. See :class:`tasmania.HorizontalSmoothing` for further
+            details. Defaults to 0.24.
         smooth_moist_damp_depth : `int`, optional
             Number of vertical layers in the smoothing damping region for the
             water constituents. Defaults to 10.
-        gt_powered : `bool`, optional
-            ``True`` to harness GT4Py, ``False`` for a vanilla NumPy implementation.
         backend : `str`, optional
-            The GT4Py backend.
+            The backend.
         backend_opts : `dict`, optional
             Dictionary of backend-specific options.
-        build_info : `dict`, optional
-            Dictionary of building options.
         dtype : `data-type`, optional
             Data type of the storages.
+        build_info : `dict`, optional
+            Dictionary of building options.
         exec_info : `dict`, optional
-            Dictionary which will store statistics and diagnostics gathered at run time.
+            Dictionary which will store statistics and diagnostics gathered at
+            run time.
         default_origin : `tuple[int]`, optional
             Default origin of the storages.
         rebuild : `bool`, optional
-            ``True`` to trigger the stencils compilation at any class instantiation,
-            ``False`` to rely on the caching mechanism implemented by GT4Py.
+            ``True`` to trigger the stencils compilation at any class
+            instantiation, ``False`` to rely on the caching mechanism
+            implemented by the backend.
         storage_shape : `tuple[int]`, optional
             Shape of the storages.
         managed_memory : `bool`, optional
-            ``True`` to allocate the storages as managed memory, ``False`` otherwise.
+            ``True`` to allocate the storages as managed memory,
+            ``False`` otherwise.
         """
         #
         # set storage shape
@@ -247,7 +261,9 @@ class IsentropicDynamicalCore(DynamicalCore):
         grid = domain.numerical_grid
         nx, ny, nz = grid.nx, grid.ny, grid.nz
         storage_shape = (
-            (nx + 1, ny + 1, nz + 1) if storage_shape is None else storage_shape
+            (nx + 1, ny + 1, nz + 1)
+            if storage_shape is None
+            else storage_shape
         )
         error_msg = "storage_shape must be larger or equal than {}.".format(
             (nx + 1, ny + 1, nz + 1)
@@ -283,11 +299,10 @@ class IsentropicDynamicalCore(DynamicalCore):
             substeps,
             fast_tendency_component,
             fast_diagnostic_component,
-            gt_powered=gt_powered,
             backend=backend,
             backend_opts=backend_opts,
-            build_info=build_info,
             dtype=dtype,
+            build_info=build_info,
             rebuild=rebuild,
         )
         hb = self.horizontal_boundary
@@ -302,11 +317,10 @@ class IsentropicDynamicalCore(DynamicalCore):
             self.grid,
             self.horizontal_boundary,
             moist,
-            gt_powered=gt_powered,
             backend=backend,
             backend_opts=backend_opts,
-            build_info=build_info,
             dtype=dtype,
+            build_info=build_info,
             exec_info=exec_info,
             default_origin=default_origin,
             rebuild=rebuild,
@@ -324,11 +338,10 @@ class IsentropicDynamicalCore(DynamicalCore):
                 self.grid,
                 damp_depth,
                 damp_max,
-                gt_powered=gt_powered,
                 backend=backend,
                 backend_opts=backend_opts,
-                build_info=build_info,
                 dtype=dtype,
+                build_info=build_info,
                 exec_info=exec_info,
                 default_origin=default_origin,
                 rebuild=rebuild,
@@ -346,11 +359,10 @@ class IsentropicDynamicalCore(DynamicalCore):
                 smooth_coeff_max,
                 smooth_damp_depth,
                 hb.nb,
-                gt_powered=gt_powered,
                 backend=backend,
                 backend_opts=backend_opts,
-                build_info=build_info,
                 dtype=dtype,
+                build_info=build_info,
                 exec_info=exec_info,
                 default_origin=default_origin,
                 rebuild=rebuild,
@@ -364,11 +376,10 @@ class IsentropicDynamicalCore(DynamicalCore):
                     smooth_moist_coeff_max,
                     smooth_moist_damp_depth,
                     hb.nb,
-                    gt_powered=gt_powered,
                     backend=backend,
                     backend_opts=backend_opts,
-                    build_info=build_info,
                     dtype=dtype,
+                    build_info=build_info,
                     exec_info=exec_info,
                     default_origin=default_origin,
                     rebuild=rebuild,
@@ -381,11 +392,10 @@ class IsentropicDynamicalCore(DynamicalCore):
         self._velocity_components = HorizontalVelocity(
             self.grid,
             staggering=True,
-            gt_powered=gt_powered,
             backend=backend,
             backend_opts=backend_opts,
-            build_info=build_info,
             dtype=dtype,
+            build_info=build_info,
             exec_info=exec_info,
             rebuild=rebuild,
         )
@@ -393,11 +403,10 @@ class IsentropicDynamicalCore(DynamicalCore):
             self._water_constituent = WaterConstituent(
                 self.grid,
                 clipping=True,
-                gt_powered=gt_powered,
                 backend=backend,
                 backend_opts=backend_opts,
-                build_info=build_info,
                 dtype=dtype,
+                build_info=build_info,
                 exec_info=exec_info,
                 rebuild=rebuild,
             )
@@ -406,7 +415,9 @@ class IsentropicDynamicalCore(DynamicalCore):
         # the method implementing each stage
         #
         self._stage_array_call = (
-            self.stage_array_call_dry if not moist else self.stage_array_call_moist
+            self.stage_array_call_dry
+            if not moist
+            else self.stage_array_call_moist
         )
 
         #
@@ -415,7 +426,6 @@ class IsentropicDynamicalCore(DynamicalCore):
         def allocate():
             return zeros(
                 storage_shape,
-                gt_powered=gt_powered,
                 backend=backend,
                 dtype=dtype,
                 default_origin=default_origin,
@@ -471,10 +481,22 @@ class IsentropicDynamicalCore(DynamicalCore):
         return_dict = {
             "air_isentropic_density": {"dims": dims, "units": "kg m^-2 K^-1"},
             "montgomery_potential": {"dims": dims, "units": "m^2 s^-2"},
-            "x_momentum_isentropic": {"dims": dims, "units": "kg m^-1 K^-1 s^-1"},
-            "x_velocity_at_u_locations": {"dims": dims_stg_x, "units": "m s^-1"},
-            "y_momentum_isentropic": {"dims": dims, "units": "kg m^-1 K^-1 s^-1"},
-            "y_velocity_at_v_locations": {"dims": dims_stg_y, "units": "m s^-1"},
+            "x_momentum_isentropic": {
+                "dims": dims,
+                "units": "kg m^-1 K^-1 s^-1",
+            },
+            "x_velocity_at_u_locations": {
+                "dims": dims_stg_x,
+                "units": "m s^-1",
+            },
+            "y_momentum_isentropic": {
+                "dims": dims,
+                "units": "kg m^-1 K^-1 s^-1",
+            },
+            "y_velocity_at_v_locations": {
+                "dims": dims_stg_y,
+                "units": "m s^-1",
+            },
         }
 
         if self._moist:
@@ -561,12 +583,18 @@ class IsentropicDynamicalCore(DynamicalCore):
             ):
                 return_dict[mfpw] = {"dims": dims, "units": "g g^-1"}
 
-            if ftends is not None and "precipitation" in ftends.diagnostic_properties:
+            if (
+                ftends is not None
+                and "precipitation" in ftends.diagnostic_properties
+            ):
                 dims2d = (self.grid.x.dims[0], self.grid.y.dims[0])
                 return_dict.update(
                     {
                         "precipitation": {"dims": dims2d, "units": "mm hr^-1"},
-                        "accumulated_precipitation": {"dims": dims2d, "units": "mm"},
+                        "accumulated_precipitation": {
+                            "dims": dims2d,
+                            "units": "mm",
+                        },
                     }
                 )
 
@@ -577,9 +605,18 @@ class IsentropicDynamicalCore(DynamicalCore):
         dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])
 
         return_dict = {
-            "air_isentropic_density": {"dims": dims, "units": "kg m^-2 K^-1 s^-1"},
-            "x_momentum_isentropic": {"dims": dims, "units": "kg m^-1 K^-1 s^-2"},
-            "y_momentum_isentropic": {"dims": dims, "units": "kg m^-1 K^-1 s^-2"},
+            "air_isentropic_density": {
+                "dims": dims,
+                "units": "kg m^-2 K^-1 s^-1",
+            },
+            "x_momentum_isentropic": {
+                "dims": dims,
+                "units": "kg m^-1 K^-1 s^-2",
+            },
+            "y_momentum_isentropic": {
+                "dims": dims,
+                "units": "kg m^-1 K^-1 s^-2",
+            },
         }
 
         if self._moist:
@@ -632,16 +669,32 @@ class IsentropicDynamicalCore(DynamicalCore):
         }
 
         if self._moist:
-            return_dict[mfwv] = {"dims": dims, "units": "g g^-1", "grid_shape": g_shape}
-            return_dict[mfcw] = {"dims": dims, "units": "g g^-1", "grid_shape": g_shape}
-            return_dict[mfpw] = {"dims": dims, "units": "g g^-1", "grid_shape": g_shape}
+            return_dict[mfwv] = {
+                "dims": dims,
+                "units": "g g^-1",
+                "grid_shape": g_shape,
+            }
+            return_dict[mfcw] = {
+                "dims": dims,
+                "units": "g g^-1",
+                "grid_shape": g_shape,
+            }
+            return_dict[mfpw] = {
+                "dims": dims,
+                "units": "g g^-1",
+                "grid_shape": g_shape,
+            }
 
         return return_dict
 
     @property
     def substep_output_properties(self) -> taz_types.properties_dict_t:
         if not hasattr(self, "__substep_output_properties"):
-            dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])
+            dims = (
+                self.grid.x.dims[0],
+                self.grid.y.dims[0],
+                self.grid.z.dims[0],
+            )
             g_shape = (self.grid.nx, self.grid.ny, self.grid.nz)
 
             self.__substep_output_properties = {}
@@ -692,7 +745,9 @@ class IsentropicDynamicalCore(DynamicalCore):
                 if "precipitation" in self.substep_input_properties:
                     dims2d = (self.grid.x.dims[0], self.grid.y.dims[0], 1)
                     g_shape_2d = (self.grid.nx, self.grid.ny, 1)
-                    self.__substep_output_properties["accumulated_precipitation"] = {
+                    self.__substep_output_properties[
+                        "accumulated_precipitation"
+                    ] = {
                         "dims": dims2d,
                         "units": "mm",
                         "grid_shape": g_shape_2d,
@@ -712,7 +767,6 @@ class IsentropicDynamicalCore(DynamicalCore):
         """ Allocate memory only for the prognostic fields. """
         g = self.grid
         nx, ny, nz = g.nx, g.ny, g.nz
-        gt_powered = self._gt_powered
         backend = self._backend
         dtype = self._dtype
         default_origin = self._default_origin
@@ -746,7 +800,6 @@ class IsentropicDynamicalCore(DynamicalCore):
             out_state[name] = get_dataarray_3d(
                 zeros(
                     storage_shape,
-                    gt_powered=gt_powered,
                     backend=backend,
                     dtype=dtype,
                     default_origin=default_origin,
@@ -768,7 +821,9 @@ class IsentropicDynamicalCore(DynamicalCore):
         raw_tendencies: taz_types.array_dict_t,
         timestep: taz_types.timedelta_t,
     ) -> taz_types.array_dict_t:
-        return self._stage_array_call(stage, raw_state, raw_tendencies, timestep)
+        return self._stage_array_call(
+            stage, raw_state, raw_tendencies, timestep
+        )
 
     def stage_array_call_dry(
         self,
@@ -787,13 +842,19 @@ class IsentropicDynamicalCore(DynamicalCore):
             try:
                 ref_state = hb.reference_state
                 self._s_ref[...] = (
-                    ref_state["air_isentropic_density"].to_units("kg m^-2 K^-1").data
+                    ref_state["air_isentropic_density"]
+                    .to_units("kg m^-2 K^-1")
+                    .data
                 )
                 self._su_ref[...] = (
-                    ref_state["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").data
+                    ref_state["x_momentum_isentropic"]
+                    .to_units("kg m^-1 K^-1 s^-1")
+                    .data
                 )
                 self._sv_ref[...] = (
-                    ref_state["y_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").data
+                    ref_state["y_momentum_isentropic"]
+                    .to_units("kg m^-1 K^-1 s^-1")
+                    .data
                 )
             except KeyError:
                 raise RuntimeError(
@@ -820,13 +881,21 @@ class IsentropicDynamicalCore(DynamicalCore):
         sv_new = raw_state_new["y_momentum_isentropic"]
 
         damped = False
-        if self._damp and (self._damp_at_every_stage or stage == self.stages - 1):
+        if self._damp and (
+            self._damp_at_every_stage or stage == self.stages - 1
+        ):
             damped = True
 
             # apply vertical damping
-            self._damper(timestep, self._s_now, s_new, self._s_ref, self._s_damped)
-            self._damper(timestep, self._su_now, su_new, self._su_ref, self._su_damped)
-            self._damper(timestep, self._sv_now, sv_new, self._sv_ref, self._sv_damped)
+            self._damper(
+                timestep, self._s_now, s_new, self._s_ref, self._s_damped
+            )
+            self._damper(
+                timestep, self._su_now, su_new, self._su_ref, self._su_damped
+            )
+            self._damper(
+                timestep, self._sv_now, sv_new, self._sv_ref, self._sv_damped
+            )
 
         # properly set pointers to current solution
         s_new = self._s_damped if damped else s_new
@@ -834,7 +903,9 @@ class IsentropicDynamicalCore(DynamicalCore):
         sv_new = self._sv_damped if damped else sv_new
 
         smoothed = False
-        if self._smooth and (self._smooth_at_every_stage or stage == self.stages - 1):
+        if self._smooth and (
+            self._smooth_at_every_stage or stage == self.stages - 1
+        ):
             smoothed = True
 
             # apply horizontal smoothing
@@ -902,13 +973,19 @@ class IsentropicDynamicalCore(DynamicalCore):
             try:
                 ref_state = hb.reference_state
                 self._s_ref[...] = (
-                    ref_state["air_isentropic_density"].to_units("kg m^-2 K^-1").data
+                    ref_state["air_isentropic_density"]
+                    .to_units("kg m^-2 K^-1")
+                    .data
                 )
                 self._su_ref[...] = (
-                    ref_state["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").data
+                    ref_state["x_momentum_isentropic"]
+                    .to_units("kg m^-1 K^-1 s^-1")
+                    .data
                 )
                 self._sv_ref[...] = (
-                    ref_state["y_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").data
+                    ref_state["y_momentum_isentropic"]
+                    .to_units("kg m^-1 K^-1 s^-1")
+                    .data
                 )
 
                 # self._qv_ref[...] = (
@@ -943,9 +1020,15 @@ class IsentropicDynamicalCore(DynamicalCore):
         sqv = self._sqv_now if stage == 0 else self._sqv_int
         sqc = self._sqc_now if stage == 0 else self._sqc_int
         sqr = self._sqr_now if stage == 0 else self._sqr_int
-        self._water_constituent.get_density_of_water_constituent(s_now, qv_now, sqv)
-        self._water_constituent.get_density_of_water_constituent(s_now, qc_now, sqc)
-        self._water_constituent.get_density_of_water_constituent(s_now, qr_now, sqr)
+        self._water_constituent.get_density_of_water_constituent(
+            s_now, qv_now, sqv
+        )
+        self._water_constituent.get_density_of_water_constituent(
+            s_now, qc_now, sqc
+        )
+        self._water_constituent.get_density_of_water_constituent(
+            s_now, qr_now, sqr
+        )
         raw_state["isentropic_density_of_water_vapor"] = sqv
         raw_state["isentropic_density_of_cloud_liquid_water"] = sqc
         raw_state["isentropic_density_of_precipitation_water"] = sqr
@@ -981,13 +1064,21 @@ class IsentropicDynamicalCore(DynamicalCore):
         hb.dmn_enforce_raw(raw_state_new, out_properties)
 
         damped = False
-        if self._damp and (self._damp_at_every_stage or stage == self.stages - 1):
+        if self._damp and (
+            self._damp_at_every_stage or stage == self.stages - 1
+        ):
             damped = True
 
             # apply vertical damping
-            self._damper(timestep, self._s_now, s_new, self._s_ref, self._s_damped)
-            self._damper(timestep, self._su_now, su_new, self._su_ref, self._su_damped)
-            self._damper(timestep, self._sv_now, sv_new, self._sv_ref, self._sv_damped)
+            self._damper(
+                timestep, self._s_now, s_new, self._s_ref, self._s_damped
+            )
+            self._damper(
+                timestep, self._su_now, su_new, self._su_ref, self._su_damped
+            )
+            self._damper(
+                timestep, self._sv_now, sv_new, self._sv_ref, self._sv_damped
+            )
             # self._damper(timestep, self._qv_now, self._qv_new, self._qv_ref, self._qv_damped)
             # self._damper(timestep, self._qc_now, self._qc_new, self._qc_ref, self._qc_damped)
             # self._damper(timestep, self._qr_now, self._qr_new, self._qr_ref, self._qr_damped)
@@ -1001,7 +1092,9 @@ class IsentropicDynamicalCore(DynamicalCore):
         qr_new = self._qr_new  # self._qr_damped if damped else self._qr_new
 
         smoothed = False
-        if self._smooth and (self._smooth_at_every_stage or stage == self.stages - 1):
+        if self._smooth and (
+            self._smooth_at_every_stage or stage == self.stages - 1
+        ):
             smoothed = True
 
             # apply horizontal smoothing
