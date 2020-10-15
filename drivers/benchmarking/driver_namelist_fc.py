@@ -149,11 +149,7 @@ inter_tendency_component = taz.ConcurrentCoupling(
 # component retrieving the diagnostic variables
 pt = state["air_pressure_on_interface_levels"][0, 0, 0]
 dv = taz.IsentropicDiagnostics(
-    domain,
-    grid_type="numerical",
-    moist=False,
-    pt=pt,
-    **nl.backend_kwargs
+    domain, grid_type="numerical", moist=False, pt=pt, **nl.backend_kwargs
 )
 
 # ============================================================
@@ -174,9 +170,7 @@ if nl.smooth:
     args.append(hs)
 
     # component calculating the velocity components
-    vc = taz.IsentropicVelocityComponents(
-        domain, **nl.backend_kwargs
-    )
+    vc = taz.IsentropicVelocityComponents(domain, **nl.backend_kwargs)
     args.append(vc)
 
 if len(args) > 0:
@@ -240,14 +234,15 @@ if nl.save and nl.filename is not None:
 dt = nl.timestep
 nt = nl.niter
 
-wall_time_start = time.time()
-compute_time = 0.0
-
 # dict operator
 dict_op = taz.DataArrayDictOperator(**nl.backend_kwargs)
 
+# start timing
+taz.Timer.start("wall_clock_time")
+
 for i in range(nt):
-    compute_time_start = time.time()
+    # start timing
+    taz.Timer.start(label="compute_time")
 
     # update the (time-dependent) topography
     dycore.update_topography((i + 1) * dt)
@@ -264,7 +259,8 @@ for i in range(nt):
         # state.update(diagnostics)
         dict_op.copy(state, diagnostics, unshared_variables_in_output=True)
 
-    compute_time += time.time() - compute_time_start
+    # stop timing
+    taz.Timer.stop()
 
     # print useful info
     print_info(dt, i, nl, pgrid, state)
@@ -292,9 +288,11 @@ print("Simulation successfully completed. HOORAY!")
 if nl.save and nl.filename is not None:
     netcdf_monitor.write()
 
-# stop chronometer
-wall_time = time.time() - wall_time_start
+# stop timing
+taz.Timer.stop()
 
 # print logs
-print(f"Total wall time: {taz.get_time_string(wall_time)}.")
-print(f"Compute time: {taz.get_time_string(compute_time, print_milliseconds=True)}.")
+taz.Timer.print(label="wall_clock_time", units="s")
+taz.Timer.print(label="compute_time", units="s")
+if nl.logfile is not None:
+    taz.Timer.log(logfile=nl.logfile, units="s")

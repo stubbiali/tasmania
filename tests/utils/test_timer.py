@@ -20,3 +20,22 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+from tasmania.python.utils.utils import Timer
+
+
+if __name__ == "__main__":
+    for _ in range(10):
+        Timer.start(label="level-0-0")
+        Timer.start(label="level-1-0")
+        Timer.start(label="level-2-0")
+        Timer.stop()
+        Timer.start(label="level-2-1")
+        Timer.start(label="level-3-0")
+        Timer.stop()
+        Timer.stop()
+        Timer.start(label="level-2-2")
+        Timer.stop()
+        Timer.stop()
+        Timer.stop()
+
+    Timer.log()

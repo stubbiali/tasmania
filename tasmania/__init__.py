@@ -155,7 +155,7 @@ from tasmania.python.utils.storage_utils import (
     get_dataarray_2d,
     zeros,
 )
-from tasmania.python.utils.utils import feed_module, get_time_string
+from tasmania.python.utils.utils import Timer, feed_module, get_time_string
 
 
 __all__ = (
@@ -234,6 +234,7 @@ __all__ = (
     TendencyStepper,
     TimeInconsistencyError,
     TimeSeries,
+    Timer,
     Topography,
     VerticalDamping,
     WaterConstituent,

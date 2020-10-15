@@ -48,6 +48,7 @@ from tasmania.python.utils.framework_utils import (
     check_properties_compatibility,
     check_missing_properties,
 )
+from tasmania.python.utils.utils import Timer
 
 if TYPE_CHECKING:
     from tasmania.python.domain.domain import Domain
@@ -921,12 +922,14 @@ class DynamicalCore(abc.ABC):
         # Calculating the intermediate tendencies
         # ============================================================
         # add the slow and intermediate tendencies up
+        Timer.start(label="add_slow_inter_tends")
         self._dict_op.iadd(
             inter_tendencies,
             slow_tendencies,
             field_properties=self.tendency_properties,
             unshared_variables_in_output=True,
         )
+        Timer.stop()
 
         if self._inter_tc is None and stage == 0:
             # collect the slow tendencies, and possibly the intermediate
@@ -934,6 +937,7 @@ class DynamicalCore(abc.ABC):
             tends = {}
             tends.update(inter_tendencies)
         elif self._inter_tc is not None:
+            Timer.start(label="get_inter_tends")
             # calculate the intermediate tendencies
             try:
                 tends, diags = self._inter_tc(tmp_state)
@@ -950,6 +954,7 @@ class DynamicalCore(abc.ABC):
 
             # update the state with the just computed diagnostics
             tmp_state.update(diags)
+            Timer.stop()
         else:
             tends = {}
 
@@ -961,22 +966,28 @@ class DynamicalCore(abc.ABC):
             name: self.stage_input_properties[name]
             for name in self.stage_input_properties
         }
+        Timer.start(label="get_raw_tmp_state")
         raw_tmp_state = get_array_dict(tmp_state, tmp_state_properties)
+        Timer.stop()
 
         # Extract raw storages from tendencies
         tendency_properties = {
             name: self.stage_tendency_properties[name]
             for name in self.stage_tendency_properties
         }
+        Timer.start(label="get_raw_tends")
         raw_tends = get_array_dict(tends, tendency_properties)
+        Timer.stop()
 
         # ============================================================
         # Stage: computing
         # ============================================================
         # Carry out the stage
+        Timer.start(label="stage")
         raw_stage_state = self.stage_array_call(
             stage, raw_tmp_state, raw_tends, timestep
         )
+        Timer.stop()
 
         if self._substeps == 0 or len(self.substep_output_properties) == 0:
             # ============================================================
@@ -989,13 +1000,17 @@ class DynamicalCore(abc.ABC):
                 )
                 for name in self.stage_output_properties
             }
+            Timer.start(label="get_stage_state")
             stage_state = get_dataarray_dict(
                 raw_stage_state, self._grid, stage_state_properties
             )
+            Timer.stop()
 
             # Update the latest state
+            Timer.start(label="update_out_state")
             self._dict_op.copy(out_state, stage_state)
             # out_state.update(stage_state)
+            Timer.stop()
         else:
             # TODO: deprecated!
             raise NotImplementedError()
@@ -1103,6 +1118,7 @@ class DynamicalCore(abc.ABC):
         # Retrieving the intermediate diagnostics
         # ============================================================
         if self._inter_dc is not None:
+            Timer.start(label="compute_inter_diags")
             if isinstance(
                 self._inter_dc, self.__class__.allowed_diagnostic_type
             ):
@@ -1118,14 +1134,17 @@ class DynamicalCore(abc.ABC):
                     inter_tends, inter_diags = self._inter_dc(
                         out_state, timestep
                     )
+            Timer.stop()
 
             diagnostic_fields = {}
             for name in inter_diags:
                 if name != "time" and name not in self.stage_output_properties:
                     diagnostic_fields[name] = inter_diags[name]
 
+            Timer.start(label="fill_inter_diags")
             self._dict_op.copy(out_state, inter_diags)
             out_state.update(diagnostic_fields)
+            Timer.stop()
         else:
             inter_tends = {}
 

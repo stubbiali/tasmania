@@ -46,7 +46,7 @@ hb_kwargs = {"nr": 6, "nz": nz}
 
 # backend settings
 backend_kwargs = {
-    "backend": "gt4py:gtx86",
+    "backend": "gt4py:gtcuda",
     "build_info": None,
     "dtype": np.float64,
     "exec_info": None,
@@ -122,7 +122,7 @@ coriolis_parameter = None
 
 # simulation length
 timestep = timedelta(seconds=10)
-niter = 10  # int(1 * 60 * 60 / timestep.total_seconds())
+niter = 100  # int(1 * 60 * 60 / timestep.total_seconds())
 
 # output
 save = False
@@ -158,4 +158,5 @@ store_names = (
     "y_momentum_isentropic",
     "y_velocity_at_v_locations",
 )
-print_frequency = 1
+print_frequency = -1
+logfile = f"namelist_fc_{backend_kwargs['backend']}.log"

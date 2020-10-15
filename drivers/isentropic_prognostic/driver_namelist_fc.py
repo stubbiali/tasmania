@@ -319,14 +319,15 @@ if nl.save and nl.filename is not None:
 dt = nl.timestep
 nt = nl.niter
 
-wall_time_start = time.time()
-compute_time = 0.0
+# start timing
+taz.Timer.start(label="wall_clock_time")
 
 # dict operator
 dict_op = taz.DataArrayDictOperator(**nl.backend_kwargs)
 
 for i in range(nt):
-    compute_time_start = time.time()
+    # start timing
+    taz.Timer.start(label="compute_time")
 
     # update the (time-dependent) topography
     dycore.update_topography((i + 1) * dt)
@@ -343,7 +344,8 @@ for i in range(nt):
         # state.update(diagnostics)
         dict_op.copy(state, diagnostics, unshared_variables_in_output=True)
 
-    compute_time += time.time() - compute_time_start
+    # stop timing
+    taz.Timer.stop()
 
     # print useful info
     print_info(dt, i, nl, pgrid, state)
@@ -372,9 +374,11 @@ print("Simulation successfully completed. HOORAY!")
 if nl.save and nl.filename is not None:
     netcdf_monitor.write()
 
-# stop chronometer
-wall_time = time.time() - wall_time_start
+# stop timing
+taz.Timer.stop()
 
 # print logs
-print("Total wall time: {}.".format(taz.get_time_string(wall_time, False)))
-print("Compute time: {}.".format(taz.get_time_string(compute_time, True)))
+taz.Timer.print(label="wall_clock_time", units="s")
+taz.Timer.print(label="compute_time", units="s")
+if nl.logfile is not None:
+    taz.Timer.log(logfile=nl.logfile, units="s")

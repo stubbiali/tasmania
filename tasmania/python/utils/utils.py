@@ -25,11 +25,18 @@ from datetime import datetime
 import inspect
 import math
 import numpy as np
-from typing import Union
+from sympl import DataArray
+import timeit
+from typing import Any, Dict, List, Union
+
+try:
+    import cupy as cp
+except (ImportError, ModuleNotFoundError):
+    cp = None
 
 try:
     from tasmania.conf import tol as d_tol
-except ImportError:
+except (ImportError, ModuleNotFoundError):
     d_tol = 1e-10
 
 
@@ -323,3 +330,129 @@ def is_gt(backend: str):
 def get_gt_backend(backend):
     assert is_gt(backend), f"{backend} is not a GT4Py backend."
     return backend[6:]
+
+
+class Timer:
+    active: List[str] = []
+    roots: List[str] = []
+    tic: Dict[str, Any] = {}
+    tree: Dict[str, Any] = {}
+
+    @classmethod
+    def start(cls, label: str) -> None:
+        # safe-guard
+        assert (
+            label not in cls.active
+        ), f"Timer {label} has already been started."
+
+        # mark timer as active
+        cls.active.append(label)
+
+        # insert timer in the tree
+        if label not in cls.tree:
+            level = len(cls.active) - 1
+            parent = None if len(cls.active) == 1 else cls.active[-2]
+            cls.tree[label] = {
+                "level": level,
+                "parent": parent,
+                "children": [],
+                "total_calls": 0,
+                "total_runtime": 0.0,
+            }
+            if level == 0:
+                cls.roots.append(label)
+            else:
+                cls.tree[parent]["children"].append(label)
+
+        # tic
+        if cp is not None:
+            cp.cuda.Device(0).synchronize()
+        cls.tic[label] = timeit.default_timer()
+
+    @classmethod
+    def stop(cls, label: str = None) -> None:
+        # safe-guard
+        if len(cls.active) == 0:
+            return
+
+        # only nested timers allowed!
+        label = label or cls.active[-1]
+        assert (
+            label == cls.active[-1]
+        ), f"Cannot stop {label} before stopping {cls.active[-1]}"
+
+        # toc
+        if cp is not None:
+            cp.cuda.Device(0).synchronize()
+        toc = timeit.default_timer()
+
+        # update runtime
+        cls.tree[label]["total_calls"] += 1
+        cls.tree[label]["total_runtime"] += toc - cls.tic[label]
+
+        # mark timer as not active
+        cls.active = cls.active[:-1]
+
+    @classmethod
+    def reset(cls) -> None:
+        cls.active = []
+        cls.tic = {}
+        for label in cls.tree:
+            cls.tree[label]["total_calls"] = 0
+            cls.tree[label]["total_runtime"] = 0.0
+
+    @classmethod
+    def print(cls, label, units="ms") -> None:
+        assert label in cls.tree, f"{label} is not a valid timer identifier."
+        time = (
+            DataArray(cls.tree[label]["total_runtime"], attrs={"units": "s"})
+            .to_units(units)
+            .data.item()
+        )
+        print(f"{label}: {time:.3f} {units}")
+
+    @classmethod
+    def log(cls, logfile: str = "log.txt", units: str = "ms") -> None:
+        # ensure all timers have been stopped
+        assert len(cls.active) == 0, "Some timers are still running."
+
+        # write to file
+        with open(logfile, "w") as outfile:
+            for root in cls.roots:
+                cls._traverse_and_print(outfile, root, units)
+
+    @classmethod
+    def _traverse_and_print(
+        cls,
+        outfile,
+        label: str,
+        units: str,
+        prefix: str = "",
+        has_peers: bool = False,
+    ) -> None:
+        level = cls.tree[label]["level"]
+        prefix_now = prefix + "|- " if level > 0 else prefix
+        time = (
+            DataArray(cls.tree[label]["total_runtime"], attrs={"units": "s"})
+            .to_units(units)
+            .data.item()
+        )
+        outfile.write(f"{prefix_now}{label}: {time:.3f} {units}\n")
+
+        prefix_new = (
+            prefix
+            if level == 0
+            else prefix + "|  "
+            if has_peers
+            else prefix + "   "
+        )
+        peers_new = len(cls.tree[label]["children"])
+        has_peers_new = peers_new > 0
+        for i, child in enumerate(cls.tree[label]["children"]):
+            cls._traverse_and_print(
+                outfile,
+                child,
+                units,
+                prefix=prefix_new,
+                has_peers=has_peers_new and i < peers_new - 1,
+            )

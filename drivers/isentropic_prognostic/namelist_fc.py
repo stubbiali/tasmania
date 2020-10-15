@@ -29,11 +29,11 @@ from sympl import DataArray
 domain_x = DataArray([-176, 176], dims="x", attrs={"units": "km"}).to_units(
     "m"
 )
-nx = 41
+nx = 161
 domain_y = DataArray([-176, 176], dims="y", attrs={"units": "km"}).to_units(
     "m"
 )
-ny = 41
+ny = 161
 domain_z = DataArray(
     [400, 280], dims="potential_temperature", attrs={"units": "K"}
 )
@@ -130,13 +130,13 @@ turbulence = True
 smagorinsky_constant = 0.18
 
 # coriolis
-coriolis = False
+coriolis = True
 coriolis_parameter = None  # DataArray(1e-3, attrs={'units': 'rad s^-1'})
 
 # microphysics
 sedimentation = True
 sedimentation_flux_scheme = "second_order_upwind"
-rain_evaporation = False
+rain_evaporation = True
 autoconversion_threshold = DataArray(0.1, attrs={"units": "g kg^-1"})
 autoconversion_rate = DataArray(0.001, attrs={"units": "s^-1"})
 collection_rate = DataArray(2.2, attrs={"units": "s^-1"})
@@ -145,8 +145,8 @@ saturation_rate = DataArray(0.025, attrs={"units": "s^-1"})
 update_frequency = 0
 
 # simulation length
-timestep = timedelta(seconds=40)
-niter = 20  # int(2 * 60 * 60 / timestep.total_seconds())
+timestep = timedelta(seconds=10)
+niter = 100  # int(2 * 60 * 60 / timestep.total_seconds())
 
 # output
 save = False
@@ -194,5 +194,6 @@ store_names = (
     "y_momentum_isentropic",
     "y_velocity_at_v_locations",
 )
-print_dry_frequency = 1
+print_dry_frequency = -1
 print_moist_frequency = -1
+logfile = f"namelist_fc_{backend_kwargs['backend']}_1.log"
