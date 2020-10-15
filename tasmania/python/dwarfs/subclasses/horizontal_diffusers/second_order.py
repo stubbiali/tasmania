@@ -88,7 +88,7 @@ class SecondOrder(HorizontalDiffusion):
             origin=(nb, nb, 0),
             domain=(nx - 2 * nb, ny - 2 * nb, nz),
             exec_info=self._exec_info,
-            validate_args=True
+            validate_args=False
         )
 
     @staticmethod
@@ -188,7 +188,7 @@ class SecondOrder1DX(HorizontalDiffusion):
             origin=(nb, 0, 0),
             domain=(nx - 2 * nb, ny, nz),
             exec_info=self._exec_info,
-            validate_args=True
+            validate_args=False
         )
 
     @staticmethod
@@ -285,7 +285,7 @@ class SecondOrder1DY(HorizontalDiffusion):
             origin=(0, nb, 0),
             domain=(nx, ny - 2 * nb, nz),
             exec_info=self._exec_info,
-            validate_args=True
+            validate_args=False
         )
 
     @staticmethod

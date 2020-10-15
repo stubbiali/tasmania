@@ -269,7 +269,7 @@ class IsentropicVerticalAdvection(STSTendencyStepper):
             **stencil_args,
             origin=(0, 0, 0),
             domain=(self._nx, self._ny, self._nz),
-            validate_args=True
+            validate_args=False
         )
 
         return {}, out_state

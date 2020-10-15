@@ -161,7 +161,7 @@ class Clipping(DiagnosticComponent):
                 out_field=out_q,
                 origin=(0, 0, 0),
                 domain=out_q.shape,
-                validate_args=True,
+                validate_args=False,
             )
             diagnostics[name] = out_q
 
@@ -378,7 +378,7 @@ class Precipitation(ImplicitTendencyComponent):
             origin=(0, 0, 0),
             domain=(nx, ny, 1),
             exec_info=self._exec_info,
-            validate_args=True,
+            validate_args=False,
         )
 
         tendencies = {}

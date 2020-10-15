@@ -279,7 +279,7 @@ class IsentropicDiagnostics:
             origin=(0, 0, 0),
             domain=(nx, ny, nz + 1),
             exec_info=self._exec_info,
-            validate_args=True,
+            validate_args=False,
         )
 
     def get_montgomery_potential(
@@ -321,7 +321,7 @@ class IsentropicDiagnostics:
             origin=(0, 0, 0),
             domain=(nx, ny, nz + 1),
             exec_info=self._exec_info,
-            validate_args=True,
+            validate_args=False,
         )
 
     def get_height(
@@ -363,7 +363,7 @@ class IsentropicDiagnostics:
             origin=(0, 0, 0),
             domain=(nx, ny, nz + 1),
             exec_info=self._exec_info,
-            validate_args=True,
+            validate_args=False,
         )
 
     def get_density_and_temperature(
@@ -406,7 +406,7 @@ class IsentropicDiagnostics:
             origin=(0, 0, 0),
             domain=(nx, ny, nz),
             exec_info=self._exec_info,
-            validate_args=True,
+            validate_args=False,
         )
 
     def _stencil_diagnostic_variables_numpy(

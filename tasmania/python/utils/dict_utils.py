@@ -147,7 +147,7 @@ class DataArrayDictOperator:
                     dst=dst_field,
                     origin=(0, 0, 0),
                     domain=src_field.shape,
-                    validate_args=True
+                    validate_args=False
                 )
         else:
             for key in shared_keys:
@@ -230,7 +230,7 @@ class DataArrayDictOperator:
                     out_c=out_da.data,
                     origin=(0, 0, 0),
                     domain=field1.shape,
-                    validate_args=True
+                    validate_args=False
                 )
             else:
                 out_da.data[...] = field1 + field2
@@ -255,7 +255,7 @@ class DataArrayDictOperator:
                             dst=out[key].data,
                             origin=(0, 0, 0),
                             domain=_dict[key].shape,
-                            validate_args=True
+                            validate_args=False
                         )
                     else:
                         out[key].data[...] = _dict[key].to_units(units).data
@@ -324,7 +324,7 @@ class DataArrayDictOperator:
                     in_b=field2,
                     origin=(0, 0, 0),
                     domain=field1.shape,
-                    validate_args=True
+                    validate_args=False
                 )
             else:
                 field1 += field2
@@ -410,7 +410,7 @@ class DataArrayDictOperator:
                     out_c=out_da.data,
                     origin=(0, 0, 0),
                     domain=field1.shape,
-                    validate_args=True
+                    validate_args=False
                 )
             else:
                 out_da.data[...] = field1 - field2
@@ -441,7 +441,7 @@ class DataArrayDictOperator:
                                 dst=out[key].data,
                                 origin=(0, 0, 0),
                                 domain=dict1[key].shape,
-                                validate_args=True
+                                validate_args=False
                             )
                         else:
                             out[key].data[...] = (
@@ -461,7 +461,7 @@ class DataArrayDictOperator:
                                 dst=out[key].data,
                                 origin=(0, 0, 0),
                                 domain=dict2[key].shape,
-                                validate_args=True
+                                validate_args=False
                             )
                         else:
                             out[key].data[...] = (
@@ -528,7 +528,7 @@ class DataArrayDictOperator:
                     in_b=field2,
                     origin=(0, 0, 0),
                     domain=field1.shape,
-                    validate_args=True
+                    validate_args=False
                 )
             else:
                 field1 -= field2
@@ -555,7 +555,7 @@ class DataArrayDictOperator:
                             f=-1.0,
                             origin=(0, 0, 0),
                             domain=dict1[key].shape,
-                            validate_args=True
+                            validate_args=False
                         )
                     else:
                         dict1[key].data *= -1
@@ -603,7 +603,7 @@ class DataArrayDictOperator:
                         f=factor,
                         origin=(0, 0, 0),
                         domain=rout.shape,
-                        validate_args=True
+                        validate_args=False
                     )
                 else:
                     rout[...] = factor * rfield
@@ -638,7 +638,7 @@ class DataArrayDictOperator:
                         f=factor,
                         origin=(0, 0, 0),
                         domain=rfield.shape,
-                        validate_args=True
+                        validate_args=False
                     )
                 else:
                     rfield[...] *= factor
@@ -694,7 +694,7 @@ class DataArrayDictOperator:
                     out_d=rout,
                     origin=(0, 0, 0),
                     domain=rout.shape,
-                    validate_args=True
+                    validate_args=False
                 )
             else:
                 rout[...] = rfield1 + rfield2 - rfield3
@@ -737,7 +737,7 @@ class DataArrayDictOperator:
                     in_c=rfield3,
                     origin=(0, 0, 0),
                     domain=rfield1.shape,
-                    validate_args=True
+                    validate_args=False
                 )
             else:
                 rfield1 += rfield2 - rfield3
@@ -789,7 +789,7 @@ class DataArrayDictOperator:
                     f=factor,
                     origin=(0, 0, 0),
                     domain=rout.shape,
-                    validate_args=True
+                    validate_args=False
                 )
             else:
                 rout[...] = rfield1 + factor * rfield2
@@ -847,7 +847,7 @@ class DataArrayDictOperator:
                     dt=dt,
                     origin=(0, 0, 0),
                     domain=r_out.shape,
-                    validate_args=True
+                    validate_args=False
                 )
             else:
                 r_out[...] = 0.5 * (r_field + r_field_prv + dt * r_tnd)
@@ -905,7 +905,7 @@ class DataArrayDictOperator:
                     dt=dt,
                     origin=(0, 0, 0),
                     domain=r_out.shape,
-                    validate_args=True
+                    validate_args=False
                 )
             else:
                 r_out[...] = (2.0 * r_field + r_field_prv + dt * r_tnd) / 3.0

@@ -385,7 +385,7 @@ class ForwardEuler(BurgersStepper):
             origin=(nb, nb, 0),
             domain=(nx - 2 * nb, ny - 2 * nb, 1),
             exec_info=self._exec_info,
-            validate_args=True
+            validate_args=False
         )
 
         return {
@@ -504,7 +504,7 @@ class RK2(BurgersStepper):
             origin=(nb, nb, 0),
             domain=(nx - 2 * nb, ny - 2 * nb, 1),
             exec_info=self._exec_info,
-            validate_args=True
+            validate_args=False
         )
 
         return {
@@ -628,7 +628,7 @@ class RK3WS(RK2):
             origin=(nb, nb, 0),
             domain=(nx - 2 * nb, ny - 2 * nb, 1),
             exec_info=self._exec_info,
-            validate_args=True
+            validate_args=False
         )
 
         return {

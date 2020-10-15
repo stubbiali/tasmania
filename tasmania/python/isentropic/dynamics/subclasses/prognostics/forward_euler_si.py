@@ -199,7 +199,7 @@ class ForwardEulerSI(IsentropicPrognostic):
             origin=(nb, nb, 0),
             domain=(nx - 2 * nb, ny - 2 * nb, nz),
             exec_info=self._exec_info,
-            validate_args=True
+            validate_args=False
         )
 
         # apply the boundary conditions on the stepped isentropic density
@@ -254,7 +254,7 @@ class ForwardEulerSI(IsentropicPrognostic):
             origin=(nb, nb, 0),
             domain=(nx - 2 * nb, ny - 2 * nb, nz),
             exec_info=self._exec_info,
-            validate_args=True
+            validate_args=False
         )
 
         # collect the outputs

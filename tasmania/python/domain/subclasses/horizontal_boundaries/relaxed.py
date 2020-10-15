@@ -307,7 +307,7 @@ class Relaxed(HorizontalBoundary):
                 inout_phi=field,
                 origin=(0, 0, 0),
                 domain=(mi, mj, mk),
-                validate_args=True
+                validate_args=False
             )
 
     def set_outermost_layers_x(
@@ -667,7 +667,7 @@ class Relaxed1DX(HorizontalBoundary):
                 inout_phi=field,
                 origin=(0, nb, 0),
                 domain=(mi, mj - nb, mk),
-                validate_args=True
+                validate_args=False
             )
 
         # repeat the innermost column(s) along the y-direction
@@ -1012,7 +1012,7 @@ class Relaxed1DY(HorizontalBoundary):
                 inout_phi=field,
                 origin=(nb, 0, 0),
                 domain=(mi - nb, mj, mk),
-                validate_args=True
+                validate_args=False
             )
 
         # repeat the innermost row(s) along the x-direction

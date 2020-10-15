@@ -185,7 +185,7 @@ class Smagorinsky2d(TendencyComponent):
             origin=(nb, nb, 0),
             domain=(nx - 2 * nb, ny - 2 * nb, nz),
             exec_info=self._exec_info,
-            validate_args=True,
+            validate_args=False,
         )
 
         tendencies = {

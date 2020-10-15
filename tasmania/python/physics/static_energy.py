@@ -161,7 +161,7 @@ class DryStaticEnergy(DiagnosticComponent):
             origin=(0, 0, 0),
             domain=(nx, ny, nz),
             exec_info=self._exec_info,
-            validate_args=True,
+            validate_args=False,
         )
 
         diagnostics = {"montgomery_potential": out_dse}
@@ -318,7 +318,7 @@ class MoistStaticEnergy(DiagnosticComponent):
             origin=(0, 0, 0),
             domain=(nx, ny, nz),
             exec_info=self._exec_info,
-            validate_args=True,
+            validate_args=False,
         )
 
         diagnostics = {"moist_static_energy": out_mse}

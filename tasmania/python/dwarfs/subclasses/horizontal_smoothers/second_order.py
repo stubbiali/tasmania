@@ -77,7 +77,7 @@ class SecondOrder(HorizontalSmoothing):
             origin=(nb, nb, 0),
             domain=(nx - 2 * nb, ny - 2 * nb, nz),
             exec_info=self._exec_info,
-            validate_args=True,
+            validate_args=False,
         )
 
         # set the outermost lateral layers of the output field,
@@ -93,28 +93,28 @@ class SecondOrder(HorizontalSmoothing):
                 dst=phi_out,
                 origin=(0, 0, 0),
                 domain=(nb, ny, nz),
-                validate_args=True,
+                validate_args=False,
             )
             self._stencil_copy(
                 src=phi,
                 dst=phi_out,
                 origin=(nx - nb, 0, 0),
                 domain=(nb, ny, nz),
-                validate_args=True,
+                validate_args=False,
             )
             self._stencil_copy(
                 src=phi,
                 dst=phi_out,
                 origin=(nb, 0, 0),
                 domain=(nx - 2 * nb, nb, nz),
-                validate_args=True,
+                validate_args=False,
             )
             self._stencil_copy(
                 src=phi,
                 dst=phi_out,
                 origin=(nb, ny - nb, 0),
                 domain=(nx - 2 * nb, nb, nz),
-                validate_args=True,
+                validate_args=False,
             )
 
     @staticmethod
@@ -215,7 +215,7 @@ class SecondOrder1DX(HorizontalSmoothing):
             origin=(nb, 0, 0),
             domain=(nx - 2 * nb, ny, nz),
             exec_info=self._exec_info,
-            validate_args=True,
+            validate_args=False,
         )
 
         # set the outermost lateral layers of the output field,
@@ -309,7 +309,7 @@ class SecondOrder1DY(HorizontalSmoothing):
             origin=(0, nb, 0),
             domain=(nx, ny - 2 * nb, nz),
             exec_info=self._exec_info,
-            validate_args=True,
+            validate_args=False,
         )
 
         # set the outermost lateral layers of the output field,

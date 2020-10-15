@@ -159,7 +159,7 @@ class HorizontalVelocity:
             origin=(0, 0, 0),
             domain=(nx, ny, nz),
             exec_info=self._exec_info,
-            validate_args=True
+            validate_args=False
         )
 
     def get_velocity_components(
@@ -203,7 +203,7 @@ class HorizontalVelocity:
             origin=(dn, 0, 0),
             domain=(nx - dn, ny, nz),
             exec_info=self._exec_info,
-            validate_args=True
+            validate_args=False
         )
         self._stencil_diagnosing_velocity_y(
             in_d=d,
@@ -212,7 +212,7 @@ class HorizontalVelocity:
             origin=(0, dn, 0),
             domain=(nx, ny - dn, nz),
             exec_info=self._exec_info,
-            validate_args=True
+            validate_args=False
         )
 
     def _stencil_diagnosing_momenta_numpy(
@@ -443,7 +443,7 @@ class WaterConstituent:
             origin=(0, 0, 0),
             domain=(nx, ny, nz),
             exec_info=self._exec_info,
-            validate_args=True
+            validate_args=False
         )
 
     def get_mass_fraction_of_water_constituent_in_air(
@@ -477,7 +477,7 @@ class WaterConstituent:
             origin=(0, 0, 0),
             domain=(nx, ny, nz),
             exec_info=self._exec_info,
-            validate_args=True
+            validate_args=False
         )
 
     def _stencil_diagnosing_density_numpy(

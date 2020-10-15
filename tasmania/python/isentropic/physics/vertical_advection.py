@@ -379,7 +379,7 @@ class IsentropicVerticalAdvection(TendencyComponent):
             origin=(0, 0, 0),
             domain=(nx, ny, nz),
             exec_info=self._exec_info,
-            validate_args=True
+            validate_args=False
         )
 
         # collect the output arrays in a dictionary

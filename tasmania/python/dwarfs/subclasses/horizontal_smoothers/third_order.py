@@ -76,7 +76,7 @@ class ThirdOrder(HorizontalSmoothing):
             origin=(nb, nb, 0),
             domain=(nx - 2 * nb, ny - 2 * nb, nz),
             exec_info=self._exec_info,
-            validate_args=True,
+            validate_args=False,
         )
 
         # set the outermost lateral layers of the output field,
@@ -196,7 +196,7 @@ class ThirdOrder1DX(HorizontalSmoothing):
             origin=(nb, 0, 0),
             domain=(nx - 2 * nb, ny, nz),
             exec_info=self._exec_info,
-            validate_args=True,
+            validate_args=False,
         )
 
         # set the outermost lateral layers of the output field,
@@ -296,7 +296,7 @@ class ThirdOrder1DY(HorizontalSmoothing):
             origin=(0, nb, 0),
             domain=(nx, ny - 2 * nb, nz),
             exec_info=self._exec_info,
-            validate_args=True,
+            validate_args=False,
         )
 
         # set the outermost lateral layers of the output field,

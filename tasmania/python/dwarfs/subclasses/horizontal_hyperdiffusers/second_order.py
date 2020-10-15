@@ -86,7 +86,7 @@ class SecondOrder(HorizontalHyperDiffusion):
             dy=dy,
             origin=(nb, nb, 0),
             domain=(nx - 2 * nb, ny - 2 * nb, nz),
-            validate_args=True,
+            validate_args=False,
         )
 
     @staticmethod
@@ -180,7 +180,7 @@ class SecondOrder1DX(HorizontalHyperDiffusion):
             dy=dy,
             origin=(nb, 0, 0),
             domain=(nx - 2 * nb, ny, nz),
-            validate_args=True,
+            validate_args=False,
         )
 
     @staticmethod
@@ -268,7 +268,7 @@ class SecondOrder1DY(HorizontalHyperDiffusion):
             dy=dy,
             origin=(0, nb, 0),
             domain=(nx, ny - 2 * nb, nz),
-            validate_args=True,
+            validate_args=False,
         )
 
     @staticmethod
