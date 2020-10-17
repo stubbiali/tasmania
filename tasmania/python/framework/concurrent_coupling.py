@@ -50,7 +50,7 @@ from tasmania.python.utils.framework_utils import (
     get_input_properties,
     get_tendency_properties,
 )
-from tasmania.python.utils.utils import assert_sequence
+from tasmania.python.utils.utils import Timer, assert_sequence
 
 
 class ConcurrentCoupling(BaseConcurrentCoupling):
@@ -303,6 +303,7 @@ class ConcurrentCoupling(BaseConcurrentCoupling):
                 except TypeError:
                     tendencies, diagnostics = component(aux_state, timestep)
 
+                Timer.start(label="tendency_type, iadd")
                 self._dict_op.iadd(
                     out_tendencies,
                     tendencies,
@@ -311,18 +312,22 @@ class ConcurrentCoupling(BaseConcurrentCoupling):
                 )
                 aux_state.update(diagnostics)
                 out_diagnostics.update(diagnostics)
+                Timer.stop()
             elif isinstance(component, Tendency2Diagnostic):
                 diagnostics = component(out_tendencies)
                 aux_state.update(diagnostics)
                 out_diagnostics.update(diagnostics)
             else:  # diagnostic to tendency
                 tendencies = component(aux_state)
+
+                Timer.start(label="diagnostic_to_tendency, iadd")
                 self._dict_op.iadd(
                     out_tendencies,
                     tendencies,
                     field_properties=self.tendency_properties,
                     unshared_variables_in_output=True,
                 )
+                Timer.stop()
 
         return out_tendencies, out_diagnostics
 

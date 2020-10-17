@@ -33,6 +33,7 @@ from tasmania.python.framework.dycore import DynamicalCore
 from tasmania.python.isentropic.dynamics.prognostic import IsentropicPrognostic
 from tasmania.python.utils import taz_types
 from tasmania.python.utils.storage_utils import get_dataarray_3d, zeros
+from tasmania.python.utils.utils import Timer
 
 if TYPE_CHECKING:
     from tasmania.python.domain.domain import Domain
@@ -838,6 +839,7 @@ class IsentropicDynamicalCore(DynamicalCore):
         out_properties = self.output_properties
 
         if self._damp and stage == 0:
+            Timer.start(label="set_reference_state")
             # set the reference state
             try:
                 ref_state = hb.reference_state
@@ -861,6 +863,7 @@ class IsentropicDynamicalCore(DynamicalCore):
                     "Reference state not set in the object handling the horizontal "
                     "boundary conditions, but needed by the wave absorber."
                 )
+            Timer.stop()
 
             # save the current solution
             self._s_now = raw_state["air_isentropic_density"]
@@ -868,12 +871,16 @@ class IsentropicDynamicalCore(DynamicalCore):
             self._sv_now = raw_state["y_momentum_isentropic"]
 
         # perform the prognostic step
+        Timer.start(label="prognostic")
         raw_state_new = self._prognostic.stage_call(
             stage, timestep, raw_state, raw_tendencies
         )
+        Timer.stop()
 
         # apply the lateral boundary conditions
+        Timer.start(label="boundary_conditions")
         hb.dmn_enforce_raw(raw_state_new, out_properties)
+        Timer.stop()
 
         # extract the stepped prognostic model variables
         s_new = raw_state_new["air_isentropic_density"]
@@ -969,6 +976,7 @@ class IsentropicDynamicalCore(DynamicalCore):
         out_properties = self.output_properties
 
         if self._damp and stage == 0:
+            Timer.start(label="set_reference_state")
             # set the reference state
             try:
                 ref_state = hb.reference_state
@@ -1010,6 +1018,7 @@ class IsentropicDynamicalCore(DynamicalCore):
             # self._qv_now = raw_state[mfwv]
             # self._qc_now = raw_state[mfcw]
             # self._qr_now = raw_state[mfpw]
+            Timer.stop()
 
         s_now = raw_state["air_isentropic_density"]
         qv_now = raw_state[mfwv]
@@ -1017,6 +1026,7 @@ class IsentropicDynamicalCore(DynamicalCore):
         qr_now = raw_state[mfpw]
 
         # diagnose the isentropic density of all water constituents
+        Timer.start(label="diagnose_sq")
         sqv = self._sqv_now if stage == 0 else self._sqv_int
         sqc = self._sqc_now if stage == 0 else self._sqc_int
         sqr = self._sqr_now if stage == 0 else self._sqr_int
@@ -1032,11 +1042,14 @@ class IsentropicDynamicalCore(DynamicalCore):
         raw_state["isentropic_density_of_water_vapor"] = sqv
         raw_state["isentropic_density_of_cloud_liquid_water"] = sqc
         raw_state["isentropic_density_of_precipitation_water"] = sqr
+        Timer.stop()
 
         # perform the prognostic step
+        Timer.start(label="prognostic")
         raw_state_new = self._prognostic.stage_call(
             stage, timestep, raw_state, raw_tendencies
         )
+        Timer.stop()
 
         # extract the stepped prognostic model variables
         s_new = raw_state_new["air_isentropic_density"]
@@ -1047,6 +1060,7 @@ class IsentropicDynamicalCore(DynamicalCore):
         sqr_new = raw_state_new["isentropic_density_of_precipitation_water"]
 
         # diagnose the mass fraction of all water constituents
+        Timer.start(label="diagnose_q")
         self._water_constituent.get_mass_fraction_of_water_constituent_in_air(
             s_new, sqv_new, self._qv_new
         )
@@ -1059,9 +1073,12 @@ class IsentropicDynamicalCore(DynamicalCore):
             s_new, sqr_new, self._qr_new
         )
         raw_state_new[mfpw] = self._qr_new
+        Timer.stop()
 
         # apply the lateral boundary conditions
+        Timer.start(label="boundary_conditions")
         hb.dmn_enforce_raw(raw_state_new, out_properties)
+        Timer.stop()
 
         damped = False
         if self._damp and (
@@ -1070,6 +1087,7 @@ class IsentropicDynamicalCore(DynamicalCore):
             damped = True
 
             # apply vertical damping
+            Timer.start(label="vertical_damping")
             self._damper(
                 timestep, self._s_now, s_new, self._s_ref, self._s_damped
             )
@@ -1079,6 +1097,7 @@ class IsentropicDynamicalCore(DynamicalCore):
             self._damper(
                 timestep, self._sv_now, sv_new, self._sv_ref, self._sv_damped
             )
+            Timer.stop()
             # self._damper(timestep, self._qv_now, self._qv_new, self._qv_ref, self._qv_damped)
             # self._damper(timestep, self._qc_now, self._qc_new, self._qc_ref, self._qc_damped)
             # self._damper(timestep, self._qr_now, self._qr_new, self._qr_ref, self._qr_damped)
@@ -1097,6 +1116,8 @@ class IsentropicDynamicalCore(DynamicalCore):
         ):
             smoothed = True
 
+            Timer.start(label="horizontal_smoothing_dry")
+
             # apply horizontal smoothing
             self._smoother(s_new, self._s_smoothed)
             self._smoother(su_new, self._su_smoothed)
@@ -1111,6 +1132,8 @@ class IsentropicDynamicalCore(DynamicalCore):
             }
             hb.dmn_enforce_raw(raw_state_smoothed, out_properties)
 
+            Timer.stop()
+
         # properly set pointers to output solution
         s_out = self._s_smoothed if smoothed else s_new
         su_out = self._su_smoothed if smoothed else su_new
@@ -1121,6 +1144,8 @@ class IsentropicDynamicalCore(DynamicalCore):
             self._smooth_moist_at_every_stage or stage == self.stages - 1
         ):
             smoothed_moist = True
+
+            Timer.start(label="horizontal_smoothing_moist")
 
             # apply horizontal smoothing
             self._smoother_moist(qv_new, self._qv_smoothed)
@@ -1136,12 +1161,15 @@ class IsentropicDynamicalCore(DynamicalCore):
             }
             hb.dmn_enforce_raw(raw_state_smoothed, out_properties)
 
+            Timer.stop()
+
         # properly set pointers to output solution
         qv_out = self._qv_smoothed if smoothed_moist else qv_new
         qc_out = self._qc_smoothed if smoothed_moist else qc_new
         qr_out = self._qr_smoothed if smoothed_moist else qr_new
 
         # diagnose the velocity components
+        Timer.start(label="velocity")
         self._velocity_components.get_velocity_components(
             s_out, su_out, sv_out, self._u_out, self._v_out
         )
@@ -1157,6 +1185,7 @@ class IsentropicDynamicalCore(DynamicalCore):
             field_units=out_properties["y_velocity_at_v_locations"]["units"],
             time=raw_state_new["time"],
         )
+        Timer.stop()
 
         # instantiate the output state
         raw_state_out = {

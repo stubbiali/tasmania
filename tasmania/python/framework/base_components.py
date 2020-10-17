@@ -27,6 +27,7 @@ from typing import Optional
 from tasmania.python.domain.domain import Domain
 from tasmania.python.domain.grid import Grid
 from tasmania.python.domain.horizontal_boundary import HorizontalBoundary
+from tasmania.python.utils.utils import Timer
 
 allowed_grid_types = ("physical", "numerical")
 
@@ -80,6 +81,12 @@ class DiagnosticComponent(sympl.DiagnosticComponent):
         boundary conditions.
         """
         return self._hb
+
+    def __call__(self, state):
+        Timer.start(label=self.__class__.__name__)
+        out = super().__call__(state)
+        Timer.stop()
+        return out
 
 
 class ImplicitTendencyComponent(sympl.ImplicitTendencyComponent):
@@ -144,6 +151,12 @@ class ImplicitTendencyComponent(sympl.ImplicitTendencyComponent):
         boundary conditions.
         """
         return self._hb
+
+    def __call__(self, state, timestep):
+        Timer.start(label=self.__class__.__name__)
+        out = super().__call__(state, timestep)
+        Timer.stop()
+        return out
 
 
 class Stepper(sympl.Stepper):
@@ -272,3 +285,9 @@ class TendencyComponent(sympl.TendencyComponent):
         boundary conditions.
         """
         return self._hb
+
+    def __call__(self, state):
+        Timer.start(label=self.__class__.__name__)
+        out = super().__call__(state)
+        Timer.stop()
+        return out
