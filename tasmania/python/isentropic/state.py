@@ -256,7 +256,7 @@ def get_isentropic_state_from_brunt_vaisala_frequency(
         "montgomery_potential": get_dataarray_3d(
             mtg,
             grid,
-            "J kg^-1",
+            "m^2 s^-2",
             name="montgomery_potential",
             grid_shape=(nx, ny, nz),
             set_coordinates=False,
