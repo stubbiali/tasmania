@@ -258,7 +258,6 @@ ke = taz.KesslerMicrophysics(
     autoconversion_threshold=nl.autoconversion_threshold,
     autoconversion_rate=nl.autoconversion_rate,
     collection_rate=nl.collection_rate,
-    saturation_vapor_pressure_formula=nl.saturation_vapor_pressure_formula,
     **nl.backend_kwargs
 )
 
@@ -313,7 +312,6 @@ sa = taz.KesslerSaturationAdjustmentPrognostic(
     domain,
     grid_type="numerical",
     air_pressure_on_interface_levels=True,
-    saturation_vapor_pressure_formula=nl.saturation_vapor_pressure_formula,
     saturation_rate=nl.saturation_rate,
     **nl.backend_kwargs
 )
@@ -511,14 +509,14 @@ if nl.save and nl.filename is not None:
 dt = nl.timestep
 nt = nl.niter
 
-wall_time_start = time.time()
-compute_time = 0.0
+# start timing
+taz.Timer.start(label="wall_clock_time")
 
 # dict operator
 dict_op = taz.DataArrayDictOperator(**nl.backend_kwargs)
 
 for i in range(nt):
-    compute_time_start = time.time()
+    taz.Timer.start(label="compute_time")
 
     state_aux = {}
     state_aux.update(state)
@@ -541,7 +539,7 @@ for i in range(nt):
     physics_after_dynamics(state_prv, 0.5 * dt)
     dict_op.copy(state, state_prv)
 
-    compute_time += time.time() - compute_time_start
+    taz.Timer.stop()
 
     # print useful info
     print_info(dt, i, nl, pgrid, state)
@@ -570,9 +568,11 @@ print("Simulation successfully completed. HOORAY!")
 if nl.save and nl.filename is not None:
     netcdf_monitor.write()
 
-# stop chronometer
-wall_time = time.time() - wall_time_start
+# stop timing
+taz.Timer.stop()
 
 # print logs
-print("Total wall time: {}.".format(taz.get_time_string(wall_time, False)))
-print("Compute time: {}.".format(taz.get_time_string(compute_time, True)))
+taz.Timer.print(label="wall_clock_time", units="s")
+taz.Timer.print(label="compute_time", units="s")
+if nl.logfile is not None:
+    taz.Timer.log(logfile=nl.logfile, units="s")

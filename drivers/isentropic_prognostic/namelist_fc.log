@@ -1,0 +1,11 @@
+wall_clock_time: 105855.739 ms
+|- compute_time: 105854.155 ms
+   |- add_slow_inter_tends: 14.340 ms
+   |- get_inter_tends: 57249.233 ms
+   |- get_raw_tmp_state: 2602.072 ms
+   |- get_raw_tends: 1517.898 ms
+   |- stage: 24117.502 ms
+   |- get_stage_state: 83.986 ms
+   |- update_out_state: 5257.674 ms
+   |- compute_inter_diags: 5311.237 ms
+   |- fill_inter_diags: 1762.084 ms

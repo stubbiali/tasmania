@@ -279,7 +279,6 @@ ke = taz.KesslerMicrophysics(
     autoconversion_threshold=nl.autoconversion_threshold,
     autoconversion_rate=nl.autoconversion_rate,
     collection_rate=nl.collection_rate,
-    saturation_vapor_pressure_formula=nl.saturation_vapor_pressure_formula,
     gt_powered=nl.gt_powered,
     **nl.gt_kwargs
 )
@@ -348,7 +347,6 @@ sa = taz.KesslerSaturationAdjustmentPrognostic(
     domain,
     grid_type="numerical",
     air_pressure_on_interface_levels=True,
-    saturation_vapor_pressure_formula=nl.saturation_vapor_pressure_formula,
     saturation_rate=nl.saturation_rate,
     gt_powered=nl.gt_powered,
     **nl.gt_kwargs

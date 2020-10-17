@@ -1,0 +1,26 @@
+wall_clock_time: 33.188 s
+|- compute_time: 33.188 s
+   |- Precipitation: 0.206 s
+   |- tendency_type, iadd: 0.038 s
+   |- KesslerFallVelocity: 1.477 s
+   |- KesslerSedimentation: 0.905 s
+   |- KesslerSaturationAdjustmentPrognostic: 4.621 s
+   |- IsentropicImplicitVerticalAdvectionDiagnostic: 2.423 s
+   |- KesslerMicrophysics: 3.574 s
+   |- IsentropicSmagorinsky: 1.708 s
+   |- IsentropicVelocityComponents: 0.391 s
+   |- add_slow_inter_tends: 0.008 s
+   |- get_raw_tmp_state: 0.160 s
+   |- get_raw_tends: 0.000 s
+   |- stage: 4.250 s
+   |  |- set_reference_state: 0.091 s
+   |  |- diagnose_sq: 0.351 s
+   |  |- prognostic: 2.961 s
+   |  |- diagnose_q: 0.275 s
+   |  |- boundary_conditions: 0.225 s
+   |  |- velocity: 0.171 s
+   |  |- vertical_damping: 0.172 s
+   |- get_stage_state: 0.017 s
+   |- update_out_state: 0.700 s
+   |- IsentropicDiagnostics: 0.354 s
+   |- IsentropicHorizontalSmoothing: 0.318 s

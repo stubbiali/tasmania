@@ -46,7 +46,7 @@ hb_kwargs = {"nr": 6, "nz": nz}
 
 # backend settings
 backend_kwargs = {
-    "backend": "gt4py:gtx86",
+    "backend": "gt4py:gtmc",
     "dtype": np.float64,
     "build_info": None,
     "exec_info": None,
@@ -140,7 +140,6 @@ rain_evaporation = True
 autoconversion_threshold = DataArray(0.1, attrs={"units": "g kg^-1"})
 autoconversion_rate = DataArray(0.001, attrs={"units": "s^-1"})
 collection_rate = DataArray(2.2, attrs={"units": "s^-1"})
-saturation_vapor_pressure_formula = "tetens"
 saturation_rate = DataArray(0.025, attrs={"units": "s^-1"})
 update_frequency = 0
 
@@ -196,4 +195,4 @@ store_names = (
 )
 print_dry_frequency = -1
 print_moist_frequency = -1
-logfile = f"namelist_fc_{backend_kwargs['backend']}_1.log"
+logfile = None
