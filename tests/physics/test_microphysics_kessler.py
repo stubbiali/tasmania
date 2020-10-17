@@ -40,7 +40,6 @@ from tasmania.python.physics.microphysics.kessler import (
 )
 from tasmania import get_dataarray_3d
 from tasmania.python.utils.meteo_utils import (
-    goff_gratch_formula,
     tetens_formula,
 )
 from tasmania.python.utils.storage_utils import zeros
@@ -136,9 +135,6 @@ def test_kessler_microphysics(data, backend, dtype, subtests):
     apoif = data.draw(hyp_st.booleans(), label="apoif")
     toaptid = data.draw(hyp_st.booleans(), label="toaptid")
     re = data.draw(hyp_st.booleans(), label="re")
-    svpf_type = data.draw(
-        st_one_of(("tetens", "goff_gratch")), label="svpf_type"
-    )
 
     a = data.draw(hyp_st.floats(min_value=0, max_value=10), label="a")
     k1 = data.draw(hyp_st.floats(min_value=0, max_value=10), label="k1")
@@ -205,7 +201,6 @@ def test_kessler_microphysics(data, backend, dtype, subtests):
         autoconversion_threshold=DataArray(a, attrs={"units": "g g^-1"}),
         autoconversion_rate=DataArray(k1, attrs={"units": "s^-1"}),
         collection_rate=DataArray(k2, attrs={"units": "hr^-1"}),
-        saturation_vapor_pressure_formula=svpf_type,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -295,12 +290,21 @@ def test_kessler_microphysics(data, backend, dtype, subtests):
     # assert kessler._k1 == k1
     # assert np.isclose(kessler._k2, k2/3600.0)
 
-    svpf = (
-        goff_gratch_formula if svpf_type == "goff_gratch" else tetens_formula
-    )
-
     tnd_qv, tnd_qc, tnd_qr, tnd_theta = kessler_validation(
-        rho, p, t, exn, qv, qc, qr, a, k1, k2 / 3600.0, svpf, beta, lhvw, re
+        rho,
+        p,
+        t,
+        exn,
+        qv,
+        qc,
+        qr,
+        a,
+        k1,
+        k2 / 3600.0,
+        tetens_formula,
+        beta,
+        lhvw,
+        re,
     )
     compare_dataarrays(
         get_dataarray_3d(tnd_qc, grid, "g g^-1 s^-1"),
@@ -389,9 +393,6 @@ def test_kessler_saturation_adjustment_diagnostic(data, backend, dtype):
     )
 
     apoif = data.draw(hyp_st.booleans(), label="apoif")
-    svpf_type = data.draw(
-        st_one_of(("tetens", "goff_gratch")), label="svpf_type"
-    )
 
     timestep = data.draw(
         st_floats(min_value=1e-6, max_value=3600), label="timestep"
@@ -452,7 +453,6 @@ def test_kessler_saturation_adjustment_diagnostic(data, backend, dtype):
         domain,
         grid_type,
         air_pressure_on_interface_levels=apoif,
-        saturation_vapor_pressure_formula=svpf_type,
         backend=backend,
         dtype=dtype,
         rebuild=False,
@@ -513,17 +513,23 @@ def test_kessler_saturation_adjustment_diagnostic(data, backend, dtype):
     qv = state[mfwv].to_units("g g^-1").data[:nx, :ny, :nz]
     qc = state[mfcw].to_units("g g^-1").data[:nx, :ny, :nz]
 
-    svpf = (
-        goff_gratch_formula if svpf_type == "goff_gratch" else tetens_formula
-    )
-
     (
         out_qv,
         out_qc,
         out_t,
         out_theta_tnd,
     ) = kessler_saturation_adjustment_diagnostic_validation(
-        dt.total_seconds(), p, t, exn, qv, qc, svpf, beta, lhvw, cp, rv
+        dt.total_seconds(),
+        p,
+        t,
+        exn,
+        qv,
+        qc,
+        tetens_formula,
+        beta,
+        lhvw,
+        cp,
+        rv,
     )
 
     compare_dataarrays(
@@ -602,9 +608,6 @@ def test_kessler_saturation_adjustment_prognostic(data, backend, dtype):
     )
 
     apoif = data.draw(hyp_st.booleans(), label="apoif")
-    svpf_type = data.draw(
-        st_one_of(("tetens", "goff_gratch")), label="svpf_type"
-    )
     sr = data.draw(hyp_st.floats(min_value=0, max_value=1), label="sr")
 
     timestep = data.draw(
@@ -666,7 +669,6 @@ def test_kessler_saturation_adjustment_prognostic(data, backend, dtype):
         domain,
         grid_type,
         air_pressure_on_interface_levels=apoif,
-        saturation_vapor_pressure_formula=svpf_type,
         saturation_rate=DataArray(sr, attrs={"units": "s^-1"}),
         backend=backend,
         dtype=dtype,
@@ -726,16 +728,23 @@ def test_kessler_saturation_adjustment_prognostic(data, backend, dtype):
     qv = state[mfwv].to_units("g g^-1").data[:nx, :ny, :nz]
     qc = state[mfcw].to_units("g g^-1").data[:nx, :ny, :nz]
 
-    svpf = (
-        goff_gratch_formula if svpf_type == "goff_gratch" else tetens_formula
-    )
-
     (
         tnd_qv,
         tnd_qc,
         tnd_theta,
     ) = kessler_saturation_adjustment_prognostic_validation(
-        dt.total_seconds(), p, t, exn, qv, qc, svpf, beta, lhvw, cp, rv, sr
+        dt.total_seconds(),
+        p,
+        t,
+        exn,
+        qv,
+        qc,
+        tetens_formula,
+        beta,
+        lhvw,
+        cp,
+        rv,
+        sr,
     )
 
     compare_dataarrays(
