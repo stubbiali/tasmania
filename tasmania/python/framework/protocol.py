@@ -20,36 +20,39 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-# magic string which can be assigned to a attribute of the protocol to indicate
-# that the behaviour of that attribute is the same irrespective of the value
-# assumed by the other protocol attributes
-catch_all = "all"
+# magic string which can be assigned to a key of the protocol dict to indicate
+# that the value of that key is the same irrespective of the value
+# assumed by the other keys
+wildcard = "all"
 
-# the attributes of the protocol
-# attributes are listed in a dict where keys represent the names of the
-# attributes, and values represent either labels, tags or purposes of the
-# attributes
-attributes = {
-    "__backend__": "backend",
-    "__functionality__": "functionality",
-    "__stencil__": "stencil",
-}
+# the attribute which an object should define to implement the protocol
+attribute = "__tasmania__"
 
-# the list of the names of the attributes
-attribute_names = attributes.keys()
+# the protocol attribute should be a dictionary containing the following keys
+keys = ("backend", "function", "stencil")
 
-# default value for each protocol attribute
-# if a attribute does not appear in the dict, it means that that attribute is
+# default value for each key
+# if a key does not appear in the dict, it means that that key is
 # not default, i.e. it must be explicitly specified
-attribute_defaults = {"__stencil__": catch_all}
+defaults = {"stencil": wildcard}
 
-# the hierarchy of attributes
-# this sets the order in which protocol attributes are looked-up when comparing
+# the hierarchy of the keys
+# this sets the order in which keys are looked-up when comparing
 # two objects which implement the protocol
-attributes_hierarchy = ("__functionality__", "__backend__", "__stencil__")
+keys_hierarchy = ("function", "backend", "stencil")
 
-# the master attribute, i.e. the first item of the hierarchy of attributes
-master_attribute = attributes_hierarchy[0]
+# the master key, i.e. the first item of the hierarchy of keys
+master_key = keys_hierarchy[0]
 
-# the values which the master attribute may take
-master_attribute_values = ("compiler", "definition", "empty", "ones", "zeros")
+# the values which the master key may take
+master_key_values = (
+    "stencil_compiler",
+    "stencil_definition",
+    "empty",
+    "ones",
+    "zeros",
+)
+
+# the name of the dictionary which stores the values taken by the protocol
+# keys at runtime
+runtime_attribute = "__runtime__"
