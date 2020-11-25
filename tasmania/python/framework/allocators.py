@@ -21,8 +21,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 import abc
-import itertools
-import numpy as np
 from nptyping import NDArray
 from typing import Any, Callable, Optional, Sequence, Type, Union
 
@@ -76,9 +74,9 @@ class Allocator(abc.ABC):
     @classmethod
     def register(
         cls: Type["Allocator"],
-        backend: Union[str, Sequence[str]],
-        stencil: Union[str, Sequence[str]] = prt.wildcard,
         handle: Optional[Callable] = None,
+        backend: Union[str, Sequence[str]] = prt.wildcard,
+        stencil: Union[str, Sequence[str]] = prt.wildcard,
     ) -> Callable:
         """Decorator to register an object."""
         return multiregister(

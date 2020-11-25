@@ -58,9 +58,9 @@ class StencilDefinition:
     @classmethod
     def register(
         cls: Type["StencilDefinition"],
-        backend: Union[str, Sequence[str]],
-        stencil: Union[str, Sequence[str]],
         handle: Optional[Callable] = None,
+        backend: Union[str, Sequence[str]] = prt.wildcard,
+        stencil: Union[str, Sequence[str]] = prt.wildcard,
     ) -> Callable:
         return multiregister(
             cls.registry,
@@ -110,9 +110,9 @@ class StencilCompiler:
     @classmethod
     def register(
         cls: Type["StencilCompiler"],
-        backend: Union[str, Sequence[str]],
-        stencil: Union[str, Sequence[str]] = prt.wildcard,
         handle: Optional[Callable] = None,
+        backend: Union[str, Sequence[str]] = prt.wildcard,
+        stencil: Union[str, Sequence[str]] = prt.wildcard,
     ) -> Callable:
         return multiregister(
             cls.registry,
