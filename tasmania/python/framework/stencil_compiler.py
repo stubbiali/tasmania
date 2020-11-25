@@ -63,14 +63,16 @@ class StencilDefinition:
         stencil: Union[str, Sequence[str]] = prt.wildcard,
     ) -> Callable:
         return multiregister(
-            cls.registry,
             handle,
-            "function",
-            "stencil_definition",
-            "backend",
-            backend,
-            "stencil",
-            stencil,
+            cls.registry,
+            (
+                "function",
+                "stencil_definition",
+                "backend",
+                backend,
+                "stencil",
+                stencil,
+            ),
         )
 
     @staticmethod
@@ -82,11 +84,7 @@ class StencilCompiler:
     registry = Registry()
 
     def __new__(
-        cls: Type["StencilCompiler"],
-        backend: str,
-        stencil: str,
-        *args: Any,
-        **kwargs: Any
+        cls: Type["StencilCompiler"], backend: str, stencil: str, **kwargs: Any
     ) -> Callable:
         definition = StencilDefinition(backend, stencil)
         key = ("stencil_compiler", backend, stencil)
@@ -101,7 +99,7 @@ class StencilCompiler:
                 "stencil",
                 stencil,
             )
-            return obj(definition, *args, **kwargs)
+            return obj(definition, **kwargs)
         except KeyError:
             raise FactoryRegistryError(
                 f"No stencil compiler registered for the backend '{backend}'."
@@ -115,14 +113,16 @@ class StencilCompiler:
         stencil: Union[str, Sequence[str]] = prt.wildcard,
     ) -> Callable:
         return multiregister(
-            cls.registry,
             handle,
-            "function",
-            "stencil_compiler",
-            "backend",
-            backend,
-            "stencil",
-            stencil,
+            cls.registry,
+            (
+                "function",
+                "stencil_compiler",
+                "backend",
+                backend,
+                "stencil",
+                stencil,
+            ),
         )
 
     @staticmethod

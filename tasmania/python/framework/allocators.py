@@ -22,6 +22,7 @@
 #
 import abc
 from nptyping import NDArray
+import numpy as np
 from typing import Any, Callable, Optional, Sequence, Type, Union
 
 from tasmania.python.framework import protocol as prt
@@ -48,8 +49,9 @@ class Allocator(abc.ABC):
         cls: Type["Allocator"],
         backend: str,
         stencil: str = prt.wildcard,
-        shape: Optional[Sequence[int]] = None,
-        dtype: Optional[taz_types.dtype_t] = None,
+        *,
+        shape: Sequence[int],
+        dtype: Type = np.float64,
         **kwargs: Any
     ) -> NDArray:
         """Dispatch the call to the proper registered object."""
@@ -80,14 +82,16 @@ class Allocator(abc.ABC):
     ) -> Callable:
         """Decorator to register an object."""
         return multiregister(
-            cls.registry,
             handle,
-            "function",
-            cls.function,
-            "backend",
-            backend,
-            "stencil",
-            stencil,
+            cls.registry,
+            (
+                "function",
+                cls.function,
+                "backend",
+                backend,
+                "stencil",
+                stencil,
+            ),
         )
 
     @staticmethod

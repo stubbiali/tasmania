@@ -176,7 +176,9 @@ def set_runtime_attribute(handle: Callable, *args: str) -> Callable:
 
 
 def singleregister(
-    registry: Registry, handle: Optional[Callable] = None, *args: str
+    handle: Optional[Callable] = None,
+    registry: Optional[Registry] = None,
+    args: Optional[Sequence[Union[str, Sequence[str]]]] = None,
 ) -> Callable:
     # filter arguments list
     args_list = filter_args_list(args)
@@ -186,9 +188,10 @@ def singleregister(
         set_attribute(func, *args_list)
         set_runtime_attribute(func)
 
-        # insert function into registry
-        keys = tuple(args_list[i] for i in range(1, len(args_list), 2))
-        registry[keys] = func
+        if registry is not None:
+            # insert function into registry
+            keys = tuple(args_list[i] for i in range(1, len(args_list), 2))
+            registry[keys] = func
 
         return func
 
@@ -199,7 +202,9 @@ def singleregister(
 
 
 def multiregister(
-    registry: Registry, handle: Optional[Callable] = None, *args: str
+    handle: Optional[Callable] = None,
+    registry: Optional[Registry] = None,
+    args: Optional[Sequence[Union[str, Sequence[str]]]] = None,
 ) -> Callable:
     new_args_list = []
     for arg in args:
@@ -208,7 +213,7 @@ def multiregister(
 
     decorators = []
     for new_args in itertools.product(*new_args_list):
-        tmp = singleregister(registry, handle, *new_args)
+        tmp = singleregister(registry, handle, new_args)
         if handle is None:
             decorators.append(tmp)
 
