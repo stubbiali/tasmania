@@ -129,7 +129,8 @@ def set_attribute(handle: Callable, *args: str) -> Callable:
             if isinstance(d[args[i]], str) and d[args[i]] != args[i + 1]:
                 d[args[i]] = [d[args[i]], args[i + 1]]
             elif (
-                isinstance(d[args[i]], list) and args[i + 1] not in d[args[i]]
+                isinstance(d[args[i]], abc.Sequence)
+                and args[i + 1] not in d[args[i]]
             ):
                 d[args[i]].append(args[i + 1])
             else:
@@ -213,7 +214,7 @@ def multiregister(
 
     decorators = []
     for new_args in itertools.product(*new_args_list):
-        tmp = singleregister(registry, handle, new_args)
+        tmp = singleregister(handle, registry, new_args)
         if handle is None:
             decorators.append(tmp)
 

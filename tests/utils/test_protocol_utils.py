@@ -20,6 +20,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+import collections
 from copy import deepcopy
 import pytest
 
@@ -28,8 +29,10 @@ from tasmania.python.utils.exceptions import ProtocolError
 from tasmania.python.utils.protocol_utils import (
     Registry,
     filter_args_list,
-    register,
-    set_protocol_attributes,
+    multiregister,
+    singleregister,
+    set_attribute,
+    set_runtime_attribute,
 )
 
 
@@ -132,11 +135,11 @@ class TestRegistry:
 class TestFilterArgsList:
     def test_do_nothing(self):
         args = (
-            "__functionality__",
-            "compiler",
-            "__backend__",
+            "function",
+            "stencil_compiler",
+            "backend",
             "numpy",
-            "__stencil__",
+            "stencil",
             "foo",
         )
         args_val = deepcopy(args)
@@ -147,7 +150,7 @@ class TestFilterArgsList:
         assert out == args_val
 
     def test_add_default(self):
-        args = ("__functionality__", "compiler", "__backend__", "numpy")
+        args = ("function", "stencil_compiler", "backend", "numpy")
         args_val = deepcopy(args)
 
         out = tuple(filter_args_list(args))
@@ -156,67 +159,83 @@ class TestFilterArgsList:
 
         assert len(out) == 6
         assert out[:4] == args_val
-        assert out[4] == "__stencil__"
-        assert out[5] == prt.catch_all
+        assert out[4] == "stencil"
+        assert out[5] == prt.wildcard
 
     def test_missing_attribute(self):
-        args = ("__functionality__", "ones", "__stencil__", "bar")
+        args = ("function", "ones", "stencil", "bar")
 
         with pytest.raises(ProtocolError) as excinfo:
             out = filter_args_list(args)
         assert str(excinfo.value) == (
-            "The non-default protocol attribute '__backend__' "
+            "The non-default key 'backend' of the '__tasmania__' dictionary "
             "has not been provided."
         )
 
     def test_unknown_attribute(self):
-        args = ("__functionality__", "zeros", "abcde", "fghil")
-
-        with pytest.raises(ProtocolError) as excinfo:
-            out = filter_args_list(args)
-        assert str(excinfo.value) == "Unknown protocol attribute 'abcde'."
-
-    def test_invalid_master_attribute_value(self):
-        args = ("__functionality__", "abcde", "__backend__", "fghil")
+        args = ("function", "zeros", "abcde", "fghil")
 
         with pytest.raises(ProtocolError) as excinfo:
             out = filter_args_list(args)
         assert (
-            str(excinfo.value) == "Unknown value 'abcde' for master attribute "
-            "'__functionality__'."
+            str(excinfo.value) == "Unknown key 'abcde' in the '__tasmania__' "
+            "dictionary."
+        )
+
+    def test_invalid_master_attribute_value(self):
+        args = ("function", "abcde", "__backend__", "fghil")
+
+        with pytest.raises(ProtocolError) as excinfo:
+            out = filter_args_list(args)
+        assert (
+            str(excinfo.value) == "Unknown value 'abcde' for the master key "
+            "'function' of the '__tasmania__' dictionary."
         )
 
 
-class TestSetProtocolMethods:
+def check_attribute(handle, attr_name, val):
+    try:
+        attr = getattr(handle, attr_name, {})
+    except AttributeError:
+        attr = handle.__dict__[attr_name]
+
+    assert isinstance(attr, dict)
+
+    for key in attr:
+        assert key in val
+        if isinstance(attr[key], str):
+            assert isinstance(val[key], str)
+            assert attr[key] == val[key]
+        elif isinstance(attr[key], collections.abc.Sequence):
+            assert isinstance(val[key], collections.abc.Sequence)
+            assert all(item in val[key] for item in attr[key])
+            assert len(attr[key]) == len(val[key])
+        else:
+            assert False
+
+    assert len(attr) == len(val)
+
+
+class TestSetAttribute:
     @staticmethod
     def static_method():
         pass
 
     def test_static_method(self):
         args = (
-            "__functionality__",
-            "compiler",
-            "__backend__",
+            "function",
+            "stencil_compiler",
+            "backend",
             "numpy",
-            "__stencil__",
+            "stencil",
             "foo",
         )
+        val = {args[i]: args[i + 1] for i in range(0, len(args), 2)}
 
-        out = set_protocol_attributes(self.static_method, args)
+        out = set_attribute(self.static_method, *args)
 
-        assert hasattr(self.static_method, "__functionality__")
-        assert self.static_method.__functionality__ == "compiler"
-        assert hasattr(self.static_method, "__backend__")
-        assert self.static_method.__backend__ == "numpy"
-        assert hasattr(self.static_method, "__stencil__")
-        assert self.static_method.__stencil__ == "foo"
-
-        assert hasattr(out, "__functionality__")
-        assert out.__functionality__ == "compiler"
-        assert hasattr(out, "__backend__")
-        assert out.__backend__ == "numpy"
-        assert hasattr(out, "__stencil__")
-        assert out.__stencil__ == "foo"
+        check_attribute(self.static_method, prt.attribute, val)
+        check_attribute(out, prt.attribute, val)
 
     @classmethod
     def class_method(cls):
@@ -224,386 +243,644 @@ class TestSetProtocolMethods:
 
     def test_class_method(self):
         args = (
-            "__functionality__",
-            "compiler",
-            "__backend__",
+            "function",
+            "stencil_compiler",
+            "backend",
             "numpy",
-            "__stencil__",
+            "stencil",
             "foo",
         )
+        val = {args[i]: args[i + 1] for i in range(0, len(args), 2)}
 
-        out = set_protocol_attributes(self.class_method, args)
+        out = set_attribute(self.class_method, *args)
 
-        assert hasattr(self.__class__.class_method, "__functionality__")
-        assert self.__class__.class_method.__functionality__ == "compiler"
-        assert hasattr(self.__class__.class_method, "__backend__")
-        assert self.__class__.class_method.__backend__ == "numpy"
-        assert hasattr(self.__class__.class_method, "__stencil__")
-        assert self.__class__.class_method.__stencil__ == "foo"
-
-        assert hasattr(out, "__functionality__")
-        assert out.__functionality__ == "compiler"
-        assert hasattr(out, "__backend__")
-        assert out.__backend__ == "numpy"
-        assert hasattr(out, "__stencil__")
-        assert out.__stencil__ == "foo"
+        check_attribute(self.class_method, prt.attribute, val)
+        check_attribute(out, prt.attribute, val)
 
     def bound_method(self):
         pass
 
     def test_bound_method(self):
         args = (
-            "__functionality__",
-            "compiler",
-            "__backend__",
+            "function",
+            "stencil_compiler",
+            "backend",
             "numpy",
-            "__stencil__",
+            "stencil",
             "foo",
         )
+        val = {args[i]: args[i + 1] for i in range(0, len(args), 2)}
 
-        out = set_protocol_attributes(self.bound_method, args)
+        out = set_attribute(self.bound_method, *args)
 
-        assert hasattr(self.bound_method, "__functionality__")
-        assert self.bound_method.__functionality__ == "compiler"
-        assert hasattr(self.bound_method, "__backend__")
-        assert self.bound_method.__backend__ == "numpy"
-        assert hasattr(self.bound_method, "__stencil__")
-        assert self.bound_method.__stencil__ == "foo"
-
-        assert hasattr(out, "__functionality__")
-        assert out.__functionality__ == "compiler"
-        assert hasattr(out, "__backend__")
-        assert out.__backend__ == "numpy"
-        assert hasattr(out, "__stencil__")
-        assert out.__stencil__ == "foo"
+        check_attribute(self.bound_method, prt.attribute, val)
+        check_attribute(out, prt.attribute, val)
 
     def name_conflict(self):
         pass
 
     def test_name_conflict(self):
         args = (
-            "__functionality__",
-            "compiler",
-            "__backend__",
+            "function",
+            "stencil_compiler",
+            "backend",
             "numpy",
-            "__stencil__",
+            "stencil",
             "foo",
         )
-        self.name_conflict.__dict__["__functionality__"] = "abcde"
+
+        self.name_conflict.__dict__[prt.attribute] = "abcde"
 
         with pytest.raises(ProtocolError) as excinfo:
-            out = set_protocol_attributes(self.name_conflict, args)
+            out = set_attribute(self.name_conflict, *args)
         assert str(excinfo.value) == (
-            "Name conflict: Object 'name_conflict' already "
-            "sets the attribute '__functionality__' to 'abcde'."
+            f"The object 'name_conflict' already defines the attribute "
+            f"'{prt.attribute}' as a non-mapping object."
         )
 
-    def test_harmless_name_conflict(self):
+    def update(self):
+        pass
+
+    def test_update(self):
         args = (
-            "__functionality__",
-            "compiler",
-            "__backend__",
+            "function",
+            "stencil_compiler",
+            "backend",
             "numpy",
-            "__stencil__",
+            "stencil",
             "foo",
         )
-        self.name_conflict.__dict__["__functionality__"] = "compiler"
+        val = {args[i]: args[i + 1] for i in range(0, len(args), 2)}
 
-        out = set_protocol_attributes(self.name_conflict, args)
+        self.update.__dict__[prt.attribute] = {"bar": "pippo"}
+        val["bar"] = "pippo"
 
-        assert self.name_conflict.__functionality__ == "compiler"
-        assert out.__functionality__ == "compiler"
+        out = set_attribute(self.update, *args)
 
-    def test_do_nothing(self):
-        args = (
-            "__functionality__",
-            "compiler",
-            "__backend__",
+        check_attribute(self.update, prt.attribute, val)
+        check_attribute(out, prt.attribute, val)
+
+    def multiple_calls(self):
+        pass
+
+    def test_multiple_calls(self):
+        args1 = (
+            "function",
+            "stencil_compiler",
+            "backend",
             "numpy",
-            "__stencil__",
+            "stencil",
             "foo",
         )
+        args2 = (
+            "function",
+            "stencil_compiler",
+            "backend",
+            "cupy",
+            "stencil",
+            "foo",
+        )
+        args3 = (
+            "function",
+            "stencil_compiler",
+            "backend",
+            "numba",
+            "stencil",
+            "bar",
+        )
+        val = {
+            "function": "stencil_compiler",
+            "backend": ("cupy", "numba", "numpy"),
+            "stencil": ("bar", "foo"),
+        }
 
-        self.name_conflict.__dict__["__functionality__"] = "compiler"
-        self.name_conflict.__dict__["__backend__"] = "numpy"
-        self.name_conflict.__dict__["__stencil__"] = "foo"
+        _ = set_attribute(self.multiple_calls, *args1)
+        _ = set_attribute(self.multiple_calls, *args2)
+        out = set_attribute(self.multiple_calls, *args3)
 
-        out = set_protocol_attributes(self.bound_method, args)
-
-        assert hasattr(self.bound_method, "__functionality__")
-        assert self.bound_method.__functionality__ == "compiler"
-        assert hasattr(self.bound_method, "__backend__")
-        assert self.bound_method.__backend__ == "numpy"
-        assert hasattr(self.bound_method, "__stencil__")
-        assert self.bound_method.__stencil__ == "foo"
-
-        assert hasattr(out, "__functionality__")
-        assert out.__functionality__ == "compiler"
-        assert hasattr(out, "__backend__")
-        assert out.__backend__ == "numpy"
-        assert hasattr(out, "__stencil__")
-        assert out.__stencil__ == "foo"
+        check_attribute(self.multiple_calls, prt.attribute, val)
+        check_attribute(out, prt.attribute, val)
 
 
-class TestRegisterFunction:
+class TestSetRuntimeAttribute:
     @staticmethod
+    def static_method():
+        pass
+
+    def test_static_method(self):
+        args = (
+            "function",
+            "stencil_compiler",
+            "backend",
+            "numpy",
+            "stencil",
+            "foo",
+        )
+        val = {args[i]: args[i + 1] for i in range(0, len(args), 2)}
+
+        out = set_runtime_attribute(self.static_method, *args)
+
+        check_attribute(self.static_method, prt.runtime_attribute, val)
+        check_attribute(out, prt.runtime_attribute, val)
+
+    @classmethod
+    def class_method(cls):
+        pass
+
+    def test_class_method(self):
+        args = (
+            "function",
+            "stencil_compiler",
+            "backend",
+            "numpy",
+            "stencil",
+            "foo",
+        )
+        val = {args[i]: args[i + 1] for i in range(0, len(args), 2)}
+
+        out = set_runtime_attribute(self.class_method, *args)
+
+        check_attribute(self.class_method, prt.runtime_attribute, val)
+        check_attribute(out, prt.runtime_attribute, val)
+
+    def bound_method(self):
+        pass
+
+    def test_bound_method(self):
+        args = (
+            "function",
+            "stencil_compiler",
+            "backend",
+            "numpy",
+            "stencil",
+            "foo",
+        )
+        val = {args[i]: args[i + 1] for i in range(0, len(args), 2)}
+
+        out = set_runtime_attribute(self.bound_method, *args)
+
+        check_attribute(self.bound_method, prt.runtime_attribute, val)
+        check_attribute(out, prt.runtime_attribute, val)
+
+    def name_conflict(self):
+        pass
+
+    def test_name_conflict(self):
+        args = (
+            "function",
+            "stencil_compiler",
+            "backend",
+            "numpy",
+            "stencil",
+            "foo",
+        )
+
+        self.name_conflict.__dict__[prt.runtime_attribute] = "abcde"
+
+        with pytest.raises(ProtocolError) as excinfo:
+            out = set_runtime_attribute(self.name_conflict, *args)
+        assert str(excinfo.value) == (
+            f"The object 'name_conflict' already defines the attribute "
+            f"'{prt.runtime_attribute}' as a non-mapping object."
+        )
+
+    def update(self):
+        pass
+
+    def test_update(self):
+        args = (
+            "function",
+            "stencil_compiler",
+            "backend",
+            "numpy",
+            "stencil",
+            "foo",
+        )
+        val = {args[i]: args[i + 1] for i in range(0, len(args), 2)}
+
+        self.update.__dict__[prt.runtime_attribute] = {"bar": "pippo"}
+        val["bar"] = "pippo"
+
+        out = set_runtime_attribute(self.update, *args)
+
+        check_attribute(self.update, prt.runtime_attribute, val)
+        check_attribute(out, prt.runtime_attribute, val)
+
+    def multiple_calls(self):
+        pass
+
+    def test_multiple_calls(self):
+        args1 = (
+            "function",
+            "stencil_compiler",
+            "backend",
+            "numpy",
+            "stencil",
+            "foo",
+        )
+        args2 = (
+            "function",
+            "stencil_compiler",
+            "backend",
+            "cupy",
+            "stencil",
+            "foo",
+        )
+        args3 = (
+            "function",
+            "stencil_compiler",
+            "backend",
+            "numba",
+            "stencil",
+            "bar",
+        )
+        val = {args3[i]: args3[i + 1] for i in range(0, len(args3), 2)}
+
+        _ = set_runtime_attribute(self.multiple_calls, *args1)
+        _ = set_runtime_attribute(self.multiple_calls, *args2)
+        out = set_runtime_attribute(self.multiple_calls, *args3)
+
+        check_attribute(self.multiple_calls, prt.runtime_attribute, val)
+        check_attribute(out, prt.runtime_attribute, val)
+
+
+class TestSingleregister:
+    registry_decorator = Registry()
+    registry_function = Registry()
+
+    @staticmethod
+    @singleregister(
+        registry=registry_decorator,
+        args=("function", "stencil_compiler", "backend", "numpy"),
+    )
     def compiler_numpy():
         """NumPy's stencil compiler."""
         return "compiler_numpy"
 
     @staticmethod
+    @singleregister(
+        registry=registry_decorator,
+        args=("function", "stencil_compiler", "backend", "gt4py"),
+    )
     def compiler_gt4py():
         """GT4Py's stencil compiler."""
         return "compiler_gt4py"
 
     @staticmethod
+    @singleregister(
+        registry=registry_decorator,
+        args=("function", "zeros", "backend", "gt4py"),
+    )
     def zeros_gt4py():
         """Allocate a storage filled with zeros for a GT4Py stencil."""
         return "zeros_gt4py"
 
     @staticmethod
-    def diffusion_gt4py():
-        """GT4Py diffusion stencil."""
-        return "diffusion_gt4py"
-
-    @staticmethod
-    def diffusion_numba():
-        """Numba diffusion stencil."""
-        return "diffusion_numba"
-
-    @staticmethod
-    def advection_numba():
-        """Numba advection stencil."""
-        return "advection_numba"
-
-    def test(self):
-        reg = Registry()
-        register(reg, "__functionality__", "compiler", "__backend__", "numpy")(
-            self.compiler_numpy
-        )
-        register(reg, "__functionality__", "compiler", "__backend__", "gt4py")(
-            self.compiler_gt4py
-        )
-        register(reg, "__functionality__", "zeros", "__backend__", "gt4py")(
-            self.zeros_gt4py
-        )
-        register(
-            reg,
-            "__functionality__",
-            "definition",
-            "__backend__",
+    @singleregister(
+        registry=registry_decorator,
+        args=(
+            "function",
+            "stencil_definition",
+            "backend",
             "gt4py",
-            "__stencil__",
+            "stencil",
             "diffusion",
-        )(self.diffusion_gt4py)
-        register(
-            reg,
-            "__functionality__",
-            "definition",
-            "__backend__",
-            "numba",
-            "__stencil__",
-            "diffusion",
-        )(self.diffusion_numba)
-        register(
-            reg,
-            "__functionality__",
-            "definition",
-            "__backend__",
-            "numba",
-            "__stencil__",
-            "advection",
-        )(self.advection_numba)
-
-        assert "compiler" in reg
-        assert "zeros" in reg
-        assert "definition" in reg
-        assert len(reg) == 3
-
-        assert "numpy" in reg["compiler"]
-        assert "gt4py" in reg["compiler"]
-        assert len(reg["compiler"]) == 2
-        assert "gt4py" in reg["zeros"]
-        assert len(reg["zeros"]) == 1
-        assert "gt4py" in reg["definition"]
-        assert "numba" in reg["definition"]
-        assert len(reg["definition"]) == 2
-
-        # compiler_numpy
-        assert prt.catch_all in reg[("compiler", "numpy")]
-        assert (
-            reg[("compiler", "numpy", prt.catch_all)].__doc__
-            == "NumPy's stencil compiler."
-        )
-        assert reg[("compiler", "numpy", prt.catch_all)]() == "compiler_numpy"
-        assert len(reg[("compiler", "numpy")]) == 1
-        # compiler_gt4py
-        assert prt.catch_all in reg[("compiler", "gt4py")]
-        assert (
-            reg[("compiler", "gt4py", prt.catch_all)].__doc__
-            == "GT4Py's stencil compiler."
-        )
-        assert reg[("compiler", "gt4py", prt.catch_all)]() == "compiler_gt4py"
-        assert len(reg[("compiler", "gt4py")]) == 1
-        # zeros_gt4py
-        assert prt.catch_all in reg[("zeros", "gt4py")]
-        assert (
-            reg[("zeros", "gt4py", prt.catch_all)].__doc__
-            == "Allocate a storage filled with zeros for a GT4Py stencil."
-        )
-        assert reg[("zeros", "gt4py", prt.catch_all)]() == "zeros_gt4py"
-        assert len(reg[("zeros", "gt4py")]) == 1
-        # diffusion_gt4py
-        assert "diffusion" in reg[("definition", "gt4py")]
-        assert (
-            reg[("definition", "gt4py", "diffusion")].__doc__
-            == "GT4Py diffusion stencil."
-        )
-        assert reg[("definition", "gt4py", "diffusion")]() == "diffusion_gt4py"
-        assert len(reg[("definition", "gt4py")]) == 1
-        # diffusion_numba
-        assert "diffusion" in reg[("definition", "numba")]
-        assert (
-            reg[("definition", "numba", "diffusion")].__doc__
-            == "Numba diffusion stencil."
-        )
-        assert reg[("definition", "numba", "diffusion")]() == "diffusion_numba"
-        # advection_numba
-        assert "advection" in reg[("definition", "numba")]
-        assert (
-            reg[("definition", "numba", "advection")].__doc__
-            == "Numba advection stencil."
-        )
-        assert reg[("definition", "numba", "advection")]() == "advection_numba"
-        assert len(reg[("definition", "numba")]) == 2
-
-
-reg = Registry()
-
-
-class TestRegisterDecorator:
-    @staticmethod
-    @register(reg, "__functionality__", "compiler", "__backend__", "numpy")
-    def compiler_numpy():
-        """NumPy's stencil compiler."""
-        return "compiler_numpy"
-
-    @staticmethod
-    @register(reg, "__functionality__", "compiler", "__backend__", "gt4py")
-    def compiler_gt4py():
-        """GT4Py's stencil compiler."""
-        return "compiler_gt4py"
-
-    @staticmethod
-    @register(reg, "__functionality__", "zeros", "__backend__", "gt4py")
-    def zeros_gt4py():
-        """Allocate a storage filled with zeros for a GT4Py stencil."""
-        return "zeros_gt4py"
-
-    @staticmethod
-    @register(
-        reg,
-        "__functionality__",
-        "definition",
-        "__backend__",
-        "gt4py",
-        "__stencil__",
-        "diffusion",
+        ),
     )
     def diffusion_gt4py():
         """GT4Py diffusion stencil."""
         return "diffusion_gt4py"
 
     @staticmethod
-    @register(
-        reg,
-        "__functionality__",
-        "definition",
-        "__backend__",
-        "numba",
-        "__stencil__",
-        "diffusion",
+    @singleregister(
+        registry=registry_decorator,
+        args=(
+            "function",
+            "stencil_definition",
+            "backend",
+            "numba",
+            "stencil",
+            "diffusion",
+        ),
     )
     def diffusion_numba():
         """Numba diffusion stencil."""
         return "diffusion_numba"
 
     @staticmethod
-    @register(
-        reg,
-        "__functionality__",
-        "definition",
-        "__backend__",
-        "numba",
-        "__stencil__",
-        "advection",
+    @singleregister(
+        registry=registry_decorator,
+        args=(
+            "function",
+            "stencil_definition",
+            "backend",
+            "numba",
+            "stencil",
+            "advection",
+        ),
     )
     def advection_numba():
         """Numba advection stencil."""
         return "advection_numba"
 
-    def test(self):
-        assert "compiler" in reg
+    def check_register(self, reg):
+        assert "stencil_compiler" in reg
+
         assert "zeros" in reg
-        assert "definition" in reg
+        assert "stencil_definition" in reg
         assert len(reg) == 3
 
-        assert "numpy" in reg["compiler"]
-        assert "gt4py" in reg["compiler"]
-        assert len(reg["compiler"]) == 2
+        assert "numpy" in reg["stencil_compiler"]
+        assert "gt4py" in reg["stencil_compiler"]
+        assert len(reg["stencil_compiler"]) == 2
         assert "gt4py" in reg["zeros"]
         assert len(reg["zeros"]) == 1
-        assert "gt4py" in reg["definition"]
-        assert "numba" in reg["definition"]
-        assert len(reg["definition"]) == 2
+        assert "gt4py" in reg["stencil_definition"]
+        assert "numba" in reg["stencil_definition"]
+        assert len(reg["stencil_definition"]) == 2
 
         # compiler_numpy
-        assert prt.catch_all in reg[("compiler", "numpy")]
-        assert (
-            reg[("compiler", "numpy", prt.catch_all)].__doc__
-            == "NumPy's stencil compiler."
-        )
-        assert reg[("compiler", "numpy", prt.catch_all)]() == "compiler_numpy"
-        assert len(reg[("compiler", "numpy")]) == 1
+        assert prt.wildcard in reg[("stencil_compiler", "numpy")]
+        obj = reg[("stencil_compiler", "numpy", prt.wildcard)]
+        assert obj.__doc__ == "NumPy's stencil compiler."
+        assert obj() == "compiler_numpy"
+        assert id(obj) == id(self.compiler_numpy)
+        assert len(reg[("stencil_compiler", "numpy")]) == 1
         # compiler_gt4py
-        assert prt.catch_all in reg[("compiler", "gt4py")]
-        assert (
-            reg[("compiler", "gt4py", prt.catch_all)].__doc__
-            == "GT4Py's stencil compiler."
-        )
-        assert reg[("compiler", "gt4py", prt.catch_all)]() == "compiler_gt4py"
-        assert len(reg[("compiler", "gt4py")]) == 1
+        assert prt.wildcard in reg[("stencil_compiler", "gt4py")]
+        obj = reg[("stencil_compiler", "gt4py", prt.wildcard)]
+        assert obj.__doc__ == "GT4Py's stencil compiler."
+        assert obj() == "compiler_gt4py"
+        assert id(obj) == id(self.compiler_gt4py)
+        assert len(reg[("stencil_compiler", "gt4py")]) == 1
         # zeros_gt4py
-        assert prt.catch_all in reg[("zeros", "gt4py")]
+        assert prt.wildcard in reg[("zeros", "gt4py")]
+        obj = reg[("zeros", "gt4py", prt.wildcard)]
         assert (
-            reg[("zeros", "gt4py", prt.catch_all)].__doc__
+            obj.__doc__
             == "Allocate a storage filled with zeros for a GT4Py stencil."
         )
-        assert reg[("zeros", "gt4py", prt.catch_all)]() == "zeros_gt4py"
+        assert obj() == "zeros_gt4py"
+        assert id(obj) == id(self.zeros_gt4py)
         assert len(reg[("zeros", "gt4py")]) == 1
         # diffusion_gt4py
-        assert "diffusion" in reg[("definition", "gt4py")]
-        assert (
-            reg[("definition", "gt4py", "diffusion")].__doc__
-            == "GT4Py diffusion stencil."
-        )
-        assert reg[("definition", "gt4py", "diffusion")]() == "diffusion_gt4py"
-        assert len(reg[("definition", "gt4py")]) == 1
+        assert "diffusion" in reg[("stencil_definition", "gt4py")]
+        obj = reg[("stencil_definition", "gt4py", "diffusion")]
+        assert obj.__doc__ == "GT4Py diffusion stencil."
+        assert obj() == "diffusion_gt4py"
+        assert id(obj) == id(self.diffusion_gt4py)
+        assert len(reg[("stencil_definition", "gt4py")]) == 1
         # diffusion_numba
-        assert "diffusion" in reg[("definition", "numba")]
-        assert (
-            reg[("definition", "numba", "diffusion")].__doc__
-            == "Numba diffusion stencil."
-        )
-        assert reg[("definition", "numba", "diffusion")]() == "diffusion_numba"
+        assert "diffusion" in reg[("stencil_definition", "numba")]
+        obj = reg[("stencil_definition", "numba", "diffusion")]
+        assert obj.__doc__ == "Numba diffusion stencil."
+        assert obj() == "diffusion_numba"
+        assert id(obj) == id(self.diffusion_numba)
         # advection_numba
-        assert "advection" in reg[("definition", "numba")]
-        assert (
-            reg[("definition", "numba", "advection")].__doc__
-            == "Numba advection stencil."
+        assert "advection" in reg[("stencil_definition", "numba")]
+        obj = reg[("stencil_definition", "numba", "advection")]
+        assert obj.__doc__ == "Numba advection stencil."
+        assert obj() == "advection_numba"
+        assert id(obj) == id(self.advection_numba)
+        assert len(reg[("stencil_definition", "numba")]) == 2
+
+    def test_function(self):
+        reg = self.registry_function
+        singleregister(
+            self.compiler_numpy,
+            reg,
+            ("function", "stencil_compiler", "backend", "numpy"),
         )
-        assert reg[("definition", "numba", "advection")]() == "advection_numba"
-        assert len(reg[("definition", "numba")]) == 2
+        singleregister(
+            self.compiler_gt4py,
+            reg,
+            ("function", "stencil_compiler", "backend", "gt4py"),
+        )
+        singleregister(
+            self.zeros_gt4py, reg, ("function", "zeros", "backend", "gt4py")
+        )
+        singleregister(
+            self.diffusion_gt4py,
+            reg,
+            (
+                "function",
+                "stencil_definition",
+                "backend",
+                "gt4py",
+                "stencil",
+                "diffusion",
+            ),
+        )
+        singleregister(
+            self.diffusion_numba,
+            reg,
+            (
+                "function",
+                "stencil_definition",
+                "backend",
+                "numba",
+                "stencil",
+                "diffusion",
+            ),
+        )
+        singleregister(
+            self.advection_numba,
+            reg,
+            (
+                "function",
+                "stencil_definition",
+                "backend",
+                "numba",
+                "stencil",
+                "advection",
+            ),
+        )
+
+        self.check_register(reg)
+
+    def test_decorator(self):
+        self.check_register(self.registry_decorator)
+
+
+class TestMultiregister:
+    registry_decorator = Registry()
+    registry_function = Registry()
+
+    @staticmethod
+    @multiregister(
+        registry=registry_decorator,
+        args=("function", "stencil_compiler", "backend", ("numpy", "cupy")),
+    )
+    def compiler_numpy():
+        """NumPy's stencil compiler."""
+        return "compiler_numpy"
+
+    @staticmethod
+    @multiregister(
+        registry=registry_decorator,
+        args=("function", "stencil_compiler", "backend", "gt4py"),
+    )
+    def compiler_gt4py():
+        """GT4Py's stencil compiler."""
+        return "compiler_gt4py"
+
+    @staticmethod
+    @singleregister(
+        registry=registry_decorator,
+        args=("function", "zeros", "backend", "numpy"),
+    )
+    @singleregister(
+        registry=registry_decorator,
+        args=("function", "zeros", "backend", "numba"),
+    )
+    def zeros_numpy():
+        """Allocate a storage filled with zeros for a NumPy stencil."""
+        return "zeros_numpy"
+
+    @staticmethod
+    @singleregister(
+        registry=registry_decorator,
+        args=("function", "zeros", "backend", "gt4py"),
+    )
+    def zeros_gt4py():
+        """Allocate a storage filled with zeros for a GT4Py stencil."""
+        return "zeros_gt4py"
+
+    @staticmethod
+    @multiregister(
+        registry=registry_decorator,
+        args=("function", "ones", "backend", "numpy"),
+    )
+    @multiregister(
+        registry=registry_decorator,
+        args=("function", "ones", "backend", "numba"),
+    )
+    def ones_numpy():
+        """Allocate a storage filled with ones for a NumPy stencil."""
+        return "ones_numpy"
+
+    def check_register(self, reg):
+        assert "stencil_compiler" in reg
+        assert "zeros" in reg
+        assert "ones" in reg
+        assert len(reg) == 3
+
+        assert "numpy" in reg["stencil_compiler"]
+        assert "cupy" in reg["stencil_compiler"]
+        assert "gt4py" in reg["stencil_compiler"]
+        assert len(reg["stencil_compiler"]) == 3
+        assert "numpy" in reg["zeros"]
+        assert "numba" in reg["zeros"]
+        assert "gt4py" in reg["zeros"]
+        assert len(reg["zeros"]) == 3
+        assert "numpy" in reg["ones"]
+        assert "numba" in reg["ones"]
+        assert len(reg["ones"]) == 2
+
+        # compiler_numpy (numpy)
+        assert prt.wildcard in reg[("stencil_compiler", "numpy")]
+        obj = reg[("stencil_compiler", "numpy", prt.wildcard)]
+        assert obj.__doc__ == "NumPy's stencil compiler."
+        assert obj() == "compiler_numpy"
+        assert id(obj) == id(self.compiler_numpy)
+        assert len(reg[("stencil_compiler", "numpy")]) == 1
+        # compiler_numpy (cupy)
+        assert prt.wildcard in reg[("stencil_compiler", "cupy")]
+        obj = reg[("stencil_compiler", "cupy", prt.wildcard)]
+        assert obj.__doc__ == "NumPy's stencil compiler."
+        assert obj() == "compiler_numpy"
+        assert id(obj) == id(self.compiler_numpy)
+        assert len(reg[("stencil_compiler", "cupy")]) == 1
+        # compiler_gt4py
+        assert prt.wildcard in reg[("stencil_compiler", "gt4py")]
+        obj = reg[("stencil_compiler", "gt4py", prt.wildcard)]
+        assert obj.__doc__ == "GT4Py's stencil compiler."
+        assert obj() == "compiler_gt4py"
+        assert id(obj) == id(self.compiler_gt4py)
+        assert len(reg[("stencil_compiler", "gt4py")]) == 1
+        # zeros_numpy (numpy)
+        assert prt.wildcard in reg[("zeros", "numpy")]
+        obj = reg[("zeros", "numpy", prt.wildcard)]
+        assert (
+            obj.__doc__
+            == "Allocate a storage filled with zeros for a NumPy stencil."
+        )
+        assert obj() == "zeros_numpy"
+        assert id(obj) == id(self.zeros_numpy)
+        assert len(reg[("zeros", "numpy")]) == 1
+        # zeros_numpy (numba)
+        assert prt.wildcard in reg[("zeros", "numba")]
+        obj = reg[("zeros", "numba", prt.wildcard)]
+        assert (
+            obj.__doc__
+            == "Allocate a storage filled with zeros for a NumPy stencil."
+        )
+        assert obj() == "zeros_numpy"
+        assert id(obj) == id(self.zeros_numpy)
+        assert len(reg[("zeros", "numba")]) == 1
+        # zeros_gt4py
+        assert prt.wildcard in reg[("zeros", "gt4py")]
+        obj = reg[("zeros", "gt4py", prt.wildcard)]
+        assert (
+            obj.__doc__
+            == "Allocate a storage filled with zeros for a GT4Py stencil."
+        )
+        assert obj() == "zeros_gt4py"
+        assert id(obj) == id(self.zeros_gt4py)
+        assert len(reg[("zeros", "gt4py")]) == 1
+        # ones_numpy (numpy)
+        assert prt.wildcard in reg[("ones", "numpy")]
+        obj = reg[("ones", "numpy", prt.wildcard)]
+        assert (
+            obj.__doc__
+            == "Allocate a storage filled with ones for a NumPy stencil."
+        )
+        assert obj() == "ones_numpy"
+        assert id(obj) == id(self.ones_numpy)
+        assert len(reg[("ones", "numpy")]) == 1
+        # ones_numpy (numba)
+        assert prt.wildcard in reg[("ones", "numba")]
+        obj = reg[("ones", "numba", prt.wildcard)]
+        assert (
+            obj.__doc__
+            == "Allocate a storage filled with ones for a NumPy stencil."
+        )
+        assert obj() == "ones_numpy"
+        assert id(obj) == id(self.ones_numpy)
+        assert len(reg[("ones", "numba")]) == 1
+
+    def test_function(self):
+        reg = self.registry_function
+        multiregister(
+            self.compiler_numpy,
+            reg,
+            ("function", "stencil_compiler", "backend", ("cupy", "numpy")),
+        )
+        multiregister(
+            self.compiler_gt4py,
+            reg,
+            ("function", "stencil_compiler", "backend", "gt4py"),
+        )
+        singleregister(
+            self.zeros_gt4py, reg, ("function", "zeros", "backend", "gt4py")
+        )
+        singleregister(
+            self.zeros_numpy, reg, ("function", "zeros", "backend", "numba")
+        )
+        singleregister(
+            self.zeros_numpy, reg, ("function", "zeros", "backend", "numpy")
+        )
+        multiregister(
+            self.ones_numpy, reg, ("function", "ones", "backend", "numpy",),
+        )
+        multiregister(
+            self.ones_numpy, reg, ("function", "ones", "backend", "numba",),
+        )
+
+        self.check_register(reg)
+
+    def test_decorator(self):
+        self.check_register(self.registry_decorator)
 
 
 if __name__ == "__main__":
