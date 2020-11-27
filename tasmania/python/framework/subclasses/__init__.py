@@ -23,6 +23,7 @@
 from tasmania.python.framework.subclasses import (
     allocators,
     stencil_definitions,
+    stencil_subroutines,
     sts_tendency_steppers,
     tendency_steppers,
 )

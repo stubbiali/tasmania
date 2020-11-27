@@ -30,6 +30,56 @@ from tasmania.python.utils.protocol_utils import (
 )
 
 
+class StencilSubroutine:
+    registry = Registry()
+
+    def __new__(
+        cls: Type["StencilSubroutine"], backend: str, stencil: str
+    ) -> Callable:
+        key = ("stencil_subroutine", backend, stencil)
+        try:
+            obj = cls.registry[key]
+            set_runtime_attribute(
+                obj,
+                "function",
+                "stencil_subroutine",
+                "backend",
+                backend,
+                "stencil",
+                stencil,
+            )
+            return obj
+        except KeyError:
+            raise FactoryRegistryError(
+                f"No subroutine '{stencil}' has been registered "
+                f"for the backend '{backend}'."
+            )
+
+    @classmethod
+    def register(
+        cls: Type["StencilSubroutine"],
+        handle: Optional[Callable] = None,
+        backend: Union[str, Sequence[str]] = prt.wildcard,
+        stencil: Union[str, Sequence[str]] = prt.wildcard,
+    ) -> Callable:
+        return multiregister(
+            handle,
+            cls.registry,
+            (
+                "function",
+                "stencil_subroutine",
+                "backend",
+                backend,
+                "stencil",
+                stencil,
+            ),
+        )
+
+    @staticmethod
+    def template(*args, **kwargs):
+        pass
+
+
 class StencilDefinition:
     registry = Registry()
 
@@ -131,5 +181,6 @@ class StencilCompiler:
 
 
 # lower-case aliases
+stencil_subroutine = StencilSubroutine
 stencil_definition = StencilDefinition
 stencil_compiler = StencilCompiler

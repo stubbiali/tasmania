@@ -29,6 +29,21 @@ from tasmania.python.burgers.physics.diffusion import (
 )
 from tasmania.python.burgers.state import ZhaoSolutionFactory, ZhaoStateFactory
 
+# domain
+from tasmania.python.domain.domain import Domain
+from tasmania.python.domain.grid import Grid, PhysicalGrid, NumericalGrid
+from tasmania.python.domain.horizontal_boundary import HorizontalBoundary
+from tasmania.python.domain.horizontal_grid import (
+    HorizontalGrid,
+    PhysicalHorizontalGrid,
+    NumericalHorizontalGrid,
+)
+from tasmania.python.domain.topography import (
+    Topography,
+    PhysicalTopography,
+    NumericalTopography,
+)
+
 # dwarfs
 from tasmania.python.dwarfs.diagnostics import (
     HorizontalVelocity,
@@ -42,6 +57,7 @@ from tasmania.python.dwarfs.horizontal_smoothing import HorizontalSmoothing
 from tasmania.python.dwarfs.vertical_damping import VerticalDamping
 
 # framework
+from tasmania.python.framework import register, tag
 from tasmania.python.framework.allocators import empty, ones, zeros
 from tasmania.python.framework.base_components import (
     DiagnosticComponent,
@@ -71,24 +87,10 @@ from tasmania.python.framework.sequential_update_splitting import (
 from tasmania.python.framework.stencil_compiler import (
     stencil_compiler,
     stencil_definition,
+    stencil_subroutine,
 )
 from tasmania.python.framework.sts_tendency_stepper import STSTendencyStepper
 from tasmania.python.framework.tendency_stepper import TendencyStepper
-
-# domain
-from tasmania.python.domain.domain import Domain
-from tasmania.python.domain.grid import Grid, PhysicalGrid, NumericalGrid
-from tasmania.python.domain.horizontal_boundary import HorizontalBoundary
-from tasmania.python.domain.horizontal_grid import (
-    HorizontalGrid,
-    PhysicalHorizontalGrid,
-    NumericalHorizontalGrid,
-)
-from tasmania.python.domain.topography import (
-    Topography,
-    PhysicalTopography,
-    NumericalTopography,
-)
 
 # isentropic
 from tasmania.python.isentropic.dynamics.dycore import IsentropicDynamicalCore

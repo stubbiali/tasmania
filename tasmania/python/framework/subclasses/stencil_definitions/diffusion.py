@@ -26,7 +26,7 @@ from tasmania.python.framework.stencil_compiler import stencil_definition
 
 
 @stencil_definition.register(backend=("numpy", "cupy"), stencil="diffusion")
-def diffusion(in_phi, out_phi, *, alpha, origin, domain, **kwargs):
+def diffusion_numpy(in_phi, out_phi, *, alpha, origin, domain, **kwargs):
     ib, jb, kb = origin
     ie, je, ke = tuple(origin[i] + domain[i] for i in range(3))
 
@@ -57,7 +57,7 @@ def diffusion(in_phi, out_phi, *, alpha, origin, domain, **kwargs):
 
 
 @stencil_definition.register(backend="gt4py*", stencil="diffusion")
-def diffusion(
+def diffusion_gt4py(
     in_phi: gtscript.Field["dtype"],
     out_phi: gtscript.Field["dtype"],
     *,

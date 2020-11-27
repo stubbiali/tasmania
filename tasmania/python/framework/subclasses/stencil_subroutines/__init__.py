@@ -20,4 +20,4 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from .diffusion import *
+from .laplacian import *

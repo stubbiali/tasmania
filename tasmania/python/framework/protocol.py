@@ -48,6 +48,7 @@ master_key = keys_hierarchy[0]
 master_key_values = (
     "stencil_compiler",
     "stencil_definition",
+    "stencil_subroutine",
     "empty",
     "ones",
     "zeros",
