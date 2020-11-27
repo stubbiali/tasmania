@@ -341,9 +341,8 @@ class Timer:
     @classmethod
     def start(cls, label: str) -> None:
         # safe-guard
-        assert (
-            label not in cls.active
-        ), f"Timer {label} has already been started."
+        if label in cls.active:
+            return
 
         # mark timer as active
         cls.active.append(label)
