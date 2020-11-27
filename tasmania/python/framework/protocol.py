@@ -55,4 +55,4 @@ master_key_values = (
 
 # the name of the dictionary which stores the values taken by the protocol
 # keys at runtime
-runtime_attribute = "__runtime__"
+runtime_attribute = "__tasmania_runtime__"

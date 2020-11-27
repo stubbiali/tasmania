@@ -52,7 +52,7 @@ def ones_gt4py(
     managed_memory=False,
     **kwargs
 ):
-    backend = ones_gt4py.__runtime__["backend"]
+    backend = ones_gt4py.__tasmania_runtime__["backend"]
     gt_backend = get_gt_backend(backend)
     default_origin = default_origin or (0,) * len(shape)
     return gt.storage.ones(

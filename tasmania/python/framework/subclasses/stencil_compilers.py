@@ -43,7 +43,7 @@ def compiler_gt4py(
     rebuild=False,
     **kwargs
 ):
-    backend = compiler_gt4py.__runtime__["backend"]
+    backend = compiler_gt4py.__tasmania_runtime__["backend"]
     gt_backend = get_gt_backend(backend)
     backend_opts = backend_opts or {}
     return gt.gtscript.stencil(
