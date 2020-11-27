@@ -695,7 +695,6 @@ class TestSingleregister:
                 "advection",
             ),
         )
-
         self.check_register(reg)
 
     def test_decorator(self):
@@ -876,7 +875,6 @@ class TestMultiregister:
         multiregister(
             self.ones_numpy, reg, ("function", "ones", "backend", "numba",),
         )
-
         self.check_register(reg)
 
     def test_decorator(self):
