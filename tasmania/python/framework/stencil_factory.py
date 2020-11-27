@@ -137,7 +137,10 @@ class StencilFactory(abc.ABC):
         return allocator(shape=shape, dtype=dtype, **kwargs)
 
     def _fill_registry(self: "StencilFactory") -> None:
-        methods = inspect.getmembers(self, predicate=inspect.ismethod)
+        methods = inspect.getmembers(
+            self,
+            predicate=lambda x: inspect.isfunction(x) or inspect.ismethod(x),
+        )
         for (name, handle) in methods:
             if getattr(handle, prt.attribute, None) is not None:
                 prt_dict = getattr(handle, prt.attribute)
