@@ -27,20 +27,60 @@ from typing import Optional
 from tasmania.python.domain.domain import Domain
 from tasmania.python.domain.grid import Grid
 from tasmania.python.domain.horizontal_boundary import HorizontalBoundary
+from tasmania.python.framework.stencil_factory import StencilFactory
+from tasmania.python.utils import taz_types
 from tasmania.python.utils.utils import Timer
 
-allowed_grid_types = ("physical", "numerical")
+
+class GriddedComponent(abc.ABC):
+    allowed_grid_types = ("numerical_grid", "physical_grid")
+
+    def __init__(
+        self: "GriddedComponent", domain: Domain, grid_type: str
+    ) -> None:
+        assert grid_type in self.allowed_grid_types, (
+            f"grid_type is {grid_type}, but either "
+            f"({', '.join(self.allowed_grid_types)}) was expected."
+        )
+        self._grid_type = grid_type
+        self._grid = (
+            domain.physical_grid
+            if grid_type == "physical"
+            else domain.numerical_grid
+        )
+        self._hb = domain.horizontal_boundary
+
+    @property
+    def grid_type(self: "GriddedComponent") -> str:
+        """The grid type, either "physical" or "numerical"."""
+        return self._grid_type
+
+    @property
+    def grid(self: "GriddedComponent") -> Grid:
+        """The underlying :class:`~tasmania.Grid`."""
+        return self._grid
+
+    @property
+    def horizontal_boundary(self: "GriddedComponent") -> HorizontalBoundary:
+        """The object handling the lateral boundary conditions."""
+        return self._hb
 
 
-class DiagnosticComponent(sympl.DiagnosticComponent):
+class DiagnosticComponent(
+    GriddedComponent, StencilFactory, sympl.DiagnosticComponent
+):
     """
-    Customized version of :class:`sympl.DiagnosticComponent` which is aware
+    Custom version of :class:`sympl.DiagnosticComponent` which is aware
     of the spatial domain over which the component is instantiated.
     """
 
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, domain: Domain, grid_type: str = "numerical") -> None:
+    def __init__(
+        self: "DiagnosticComponent",
+        domain: Domain,
+        grid_type: str = "numerical",
+    ) -> None:
         """
         Parameters
         ----------
@@ -50,46 +90,22 @@ class DiagnosticComponent(sympl.DiagnosticComponent):
             The type of grid over which instantiating the class.
             Either "physical" or "numerical" (default).
         """
-        assert (
-            grid_type in allowed_grid_types
-        ), "grid_type is {}, but either ({}) was expected.".format(
-            grid_type, ",".join(allowed_grid_types)
-        )
-        self._grid_type = grid_type
-        self._grid = (
-            domain.physical_grid
-            if grid_type == "physical"
-            else domain.numerical_grid
-        )
-        self._hb = domain.horizontal_boundary
-        super().__init__()
+        super().__init__(domain, grid_type)
+        super(GriddedComponent, self).__init__()
+        super(StencilFactory, self).__init__()
 
-    @property
-    def grid_type(self) -> str:
-        """ The grid type, either "physical" or "numerical". """
-        return self._grid_type
-
-    @property
-    def grid(self) -> Grid:
-        """ The underlying :class:`~tasmania.Grid`. """
-        return self._grid
-
-    @property
-    def horizontal_boundary(self) -> HorizontalBoundary:
-        """
-        The :class:`~tasmania.HorizontalBoundary` object handling the lateral
-        boundary conditions.
-        """
-        return self._hb
-
-    def __call__(self, state):
+    def __call__(
+        self: "DiagnosticComponent", state: taz_types.dataarray_dict_t
+    ) -> taz_types.dataarray_dict_t:
         Timer.start(label=self.__class__.__name__)
         out = super().__call__(state)
         Timer.stop()
         return out
 
 
-class ImplicitTendencyComponent(sympl.ImplicitTendencyComponent):
+class ImplicitTendencyComponent(
+    GriddedComponent, StencilFactory, sympl.ImplicitTendencyComponent
+):
     """
     Customized version of :class:`sympl.ImplicitTendencyComponent` which is
     aware of the grid over which the component is instantiated.
@@ -98,7 +114,7 @@ class ImplicitTendencyComponent(sympl.ImplicitTendencyComponent):
     __metaclass__ = abc.ABCMeta
 
     def __init__(
-        self,
+        self: "ImplicitTendencyComponent",
         domain: Domain,
         grid_type: str = "numerical",
         tendencies_in_diagnostics: bool = False,
@@ -120,46 +136,22 @@ class ImplicitTendencyComponent(sympl.ImplicitTendencyComponent):
             Y in the name "X_tendency_from_Y". By default the class name in
             lowercase is used.
         """
-        assert (
-            grid_type in allowed_grid_types
-        ), "grid_type is {}, but either ({}) was expected.".format(
-            grid_type, ",".join(allowed_grid_types)
-        )
-        self._grid_type = grid_type
-        self._grid = (
-            domain.physical_grid
-            if grid_type == "physical"
-            else domain.numerical_grid
-        )
-        self._hb = domain.horizontal_boundary
-        super().__init__(tendencies_in_diagnostics, name)
+        super().__init__(domain, grid_type)
+        super(GriddedComponent, self).__init__()
+        super(StencilFactory, self).__init__(tendencies_in_diagnostics, name)
 
-    @property
-    def grid_type(self) -> str:
-        """ The grid type, either "physical" or "numerical". """
-        return self._grid_type
-
-    @property
-    def grid(self) -> Grid:
-        """ The underlying :class:`~tasmania.Grid`. """
-        return self._grid
-
-    @property
-    def horizontal_boundary(self) -> HorizontalBoundary:
-        """
-        The :class:`~tasmania.HorizontalBoundary` object handling the lateral
-        boundary conditions.
-        """
-        return self._hb
-
-    def __call__(self, state, timestep):
+    def __call__(
+        self: "ImplicitTendencyComponent",
+        state: taz_types.dataarray_dict_t,
+        timestep: taz_types.timedelta_t,
+    ) -> taz_types.dataarray_dict_t:
         Timer.start(label=self.__class__.__name__)
         out = super().__call__(state, timestep)
         Timer.stop()
         return out
 
 
-class Stepper(sympl.Stepper):
+class Stepper(GriddedComponent, StencilFactory, sympl.Stepper):
     """
     Customized version of :class:`sympl.Stepper` which is aware
     of the grid over which the component is instantiated.
@@ -168,7 +160,7 @@ class Stepper(sympl.Stepper):
     __metaclass__ = abc.ABCMeta
 
     def __init__(
-        self,
+        self: "Stepper",
         domain: Domain,
         grid_type: str = "numerical",
         tendencies_in_diagnostics: bool = False,
@@ -190,40 +182,14 @@ class Stepper(sympl.Stepper):
             Y in the name "X_tendency_from_Y". By default the class name in
             lowercase is used.
         """
-        assert (
-            grid_type in allowed_grid_types
-        ), "grid_type is {}, but either ({}) was expected.".format(
-            grid_type, ",".join(allowed_grid_types)
-        )
-        self._grid_type = grid_type
-        self._grid = (
-            domain.physical_grid
-            if grid_type == "physical"
-            else domain.numerical_grid
-        )
-        self._hb = domain.horizontal_boundary
-        super().__init__(tendencies_in_diagnostics, name)
-
-    @property
-    def grid_type(self) -> str:
-        """ The grid type, either "physical" or "numerical". """
-        return self._grid_type
-
-    @property
-    def grid(self) -> Grid:
-        """ The underlying :class:`~tasmania.Grid`. """
-        return self._grid
-
-    @property
-    def horizontal_boundary(self) -> HorizontalBoundary:
-        """
-        The :class:`~tasmania.HorizontalBoundary` object handling the lateral
-        boundary conditions.
-        """
-        return self._hb
+        super().__init__(domain, grid_type)
+        super(GriddedComponent, self).__init__()
+        super(StencilFactory, self).__init__(tendencies_in_diagnostics, name)
 
 
-class TendencyComponent(sympl.TendencyComponent):
+class TendencyComponent(
+    GriddedComponent, StencilFactory, sympl.TendencyComponent
+):
     """
     Customized version of :class:`sympl.TendencyComponent` which is aware
     of the grid over which the component is instantiated.
@@ -232,7 +198,7 @@ class TendencyComponent(sympl.TendencyComponent):
     __metaclass__ = abc.ABCMeta
 
     def __init__(
-        self,
+        self: "TendencyComponent",
         domain: Domain,
         grid_type: str = "numerical",
         tendencies_in_diagnostics: bool = False,
@@ -254,39 +220,13 @@ class TendencyComponent(sympl.TendencyComponent):
             Y in the name "X_tendency_from_Y". By default the class name in
             lowercase is used.
         """
-        assert (
-            grid_type in allowed_grid_types
-        ), "grid_type is {}, but either ({}) was expected.".format(
-            grid_type, ",".join(allowed_grid_types)
-        )
-        self._grid_type = grid_type
-        self._grid = (
-            domain.physical_grid
-            if grid_type == "physical"
-            else domain.numerical_grid
-        )
-        self._hb = domain.horizontal_boundary
-        super().__init__(tendencies_in_diagnostics, name)
+        super().__init__(domain, grid_type)
+        super(GriddedComponent, self).__init__()
+        super(StencilFactory, self).__init__(tendencies_in_diagnostics, name)
 
-    @property
-    def grid_type(self) -> str:
-        """ The grid type, either "physical" or "numerical". """
-        return self._grid_type
-
-    @property
-    def grid(self) -> Grid:
-        """ The underlying :class:`~tasmania.Grid`. """
-        return self._grid
-
-    @property
-    def horizontal_boundary(self) -> HorizontalBoundary:
-        """
-        The :class:`~tasmania.HorizontalBoundary` object handling the lateral
-        boundary conditions.
-        """
-        return self._hb
-
-    def __call__(self, state):
+    def __call__(
+        self: "TendencyComponent", state: taz_types.dataarray_dict_t
+    ) -> taz_types.dataarray_dict_t:
         Timer.start(label=self.__class__.__name__)
         out = super().__call__(state)
         Timer.stop()
