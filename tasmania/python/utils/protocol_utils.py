@@ -105,6 +105,13 @@ def filter_args_list(args: Sequence[str]) -> List[str]:
         out.append(key)
         out.append(prt.defaults[key])
 
+    # assess that the keys hierarchy is respected
+    for i in range(0, len(out), 2):
+        if out[i] != prt.keys_hierarchy[i // 2]:
+            raise ProtocolError(
+                f"The key '{out[i]}' does not adhere to the keys hierarchy."
+            )
+
     return out
 
 
