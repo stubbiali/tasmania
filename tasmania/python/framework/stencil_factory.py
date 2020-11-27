@@ -36,6 +36,7 @@ from tasmania.python.utils.exceptions import FactoryRegistryError
 from tasmania.python.utils.protocol_utils import (
     Registry,
     multiregister,
+    set_runtime_attribute,
 )
 
 
@@ -73,6 +74,16 @@ class StencilFactory(abc.ABC):
                 raise FactoryRegistryError(
                     f"No compiler found for the backend '{backend}'."
                 )
+
+        set_runtime_attribute(
+            compiler,
+            "function",
+            "stencil_compiler",
+            "backend",
+            backend,
+            "stencil",
+            stencil,
+        )
 
         return compiler(definition, **kwargs)
 
