@@ -34,17 +34,17 @@ from tasmania.python.utils.utils import get_gt_backend
 
 
 @ones.register(backend=("numpy", "numba:cpu"))
-def _ones(shape, dtype, **kwargs):
+def ones_numpy(shape, dtype, **kwargs):
     return np.ones(shape, dtype=dtype)
 
 
 @ones.register(backend=("cupy", "numba:gpu"))
-def _ones(shape, dtype, **kwargs):
+def ones_cupy(shape, dtype, **kwargs):
     return cp.ones(shape, dtype=dtype)
 
 
 @ones.register(backend="gt4py*")
-def _ones(
+def ones_gt4py(
     shape,
     dtype,
     default_origin=None,
@@ -52,7 +52,7 @@ def _ones(
     managed_memory=False,
     **kwargs
 ):
-    backend = _ones.__runtime__["backend"]
+    backend = ones_gt4py.__runtime__["backend"]
     gt_backend = get_gt_backend(backend)
     default_origin = default_origin or (0,) * len(shape)
     return gt.storage.ones(

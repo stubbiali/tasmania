@@ -34,17 +34,17 @@ from tasmania.python.utils.utils import get_gt_backend
 
 
 @empty.register(backend=("numpy", "numba:cpu"))
-def _empty(shape, dtype, **kwargs):
+def empty_numpy(shape, dtype, **kwargs):
     return np.empty(shape, dtype=dtype)
 
 
 @empty.register(backend=("cupy", "numba:gpu"))
-def _empty(shape, dtype, **kwargs):
+def empty_cupy(shape, dtype, **kwargs):
     return cp.empty(shape, dtype=dtype)
 
 
 @empty.register(backend="gt4py*")
-def _empty(
+def empty_gt4py(
     shape,
     dtype,
     default_origin=None,
@@ -52,7 +52,7 @@ def _empty(
     managed_memory=False,
     **kwargs
 ):
-    backend = _empty.__runtime__["backend"]
+    backend = empty_gt4py.__runtime__["backend"]
     gt_backend = get_gt_backend(backend)
     default_origin = default_origin or (0,) * len(shape)
     return gt.storage.empty(

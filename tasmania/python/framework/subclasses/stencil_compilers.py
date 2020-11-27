@@ -29,12 +29,12 @@ from tasmania.python.utils.utils import get_gt_backend
 
 
 @stencil_compiler.register(backend=("numpy", "cupy"))
-def compiler(definition, *args, **kwargs):
+def compiler_numpy(definition, *args, **kwargs):
     return definition
 
 
 @stencil_compiler.register(backend="gt4py*")
-def compiler(
+def compiler_gt4py(
     definition,
     backend_opts=None,
     build_info=None,
@@ -43,7 +43,7 @@ def compiler(
     rebuild=False,
     **kwargs
 ):
-    backend = compiler.__runtime__["backend"]
+    backend = compiler_gt4py.__runtime__["backend"]
     gt_backend = get_gt_backend(backend)
     backend_opts = backend_opts or {}
     return gt.gtscript.stencil(
@@ -58,5 +58,5 @@ def compiler(
 
 
 @stencil_compiler.register(backend="numba:cpu")
-def compiler(definition, parallel=True, **kwargs):
+def compiler_numba(definition, parallel=True, **kwargs):
     return numba.njit(definition, parallel=parallel)
