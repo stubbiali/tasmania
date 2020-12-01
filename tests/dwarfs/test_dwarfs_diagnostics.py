@@ -31,7 +31,8 @@ from tasmania.python.dwarfs.diagnostics import (
     HorizontalVelocity,
     WaterConstituent,
 )
-from tasmania.python.utils.storage_utils import zeros
+from tasmania.python.framework.options import BackendOptions, StorageOptions
+from tasmania.python.framework.allocators import zeros
 
 from tests.conf import (
     backend as conf_backend,
@@ -103,21 +104,14 @@ def test_horizontal_velocity_staggered(data, backend, dtype):
     # ========================================
     # test bed
     # ========================================
-    ru = zeros(
-        (nx + 1, ny + 1, nz + 1),
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
-    rv = zeros(
-        (nx + 1, ny + 1, nz + 1),
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, default_origin=default_origin)
+
+    ru = zeros(backend, shape=(nx + 1, ny + 1, nz + 1), storage_options=so)
+    rv = zeros(backend, shape=(nx + 1, ny + 1, nz + 1), storage_options=so)
 
     hv = HorizontalVelocity(
-        grid, True, backend=backend, dtype=dtype, rebuild=False
+        grid, True, backend=backend, backend_options=bo, storage_options=so
     )
 
     hv.get_momenta(r, u, v, ru, rv)
@@ -127,18 +121,8 @@ def test_horizontal_velocity_staggered(data, backend, dtype):
     rv_val = r[:-1, :-1, :-1] * 0.5 * (v[:-1, :-1, :-1] + v[:-1, 1:, :-1])
     compare_arrays(rv[:-1, :-1, :-1], rv_val)
 
-    u_new = zeros(
-        (nx + 1, ny + 1, nz + 1),
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
-    v_new = zeros(
-        (nx + 1, ny + 1, nz + 1),
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
+    u_new = zeros(backend, shape=(nx + 1, ny + 1, nz + 1), storage_options=so)
+    v_new = zeros(backend, shape=(nx + 1, ny + 1, nz + 1), storage_options=so)
 
     hv.get_velocity_components(r, ru, rv, u_new, v_new)
 
@@ -209,25 +193,14 @@ def test_horizontal_velocity(data, backend, dtype):
     # ========================================
     # test bed
     # ========================================
-    ru = zeros(
-        (nx + 1, ny + 1, nz + 1),
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
-    rv = zeros(
-        (nx + 1, ny + 1, nz + 1),
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, default_origin=default_origin)
+
+    ru = zeros(backend, shape=(nx + 1, ny + 1, nz + 1), storage_options=so)
+    rv = zeros(backend, shape=(nx + 1, ny + 1, nz + 1), storage_options=so)
 
     hv = HorizontalVelocity(
-        grid,
-        False,
-        backend=backend,
-        dtype=dtype,
-        rebuild=False,
+        grid, False, backend=backend, backend_options=bo, storage_options=so
     )
 
     hv.get_momenta(r, u, v, ru, rv)
@@ -237,18 +210,8 @@ def test_horizontal_velocity(data, backend, dtype):
     rv_val = r[:-1, :-1, :-1] * v[:-1, :-1, :-1]
     compare_arrays(rv[:-1, :-1, :-1], rv_val)
 
-    u_new = zeros(
-        (nx + 1, ny + 1, nz + 1),
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
-    v_new = zeros(
-        (nx + 1, ny + 1, nz + 1),
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
+    u_new = zeros(backend, shape=(nx + 1, ny + 1, nz + 1), storage_options=so)
+    v_new = zeros(backend, shape=(nx + 1, ny + 1, nz + 1), storage_options=so)
 
     hv.get_velocity_components(r, ru, rv, u_new, v_new)
 
@@ -308,24 +271,17 @@ def test_water_constituent(data, backend, dtype):
     # ========================================
     # test bed
     # ========================================
-    rq = zeros(
-        (nx + 1, ny + 1, nz + 1),
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
-    q_new = zeros(
-        (nx + 1, ny + 1, nz + 1),
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, default_origin=default_origin)
+
+    rq = zeros(backend, shape=(nx + 1, ny + 1, nz + 1), storage_options=so)
+    q_new = zeros(backend, shape=(nx + 1, ny + 1, nz + 1), storage_options=so)
 
     #
     # clipping off
     #
     wc = WaterConstituent(
-        grid, False, backend=backend, dtype=dtype, rebuild=False
+        grid, False, backend=backend, backend_options=bo, storage_options=so
     )
 
     wc.get_density_of_water_constituent(r, q, rq)
@@ -340,7 +296,7 @@ def test_water_constituent(data, backend, dtype):
     # clipping on
     #
     wc = WaterConstituent(
-        grid, True, backend=backend, dtype=dtype, rebuild=False
+        grid, True, backend=backend, backend_options=bo, storage_options=so
     )
 
     wc.get_density_of_water_constituent(r, q, rq)
