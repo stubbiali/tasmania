@@ -23,11 +23,11 @@
 import abc
 import inspect
 from nptyping import NDArray
-import numpy as np
-from typing import Any, Callable, Sequence, Type
+from typing import Callable, Optional, Sequence
 
 from tasmania.python.framework import protocol as prt
 from tasmania.python.framework.allocators import Allocator
+from tasmania.python.framework.options import BackendOptions, StorageOptions
 from tasmania.python.framework.stencil_compiler import (
     StencilDefinition,
     StencilCompiler,
@@ -45,12 +45,24 @@ class StencilFactory(abc.ABC):
     default_definition_registry = StencilDefinition.registry
     default_compiler_registry = StencilCompiler.registry
 
-    def __init__(self: "StencilFactory") -> None:
+    def __init__(
+        self: "StencilFactory",
+        *,
+        backend_options: Optional[BackendOptions] = None,
+        storage_options: Optional[StorageOptions] = None,
+    ) -> None:
+        self.backend_options = backend_options or BackendOptions()
+        self.storage_options = storage_options or StorageOptions()
+
         self.registry = Registry()
         self._fill_registry()
 
     def compile(
-        self: "StencilFactory", backend: str, stencil: str, **kwargs: Any
+        self: "StencilFactory",
+        backend: str,
+        stencil: str,
+        *,
+        backend_options: Optional[BackendOptions] = None
     ) -> Callable:
         definition_key = ("stencil_definition", backend, stencil)
         try:
@@ -85,7 +97,9 @@ class StencilFactory(abc.ABC):
             stencil,
         )
 
-        return compiler(definition, **kwargs)
+        bo = backend_options or self.backend_options
+
+        return compiler(definition, backend_options=bo)
 
     def empty(
         self: "StencilFactory",
@@ -93,11 +107,10 @@ class StencilFactory(abc.ABC):
         stencil: str = prt.wildcard,
         *,
         shape: Sequence[int],
-        dtype: Type = np.float64,
-        **kwargs: Any
+        storage_options: Optional[StorageOptions]
     ) -> NDArray:
         return self._allocate(
-            "empty", backend, stencil, shape, dtype, **kwargs
+            "empty", backend, stencil, shape, storage_options
         )
 
     def ones(
@@ -106,10 +119,9 @@ class StencilFactory(abc.ABC):
         stencil: str = prt.wildcard,
         *,
         shape: Sequence[int],
-        dtype: Type = np.float64,
-        **kwargs: Any
+        storage_options: Optional[StorageOptions] = None
     ) -> NDArray:
-        return self._allocate("ones", backend, stencil, shape, dtype, **kwargs)
+        return self._allocate("ones", backend, stencil, shape, storage_options)
 
     def zeros(
         self: "StencilFactory",
@@ -117,11 +129,10 @@ class StencilFactory(abc.ABC):
         stencil: str = prt.wildcard,
         *,
         shape: Sequence[int],
-        dtype: Type = np.float64,
-        **kwargs: Any
+        storage_options: Optional[StorageOptions] = None
     ) -> NDArray:
         return self._allocate(
-            "zeros", backend, stencil, shape, dtype, **kwargs
+            "zeros", backend, stencil, shape, storage_options
         )
 
     def _allocate(
@@ -130,8 +141,7 @@ class StencilFactory(abc.ABC):
         backend: str,
         stencil: str,
         shape: Sequence[int],
-        dtype: Type,
-        **kwargs: Any
+        storage_options: StorageOptions,
     ) -> NDArray:
         key = (function, backend, stencil)
 
@@ -145,7 +155,9 @@ class StencilFactory(abc.ABC):
                     f"No allocator registered for the backend '{backend}'."
                 )
 
-        return allocator(shape=shape, dtype=dtype, **kwargs)
+        so = storage_options or self.storage_options
+
+        return allocator(shape, storage_options=so)
 
     def _fill_registry(self: "StencilFactory") -> None:
         methods = inspect.getmembers(

@@ -33,6 +33,7 @@ import gt4py as gt
 
 from tasmania.python.framework import protocol as prt
 from tasmania.python.framework.allocators import empty, ones, zeros
+from tasmania.python.framework.options import StorageOptions
 from tasmania.python.framework.subclasses.allocators.empty import (
     empty_cupy,
     empty_gt4py,
@@ -73,26 +74,28 @@ class _TestAllocator(abc.ABC):
 
     def test_factory(self):
         s = self.subclass
-        shape = (3, 3)
-        dtype = np.float32
+        shape = (3, 4, 5)
+        so = StorageOptions()
 
         for backend in ("numpy", "numba:cpu"):
-            obj = s(backend=backend, shape=shape, dtype=dtype)
+            obj = s(backend=backend, shape=shape, storage_options=so)
             assert isinstance(obj, np.ndarray)
             assert all(it1 == it2 for it1, it2 in zip(obj.shape, shape))
-            assert obj.dtype == dtype
+            assert obj.dtype == so.dtype
 
         for backend in ("cupy", "numba:gpu"):
-            obj = s(backend=backend, shape=shape, dtype=dtype)
+            obj = s(backend=backend, shape=shape, storage_options=so)
             assert isinstance(obj, cp.ndarray)
             assert all(it1 == it2 for it1, it2 in zip(obj.shape, shape))
-            assert obj.dtype == dtype
+            assert obj.dtype == so.dtype
 
         for gt_backend in ("debug", "numpy", "gtx86", "gtmc"):
-            obj = s(backend=f"gt4py:{gt_backend}", shape=shape, dtype=dtype)
+            obj = s(
+                backend=f"gt4py:{gt_backend}", shape=shape, storage_options=so
+            )
             assert isinstance(obj, gt.storage.storage.Storage)
             assert all(it1 == it2 for it1, it2 in zip(obj.shape, shape))
-            assert obj.dtype == dtype
+            assert obj.dtype == so.dtype
             assert obj.backend == gt_backend
 
 

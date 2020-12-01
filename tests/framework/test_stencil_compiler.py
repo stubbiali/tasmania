@@ -31,6 +31,7 @@ except ImportError:
 import gt4py as gt
 
 from tasmania.python.framework import protocol as prt
+from tasmania.python.framework.options import BackendOptions
 from tasmania.python.framework.stencil_compiler import (
     StencilCompiler,
     StencilDefinition,
@@ -126,12 +127,13 @@ class TestStencilCompiler:
 
     def test_factory(self):
         s = StencilCompiler
+        bo = BackendOptions(dtypes={"dtype": float})
 
-        assert s("numpy", "diffusion") == diffusion_numpy
-        assert s("cupy", "diffusion") == diffusion_numpy
+        assert s("numpy", "diffusion", backend_options=bo) == diffusion_numpy
+        assert s("cupy", "diffusion", backend_options=bo) == diffusion_numpy
         for gt_backend in ("debug", "numpy", "gtx86", "gtmc"):
             assert isinstance(
-                s(f"gt4py:{gt_backend}", "diffusion", dtypes={"dtype": float}),
+                s(f"gt4py:{gt_backend}", "diffusion", backend_options=bo),
                 gt.StencilObject,
             )
 

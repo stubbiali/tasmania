@@ -20,8 +20,9 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from typing import Any, Callable, Optional, Sequence, Type, Union
+from typing import Callable, Optional, Sequence, Type, Union
 from tasmania.python.framework import protocol as prt
+from tasmania.python.framework.options import BackendOptions
 from tasmania.python.utils.exceptions import FactoryRegistryError
 from tasmania.python.utils.protocol_utils import (
     Registry,
@@ -134,7 +135,11 @@ class StencilCompiler:
     registry = Registry()
 
     def __new__(
-        cls: Type["StencilCompiler"], backend: str, stencil: str, **kwargs: Any
+        cls: Type["StencilCompiler"],
+        backend: str,
+        stencil: str,
+        *,
+        backend_options: Optional[BackendOptions] = None,
     ) -> Callable:
         definition = StencilDefinition(backend, stencil)
         key = ("stencil_compiler", backend, stencil)
@@ -149,7 +154,7 @@ class StencilCompiler:
                 "stencil",
                 stencil,
             )
-            return obj(definition, **kwargs)
+            return obj(definition, backend_options=backend_options)
         except KeyError:
             raise FactoryRegistryError(
                 f"No stencil compiler registered for the backend '{backend}'."
@@ -176,7 +181,7 @@ class StencilCompiler:
         )
 
     @staticmethod
-    def template(definition, *args, **kwargs):
+    def template(definition: Callable, *, backend_options: BackendOptions):
         pass
 
 

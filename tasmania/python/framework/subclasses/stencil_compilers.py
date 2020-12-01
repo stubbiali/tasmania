@@ -24,39 +24,34 @@ import numba
 
 import gt4py as gt
 
+from tasmania.python.framework.options import BackendOptions
 from tasmania.python.framework.stencil_compiler import stencil_compiler
 from tasmania.python.utils.utils import get_gt_backend
 
 
 @stencil_compiler.register(backend=("numpy", "cupy"))
-def compiler_numpy(definition, *args, **kwargs):
+def compiler_numpy(definition, *, backend_options=None):
     return definition
 
 
 @stencil_compiler.register(backend="gt4py*")
-def compiler_gt4py(
-    definition,
-    backend_opts=None,
-    build_info=None,
-    dtypes=None,
-    externals=None,
-    rebuild=False,
-    **kwargs
-):
+def compiler_gt4py(definition, *, backend_options=None):
+    bo = backend_options or BackendOptions()
     backend = compiler_gt4py.__tasmania_runtime__["backend"]
     gt_backend = get_gt_backend(backend)
-    backend_opts = backend_opts or {}
+    backend_opts = bo.backend_opts or {}
     return gt.gtscript.stencil(
         gt_backend,
         definition,
-        build_info=build_info,
-        dtypes=dtypes,
-        externals=externals,
-        rebuild=rebuild,
+        build_info=bo.build_info,
+        dtypes=bo.dtypes,
+        externals=bo.externals,
+        rebuild=bo.rebuild,
         **backend_opts
     )
 
 
 @stencil_compiler.register(backend="numba:cpu")
-def compiler_numba(definition, parallel=True, **kwargs):
-    return numba.njit(definition, parallel=parallel)
+def compiler_numba(definition, *, backend_options=None):
+    bo = backend_options or BackendOptions()
+    return numba.njit(definition, parallel=bo.parallel)

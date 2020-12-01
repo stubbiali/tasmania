@@ -22,18 +22,16 @@
 #
 import abc
 from nptyping import NDArray
-import numpy as np
-from typing import Any, Callable, Optional, Sequence, Type, Union
+from typing import Callable, Optional, Sequence, Type, Union
 
 from tasmania.python.framework import protocol as prt
+from tasmania.python.framework.options import StorageOptions
 from tasmania.python.utils.exceptions import FactoryRegistryError
 from tasmania.python.utils.protocol_utils import (
     multiregister,
     Registry,
     set_runtime_attribute,
 )
-
-from tasmania.python.utils import taz_types
 
 
 class Allocator(abc.ABC):
@@ -51,8 +49,7 @@ class Allocator(abc.ABC):
         stencil: str = prt.wildcard,
         *,
         shape: Sequence[int],
-        dtype: Type = np.float64,
-        **kwargs: Any
+        storage_options: Optional[StorageOptions] = None
     ) -> NDArray:
         """Dispatch the call to the proper registered object."""
         key = (cls.function, backend, stencil)
@@ -67,7 +64,7 @@ class Allocator(abc.ABC):
                 "stencil",
                 stencil,
             )
-            return obj(shape=shape, dtype=dtype, **kwargs)
+            return obj(shape, storage_options=storage_options)
         except KeyError:
             raise FactoryRegistryError(
                 f"No allocator registered for the backend '{backend}'."
@@ -95,7 +92,11 @@ class Allocator(abc.ABC):
         )
 
     @staticmethod
-    def template(shape: Sequence[int], dtype: taz_types.dtype_t, **kwargs):
+    def template(
+        shape: Sequence[int],
+        *,
+        storage_options: Optional[StorageOptions] = None
+    ):
         """Signature template for any registered object."""
         pass
 

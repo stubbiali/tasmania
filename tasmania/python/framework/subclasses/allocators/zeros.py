@@ -30,36 +30,33 @@ except ImportError:
 import gt4py as gt
 
 from tasmania.python.framework.allocators import zeros
+from tasmania.python.framework.options import StorageOptions
 from tasmania.python.utils.utils import get_gt_backend
 
 
 @zeros.register(backend=("numpy", "numba:cpu"))
-def zeros_numpy(shape, dtype, **kwargs):
-    return np.zeros(shape, dtype=dtype)
+def zeros_numpy(shape, *, storage_options=None):
+    so = storage_options or StorageOptions
+    return np.zeros(shape, dtype=so.dtype)
 
 
 @zeros.register(backend=("cupy", "numba:gpu"))
-def zeros_cupy(shape, dtype, **kwargs):
-    return cp.zeros(shape, dtype=dtype)
+def zeros_cupy(shape, *, storage_options=None):
+    so = storage_options or StorageOptions
+    return cp.zeros(shape, dtype=so.dtype)
 
 
 @zeros.register(backend="gt4py*")
-def zeros_gt4py(
-    shape,
-    dtype,
-    default_origin=None,
-    mask=None,
-    managed_memory=False,
-    **kwargs
-):
+def zeros_gt4py(shape, *, storage_options=None):
     backend = zeros_gt4py.__tasmania_runtime__["backend"]
     gt_backend = get_gt_backend(backend)
-    default_origin = default_origin or (0,) * len(shape)
+    so = storage_options or StorageOptions
+    default_origin = so.default_origin or (0,) * len(shape)
     return gt.storage.zeros(
         gt_backend,
         default_origin,
         shape,
-        dtype,
-        mask=mask,
-        managed_memory=managed_memory,
+        so.dtype,
+        mask=so.mask,
+        managed_memory=so.managed_memory,
     )
