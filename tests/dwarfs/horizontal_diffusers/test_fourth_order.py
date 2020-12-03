@@ -31,7 +31,8 @@ import pytest
 from tasmania.python.dwarfs.horizontal_diffusion import (
     HorizontalDiffusion as HD,
 )
-from tasmania.python.utils.storage_utils import zeros
+from tasmania.python.framework.allocators import zeros
+from tasmania.python.framework.options import BackendOptions, StorageOptions
 
 from tests.conf import (
     backend as conf_backend,
@@ -87,15 +88,11 @@ def fourth_order_diffusion_yz(dy, phi):
 
 
 def fourth_order_validation_xyz(
-    phi, grid, diffusion_depth, nb, backend, default_origin
+    phi, grid, diffusion_depth, nb, backend, backend_options, storage_options
 ):
     ni, nj, nk = phi.shape
-    dtype = phi.dtype
     phi_tnd = zeros(
-        (ni, nj, nk),
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
+        backend, shape=(ni, nj, nk), storage_options=storage_options
     )
 
     dx = grid.dx.values.item()
@@ -111,9 +108,8 @@ def fourth_order_validation_xyz(
         diffusion_depth,
         nb=nb,
         backend=backend,
-        dtype=phi.dtype,
-        default_origin=default_origin,
-        rebuild=False,
+        backend_options=backend_options,
+        storage_options=storage_options,
     )
     hd(phi, phi_tnd)
 
@@ -122,15 +118,11 @@ def fourth_order_validation_xyz(
 
 
 def fourth_order_validation_xz(
-    phi, grid, diffusion_depth, nb, backend, default_origin
+    phi, grid, diffusion_depth, nb, backend, backend_options, storage_options
 ):
     ni, nj, nk = phi.shape
-    dtype = phi.dtype
     phi_tnd = zeros(
-        (ni, nj, nk),
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
+        backend, shape=(ni, nj, nk), storage_options=storage_options
     )
 
     dx = grid.dx.values.item()
@@ -146,9 +138,8 @@ def fourth_order_validation_xz(
         diffusion_depth,
         nb=nb,
         backend=backend,
-        dtype=phi.dtype,
-        default_origin=default_origin,
-        rebuild=False,
+        backend_options=backend_options,
+        storage_options=storage_options,
     )
     hd(phi, phi_tnd)
 
@@ -157,15 +148,12 @@ def fourth_order_validation_xz(
 
 
 def fourth_order_validation_yz(
-    phi, grid, diffusion_depth, nb, backend, default_origin
+    phi, grid, diffusion_depth, nb, backend, backend_options, storage_options
 ):
     ni, nj, nk = phi.shape
     dtype = phi.dtype
     phi_tnd = zeros(
-        (ni, nj, nk),
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
+        backend, shape=(ni, nj, nk), storage_options=storage_options
     )
 
     dx = grid.dx.values.item()
@@ -181,9 +169,8 @@ def fourth_order_validation_yz(
         diffusion_depth,
         nb=nb,
         backend=backend,
-        dtype=phi.dtype,
-        default_origin=default_origin,
-        rebuild=False,
+        backend_options=backend_options,
+        storage_options=storage_options,
     )
     hd(phi, phi_tnd)
 
@@ -239,15 +226,12 @@ def test(data, backend, dtype):
     # ========================================
     # test
     # ========================================
-    fourth_order_validation_xyz(
-        phi, grid, depth, nb, backend, default_origin
-    )
-    fourth_order_validation_xz(
-        phi, grid, depth, nb, backend, default_origin
-    )
-    fourth_order_validation_yz(
-        phi, grid, depth, nb, backend, default_origin
-    )
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, default_origin=default_origin)
+
+    fourth_order_validation_xyz(phi, grid, depth, nb, backend, bo, so)
+    fourth_order_validation_xz(phi, grid, depth, nb, backend, bo, so)
+    fourth_order_validation_yz(phi, grid, depth, nb, backend, bo, so)
 
 
 if __name__ == "__main__":

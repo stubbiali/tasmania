@@ -31,7 +31,8 @@ import pytest
 from tasmania.python.dwarfs.horizontal_smoothing import (
     HorizontalSmoothing as HS,
 )
-from tasmania.python.utils.storage_utils import zeros
+from tasmania.python.framework.allocators import zeros
+from tasmania.python.framework.options import BackendOptions, StorageOptions
 
 from tests.conf import (
     backend as conf_backend,
@@ -108,13 +109,10 @@ def first_order_smoothing_yz(phi, g):
     return phi_smooth
 
 
-def first_order_validation_xyz(phi, smooth_depth, nb, backend, default_origin):
-    phi_new = zeros(
-        phi.shape,
-        backend=backend,
-        dtype=phi.dtype,
-        default_origin=default_origin,
-    )
+def first_order_validation_xyz(
+    phi, smooth_depth, nb, backend, backend_options, storage_options
+):
+    phi_new = zeros(backend, shape=phi.shape, storage_options=storage_options)
 
     hs = HS.factory(
         "first_order",
@@ -124,9 +122,8 @@ def first_order_validation_xyz(phi, smooth_depth, nb, backend, default_origin):
         smooth_depth,
         nb,
         backend=backend,
-        dtype=phi.dtype,
-        default_origin=default_origin,
-        rebuild=False,
+        backend_options=backend_options,
+        storage_options=storage_options,
     )
     hs(phi, phi_new)
 
@@ -136,13 +133,10 @@ def first_order_validation_xyz(phi, smooth_depth, nb, backend, default_origin):
     assert_xyz(phi, phi_new, phi_new_assert, nb)
 
 
-def first_order_validation_xz(phi, smooth_depth, nb, backend, default_origin):
-    phi_new = zeros(
-        phi.shape,
-        backend=backend,
-        dtype=phi.dtype,
-        default_origin=default_origin,
-    )
+def first_order_validation_xz(
+    phi, smooth_depth, nb, backend, backend_options, storage_options
+):
+    phi_new = zeros(backend, shape=phi.shape, storage_options=storage_options)
 
     hs = HS.factory(
         "first_order_1dx",
@@ -152,9 +146,8 @@ def first_order_validation_xz(phi, smooth_depth, nb, backend, default_origin):
         smooth_depth,
         nb,
         backend=backend,
-        dtype=phi.dtype,
-        default_origin=default_origin,
-        rebuild=False,
+        backend_options=backend_options,
+        storage_options=storage_options,
     )
     hs(phi, phi_new)
 
@@ -164,13 +157,10 @@ def first_order_validation_xz(phi, smooth_depth, nb, backend, default_origin):
     assert_xz(phi, phi_new, phi_new_assert, nb)
 
 
-def first_order_validation_yz(phi, smooth_depth, nb, backend, default_origin):
-    phi_new = zeros(
-        phi.shape,
-        backend=backend,
-        dtype=phi.dtype,
-        default_origin=default_origin,
-    )
+def first_order_validation_yz(
+    phi, smooth_depth, nb, backend, backend_options, storage_options
+):
+    phi_new = zeros(backend, shape=phi.shape, storage_options=storage_options)
 
     hs = HS.factory(
         "first_order_1dy",
@@ -180,9 +170,8 @@ def first_order_validation_yz(phi, smooth_depth, nb, backend, default_origin):
         smooth_depth,
         nb,
         backend=backend,
-        dtype=phi.dtype,
-        default_origin=default_origin,
-        rebuild=False,
+        backend_options=backend_options,
+        storage_options=storage_options,
     )
     hs(phi, phi_new)
 
@@ -242,9 +231,12 @@ def test(data, backend, dtype):
     # ========================================
     # test
     # ========================================
-    first_order_validation_xyz(phi, depth, nb, backend, default_origin)
-    first_order_validation_xz(phi, depth, nb, backend, default_origin)
-    first_order_validation_yz(phi, depth, nb, backend, default_origin)
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, default_origin=default_origin)
+
+    first_order_validation_xyz(phi, depth, nb, backend, bo, so)
+    first_order_validation_xz(phi, depth, nb, backend, bo, so)
+    first_order_validation_yz(phi, depth, nb, backend, bo, so)
 
 
 if __name__ == "__main__":

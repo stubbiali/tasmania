@@ -22,8 +22,9 @@
 #
 from gt4py import gtscript
 
+from tasmania.python.framework import tag
+from tasmania.python.framework.register import register
 from tasmania.python.dwarfs.horizontal_diffusion import HorizontalDiffusion
-from tasmania.python.utils.framework_utils import register
 
 
 @register(name="second_order")
@@ -40,13 +41,8 @@ class SecondOrder(HorizontalDiffusion):
         diffusion_damp_depth,
         nb,
         backend,
-        backend_opts,
-        dtype,
-        build_info,
-        exec_info,
-        default_origin,
-        rebuild,
-        managed_memory,
+        backend_options,
+        storage_options,
     ):
         nb = 1 if (nb is None or nb < 1) else nb
         lb = 2 * nb + 1
@@ -64,13 +60,8 @@ class SecondOrder(HorizontalDiffusion):
             diffusion_damp_depth,
             nb,
             backend,
-            backend_opts,
-            dtype,
-            build_info,
-            exec_info,
-            default_origin,
-            rebuild,
-            managed_memory,
+            backend_options,
+            storage_options,
         )
 
     def __call__(self, phi, phi_tnd):
@@ -87,11 +78,12 @@ class SecondOrder(HorizontalDiffusion):
             dy=dy,
             origin=(nb, nb, 0),
             domain=(nx - 2 * nb, ny - 2 * nb, nz),
-            exec_info=self._exec_info,
-            validate_args=False
+            exec_info=self.backend_options.exec_info,
+            validate_args=False,
         )
 
     @staticmethod
+    @tag.stencil_definition(backend=("numpy", "cupy"), stencil="diffusion")
     def _stencil_numpy(
         in_phi, in_gamma, out_phi, *, dx, dy, origin, domain, **kwargs
     ):
@@ -109,7 +101,8 @@ class SecondOrder(HorizontalDiffusion):
         )
 
     @staticmethod
-    def _stencil_gt_defs(
+    @tag.stencil_definition(backend="gt4py*", stencil="diffusion")
+    def _stencil_gt4py(
         in_phi: gtscript.Field["dtype"],
         in_gamma: gtscript.Field["dtype"],
         out_phi: gtscript.Field["dtype"],
@@ -140,13 +133,8 @@ class SecondOrder1DX(HorizontalDiffusion):
         diffusion_damp_depth,
         nb,
         backend,
-        backend_opts,
-        dtype,
-        build_info,
-        exec_info,
-        default_origin,
-        rebuild,
-        managed_memory,
+        backend_options,
+        storage_options,
     ):
         nb = 1 if (nb is None or nb < 1) else nb
         lb = 2 * nb + 1
@@ -164,13 +152,8 @@ class SecondOrder1DX(HorizontalDiffusion):
             diffusion_damp_depth,
             nb,
             backend,
-            backend_opts,
-            dtype,
-            build_info,
-            exec_info,
-            default_origin,
-            rebuild,
-            managed_memory,
+            backend_options,
+            storage_options,
         )
 
     def __call__(self, phi, phi_tnd):
@@ -187,11 +170,12 @@ class SecondOrder1DX(HorizontalDiffusion):
             dy=dy,
             origin=(nb, 0, 0),
             domain=(nx - 2 * nb, ny, nz),
-            exec_info=self._exec_info,
-            validate_args=False
+            exec_info=self.backend_options.exec_info,
+            validate_args=False,
         )
 
     @staticmethod
+    @tag.stencil_definition(backend=("numpy", "cupy"), stencil="diffusion")
     def _stencil_numpy(
         in_phi, in_gamma, out_phi, *, dx, dy, origin, domain, **kwargs
     ):
@@ -207,7 +191,8 @@ class SecondOrder1DX(HorizontalDiffusion):
         )
 
     @staticmethod
-    def _stencil_gt_defs(
+    @tag.stencil_definition(backend="gt4py*", stencil="diffusion")
+    def _stencil_gt4py(
         in_phi: gtscript.Field["dtype"],
         in_gamma: gtscript.Field["dtype"],
         out_phi: gtscript.Field["dtype"],
@@ -237,13 +222,8 @@ class SecondOrder1DY(HorizontalDiffusion):
         diffusion_damp_depth,
         nb,
         backend,
-        backend_opts,
-        dtype,
-        build_info,
-        exec_info,
-        default_origin,
-        rebuild,
-        managed_memory,
+        backend_options,
+        storage_options,
     ):
         nb = 1 if (nb is None or nb < 1) else nb
         lb = 2 * nb + 1
@@ -261,13 +241,8 @@ class SecondOrder1DY(HorizontalDiffusion):
             diffusion_damp_depth,
             nb,
             backend,
-            backend_opts,
-            dtype,
-            build_info,
-            exec_info,
-            default_origin,
-            rebuild,
-            managed_memory,
+            backend_options,
+            storage_options,
         )
 
     def __call__(self, phi, phi_tnd):
@@ -284,11 +259,12 @@ class SecondOrder1DY(HorizontalDiffusion):
             dy=dy,
             origin=(0, nb, 0),
             domain=(nx, ny - 2 * nb, nz),
-            exec_info=self._exec_info,
-            validate_args=False
+            exec_info=self.backend_options.exec_info,
+            validate_args=False,
         )
 
     @staticmethod
+    @tag.stencil_definition(backend=("numpy", "cupy"), stencil="diffusion")
     def _stencil_numpy(
         in_phi, in_gamma, out_phi, *, dx, dy, origin, domain, **kwargs
     ):
@@ -304,7 +280,8 @@ class SecondOrder1DY(HorizontalDiffusion):
         )
 
     @staticmethod
-    def _stencil_gt_defs(
+    @tag.stencil_definition(backend="gt4py*", stencil="diffusion")
+    def _stencil_gt4py(
         in_phi: gtscript.Field["dtype"],
         in_gamma: gtscript.Field["dtype"],
         out_phi: gtscript.Field["dtype"],

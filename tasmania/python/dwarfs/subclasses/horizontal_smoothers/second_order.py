@@ -23,8 +23,8 @@
 from gt4py import gtscript
 
 from tasmania.python.dwarfs.horizontal_smoothing import HorizontalSmoothing
-from tasmania.python.utils.framework_utils import register
-from tasmania.python.utils.utils import is_gt
+from tasmania.python.framework import tag
+from tasmania.python.framework.register import register
 
 
 @register(name="second_order")
@@ -39,13 +39,8 @@ class SecondOrder(HorizontalSmoothing):
         smooth_damp_depth,
         nb,
         backend,
-        backend_opts,
-        dtype,
-        build_info,
-        exec_info,
-        default_origin,
-        rebuild,
-        managed_memory,
+        backend_options,
+        storage_options,
     ):
         nb = 2 if (nb is None or nb < 2) else nb
         super().__init__(
@@ -55,13 +50,8 @@ class SecondOrder(HorizontalSmoothing):
             smooth_damp_depth,
             nb,
             backend,
-            backend_opts,
-            dtype,
-            build_info,
-            exec_info,
-            default_origin,
-            rebuild,
-            managed_memory,
+            backend_options,
+            storage_options,
         )
 
     def __call__(self, phi, phi_out):
@@ -76,49 +66,50 @@ class SecondOrder(HorizontalSmoothing):
             out_phi=phi_out,
             origin=(nb, nb, 0),
             domain=(nx - 2 * nb, ny - 2 * nb, nz),
-            exec_info=self._exec_info,
+            exec_info=self.backend_options.exec_info,
             validate_args=False,
         )
 
         # set the outermost lateral layers of the output field,
         # not affected by the stencil
-        if not is_gt(self._backend):
-            phi_out[:nb, :] = phi[:nb, :]
-            phi_out[-nb:, :] = phi[-nb:, :]
-            phi_out[nb:-nb, :nb] = phi[nb:-nb, :nb]
-            phi_out[nb:-nb, -nb:] = phi[nb:-nb, -nb:]
-        else:
-            self._stencil_copy(
-                src=phi,
-                dst=phi_out,
-                origin=(0, 0, 0),
-                domain=(nb, ny, nz),
-                validate_args=False,
-            )
-            self._stencil_copy(
-                src=phi,
-                dst=phi_out,
-                origin=(nx - nb, 0, 0),
-                domain=(nb, ny, nz),
-                validate_args=False,
-            )
-            self._stencil_copy(
-                src=phi,
-                dst=phi_out,
-                origin=(nb, 0, 0),
-                domain=(nx - 2 * nb, nb, nz),
-                validate_args=False,
-            )
-            self._stencil_copy(
-                src=phi,
-                dst=phi_out,
-                origin=(nb, ny - nb, 0),
-                domain=(nx - 2 * nb, nb, nz),
-                validate_args=False,
-            )
+        self._stencil_copy(
+            src=phi,
+            dst=phi_out,
+            origin=(0, 0, 0),
+            domain=(nb, ny, nz),
+            exec_info=self.backend_options.exec_info,
+            validate_args=False,
+        )
+        self._stencil_copy(
+            src=phi,
+            dst=phi_out,
+            origin=(nx - nb, 0, 0),
+            domain=(nb, ny, nz),
+            exec_info=self.backend_options.exec_info,
+            validate_args=False,
+        )
+        self._stencil_copy(
+            src=phi,
+            dst=phi_out,
+            origin=(nb, 0, 0),
+            domain=(nx - 2 * nb, nb, nz),
+            exec_info=self.backend_options.exec_info,
+            validate_args=False,
+        )
+        self._stencil_copy(
+            src=phi,
+            dst=phi_out,
+            origin=(nb, ny - nb, 0),
+            domain=(nx - 2 * nb, nb, nz),
+            exec_info=self.backend_options.exec_info,
+            validate_args=False,
+        )
 
     @staticmethod
-    def _stencil_numpy(in_phi, in_gamma, out_phi, *, origin, domain, **kwargs):
+    @tag.stencil_definition(backend=("numpy", "cupy"), stencil="smoothing")
+    def _smoothing_numpy(
+        in_phi, in_gamma, out_phi, *, origin, domain, **kwargs
+    ):
         i = slice(origin[0], origin[0] + domain[0])
         im2 = slice(origin[0] - 2, origin[0] + domain[0] - 2)
         im1 = slice(origin[0] - 1, origin[0] + domain[0] - 1)
@@ -145,7 +136,8 @@ class SecondOrder(HorizontalSmoothing):
         )
 
     @staticmethod
-    def _stencil_gt_defs(
+    @tag.stencil_definition(backend="gt4py*", stencil="smoothing")
+    def _smoothing_gt4py(
         in_phi: gtscript.Field["dtype"],
         in_gamma: gtscript.Field["dtype"],
         out_phi: gtscript.Field["dtype"],
@@ -177,13 +169,8 @@ class SecondOrder1DX(HorizontalSmoothing):
         smooth_damp_depth,
         nb,
         backend,
-        backend_opts,
-        dtype,
-        build_info,
-        exec_info,
-        default_origin,
-        rebuild,
-        managed_memory,
+        backend_options,
+        storage_options,
     ):
         nb = 2 if (nb is None or nb < 2) else nb
         super().__init__(
@@ -193,13 +180,8 @@ class SecondOrder1DX(HorizontalSmoothing):
             smooth_damp_depth,
             nb,
             backend,
-            backend_opts,
-            dtype,
-            build_info,
-            exec_info,
-            default_origin,
-            rebuild,
-            managed_memory,
+            backend_options,
+            storage_options,
         )
 
     def __call__(self, phi, phi_out):
@@ -214,17 +196,34 @@ class SecondOrder1DX(HorizontalSmoothing):
             out_phi=phi_out,
             origin=(nb, 0, 0),
             domain=(nx - 2 * nb, ny, nz),
-            exec_info=self._exec_info,
+            exec_info=self.backend_options.exec_info,
             validate_args=False,
         )
 
         # set the outermost lateral layers of the output field,
         # not affected by the stencil
-        phi_out[:nb, :] = phi[:nb, :]
-        phi_out[-nb:, :] = phi[-nb:, :]
+        self._stencil_copy(
+            src=phi,
+            dst=phi_out,
+            origin=(0, 0, 0),
+            domain=(nb, ny, nz),
+            exec_info=self.backend_options.exec_info,
+            validate_args=False,
+        )
+        self._stencil_copy(
+            src=phi,
+            dst=phi_out,
+            origin=(nx - nb, 0, 0),
+            domain=(nb, ny, nz),
+            exec_info=self.backend_options.exec_info,
+            validate_args=False,
+        )
 
     @staticmethod
-    def _stencil_numpy(in_phi, in_gamma, out_phi, *, origin, domain, **kwargs):
+    @tag.stencil_definition(backend=("numpy", "cupy"), stencil="smoothing")
+    def _smoothing_numpy(
+        in_phi, in_gamma, out_phi, *, origin, domain, **kwargs
+    ):
         i = slice(origin[0], origin[0] + domain[0])
         im2 = slice(origin[0] - 2, origin[0] + domain[0] - 2)
         im1 = slice(origin[0] - 1, origin[0] + domain[0] - 1)
@@ -243,7 +242,8 @@ class SecondOrder1DX(HorizontalSmoothing):
         )
 
     @staticmethod
-    def _stencil_gt_defs(
+    @tag.stencil_definition(backend="gt4py*", stencil="smoothing")
+    def _smoothing_gt4py(
         in_phi: gtscript.Field["dtype"],
         in_gamma: gtscript.Field["dtype"],
         out_phi: gtscript.Field["dtype"],
@@ -271,13 +271,8 @@ class SecondOrder1DY(HorizontalSmoothing):
         smooth_damp_depth,
         nb,
         backend,
-        backend_opts,
-        dtype,
-        build_info,
-        exec_info,
-        default_origin,
-        rebuild,
-        managed_memory,
+        backend_options,
+        storage_options,
     ):
         nb = 2 if (nb is None or nb < 2) else nb
         super().__init__(
@@ -287,13 +282,8 @@ class SecondOrder1DY(HorizontalSmoothing):
             smooth_damp_depth,
             nb,
             backend,
-            backend_opts,
-            dtype,
-            build_info,
-            exec_info,
-            default_origin,
-            rebuild,
-            managed_memory,
+            backend_options,
+            storage_options,
         )
 
     def __call__(self, phi, phi_out):
@@ -308,17 +298,34 @@ class SecondOrder1DY(HorizontalSmoothing):
             out_phi=phi_out,
             origin=(0, nb, 0),
             domain=(nx, ny - 2 * nb, nz),
-            exec_info=self._exec_info,
+            exec_info=self.backend_options.exec_info,
             validate_args=False,
         )
 
         # set the outermost lateral layers of the output field,
         # not affected by the stencil
-        phi_out[:, :nb] = phi[:, :nb]
-        phi_out[:, -nb:] = phi[:, -nb:]
+        self._stencil_copy(
+            src=phi,
+            dst=phi_out,
+            origin=(0, 0, 0),
+            domain=(nx, nb, nz),
+            exec_info=self.backend_options.exec_info,
+            validate_args=False,
+        )
+        self._stencil_copy(
+            src=phi,
+            dst=phi_out,
+            origin=(0, ny - nb, 0),
+            domain=(nx, nb, nz),
+            exec_info=self.backend_options.exec_info,
+            validate_args=False,
+        )
 
     @staticmethod
-    def _stencil_numpy(in_phi, in_gamma, out_phi, *, origin, domain, **kwargs):
+    @tag.stencil_definition(backend=("numpy", "cupy"), stencil="smoothing")
+    def _smoothing_numpy(
+        in_phi, in_gamma, out_phi, *, origin, domain, **kwargs
+    ):
         i = slice(origin[0], origin[0] + domain[0])
         j = slice(origin[1], origin[1] + domain[1])
         jm2 = slice(origin[1] - 2, origin[1] + domain[1] - 2)
@@ -337,7 +344,8 @@ class SecondOrder1DY(HorizontalSmoothing):
         )
 
     @staticmethod
-    def _stencil_gt_defs(
+    @tag.stencil_definition(backend="gt4py*", stencil="smoothing")
+    def _smoothing_gt4py(
         in_phi: gtscript.Field["dtype"],
         in_gamma: gtscript.Field["dtype"],
         out_phi: gtscript.Field["dtype"],

@@ -26,7 +26,9 @@ from hypothesis import (
 )
 import pytest
 
-from tasmania.python.dwarfs.horizontal_diffusion import HorizontalDiffusion as HD
+from tasmania.python.dwarfs.horizontal_diffusion import (
+    HorizontalDiffusion as HD,
+)
 from tasmania.python.dwarfs.subclasses.horizontal_diffusers import (
     SecondOrder,
     SecondOrder1DX,
@@ -70,7 +72,9 @@ def test_factory(data):
     dx = data.draw(st_floats(min_value=0), label="dx")
     dy = data.draw(st_floats(min_value=0), label="dy")
     diff_coeff = data.draw(st_floats(min_value=0), label="diff_coeff")
-    diff_coeff_max = data.draw(st_floats(min_value=diff_coeff), label="diff_coeff_max")
+    diff_coeff_max = data.draw(
+        st_floats(min_value=diff_coeff), label="diff_coeff_max"
+    )
     diff_damp_depth = data.draw(hyp_st.integers(min_value=0, max_value=nk))
 
     # ========================================
@@ -78,7 +82,13 @@ def test_factory(data):
     # ========================================
     # second_order
     obj = HD.factory(
-        "second_order", (ni, nj, nk), dx, dy, diff_coeff, diff_coeff_max, diff_damp_depth
+        "second_order",
+        (ni, nj, nk),
+        dx,
+        dy,
+        diff_coeff,
+        diff_coeff_max,
+        diff_damp_depth,
     )
     assert isinstance(obj, SecondOrder)
 
@@ -108,7 +118,13 @@ def test_factory(data):
 
     # fourth_order
     obj = HD.factory(
-        "fourth_order", (ni, nj, nk), dx, dy, diff_coeff, diff_coeff_max, diff_damp_depth
+        "fourth_order",
+        (ni, nj, nk),
+        dx,
+        dy,
+        diff_coeff,
+        diff_coeff_max,
+        diff_damp_depth,
     )
     assert isinstance(obj, FourthOrder)
 
