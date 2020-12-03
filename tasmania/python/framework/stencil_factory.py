@@ -27,6 +27,7 @@ from typing import Callable, Optional, Sequence
 
 from tasmania.python.framework import protocol as prt
 from tasmania.python.framework.allocators import Allocator
+from tasmania.python.framework.asarray import AsArray
 from tasmania.python.framework.options import BackendOptions, StorageOptions
 from tasmania.python.framework.stencil_compiler import (
     StencilDefinition,
@@ -42,12 +43,12 @@ from tasmania.python.utils.protocol_utils import (
 
 class StencilFactory(abc.ABC):
     default_allocator_registry = Allocator.registry
+    default_asarray_registry = AsArray.registry
     default_definition_registry = StencilDefinition.registry
     default_compiler_registry = StencilCompiler.registry
 
     def __init__(
         self: "StencilFactory",
-        *,
         backend_options: Optional[BackendOptions] = None,
         storage_options: Optional[StorageOptions] = None,
     ) -> None:
@@ -56,6 +57,26 @@ class StencilFactory(abc.ABC):
 
         self.registry = Registry()
         self._fill_registry()
+
+    def asarray(
+        self: "StencilFactory", backend: str, stencil: str = prt.wildcard
+    ) -> Callable:
+        key = ("asarray", backend, stencil)
+        try:
+            obj = self.registry[key]
+        except KeyError:
+            try:
+                obj = self.default_asarray_registry[key]
+            except KeyError:
+                raise FactoryRegistryError(
+                    f"No asarray function found for the backend '{backend}'."
+                )
+
+        set_runtime_attribute(
+            obj, "function", "asarray", "backend", backend, "stencil", stencil,
+        )
+
+        return obj()
 
     def compile(
         self: "StencilFactory",

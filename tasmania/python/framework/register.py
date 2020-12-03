@@ -20,75 +20,65 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from typing import Callable, Sequence, Union
-
-from tasmania.python.framework import protocol as prt
-from tasmania.python.framework.allocators import Allocator
-from tasmania.python.framework.stencil_compiler import (
-    StencilCompiler,
-    StencilDefinition,
-)
-from tasmania.python.utils.protocol_utils import multiregister
+from typing import Callable, Optional, Type, TypeVar
 
 
-def empty(
-    backend: Union[str, Sequence[str]],
-    stencil: Union[str, Sequence[str]] = prt.wildcard,
+T = TypeVar("T")
+
+
+def register(
+    name: str,
+    registry_class: Optional[Type[T]] = None,
+    registry_name: Optional[str] = None,
 ) -> Callable:
-    return multiregister(
-        registry=Allocator.registry,
-        args=("function", "empty", "backend", backend, "stencil", stencil),
-    )
+    def core(cls):
+        rcls = registry_class or cls
+        rname = registry_name or "registry"
+
+        if not hasattr(rcls, rname):
+            raise RuntimeError(
+                f"Class {rcls.__name__} does not have the attribute '{rname}'."
+            )
+        registry = getattr(rcls, rname)
+
+        if name in registry and registry[name] != cls:
+            import warnings
+
+            warnings.warn(
+                f"Cannot register {cls.__name__} as '{name}' since this name "
+                f"has already been used to register {registry[name]}."
+            )
+        else:
+            registry[name] = cls
+
+        return cls
+
+    return core
 
 
-def ones(
-    backend: Union[str, Sequence[str]],
-    stencil: Union[str, Sequence[str]] = prt.wildcard,
-) -> Callable:
-    return multiregister(
-        registry=Allocator.registry,
-        args=("function", "ones", "backend", backend, "stencil", stencil),
-    )
+def factorize(
+    name: str,
+    registry_class: Type[T],
+    args,
+    kwargs=None,
+    registry_name: Optional[str] = None,
+) -> T:
+    rcls = registry_class
+    rname = registry_name or "registry"
 
+    if not hasattr(rcls, rname):
+        raise RuntimeError(
+            f"Class {rcls.__name__} does not have the attribute '{rname}'."
+        )
+    registry = getattr(rcls, rname)
 
-def stencil_compiler(
-    backend: Union[str, Sequence[str]],
-    stencil: Union[str, Sequence[str]] = prt.wildcard,
-) -> Callable:
-    return multiregister(
-        registry=StencilCompiler.registry,
-        args=(
-            "function",
-            "stencil_compiler",
-            "backend",
-            backend,
-            "stencil",
-            stencil,
-        ),
-    )
-
-
-def stencil_definition(
-    backend: Union[str, Sequence[str]], stencil: Union[str, Sequence[str]],
-) -> Callable:
-    return multiregister(
-        registry=StencilDefinition.registry,
-        args=(
-            "function",
-            "stencil_definition",
-            "backend",
-            backend,
-            "stencil",
-            stencil,
-        ),
-    )
-
-
-def zeros(
-    backend: Union[str, Sequence[str]],
-    stencil: Union[str, Sequence[str]] = prt.wildcard,
-) -> Callable:
-    return multiregister(
-        registry=Allocator.registry,
-        args=("function", "zeros", "backend", backend, "stencil", stencil),
-    )
+    if name in registry:
+        kwargs = kwargs or {}
+        obj = registry[name](*args, **kwargs)
+        return obj
+    else:
+        raise RuntimeError(
+            f"No entity has been registered as '{name}'. "
+            f"Available options are: "
+            f"{', '.join(key for key in registry.keys())}."
+        )

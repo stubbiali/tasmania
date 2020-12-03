@@ -46,11 +46,12 @@ master_key = keys_hierarchy[0]
 
 # the values which the master key may take
 master_key_values = (
+    "asarray",
+    "empty",
+    "ones",
     "stencil_compiler",
     "stencil_definition",
     "stencil_subroutine",
-    "empty",
-    "ones",
     "zeros",
 )
 

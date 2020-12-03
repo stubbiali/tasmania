@@ -20,12 +20,32 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from tasmania.python.framework.subclasses import (
-    allocators,
-    stencil_definitions,
-    stencil_subroutines,
-    sts_tendency_steppers,
-    tendency_steppers,
-)
-from tasmania.python.framework.subclasses.asarray import *
-from tasmania.python.framework.subclasses.stencil_compilers import *
+import numpy as np
+
+try:
+    import cupy as cp
+except ImportError:
+    cp = np
+
+import gt4py as gt
+
+from tasmania.python.framework.asarray import asarray
+from tasmania.python.utils.utils import get_gt_backend
+
+
+@asarray.register(backend="numpy")
+def asarray_numpy():
+    return np.asarray
+
+
+@asarray.register(backend="cupy")
+def asarray_cupy():
+    return cp.asarray
+
+
+@asarray.register(backend="gt4py*")
+def asarray_gt4py():
+    backend = asarray_gt4py.__tasmania_runtime__["backend"]
+    gt_backend = get_gt_backend(backend)
+    device = gt.backend.from_name(gt_backend).storage_info["device"]
+    return cp.asarray if device == "gpu" else np.asarray

@@ -26,6 +26,15 @@ from tasmania.python.framework import protocol as prt
 from tasmania.python.utils.protocol_utils import multiregister
 
 
+def asarray(
+    backend: Union[str, Sequence[str]],
+    stencil: Union[str, Sequence[str]] = prt.wildcard,
+) -> Callable:
+    return multiregister(
+        args=("function", "asarray", "backend", backend, "stencil", stencil)
+    )
+
+
 def empty(
     backend: Union[str, Sequence[str]],
     stencil: Union[str, Sequence[str]] = prt.wildcard,
@@ -67,6 +76,21 @@ def stencil_definition(
         args=(
             "function",
             "stencil_definition",
+            "backend",
+            backend,
+            "stencil",
+            stencil,
+        )
+    )
+
+
+def stencil_subroutine(
+    backend: Union[str, Sequence[str]], stencil: Union[str, Sequence[str]],
+) -> Callable:
+    return multiregister(
+        args=(
+            "function",
+            "stencil_subroutine",
             "backend",
             backend,
             "stencil",
