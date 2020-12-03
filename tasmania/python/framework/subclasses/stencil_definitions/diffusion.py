@@ -62,7 +62,7 @@ def diffusion_gt4py(
     out_phi: gtscript.Field["dtype"],
     *,
     alpha: "dtype"
-):
+) -> None:
     with computation(PARALLEL), interval(...):
         # compute the laplacian-of-laplacian
         lap = (
