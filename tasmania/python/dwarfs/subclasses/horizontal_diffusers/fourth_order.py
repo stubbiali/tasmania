@@ -22,8 +22,8 @@
 #
 from gt4py import gtscript
 
-from tasmania.python.framework import tag
 from tasmania.python.framework.register import register
+from tasmania.python.framework.tag import stencil_definition
 from tasmania.python.dwarfs.horizontal_diffusion import HorizontalDiffusion
 
 
@@ -83,7 +83,7 @@ class FourthOrder(HorizontalDiffusion):
         )
 
     @staticmethod
-    @tag.stencil_definition(backend=("numpy", "cupy"), stencil="diffusion")
+    @stencil_definition(backend=("numpy", "cupy"), stencil="diffusion")
     def _stencil_numpy(
         in_phi, in_gamma, out_phi, *, dx, dy, origin, domain, **kwargs
     ):
@@ -118,7 +118,7 @@ class FourthOrder(HorizontalDiffusion):
         )
 
     @staticmethod
-    @tag.stencil_definition(backend="gt4py*", stencil="diffusion")
+    @stencil_definition(backend="gt4py*", stencil="diffusion")
     def _stencil_gt4py(
         in_phi: gtscript.Field["dtype"],
         in_gamma: gtscript.Field["dtype"],
@@ -204,7 +204,7 @@ class FourthOrder1DX(HorizontalDiffusion):
         )
 
     @staticmethod
-    @tag.stencil_definition(backend=("numpy", "cupy"), stencil="diffusion")
+    @stencil_definition(backend=("numpy", "cupy"), stencil="diffusion")
     def _stencil_numpy(
         in_phi, in_gamma, out_phi, *, dx, dy, origin, domain, **kwargs
     ):
@@ -228,7 +228,7 @@ class FourthOrder1DX(HorizontalDiffusion):
         )
 
     @staticmethod
-    @tag.stencil_definition(backend="gt4py*", stencil="diffusion")
+    @stencil_definition(backend="gt4py*", stencil="diffusion")
     def _stencil_gt4py(
         in_phi: gtscript.Field["dtype"],
         in_gamma: gtscript.Field["dtype"],
@@ -307,7 +307,7 @@ class FourthOrder1DY(HorizontalDiffusion):
         )
 
     @staticmethod
-    @tag.stencil_definition(backend=("numpy", "cupy"), stencil="diffusion")
+    @stencil_definition(backend=("numpy", "cupy"), stencil="diffusion")
     def _stencil_numpy(
         in_phi, in_gamma, out_phi, *, dx, dy, origin, domain, **kwargs
     ):
@@ -331,7 +331,7 @@ class FourthOrder1DY(HorizontalDiffusion):
         )
 
     @staticmethod
-    @tag.stencil_definition(backend="gt4py*", stencil="diffusion")
+    @stencil_definition(backend="gt4py*", stencil="diffusion")
     def _stencil_gt4py(
         in_phi: gtscript.Field["dtype"],
         in_gamma: gtscript.Field["dtype"],

@@ -25,8 +25,8 @@ from typing import Optional, TYPE_CHECKING
 
 from gt4py import gtscript
 
-from tasmania.python.framework import tag
 from tasmania.python.framework.stencil_factory import StencilFactory
+from tasmania.python.framework.tag import stencil_definition
 from tasmania.python.utils import taz_types
 from tasmania.python.utils.gtscript_utils import positive
 
@@ -183,7 +183,7 @@ class HorizontalVelocity(StencilFactory):
             validate_args=False,
         )
 
-    @tag.stencil_definition(backend=("numpy", "cupy"), stencil="momenta")
+    @stencil_definition(backend=("numpy", "cupy"), stencil="momenta")
     def _diagnose_momenta_numpy(
         self: "HorizontalVelocity",
         in_d: np.ndarray,
@@ -214,7 +214,7 @@ class HorizontalVelocity(StencilFactory):
             out_dv[i, j, k] = in_d[i, j, k] * in_v[i, j, k]
 
     @staticmethod
-    @tag.stencil_definition(backend="gt4py*", stencil="momenta")
+    @stencil_definition(backend="gt4py*", stencil="momenta")
     def _diagnose_momenta_gt4py(
         in_d: gtscript.Field["dtype"],
         in_u: gtscript.Field["dtype"],
@@ -232,7 +232,7 @@ class HorizontalVelocity(StencilFactory):
                 out_du = in_d * in_u
                 out_dv = in_d * in_v
 
-    @tag.stencil_definition(backend=("numpy", "cupy"), stencil="velocity_x")
+    @stencil_definition(backend=("numpy", "cupy"), stencil="velocity_x")
     def _diagnose_velocity_x_numpy(
         self: "HorizontalVelocity",
         in_d: np.ndarray,
@@ -256,7 +256,7 @@ class HorizontalVelocity(StencilFactory):
             out_u[i, j, k] = in_du[i, j, k] / in_d[i, j, k]
 
     @staticmethod
-    @tag.stencil_definition(backend="gt4py*", stencil="velocity_x")
+    @stencil_definition(backend="gt4py*", stencil="velocity_x")
     def _diagnose_velocity_x_gt4py(
         in_d: gtscript.Field["dtype"],
         in_du: gtscript.Field["dtype"],
@@ -272,7 +272,7 @@ class HorizontalVelocity(StencilFactory):
             else:
                 out_u = in_du / in_d
 
-    @tag.stencil_definition(backend=("numpy", "cupy"), stencil="velocity_y")
+    @stencil_definition(backend=("numpy", "cupy"), stencil="velocity_y")
     def _diagnose_velocity_y_numpy(
         self: "HorizontalVelocity",
         in_d: np.ndarray,
@@ -296,7 +296,7 @@ class HorizontalVelocity(StencilFactory):
             out_v[i, j, k] = in_dv[i, j, k] / in_d[i, j, k]
 
     @staticmethod
-    @tag.stencil_definition(backend="gt4py*", stencil="velocity_y")
+    @stencil_definition(backend="gt4py*", stencil="velocity_y")
     def _diagnose_velocity_y_gt4py(
         in_d: gtscript.Field["dtype"],
         in_dv: gtscript.Field["dtype"],
@@ -429,7 +429,7 @@ class WaterConstituent(StencilFactory):
             validate_args=False,
         )
 
-    @tag.stencil_definition(backend=("numpy", "cupy"), stencil="density")
+    @stencil_definition(backend=("numpy", "cupy"), stencil="density")
     def _diagnose_density_numpy(
         self: "WaterConstituent",
         in_d: np.ndarray,
@@ -451,7 +451,7 @@ class WaterConstituent(StencilFactory):
             )
 
     @staticmethod
-    @tag.stencil_definition(backend="gt4py*", stencil="density")
+    @stencil_definition(backend="gt4py*", stencil="density")
     def _diagnose_density_gt4py(
         in_d: gtscript.Field["dtype"],
         in_q: gtscript.Field["dtype"],
@@ -466,7 +466,7 @@ class WaterConstituent(StencilFactory):
             else:
                 out_dq = in_d * in_q
 
-    @tag.stencil_definition(backend=("numpy", "cupy"), stencil="mass_fraction")
+    @stencil_definition(backend=("numpy", "cupy"), stencil="mass_fraction")
     def _diagnose_mass_fraction_numpy(
         self: "WaterConstituent",
         in_d: np.ndarray,
@@ -488,7 +488,7 @@ class WaterConstituent(StencilFactory):
             )
 
     @staticmethod
-    @tag.stencil_definition(backend="gt4py*", stencil="mass_fraction")
+    @stencil_definition(backend="gt4py*", stencil="mass_fraction")
     def _diagnose_mass_fraction_gt4py(
         in_d: gtscript.Field["dtype"],
         in_dq: gtscript.Field["dtype"],

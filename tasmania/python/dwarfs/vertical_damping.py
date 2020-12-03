@@ -23,46 +23,44 @@
 import abc
 import math
 import numpy as np
-from typing import Optional, TYPE_CHECKING
+from typing import Optional, Sequence, TYPE_CHECKING
 
 from gt4py import gtscript
 
 from tasmania.python.utils import taz_types
-from tasmania.python.utils.framework_utils import factorize
-from tasmania.python.utils.storage_utils import get_asarray_function, zeros
-from tasmania.python.utils.utils import (
-    get_gt_backend,
-    greater_or_equal_than as ge,
-    is_gt,
-)
+from tasmania.python.framework.register import factorize
+from tasmania.python.framework.stencil_factory import StencilFactory
+from tasmania.python.framework.tag import stencil_definition
+from tasmania.python.utils.utils import greater_or_equal_than as ge
 
 if TYPE_CHECKING:
     from tasmania.python.domain.grid import Grid
+    from tasmania.python.framework.options import (
+        BackendOptions,
+        StorageOptions,
+    )
 
 
-class VerticalDamping(abc.ABC):
+class VerticalDamping(StencilFactory):
     """
     Abstract base class whose derived classes implement different
     vertical damping, i.e. wave absorbing, techniques.
     """
 
+    __metaclass__ = abc.ABCMeta
+
     registry = {}
 
     def __init__(
-        self,
+        self: "VerticalDamping",
         grid: "Grid",
         damp_depth: int,
         damp_coeff_max: float,
         time_units: str,
         backend: str,
-        backend_opts: taz_types.options_dict_t,
-        dtype: taz_types.dtype_t,
-        build_info: taz_types.options_dict_t,
-        exec_info: taz_types.mutable_options_dict_t,
-        default_origin: taz_types.triplet_int_t,
-        rebuild: bool,
-        storage_shape: taz_types.triplet_int_t,
-        managed_memory: bool,
+        backend_options: "BackendOptions",
+        storage_shape: Sequence[int],
+        storage_options: "StorageOptions",
     ) -> None:
         """
         Parameters
@@ -77,54 +75,29 @@ class VerticalDamping(abc.ABC):
             Time units to be used throughout the class.
         backend : str
             The backend.
-        backend_opts : dict
-            Dictionary of backend-specific options.
-        build_info : dict
-            Dictionary of building options.
-        exec_info : dict
-            Dictionary which will store statistics and diagnostics gathered at
-            run time.
-        dtype : data-type
-            Data type of the storages.
-        default_origin : tuple[int]
-            Storage default origin.
-        rebuild : bool
-            ``True`` to trigger the stencils compilation at any class
-            instantiation, ``False`` to rely on the caching mechanism
-            implemented by the backend.
-        managed_memory : `bool`, optional
-            ``True`` to allocate the storages as managed memory,
-            ``False`` otherwise.
+        backend_options : BackendOptions
+            Backend-specific options.
+        storage_options : StorageOptions
+            Storage-related options.
         """
+        super().__init__(backend_options, storage_options)
+
         # safety-guard checks
         assert damp_depth <= grid.nz, (
-            "The depth of the damping region ({}) should be smaller or equal than "
-            "the number of main vertical levels ({}).".format(
-                damp_depth, grid.nz
-            )
+            f"The depth of the damping region ({damp_depth}) should be "
+            f"smaller or equal than the number of main vertical levels "
+            f"({grid.nz})."
         )
 
         # store input arguments needed at run-time
         self._damp_depth = damp_depth
         self._tunits = time_units
-        self._exec_info = exec_info
-        storage_shape = (
-            (grid.nx, grid.ny, grid.nz)
-            if storage_shape is None
-            else storage_shape
-        )
+        storage_shape = storage_shape or (grid.nx, grid.ny, grid.nz)
         assert grid.nz <= storage_shape[2] <= grid.nz + 1
         self._shape = storage_shape
 
         # allocate the damping matrix
-        self._rmat = zeros(
-            storage_shape,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-            mask=(True, True, True),
-            managed_memory=managed_memory,
-        )
+        self._rmat = self.zeros(backend, shape=storage_shape,)
         if damp_depth > 0:
             # fill the damping matrix
             z = (
@@ -139,25 +112,17 @@ class VerticalDamping(abc.ABC):
                 * damp_coeff_max
                 * (1 - np.cos(math.pi * (z - za) / (zt - za)))
             )
-            asarray = get_asarray_function(backend)
+            asarray = self.asarray(backend)
             self._rmat[...] = asarray(r[np.newaxis, np.newaxis, :])
 
         # instantiate the underlying stencil
-        if is_gt(backend):
-            self._stencil = gtscript.stencil(
-                definition=self._stencil_gt_defs,
-                backend=get_gt_backend(backend),
-                build_info=build_info,
-                rebuild=rebuild,
-                dtypes={"dtype": dtype},
-                **(backend_opts or {})
-            )
-        else:
-            self._stencil = self._stencil_numpy
+        dtype = self.storage_options.dtype
+        self.backend_options.dtypes = {"dtype": dtype}
+        self._stencil = self.compile(backend, "damping")
 
     @abc.abstractmethod
     def __call__(
-        self,
+        self: "VerticalDamping",
         dt: taz_types.timedelta_t,
         field_now: taz_types.array_t,
         field_new: taz_types.array_t,
@@ -176,7 +141,8 @@ class VerticalDamping(abc.ABC):
         field_now : array-like
             The field at the current time level.
         field_new : array-like
-            The field at the next time level, on which the absorber will be applied.
+            The field at the next time level, on which the absorber will be
+            applied.
         field_ref : array-like
             A reference value for the field.
         field_out : array-like
@@ -193,14 +159,9 @@ class VerticalDamping(abc.ABC):
         time_units: str = "s",
         *,
         backend: str = "numpy",
-        backend_opts: Optional[taz_types.options_dict_t] = None,
-        dtype: taz_types.dtype_t = np.float64,
-        build_info: Optional[taz_types.options_dict_t] = None,
-        exec_info: Optional[taz_types.mutable_options_dict_t] = None,
-        default_origin: Optional[taz_types.triplet_int_t] = None,
-        rebuild: bool = False,
-        storage_shape: Optional[taz_types.triplet_int_t] = None,
-        managed_memory: bool = False
+        backend_options: Optional["BackendOptions"] = None,
+        storage_shape: Optional[Sequence[int]] = None,
+        storage_options: Optional["StorageOptions"] = None
     ) -> "VerticalDamping":
         """
         Static method which returns an instance of the derived class
@@ -223,24 +184,10 @@ class VerticalDamping(abc.ABC):
             Time units to be used throughout the class. Defaults to 's'.
         backend : `str`, optional
             The backend.
-        backend_opts : `dict`, optional
-            Dictionary of backend-specific options.
-        dtype : `data-type`, optional
-            Data type of the storages.
-        build_info : `dict`, optional
-            Dictionary of building options.
-        exec_info : `dict`, optional
-            Dictionary which will store statistics and diagnostics gathered at
-            run time.
-        default_origin : `tuple[int]`, optional
-            Storage default origin.
-        rebuild : `bool`, optional
-            ``True`` to trigger the stencils compilation at any class
-            instantiation, ``False`` to rely on the caching mechanism
-            implemented by the backend.
-        managed_memory : `bool`, optional
-            ``True`` to allocate the storages as managed memory,
-            ``False`` otherwise.
+        backend_options : `BackendOptions`, optional
+            Backend-specific options.
+        storage_options : `StorageOptions`, optional
+            Storage-related options.
 
         Return
         ------
@@ -253,21 +200,17 @@ class VerticalDamping(abc.ABC):
             damp_coeff_max,
             time_units,
             backend,
-            backend_opts,
-            dtype,
-            build_info,
-            exec_info,
-            default_origin,
-            rebuild,
+            backend_options,
             storage_shape,
-            managed_memory,
+            storage_options,
         )
         obj = factorize(damp_type, VerticalDamping, args)
         return obj
 
     @staticmethod
     @abc.abstractmethod
-    def _stencil_numpy(
+    @stencil_definition(backend=("numpy", "cupy"), stencil="damping")
+    def _damping_numpy(
         in_phi_now: np.ndarray,
         in_phi_new: np.ndarray,
         in_phi_ref: np.ndarray,
@@ -283,7 +226,8 @@ class VerticalDamping(abc.ABC):
 
     @staticmethod
     @abc.abstractmethod
-    def _stencil_gt_defs(
+    @stencil_definition(backend="gt4py*", stencil="damping")
+    def _damping_gt4py(
         in_phi_now: gtscript.Field["dtype"],
         in_phi_new: gtscript.Field["dtype"],
         in_phi_ref: gtscript.Field["dtype"],

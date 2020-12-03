@@ -22,8 +22,8 @@
 #
 from gt4py import gtscript
 
-from tasmania.python.framework import tag
 from tasmania.python.framework.register import register
+from tasmania.python.framework.tag import stencil_definition
 from tasmania.python.dwarfs.horizontal_smoothing import HorizontalSmoothing
 
 
@@ -106,7 +106,7 @@ class FirstOrder(HorizontalSmoothing):
         )
 
     @staticmethod
-    @tag.stencil_definition(backend=("numpy", "cupy"), stencil="smoothing")
+    @stencil_definition(backend=("numpy", "cupy"), stencil="smoothing")
     def _smoothing_numpy(
         in_phi, in_gamma, out_phi, *, origin, domain, **kwargs
     ):
@@ -128,7 +128,7 @@ class FirstOrder(HorizontalSmoothing):
         )
 
     @staticmethod
-    @tag.stencil_definition(backend="gt4py*", stencil="smoothing")
+    @stencil_definition(backend="gt4py*", stencil="smoothing")
     def _smoothing_gt4py(
         in_phi: gtscript.Field["dtype"],
         in_gamma: gtscript.Field["dtype"],
@@ -208,7 +208,7 @@ class FirstOrder1DX(HorizontalSmoothing):
         )
 
     @staticmethod
-    @tag.stencil_definition(backend=("numpy", "cupy"), stencil="smoothing")
+    @stencil_definition(backend=("numpy", "cupy"), stencil="smoothing")
     def _smoothing_numpy(
         in_phi, in_gamma, out_phi, *, origin, domain, **kwargs
     ):
@@ -223,7 +223,7 @@ class FirstOrder1DX(HorizontalSmoothing):
         ] + 0.25 * in_gamma[i, j, k] * (in_phi[im1, j, k] + in_phi[ip1, j, k])
 
     @staticmethod
-    @tag.stencil_definition(backend="gt4py*", stencil="smoothing")
+    @stencil_definition(backend="gt4py*", stencil="smoothing")
     def _smoothing_gt4py(
         in_phi: gtscript.Field["dtype"],
         in_gamma: gtscript.Field["dtype"],
@@ -298,7 +298,7 @@ class FirstOrder1DY(HorizontalSmoothing):
         )
 
     @staticmethod
-    @tag.stencil_definition(backend=("numpy", "cupy"), stencil="smoothing")
+    @stencil_definition(backend=("numpy", "cupy"), stencil="smoothing")
     def _smoothing_numpy(
         in_phi, in_gamma, out_phi, *, origin, domain, **kwargs
     ):
@@ -313,7 +313,7 @@ class FirstOrder1DY(HorizontalSmoothing):
         ] + 0.25 * in_gamma[i, j, k] * (in_phi[i, jm1, k] + in_phi[i, jp1, k])
 
     @staticmethod
-    @tag.stencil_definition(backend="gt4py*", stencil="smoothing")
+    @stencil_definition(backend="gt4py*", stencil="smoothing")
     def _smoothing_gt4py(
         in_phi: gtscript.Field["dtype"],
         in_gamma: gtscript.Field["dtype"],

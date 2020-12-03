@@ -27,8 +27,8 @@ from typing import Optional, TYPE_CHECKING
 
 from gt4py import gtscript
 
-from tasmania.python.framework import tag
 from tasmania.python.framework.register import factorize
+from tasmania.python.framework.tag import stencil_definition
 from tasmania.python.framework.stencil_factory import StencilFactory
 from tasmania.python.utils import taz_types
 
@@ -200,7 +200,7 @@ class HorizontalDiffusion(StencilFactory):
 
     @staticmethod
     @abc.abstractmethod
-    @tag.stencil_definition(backend=("numpy", "cupy"), stencil="diffusion")
+    @stencil_definition(backend=("numpy", "cupy"), stencil="diffusion")
     def _stencil_numpy(
         in_phi: np.ndarray,
         in_gamma: np.ndarray,
@@ -216,7 +216,7 @@ class HorizontalDiffusion(StencilFactory):
 
     @staticmethod
     @abc.abstractmethod
-    @tag.stencil_definition(backend="gt4py*", stencil="diffusion")
+    @stencil_definition(backend="gt4py*", stencil="diffusion")
     def _stencil_gt4py(
         in_phi: gtscript.Field["dtype"],
         in_gamma: gtscript.Field["dtype"],

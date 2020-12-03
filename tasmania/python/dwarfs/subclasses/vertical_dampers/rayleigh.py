@@ -20,13 +20,13 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-import numpy as np
 from sympl import DataArray
 
 from gt4py import gtscript
 
 from tasmania.python.dwarfs.vertical_damping import VerticalDamping
-from tasmania.python.utils.framework_utils import register
+from tasmania.python.framework.register import register
+from tasmania.python.framework.tag import stencil_definition
 
 
 @register(name="rayleigh")
@@ -40,14 +40,9 @@ class Rayleigh(VerticalDamping):
         damp_coeff_max=0.0002,
         time_units="s",
         backend="numpy",
-        backend_opts=None,
-        dtype=np.float64,
-        build_info=None,
-        exec_info=None,
-        default_origin=None,
-        rebuild=False,
+        backend_options=None,
         storage_shape=None,
-        managed_memory=False,
+        storage_options=None,
     ):
         super().__init__(
             grid,
@@ -55,14 +50,9 @@ class Rayleigh(VerticalDamping):
             damp_coeff_max,
             time_units,
             backend,
-            backend_opts,
-            dtype,
-            build_info,
-            exec_info,
-            default_origin,
-            rebuild,
+            backend_options,
             storage_shape,
-            managed_memory,
+            storage_options,
         )
 
     def __call__(self, dt, field_now, field_new, field_ref, field_out):
@@ -84,8 +74,8 @@ class Rayleigh(VerticalDamping):
             dt=dt_raw,
             origin=(0, 0, 0),
             domain=(ni, nj, nk),
-            exec_info=self._exec_info,
-            validate_args=False
+            exec_info=self.backend_options.exec_info,
+            validate_args=False,
         )
 
         # if nk > dnk:
@@ -94,7 +84,8 @@ class Rayleigh(VerticalDamping):
         #         field_out[:, :, dnk:nk] = field_new[:, :, dnk:nk]
 
     @staticmethod
-    def _stencil_numpy(
+    @stencil_definition(backend=("numpy", "cupy"), stencil="damping")
+    def _damping_numpy(
         in_phi_now,
         in_phi_new,
         in_phi_ref,
@@ -115,7 +106,8 @@ class Rayleigh(VerticalDamping):
         )
 
     @staticmethod
-    def _stencil_gt_defs(
+    @stencil_definition(backend="gt4py*", stencil="damping")
+    def _damping_gt4py(
         in_phi_now: gtscript.Field["dtype"],
         in_phi_new: gtscript.Field["dtype"],
         in_phi_ref: gtscript.Field["dtype"],

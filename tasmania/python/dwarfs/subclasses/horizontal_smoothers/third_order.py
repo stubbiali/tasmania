@@ -23,8 +23,8 @@
 from gt4py import gtscript
 
 from tasmania.python.dwarfs.horizontal_smoothing import HorizontalSmoothing
-from tasmania.python.framework import tag
 from tasmania.python.framework.register import register
+from tasmania.python.framework.tag import stencil_definition
 
 
 @register(name="third_order")
@@ -106,7 +106,7 @@ class ThirdOrder(HorizontalSmoothing):
         )
 
     @staticmethod
-    @tag.stencil_definition(backend=("numpy", "cupy"), stencil="smoothing")
+    @stencil_definition(backend=("numpy", "cupy"), stencil="smoothing")
     def _smoothing_numpy(
         in_phi, in_gamma, out_phi, *, origin, domain, **kwargs
     ):
@@ -144,7 +144,7 @@ class ThirdOrder(HorizontalSmoothing):
         )
 
     @staticmethod
-    @tag.stencil_definition(backend="gt4py*", stencil="smoothing")
+    @stencil_definition(backend="gt4py*", stencil="smoothing")
     def _smoothing_gt4py(
         in_phi: gtscript.Field["dtype"],
         in_gamma: gtscript.Field["dtype"],
@@ -232,7 +232,7 @@ class ThirdOrder1DX(HorizontalSmoothing):
         )
 
     @staticmethod
-    @tag.stencil_definition(backend=("numpy", "cupy"), stencil="smoothing")
+    @stencil_definition(backend=("numpy", "cupy"), stencil="smoothing")
     def _smoothing_numpy(
         in_phi, in_gamma, out_phi, *, origin, domain, **kwargs
     ):
@@ -258,7 +258,7 @@ class ThirdOrder1DX(HorizontalSmoothing):
         )
 
     @staticmethod
-    @tag.stencil_definition(backend="gt4py*", stencil="smoothing")
+    @stencil_definition(backend="gt4py*", stencil="smoothing")
     def _smoothing_gt4py(
         in_phi: gtscript.Field["dtype"],
         in_gamma: gtscript.Field["dtype"],
@@ -340,7 +340,7 @@ class ThirdOrder1DY(HorizontalSmoothing):
         )
 
     @staticmethod
-    @tag.stencil_definition(backend=("numpy", "cupy"), stencil="smoothing")
+    @stencil_definition(backend=("numpy", "cupy"), stencil="smoothing")
     def _smoothing_numpy(
         in_phi, in_gamma, out_phi, *, origin, domain, **kwargs
     ):
@@ -366,7 +366,7 @@ class ThirdOrder1DY(HorizontalSmoothing):
         )
 
     @staticmethod
-    @tag.stencil_definition(backend="gt4py*", stencil="smoothing")
+    @stencil_definition(backend="gt4py*", stencil="smoothing")
     def _smoothing_gt4py(
         in_phi: gtscript.Field["dtype"],
         in_gamma: gtscript.Field["dtype"],

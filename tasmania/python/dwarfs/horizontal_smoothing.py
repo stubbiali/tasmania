@@ -27,9 +27,9 @@ from typing import Optional, TYPE_CHECKING
 
 from gt4py import gtscript
 
-from tasmania.python.framework import tag
 from tasmania.python.framework.register import factorize
 from tasmania.python.framework.stencil_factory import StencilFactory
+from tasmania.python.framework.tag import stencil_definition
 from tasmania.python.utils import taz_types
 
 if TYPE_CHECKING:
@@ -190,7 +190,7 @@ class HorizontalSmoothing(StencilFactory):
 
     @staticmethod
     @abc.abstractmethod
-    @tag.stencil_definition(backend=("numpy", "cupy"), stencil="smoothing")
+    @stencil_definition(backend=("numpy", "cupy"), stencil="smoothing")
     def _smoothing_numpy(
         in_phi: np.ndarray,
         in_gamma: np.ndarray,
@@ -204,7 +204,7 @@ class HorizontalSmoothing(StencilFactory):
 
     @staticmethod
     @abc.abstractmethod
-    @tag.stencil_definition(backend="gt4py*", stencil="smoothing")
+    @stencil_definition(backend="gt4py*", stencil="smoothing")
     def _smoothing_gt4py(
         in_phi: gtscript.Field["dtype"],
         in_gamma: gtscript.Field["dtype"],
