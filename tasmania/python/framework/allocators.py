@@ -22,16 +22,18 @@
 #
 import abc
 from nptyping import NDArray
-from typing import Callable, Optional, Sequence, Type, Union
+from typing import Callable, Optional, Sequence, TYPE_CHECKING, Type, Union
 
 from tasmania.python.framework import protocol as prt
-from tasmania.python.framework.options import StorageOptions
 from tasmania.python.utils.exceptions import FactoryRegistryError
 from tasmania.python.utils.protocol_utils import (
     multiregister,
     Registry,
     set_runtime_attribute,
 )
+
+if TYPE_CHECKING:
+    from tasmania.python.framework.options import StorageOptions
 
 
 class Allocator(abc.ABC):
@@ -49,7 +51,7 @@ class Allocator(abc.ABC):
         stencil: str = prt.wildcard,
         *,
         shape: Sequence[int],
-        storage_options: Optional[StorageOptions] = None
+        storage_options: Optional["StorageOptions"] = None
     ) -> NDArray:
         """Dispatch the call to the proper registered object."""
         key = (cls.function, backend, stencil)
@@ -95,7 +97,7 @@ class Allocator(abc.ABC):
     def template(
         shape: Sequence[int],
         *,
-        storage_options: Optional[StorageOptions] = None
+        storage_options: Optional["StorageOptions"] = None
     ):
         """Signature template for any registered object."""
         pass

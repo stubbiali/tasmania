@@ -26,14 +26,16 @@ from typing import Optional, TYPE_CHECKING
 from gt4py import gtscript
 
 from tasmania.python.framework import tag
-from tasmania.python.framework.options import BackendOptions, StorageOptions
 from tasmania.python.framework.stencil_factory import StencilFactory
 from tasmania.python.utils import taz_types
 from tasmania.python.utils.gtscript_utils import positive
-from tasmania.python.utils.utils import get_gt_backend, is_gt
 
 if TYPE_CHECKING:
     from tasmania.python.domain.grid import Grid
+    from tasmania.python.framework.options import (
+        BackendOptions,
+        StorageOptions,
+    )
 
 
 class HorizontalVelocity(StencilFactory):
@@ -49,8 +51,8 @@ class HorizontalVelocity(StencilFactory):
         staggering: bool = True,
         *,
         backend: str = "numpy",
-        backend_options: Optional[BackendOptions] = None,
-        storage_options: Optional[StorageOptions] = None,
+        backend_options: Optional["BackendOptions"] = None,
+        storage_options: Optional["StorageOptions"] = None,
     ) -> None:
         """
         Parameters
@@ -68,9 +70,7 @@ class HorizontalVelocity(StencilFactory):
         storage_options : `StorageOptions`, optional
             Storage-related options.
         """
-        super().__init__(
-            backend_options=backend_options, storage_options=storage_options
-        )
+        super().__init__(backend_options, storage_options)
 
         # store input arguments needed at run-time
         self._grid = grid
@@ -91,7 +91,7 @@ class HorizontalVelocity(StencilFactory):
         )
 
     def get_momenta(
-        self,
+        self: "HorizontalVelocity",
         d: taz_types.array_t,
         u: taz_types.array_t,
         v: taz_types.array_t,
@@ -131,7 +131,7 @@ class HorizontalVelocity(StencilFactory):
         )
 
     def get_velocity_components(
-        self,
+        self: "HorizontalVelocity",
         d: taz_types.array_t,
         du: taz_types.array_t,
         dv: taz_types.array_t,
@@ -185,7 +185,7 @@ class HorizontalVelocity(StencilFactory):
 
     @tag.stencil_definition(backend=("numpy", "cupy"), stencil="momenta")
     def _diagnose_momenta_numpy(
-        self,
+        self: "HorizontalVelocity",
         in_d: np.ndarray,
         in_u: np.ndarray,
         in_v: np.ndarray,
@@ -234,7 +234,7 @@ class HorizontalVelocity(StencilFactory):
 
     @tag.stencil_definition(backend=("numpy", "cupy"), stencil="velocity_x")
     def _diagnose_velocity_x_numpy(
-        self,
+        self: "HorizontalVelocity",
         in_d: np.ndarray,
         in_du: np.ndarray,
         out_u: np.ndarray,
@@ -274,7 +274,7 @@ class HorizontalVelocity(StencilFactory):
 
     @tag.stencil_definition(backend=("numpy", "cupy"), stencil="velocity_y")
     def _diagnose_velocity_y_numpy(
-        self,
+        self: "HorizontalVelocity",
         in_d: np.ndarray,
         in_dv: np.ndarray,
         out_v: np.ndarray,
@@ -321,13 +321,13 @@ class WaterConstituent(StencilFactory):
     """
 
     def __init__(
-        self,
+        self: "WaterConstituent",
         grid: "Grid",
         clipping: bool = False,
         *,
         backend: str = "numpy",
-        backend_options: Optional[BackendOptions] = None,
-        storage_options: Optional[StorageOptions] = None
+        backend_options: Optional["BackendOptions"] = None,
+        storage_options: Optional["StorageOptions"] = None
     ) -> None:
         """
         Parameters
@@ -344,9 +344,7 @@ class WaterConstituent(StencilFactory):
         storage_options : `StorageOptions`, optional
             Storage-related options
         """
-        super().__init__(
-            backend_options=backend_options, storage_options=storage_options
-        )
+        super().__init__(backend_options, storage_options)
 
         # store input arguments needed at run-time
         self._grid = grid
@@ -365,7 +363,7 @@ class WaterConstituent(StencilFactory):
         )
 
     def get_density_of_water_constituent(
-        self,
+        self: "WaterConstituent",
         d: taz_types.array_t,
         q: taz_types.array_t,
         dq: taz_types.array_t,
@@ -398,7 +396,7 @@ class WaterConstituent(StencilFactory):
         )
 
     def get_mass_fraction_of_water_constituent_in_air(
-        self,
+        self: "WaterConstituent",
         d: taz_types.array_t,
         dq: taz_types.array_t,
         q: taz_types.array_t,
@@ -433,7 +431,7 @@ class WaterConstituent(StencilFactory):
 
     @tag.stencil_definition(backend=("numpy", "cupy"), stencil="density")
     def _diagnose_density_numpy(
-        self,
+        self: "WaterConstituent",
         in_d: np.ndarray,
         in_q: np.ndarray,
         out_dq: np.ndarray,
@@ -470,7 +468,7 @@ class WaterConstituent(StencilFactory):
 
     @tag.stencil_definition(backend=("numpy", "cupy"), stencil="mass_fraction")
     def _diagnose_mass_fraction_numpy(
-        self,
+        self: "WaterConstituent",
         in_d: np.ndarray,
         in_dq: np.ndarray,
         out_q: np.ndarray,
