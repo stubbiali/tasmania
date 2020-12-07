@@ -25,7 +25,8 @@ from typing import Optional, TYPE_CHECKING
 
 from gt4py import gtscript
 
-from tasmania.python.framework.stencil_factory import StencilFactory
+from tasmania.python.framework.base_components import GridComponent
+from tasmania.python.framework.stencil import StencilFactory
 from tasmania.python.framework.tag import stencil_definition
 from tasmania.python.utils import taz_types
 from tasmania.python.utils.gtscript_utils import positive
@@ -38,7 +39,7 @@ if TYPE_CHECKING:
     )
 
 
-class HorizontalVelocity(StencilFactory):
+class HorizontalVelocity(GridComponent, StencilFactory):
     """
     This class diagnoses the horizontal momenta (respectively, velocity
     components) with the help of the air density and the horizontal
@@ -70,25 +71,21 @@ class HorizontalVelocity(StencilFactory):
         storage_options : `StorageOptions`, optional
             Storage-related options.
         """
-        super().__init__(backend_options, storage_options)
+        super().__init__(grid)
+        super(GridComponent, self).__init__(
+            backend, backend_options, storage_options
+        )
 
         # store input arguments needed at run-time
-        self._grid = grid
         self._staggering = staggering
 
         # initialize the underlying stencils
         dtype = self.storage_options.dtype
         self.backend_options.dtypes = {"dtype": dtype}
         self.backend_options.externals = {"staggering": staggering}
-        self._stencil_diagnosing_momenta = self.compile(
-            backend=backend, stencil="momenta"
-        )
-        self._stencil_diagnosing_velocity_x = self.compile(
-            backend=backend, stencil="velocity_x"
-        )
-        self._stencil_diagnosing_velocity_y = self.compile(
-            backend=backend, stencil="velocity_y"
-        )
+        self._stencil_diagnosing_momenta = self.compile("momenta")
+        self._stencil_diagnosing_velocity_x = self.compile("velocity_x")
+        self._stencil_diagnosing_velocity_y = self.compile("velocity_y")
 
     def get_momenta(
         self: "HorizontalVelocity",
@@ -313,7 +310,7 @@ class HorizontalVelocity(StencilFactory):
                 out_v = in_dv / in_d
 
 
-class WaterConstituent(StencilFactory):
+class WaterConstituent(GridComponent, StencilFactory):
     """
     This class diagnoses the density (respectively, mass fraction) of any water
     constituent with the help of the air density and the mass fraction (resp.,
@@ -344,10 +341,12 @@ class WaterConstituent(StencilFactory):
         storage_options : `StorageOptions`, optional
             Storage-related options
         """
-        super().__init__(backend_options, storage_options)
+        super().__init__(grid)
+        super(GridComponent, self).__init__(
+            backend, backend_options, storage_options
+        )
 
         # store input arguments needed at run-time
-        self._grid = grid
         self._clipping = clipping
 
         # initialize the underlying stencils
@@ -357,10 +356,8 @@ class WaterConstituent(StencilFactory):
             "clipping": clipping,
             "positive": positive,
         }
-        self._stencil_diagnosing_density = self.compile(backend, "density")
-        self._stencil_diagnosing_mass_fraction = self.compile(
-            backend, "mass_fraction"
-        )
+        self._stencil_diagnosing_density = self.compile("density")
+        self._stencil_diagnosing_mass_fraction = self.compile("mass_fraction")
 
     def get_density_of_water_constituent(
         self: "WaterConstituent",

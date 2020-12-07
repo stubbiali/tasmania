@@ -28,8 +28,9 @@ from typing import Optional, Sequence, TYPE_CHECKING
 from gt4py import gtscript
 
 from tasmania.python.utils import taz_types
+from tasmania.python.framework.base_components import GridComponent
 from tasmania.python.framework.register import factorize
-from tasmania.python.framework.stencil_factory import StencilFactory
+from tasmania.python.framework.stencil import StencilFactory
 from tasmania.python.framework.tag import stencil_definition
 from tasmania.python.utils.utils import greater_or_equal_than as ge
 
@@ -41,13 +42,11 @@ if TYPE_CHECKING:
     )
 
 
-class VerticalDamping(StencilFactory):
+class VerticalDamping(GridComponent, StencilFactory, abc.ABC):
     """
     Abstract base class whose derived classes implement different
     vertical damping, i.e. wave absorbing, techniques.
     """
-
-    __metaclass__ = abc.ABCMeta
 
     registry = {}
 
@@ -80,7 +79,10 @@ class VerticalDamping(StencilFactory):
         storage_options : StorageOptions
             Storage-related options.
         """
-        super().__init__(backend_options, storage_options)
+        super().__init__(grid)
+        super(GridComponent, self).__init__(
+            backend, backend_options, storage_options
+        )
 
         # safety-guard checks
         assert damp_depth <= grid.nz, (
@@ -97,7 +99,7 @@ class VerticalDamping(StencilFactory):
         self._shape = storage_shape
 
         # allocate the damping matrix
-        self._rmat = self.zeros(backend, shape=storage_shape,)
+        self._rmat = self.zeros(backend, shape=storage_shape)
         if damp_depth > 0:
             # fill the damping matrix
             z = (
@@ -118,7 +120,7 @@ class VerticalDamping(StencilFactory):
         # instantiate the underlying stencil
         dtype = self.storage_options.dtype
         self.backend_options.dtypes = {"dtype": dtype}
-        self._stencil = self.compile(backend, "damping")
+        self._stencil = self.compile("damping")
 
     @abc.abstractmethod
     def __call__(
@@ -208,8 +210,8 @@ class VerticalDamping(StencilFactory):
         return obj
 
     @staticmethod
-    @abc.abstractmethod
     @stencil_definition(backend=("numpy", "cupy"), stencil="damping")
+    @abc.abstractmethod
     def _damping_numpy(
         in_phi_now: np.ndarray,
         in_phi_new: np.ndarray,
@@ -225,8 +227,8 @@ class VerticalDamping(StencilFactory):
         pass
 
     @staticmethod
-    @abc.abstractmethod
     @stencil_definition(backend="gt4py*", stencil="damping")
+    @abc.abstractmethod
     def _damping_gt4py(
         in_phi_now: gtscript.Field["dtype"],
         in_phi_new: gtscript.Field["dtype"],

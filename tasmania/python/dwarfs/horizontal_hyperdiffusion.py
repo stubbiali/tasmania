@@ -28,7 +28,7 @@ from typing import Optional
 from gt4py import gtscript
 
 from tasmania.python.utils import taz_types
-from tasmania.python.utils.framework_utils import factorize
+from tasmania.python.framework.register import factorize
 from tasmania.python.utils.storage_utils import zeros
 from tasmania.python.utils.utils import get_gt_backend, is_gt
 

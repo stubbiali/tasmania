@@ -29,7 +29,8 @@ from pandas import Timedelta
 import pytest
 
 from tasmania.python.dwarfs.vertical_damping import VerticalDamping as VD
-from tasmania.python.utils.storage_utils import zeros
+from tasmania.python.framework.allocators import zeros
+from tasmania.python.framework.options import BackendOptions, StorageOptions
 
 from tests.conf import (
     backend as conf_backend,
@@ -44,14 +45,14 @@ def assert_rayleigh(
     grid,
     depth,
     backend,
-    default_origin,
+    backend_options,
+    storage_options,
     dt,
     phi_now,
     phi_new,
     phi_ref,
     phi_out,
 ):
-    dtype = phi_now.dtype
     ni, nj, nk = phi_now.shape
 
     vd = VD.factory(
@@ -61,10 +62,9 @@ def assert_rayleigh(
         0.01,
         time_units="s",
         backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-        rebuild=False,
+        backend_options=backend_options,
         storage_shape=phi_now.shape,
+        storage_options=storage_options,
     )
 
     rmat = vd._rmat
@@ -153,19 +153,12 @@ def test(data, backend, dtype):
     # ========================================
     # test
     # ========================================
-    phi_out = zeros(
-        shape, backend=backend, dtype=dtype, default_origin=default_origin
-    )
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, default_origin=default_origin)
+
+    phi_out = zeros(backend, shape=shape, storage_options=so)
     assert_rayleigh(
-        cgrid,
-        depth,
-        backend,
-        default_origin,
-        dt,
-        phi_now,
-        phi_new,
-        phi_ref,
-        phi_out,
+        cgrid, depth, backend, bo, so, dt, phi_now, phi_new, phi_ref, phi_out,
     )
 
 

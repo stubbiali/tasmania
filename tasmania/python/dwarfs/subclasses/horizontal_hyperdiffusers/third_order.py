@@ -28,7 +28,7 @@ from tasmania.python.dwarfs.horizontal_hyperdiffusion import (
     stage_laplacian_x_numpy,
     stage_laplacian_y_numpy,
 )
-from tasmania.python.utils.framework_utils import register
+from tasmania.python.framework.register import register
 
 
 @register(name="third_order")

@@ -29,7 +29,7 @@ from gt4py import gtscript
 
 from tasmania.python.framework.register import factorize
 from tasmania.python.framework.tag import stencil_definition
-from tasmania.python.framework.stencil_factory import StencilFactory
+from tasmania.python.framework.stencil import StencilFactory
 from tasmania.python.utils import taz_types
 
 if TYPE_CHECKING:
@@ -39,10 +39,8 @@ if TYPE_CHECKING:
     )
 
 
-class HorizontalDiffusion(StencilFactory):
+class HorizontalDiffusion(StencilFactory, abc.ABC):
     """Calculate the tendency due to horizontal diffusion."""
-
-    __metaclass__ = abc.ABCMeta
 
     registry = {}
 
@@ -83,7 +81,7 @@ class HorizontalDiffusion(StencilFactory):
         storage_options : StorageOptions
             Storage-related options.
         """
-        super().__init__(backend_options, storage_options)
+        super().__init__(backend, backend_options, storage_options)
 
         # store input arguments needed at run-time
         self._shape = shape
@@ -117,7 +115,7 @@ class HorizontalDiffusion(StencilFactory):
 
         # initialize the underlying stencil
         self.backend_options.dtypes = {"dtype": dtype}
-        self._stencil = self.compile(backend, "diffusion")
+        self._stencil = self.compile("diffusion")
 
     @abc.abstractmethod
     def __call__(
@@ -199,8 +197,8 @@ class HorizontalDiffusion(StencilFactory):
         return obj
 
     @staticmethod
-    @abc.abstractmethod
     @stencil_definition(backend=("numpy", "cupy"), stencil="diffusion")
+    @abc.abstractmethod
     def _stencil_numpy(
         in_phi: np.ndarray,
         in_gamma: np.ndarray,
@@ -215,8 +213,8 @@ class HorizontalDiffusion(StencilFactory):
         pass
 
     @staticmethod
-    @abc.abstractmethod
     @stencil_definition(backend="gt4py*", stencil="diffusion")
+    @abc.abstractmethod
     def _stencil_gt4py(
         in_phi: gtscript.Field["dtype"],
         in_gamma: gtscript.Field["dtype"],

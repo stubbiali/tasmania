@@ -28,7 +28,7 @@ from typing import Optional, TYPE_CHECKING
 from gt4py import gtscript
 
 from tasmania.python.framework.register import factorize
-from tasmania.python.framework.stencil_factory import StencilFactory
+from tasmania.python.framework.stencil import StencilFactory
 from tasmania.python.framework.tag import stencil_definition
 from tasmania.python.utils import taz_types
 
@@ -39,10 +39,8 @@ if TYPE_CHECKING:
     )
 
 
-class HorizontalSmoothing(StencilFactory):
-    """ Apply horizontal numerical smoothing to a generic (prognostic) field. """
-
-    __metaclass__ = abc.ABCMeta
+class HorizontalSmoothing(StencilFactory, abc.ABC):
+    """Apply horizontal numerical smoothing to a generic (prognostic) field."""
 
     registry = {}
 
@@ -77,7 +75,7 @@ class HorizontalSmoothing(StencilFactory):
         storage_options : StorageOptions
             Storage-related options.
         """
-        super().__init__(backend_options, storage_options)
+        super().__init__(backend, backend_options, storage_options)
 
         # store input arguments needed at run-time
         self._backend = backend
@@ -105,8 +103,8 @@ class HorizontalSmoothing(StencilFactory):
 
         # initialize the underlying stencil
         self.backend_options.dtypes = {"dtype": dtype}
-        self._stencil = self.compile(backend, "smoothing")
-        self._stencil_copy = self.compile(backend, "copy")
+        self._stencil = self.compile("smoothing")
+        self._stencil_copy = self.compile("copy")
 
     @abc.abstractmethod
     def __call__(
@@ -189,8 +187,8 @@ class HorizontalSmoothing(StencilFactory):
         return obj
 
     @staticmethod
-    @abc.abstractmethod
     @stencil_definition(backend=("numpy", "cupy"), stencil="smoothing")
+    @abc.abstractmethod
     def _smoothing_numpy(
         in_phi: np.ndarray,
         in_gamma: np.ndarray,
@@ -203,8 +201,8 @@ class HorizontalSmoothing(StencilFactory):
         pass
 
     @staticmethod
-    @abc.abstractmethod
     @stencil_definition(backend="gt4py*", stencil="smoothing")
+    @abc.abstractmethod
     def _smoothing_gt4py(
         in_phi: gtscript.Field["dtype"],
         in_gamma: gtscript.Field["dtype"],
