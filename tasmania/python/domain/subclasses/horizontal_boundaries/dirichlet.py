@@ -33,7 +33,7 @@ from tasmania.python.domain.subclasses.horizontal_boundaries.utils import (
     repeat_axis,
     shrink_axis,
 )
-from tasmania.python.utils.framework_utils import register
+from tasmania.python.framework.register import register
 from tasmania.python.utils.storage_utils import get_asarray_function
 
 
@@ -44,7 +44,7 @@ def placeholder(time, grid, slice_x, slice_y, field_name, field_units):
 class Dirichlet(HorizontalBoundary):
     """ Dirichlet boundary conditions. """
 
-    def __init__(self, nx, ny, nb, backend, dtype, core=placeholder):
+    def __init__(self, nx, ny, nb, backend, storage_options, core=placeholder):
         """
         Parameters
         ----------
@@ -58,24 +58,27 @@ class Dirichlet(HorizontalBoundary):
             Number of boundary layers.
         backend : str
             The backend.
-        dtype : data-type
-            The data type of the storages.
+        storage_options : StorageOptions
+            Storage-related options.
         core : `callable`, optional
             Callable object providing the boundary layers values.
         """
-        assert (
-            nx > 1
-        ), "Number of grid points along first dimension should be larger than 1."
-        assert (
-            ny > 1
-        ), "Number of grid points along second dimension should be larger than 1."
+        assert nx > 1, (
+            "Number of grid points along first dimension should be larger "
+            "than 1."
+        )
+        assert ny > 1, (
+            "Number of grid points along second dimension should be larger "
+            "than 1."
+        )
         assert nb <= nx / 2, "Number of boundary layers cannot exceed ny/2."
         assert nb <= ny / 2, "Number of boundary layers cannot exceed ny/2."
 
         signature = inspect.signature(core)
         error_msg = (
             "The signature of the core function should be "
-            "core(time, grid, slice_x=None, slice_y=None, field_name=None, field_units=None)"
+            "core(time, grid, slice_x=None, slice_y=None, field_name=None, "
+            "field_units=None)"
         )
         assert tuple(signature.parameters.keys())[0] == "time", error_msg
         assert tuple(signature.parameters.keys())[1] == "grid", error_msg
@@ -84,7 +87,9 @@ class Dirichlet(HorizontalBoundary):
         assert "field_name" in signature.parameters, error_msg
         assert "field_units" in signature.parameters, error_msg
 
-        super().__init__(nx, ny, nb, backend=backend, dtype=dtype)
+        super().__init__(
+            nx, ny, nb, backend=backend, storage_options=storage_options
+        )
 
         self._kwargs["core"] = core
 
@@ -249,7 +254,7 @@ class Dirichlet(HorizontalBoundary):
 class Dirichlet1DX(HorizontalBoundary):
     """ Dirichlet boundary conditions for a physical grid with ``ny=1``. """
 
-    def __init__(self, nx, ny, nb, backend, dtype, core=placeholder):
+    def __init__(self, nx, ny, nb, backend, storage_options, core=placeholder):
         """
         Parameters
         ----------
@@ -263,14 +268,15 @@ class Dirichlet1DX(HorizontalBoundary):
             Number of boundary layers.
         backend : str
             The backend.
-        dtype : data-type
-            The data type of the storages.
+        storage_options : StorageOptions
+            Storage-related options.
         core : `callable`, optional
             Callable object providing the boundary layers values.
         """
-        assert (
-            nx > 1
-        ), "Number of grid points along first dimension should be larger than 1."
+        assert nx > 1, (
+            "Number of grid points along first dimension should be larger "
+            "than 1."
+        )
         assert (
             ny == 1
         ), "Number of grid points along second dimension must be 1."
@@ -279,7 +285,8 @@ class Dirichlet1DX(HorizontalBoundary):
         signature = inspect.signature(core)
         error_msg = (
             "The signature of the core function should be "
-            "core(time, grid, slice_x=None, slice_y=None, field_name=None, field_units=None)"
+            "core(time, grid, slice_x=None, slice_y=None, field_name=None, "
+            "field_units=None)"
         )
         assert tuple(signature.parameters.keys())[0] == "time", error_msg
         assert tuple(signature.parameters.keys())[1] == "grid", error_msg
@@ -288,7 +295,9 @@ class Dirichlet1DX(HorizontalBoundary):
         assert "field_name" in signature.parameters, error_msg
         assert "field_units" in signature.parameters, error_msg
 
-        super().__init__(nx, ny, nb, backend=backend, dtype=dtype)
+        super().__init__(
+            nx, ny, nb, backend=backend, storage_options=storage_options
+        )
 
         self._kwargs["core"] = core
 
@@ -309,10 +318,14 @@ class Dirichlet1DX(HorizontalBoundary):
     def get_numerical_field(self, field, field_name=None):
         try:
             li, lj, lk = field.shape
-            cfield = np.zeros((li, lj + 2 * self.nb, lk), dtype=self._dtype)
+            cfield = np.zeros(
+                (li, lj + 2 * self.nb, lk), dtype=self.storage_options.dtype
+            )
         except ValueError:
             li, lj = field.shape
-            cfield = np.zeros((li, lj + 2 * self.nb), dtype=self._dtype)
+            cfield = np.zeros(
+                (li, lj + 2 * self.nb), dtype=self.storage_options.dtype
+            )
 
         cfield[:, : self.nb + 1] = field[:, :1]
         cfield[:, self.nb + 1 :] = field[:, -1:]
@@ -451,7 +464,7 @@ class Dirichlet1DX(HorizontalBoundary):
 class Dirichlet1DY(HorizontalBoundary):
     """ Dirichlet boundary conditions for a physical grid with ``nx=1``. """
 
-    def __init__(self, nx, ny, nb, backend, dtype, core=placeholder):
+    def __init__(self, nx, ny, nb, backend, storage_options, core=placeholder):
         """
         Parameters
         ----------
@@ -465,23 +478,25 @@ class Dirichlet1DY(HorizontalBoundary):
             Number of boundary layers.
         backend : str
             The backend.
-        dtype : data-type
-            The data type of the storages.
+        storage_options : StorageOptions
+            Storage-related options.
         core : `callable`, optional
             Callable object providing the boundary layers values.
         """
         assert (
             nx == 1
         ), "Number of grid points along first dimension must be 1."
-        assert (
-            ny > 1
-        ), "Number of grid points along second dimension should be larger than 1."
+        assert ny > 1, (
+            "Number of grid points along second dimension should be larger "
+            "than 1."
+        )
         assert nb <= ny / 2, "Number of boundary layers cannot exceed ny/2."
 
         signature = inspect.signature(core)
         error_msg = (
             "The signature of the core function should be "
-            "core(time, grid, slice_x=None, slice_y=None, field_name=None, field_units=None)"
+            "core(time, grid, slice_x=None, slice_y=None, field_name=None, "
+            "field_units=None)"
         )
         assert tuple(signature.parameters.keys())[0] == "time", error_msg
         assert tuple(signature.parameters.keys())[1] == "grid", error_msg
@@ -490,7 +505,9 @@ class Dirichlet1DY(HorizontalBoundary):
         assert "field_name" in signature.parameters, error_msg
         assert "field_units" in signature.parameters, error_msg
 
-        super().__init__(nx, ny, nb, backend=backend, dtype=dtype)
+        super().__init__(
+            nx, ny, nb, backend=backend, storage_options=storage_options
+        )
 
         self._kwargs["core"] = core
 
@@ -511,10 +528,14 @@ class Dirichlet1DY(HorizontalBoundary):
     def get_numerical_field(self, field, field_name=None):
         try:
             li, lj, lk = field.shape
-            cfield = np.zeros((li + 2 * self.nb, lj, lk), dtype=self._dtype)
+            cfield = np.zeros(
+                (li + 2 * self.nb, lj, lk), dtype=self.storage_options.dtype
+            )
         except ValueError:
             li, lj = field.shape
-            cfield = np.zeros((li + 2 * self.nb, lj), dtype=self._dtype)
+            cfield = np.zeros(
+                (li + 2 * self.nb, lj), dtype=self.storage_options.dtype
+            )
 
         cfield[: self.nb + 1, :] = field[:1, :]
         cfield[self.nb + 1 :, :] = field[-1:, :]
@@ -656,20 +677,15 @@ def dispatch(
     ny,
     nb,
     backend="numpy",
-    backend_opts=None,
-    dtype=np.float64,
-    build_info=None,
-    exec_info=None,
-    default_origin=None,
-    rebuild=False,
+    backend_options=None,
     storage_shape=None,
-    managed_memory=False,
+    storage_options=None,
     core=placeholder,
 ):
     """ Dispatch based on the grid size. """
     if nx == 1:
-        return Dirichlet1DY(1, ny, nb, backend, dtype, core)
+        return Dirichlet1DY(1, ny, nb, backend, storage_options, core)
     elif ny == 1:
-        return Dirichlet1DX(nx, 1, nb, backend, dtype, core)
+        return Dirichlet1DX(nx, 1, nb, backend, storage_options, core)
     else:
-        return Dirichlet(nx, ny, nb, backend, dtype, core)
+        return Dirichlet(nx, ny, nb, backend, storage_options, core)

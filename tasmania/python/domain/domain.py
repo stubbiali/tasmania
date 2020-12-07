@@ -21,12 +21,12 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 import functools
-import numpy as np
 from sympl import DataArray
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Sequence
 
 from tasmania.python.domain.horizontal_boundary import HorizontalBoundary
 from tasmania.python.domain.grid import PhysicalGrid, NumericalGrid
+from tasmania.python.framework.options import BackendOptions, StorageOptions
 from tasmania.python.utils import taz_types
 
 
@@ -57,14 +57,9 @@ class Domain:
         topography_kwargs: Optional[Dict[str, Any]] = None,
         *,
         backend: str = "numpy",
-        backend_opts: Optional[taz_types.options_dict_t] = None,
-        dtype: taz_types.dtype_t = np.float64,
-            build_info: Optional[taz_types.options_dict_t] = None,
-        exec_info: Optional[taz_types.mutable_options_dict_t] = None,
-        default_origin: Optional[taz_types.triplet_int_t] = None,
-        rebuild: bool = False,
-        storage_shape: Optional[taz_types.triplet_int_t] = None,
-        managed_memory: bool = False
+        backend_options: Optional["BackendOptions"] = None,
+        storage_shape: Optional[Sequence[int]] = None,
+        storage_options: Optional["StorageOptions"] = None
     ) -> None:
         """
         Parameters
@@ -111,31 +106,23 @@ class Domain:
             :class:`tasmania.Topography`.
         backend : `str`, optional
             The backend.
-        backend_opts : `dict`, optional
-            Dictionary of backend-specific options.
-        dtype : `data-type`, optional
-            The data type of the storages.
-        build_info : `dict`, optional
-            Dictionary of building options.
-        exec_info : `dict`, optional
-            Dictionary which will store statistics and diagnostics gathered at
-            run time.
-        default_origin : `tuple[int]`, optional
-            The default origin of the storages.
-        rebuild : `bool`, optional
-            ``True`` to trigger the stencils compilation at any class
-            instantiation, ``False`` to rely on the caching mechanism
-            implemented by the backend.
-        storage_shape : `tuple[int]`, optional
-            The shape of the storages allocated within this class.
-        managed_memory : `bool`, optional
-            ``True`` to allocate the storages as managed memory,
-            ``False`` otherwise.
+        backend_options : `BackendOptions`, optional
+            Backend-specific options.
+        storage_shape : `Sequence[int]`, optional
+            The shape of the storages allocated within the class.
+        storage_options : `StorageOptions`, optional
+            Storage-related options.
         """
+        bo = backend_options or BackendOptions()
+        so = storage_options or StorageOptions()
+
         # the physical grid
         topo_kwargs = (
             {}
-            if (topography_kwargs is None or not isinstance(topography_kwargs, dict))
+            if (
+                topography_kwargs is None
+                or not isinstance(topography_kwargs, dict)
+            )
             else topography_kwargs
         )
         self._pgrid = PhysicalGrid(
@@ -148,7 +135,7 @@ class Domain:
             z_interface=z_interface,
             topography_type=topography_type,
             topography_kwargs=topo_kwargs,
-            dtype=dtype,
+            dtype=so.dtype,
         )
 
         # the object handling the horizontal boundary conditions
@@ -166,14 +153,9 @@ class Domain:
             ny,
             nb,
             backend=backend,
-            backend_opts=backend_opts,
-            dtype=dtype,
-            build_info=build_info,
-            exec_info=exec_info,
-            default_origin=default_origin,
-            rebuild=rebuild,
+            backend_options=bo,
             storage_shape=storage_shape,
-            managed_memory=managed_memory,
+            storage_options=so,
             **hb_kwargs
         )
 
@@ -209,8 +191,12 @@ class Domain:
         hb.dmn_enforce_field = functools.partial(
             hb.enforce_field, grid=self.numerical_grid
         )
-        hb.dmn_enforce_raw = functools.partial(hb.enforce_raw, grid=self.numerical_grid)
-        hb.dmn_enforce = functools.partial(hb.enforce, grid=self.numerical_grid)
+        hb.dmn_enforce_raw = functools.partial(
+            hb.enforce_raw, grid=self.numerical_grid
+        )
+        hb.dmn_enforce = functools.partial(
+            hb.enforce, grid=self.numerical_grid
+        )
         hb.dmn_set_outermost_layers_x = functools.partial(
             hb.set_outermost_layers_x, grid=self.numerical_grid
         )
@@ -221,7 +207,7 @@ class Domain:
         return self._hb
 
     def update_topography(self, time: taz_types.datetime_t) -> None:
-        """ Update the (time-dependent) :class:`~tasmania.Topography`.
+        """Update the (time-dependent) :class:`~tasmania.Topography`.
 
         Parameters
         ----------

@@ -23,7 +23,7 @@
 import numpy as np
 
 from tasmania.python.domain.topography import PhysicalTopography
-from tasmania.python.utils.framework_utils import register
+from tasmania.python.framework.register import register
 
 
 @register(name="user_defined")
@@ -35,7 +35,9 @@ class UserDefined(PhysicalTopography):
     the string must be fully C++-compliant.
     """
 
-    def __init__(self, grid, time, smooth, *, expression=None, **kwargs) -> None:
+    def __init__(
+        self, grid, time, smooth, *, expression=None, **kwargs
+    ) -> None:
         """
         Parameters
         ----------
@@ -57,7 +59,9 @@ class UserDefined(PhysicalTopography):
 
     def compute_steady_profile(self, grid, **kwargs):
         expression = (
-            "x + y" if kwargs.get("expression") is None else kwargs["expression"]
+            "x + y"
+            if kwargs.get("expression") is None
+            else kwargs["expression"]
         )
 
         # import the parser
@@ -68,7 +72,9 @@ class UserDefined(PhysicalTopography):
             raise
 
         # parse
-        parser = Parser2d(expression.encode("UTF-8"), grid.x.values, grid.y.values)
+        parser = Parser2d(
+            expression.encode("UTF-8"), grid.x.values, grid.y.values
+        )
         topo_steady = np.zeros((grid.nx, grid.ny), dtype=grid.x.dtype)
         topo_steady[...] = parser.evaluate()
 

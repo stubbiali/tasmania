@@ -129,17 +129,10 @@ def test_enforce_raw(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    if is_gt(backend):
-        gt.storage.prepare_numpy()
-
     pgrid = data.draw(st_physical_grid(dtype=dtype), label="grid")
     hb = data.draw(
         st_horizontal_boundary(
-            pgrid.nx,
-            pgrid.ny,
-            nz=pgrid.nz,
-            backend=backend,
-            dtype=dtype,
+            pgrid.nx, pgrid.ny, nz=pgrid.nz, backend=backend, dtype=dtype,
         ),
         label="hb",
     )
@@ -158,9 +151,7 @@ def test_enforce_raw(data, backend, dtype):
     hb.reference_state = state
 
     raw_state = {"time": state["time"]}
-    raw_state.update(
-        {key: state[key].data for key in state if key != "time"}
-    )
+    raw_state.update({key: state[key].data for key in state if key != "time"})
     raw_state_dc = deepcopy_array_dict(raw_state)
 
     hb.enforce_raw(raw_state, field_properties, ngrid)
@@ -192,11 +183,7 @@ def test_enforce(data, backend, dtype):
     pgrid = data.draw(st_physical_grid(dtype=dtype), label="grid")
     hb = data.draw(
         st_horizontal_boundary(
-            pgrid.nx,
-            pgrid.ny,
-            nz=pgrid.nz,
-            backend=backend,
-            dtype=dtype,
+            pgrid.nx, pgrid.ny, nz=pgrid.nz, backend=backend, dtype=dtype,
         ),
         label="hb",
     )

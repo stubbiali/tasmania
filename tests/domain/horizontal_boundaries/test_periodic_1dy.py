@@ -31,6 +31,7 @@ import pytest
 from sympl import DataArray
 
 from tasmania.python.domain.horizontal_boundary import HorizontalBoundary
+from tasmania.python.framework.options import StorageOptions
 
 from tests.conf import backend as conf_backend, dtype as conf_dtype
 from tests.strategies import (
@@ -152,25 +153,15 @@ def test_field(data, backend, dtype):
     nb = data.draw(st_horizontal_boundary_layers(1, ny), label="nb")
 
     pfield = data.draw(
-        st_raw_field(
-            (2, ny + 1, nz),
-            -1e4,
-            1e4,
-            backend=backend,
-            dtype=dtype,
-        )
+        st_raw_field((2, ny + 1, nz), -1e4, 1e4, backend=backend, dtype=dtype,)
     )
 
     # ========================================
     # test
     # ========================================
+    so = StorageOptions(dtype=dtype)
     hb = HorizontalBoundary.factory(
-        "periodic",
-        1,
-        ny,
-        nb,
-        backend=backend,
-        dtype=dtype,
+        "periodic", 1, ny, nb, backend=backend, storage_options=so
     )
 
     # (1, ny)
@@ -252,13 +243,9 @@ def test_enforce(data, backend, dtype):
     # ========================================
     # test
     # ========================================
+    so = StorageOptions(dtype=dtype)
     hb = HorizontalBoundary.factory(
-        "periodic",
-        1,
-        ny,
-        nb,
-        backend=backend,
-        dtype=dtype,
+        "periodic", 1, ny, nb, backend=backend, storage_options=so
     )
 
     # (1, ny)
@@ -322,13 +309,9 @@ def test_outermost_layers(data, backend, dtype):
     # ========================================
     # test
     # ========================================
+    so = StorageOptions(dtype=dtype)
     hb = HorizontalBoundary.factory(
-        "periodic",
-        1,
-        ny,
-        nb,
-        backend=backend,
-        dtype=dtype,
+        "periodic", 1, ny, nb, backend=backend, storage_options=so
     )
 
     # (1, ny+1)

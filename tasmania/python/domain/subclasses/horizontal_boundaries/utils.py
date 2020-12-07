@@ -32,15 +32,25 @@ def repeat_axis(paxis, nb, dims):
     dtype = paxis.dtype
 
     if pvalues[0] <= pvalues[-1]:
-        padneg = np.array(tuple(pvalues[0] - nb + i for i in range(nb)), dtype=dtype)
-        padpos = np.array(tuple(pvalues[-1] + i + 1 for i in range(nb)), dtype=dtype)
+        padneg = np.array(
+            tuple(pvalues[0] - nb + i for i in range(nb)), dtype=dtype
+        )
+        padpos = np.array(
+            tuple(pvalues[-1] + i + 1 for i in range(nb)), dtype=dtype
+        )
     else:
-        padneg = np.array(tuple(pvalues[0] + nb - i for i in range(nb)), dtype=dtype)
-        padpos = np.array(tuple(pvalues[-1] - i - 1 for i in range(nb)), dtype=dtype)
+        padneg = np.array(
+            tuple(pvalues[0] + nb - i for i in range(nb)), dtype=dtype
+        )
+        padpos = np.array(
+            tuple(pvalues[-1] - i - 1 for i in range(nb)), dtype=dtype
+        )
 
     cvalues = np.concatenate((padneg, pvalues, padpos), axis=0)
 
-    return DataArray(cvalues, coords=[cvalues], dims=dims, name=name, attrs=attrs)
+    return DataArray(
+        cvalues, coords=[cvalues], dims=dims, name=name, attrs=attrs
+    )
 
 
 def shrink_axis(caxis, nb, dims):
@@ -51,4 +61,6 @@ def shrink_axis(caxis, nb, dims):
 
     pvalues = cvalues[nb:-nb]
 
-    return DataArray(pvalues, coords=[pvalues], dims=dims, name=name, attrs=attrs)
+    return DataArray(
+        pvalues, coords=[pvalues], dims=dims, name=name, attrs=attrs
+    )

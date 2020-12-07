@@ -28,7 +28,7 @@ from sympl import DataArray
 from typing import Any, Dict, Optional, TYPE_CHECKING
 
 from tasmania.python.utils import taz_types
-from tasmania.python.utils.framework_utils import factorize
+from tasmania.python.framework.register import factorize
 from tasmania.python.utils.storage_utils import get_dataarray_2d
 from tasmania.python.utils.utils import smaller_than as lt
 
@@ -70,9 +70,13 @@ class Topography:
         self._time = time or Timedelta(seconds=0)
         self._fact = float(self._time.total_seconds() == 0.0)
 
-        self._profile = profile if profile is not None else deepcopy(steady_profile)
+        self._profile = (
+            profile if profile is not None else deepcopy(steady_profile)
+        )
         self._profile.attrs["units"] = "m"
-        self._profile.values[...] = self._fact * self._steady_profile.values[...]
+        self._profile.values[...] = (
+            self._fact * self._steady_profile.values[...]
+        )
 
     @property
     def profile(self) -> DataArray:
@@ -105,7 +109,9 @@ class Topography:
         """
         if lt(self._fact, 1.0):
             self._fact = min(time / self.time, 1.0)
-            self._profile.values[...] = self._fact * self._steady_profile.values
+            self._profile.values[...] = (
+                self._fact * self._steady_profile.values
+            )
 
 
 class PhysicalTopography(abc.ABC, Topography):
@@ -268,7 +274,9 @@ class NumericalTopography(Topography):
         ptopo_steady = phys_topography.steady_profile.values
         units = phys_topography.profile.attrs["units"]
 
-        ctopo = get_dataarray_2d(boundary.get_numerical_field(ptopo), grid, units)
+        ctopo = get_dataarray_2d(
+            boundary.get_numerical_field(ptopo), grid, units
+        )
         ctopo_steady = get_dataarray_2d(
             boundary.get_numerical_field(ptopo_steady), grid, units
         )

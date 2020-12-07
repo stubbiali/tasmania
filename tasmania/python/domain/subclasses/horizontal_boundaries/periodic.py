@@ -33,23 +33,27 @@ from tasmania.python.domain.subclasses.horizontal_boundaries.utils import (
     repeat_axis,
     shrink_axis,
 )
-from tasmania.python.utils.framework_utils import register
+from tasmania.python.framework.register import register
 
 
 class Periodic(HorizontalBoundary):
-    """ Periodic boundary conditions. """
+    """Periodic boundary conditions."""
 
-    def __init__(self, nx, ny, nb, backend, dtype):
-        assert (
-            nx > 1
-        ), "Number of grid points along first dimension should be larger than 1."
-        assert (
-            ny > 1
-        ), "Number of grid points along second dimension should be larger than 1."
+    def __init__(self, nx, ny, nb, backend, storage_options):
+        assert nx > 1, (
+            "Number of grid points along first dimension should be larger "
+            "than 1."
+        )
+        assert ny > 1, (
+            "Number of grid points along second dimension should be larger "
+            "than 1."
+        )
         assert nb <= nx / 2, "Number of boundary layers cannot exceed ny/2."
         assert nb <= ny / 2, "Number of boundary layers cannot exceed ny/2."
 
-        super().__init__(nx, ny, nb, backend=backend, dtype=dtype)
+        super().__init__(
+            nx, ny, nb, backend=backend, storage_options=storage_options
+        )
 
     @property
     def ni(self):
@@ -189,18 +193,21 @@ class Periodic(HorizontalBoundary):
 
 
 class Periodic1DX(HorizontalBoundary):
-    """ Periodic boundary conditions for a physical grid with ``ny=1``. """
+    """Periodic boundary conditions for a physical grid with ``ny=1``."""
 
-    def __init__(self, nx, ny, nb, backend, dtype):
-        assert (
-            nx > 1
-        ), "Number of grid points along first dimension should be larger than 1."
+    def __init__(self, nx, ny, nb, backend, storage_options):
+        assert nx > 1, (
+            "Number of grid points along first dimension should be larger "
+            "than 1."
+        )
         assert (
             ny == 1
         ), "Number of grid points along second dimension must be 1."
         assert nb <= nx / 2, "Number of boundary layers cannot exceed nx/2."
 
-        super().__init__(nx, ny, nb, backend=backend, dtype=dtype)
+        super().__init__(
+            nx, ny, nb, backend=backend, storage_options=storage_options
+        )
 
     @property
     def ni(self):
@@ -338,18 +345,21 @@ class Periodic1DX(HorizontalBoundary):
 
 
 class Periodic1DY(HorizontalBoundary):
-    """ Periodic boundary conditions for a physical grid with ``ny=1``. """
+    """Periodic boundary conditions for a physical grid with ``ny=1``."""
 
-    def __init__(self, nx, ny, nb, backend, dtype):
+    def __init__(self, nx, ny, nb, backend, storage_options):
         assert (
             nx == 1
         ), "Number of grid points along first dimension must be 1."
-        assert (
-            ny > 1
-        ), "Number of grid points along second dimension should be larger than 1."
+        assert ny > 1, (
+            "Number of grid points along second dimension should be larger "
+            "than 1."
+        )
         assert nb <= ny / 2, "Number of boundary layers cannot exceed ny/2."
 
-        super().__init__(nx, ny, nb, backend=backend, dtype=dtype)
+        super().__init__(
+            nx, ny, nb, backend=backend, storage_options=storage_options
+        )
 
     @property
     def ni(self):
@@ -492,19 +502,14 @@ def dispatch(
     ny,
     nb,
     backend="numpy",
-    backend_opts=None,
-    dtype=np.float64,
-    build_info=None,
-    exec_info=None,
-    default_origin=None,
-    rebuild=False,
+    backend_options=None,
     storage_shape=None,
-    managed_memory=False,
+    storage_options=None,
 ):
-    """ Dispatch based on the grid size. """
+    """Dispatch based on the grid size."""
     if nx == 1:
-        return Periodic1DY(1, ny, nb, backend, dtype)
+        return Periodic1DY(1, ny, nb, backend, storage_options)
     elif ny == 1:
-        return Periodic1DX(nx, 1, nb, backend, dtype)
+        return Periodic1DX(nx, 1, nb, backend, storage_options)
     else:
-        return Periodic(nx, ny, nb, backend, dtype)
+        return Periodic(nx, ny, nb, backend, storage_options)

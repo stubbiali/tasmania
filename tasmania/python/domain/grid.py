@@ -29,9 +29,15 @@ from tasmania.python.domain.horizontal_grid import (
     PhysicalHorizontalGrid,
     NumericalHorizontalGrid,
 )
-from tasmania.python.domain.topography import PhysicalTopography, NumericalTopography
+from tasmania.python.domain.topography import (
+    PhysicalTopography,
+    NumericalTopography,
+)
 from tasmania.python.utils import taz_types
-from tasmania.python.utils.utils import smaller_than as lt, smaller_or_equal_than as le
+from tasmania.python.utils.utils import (
+    smaller_than as lt,
+    smaller_or_equal_than as le,
+)
 
 if TYPE_CHECKING:
     from tasmania.python.domain.horizontal_boundary import HorizontalBoundary
@@ -40,7 +46,7 @@ if TYPE_CHECKING:
 
 
 class Grid:
-    """ Three-dimensional rectilinear grid.
+    """Three-dimensional rectilinear grid.
 
     The grid is embedded in a reference system whose coordinates are:
 
@@ -101,7 +107,9 @@ class Grid:
         self._nz = z.values.shape[0]
         dz_v = math.fabs(self._zhl.values[0] - self._zhl.values[-1]) / self._nz
         dz_v = 1.0 if dz_v == 0.0 else dz_v
-        self._dz = DataArray(dz_v, name="dz", attrs={"units": z.attrs["units"]})
+        self._dz = DataArray(
+            dz_v, name="dz", attrs={"units": z.attrs["units"]}
+        )
 
     @property
     def grid_xy(self) -> "HorizontalGrid":
@@ -219,7 +227,7 @@ class Grid:
         return self._topo
 
     def update_topography(self, time: taz_types.datetime_t) -> None:
-        """ Update the underlying (time-dependent) :class:`~tasmania.Topography`.
+        """Update the underlying (time-dependent) :class:`~tasmania.Topography`.
 
         Parameters
         ----------
@@ -289,7 +297,9 @@ class PhysicalGrid(Grid):
             If ``interface`` lays outside the domain.
         """
         # xy-grid
-        grid_xy = PhysicalHorizontalGrid(domain_x, nx, domain_y, ny, dtype=dtype)
+        grid_xy = PhysicalHorizontalGrid(
+            domain_x, nx, domain_y, ny, dtype=dtype
+        )
 
         # extract z-axis properties
         values_z = domain_z.values
@@ -309,7 +319,9 @@ class PhysicalGrid(Grid):
 
         # z-coordinates of the main-levels
         z_v = 0.5 * (zhl_v[:-1] + zhl_v[1:])
-        z = DataArray(z_v, coords=[z_v], dims=dims_z, name="z", attrs={"units": units_z})
+        z = DataArray(
+            z_v, coords=[z_v], dims=dims_z, name="z", attrs={"units": units_z}
+        )
 
         # z-interface
         if z_interface is None:
@@ -337,7 +349,10 @@ class PhysicalGrid(Grid):
         # underlying topography
         kwargs = (
             {}
-            if (topography_kwargs is None or not isinstance(topography_kwargs, dict))
+            if (
+                topography_kwargs is None
+                or not isinstance(topography_kwargs, dict)
+            )
             else topography_kwargs
         )
         topo = PhysicalTopography.factory(topography_type, grid_xy, **kwargs)
@@ -349,7 +364,9 @@ class PhysicalGrid(Grid):
 class NumericalGrid(Grid):
     """ Three-dimensional rectilinear grid covering a numerical domain. """
 
-    def __init__(self, phys_grid: PhysicalGrid, boundary: "HorizontalBoundary") -> None:
+    def __init__(
+        self, phys_grid: PhysicalGrid, boundary: "HorizontalBoundary"
+    ) -> None:
         """
         Parameters
         ----------

@@ -30,6 +30,7 @@ import numpy as np
 import pytest
 
 from tasmania.python.domain.horizontal_boundary import HorizontalBoundary
+from tasmania.python.framework.options import StorageOptions
 
 from tests.conf import backend as conf_backend, dtype as conf_dtype
 from tests.strategies import (
@@ -144,19 +145,16 @@ def test_field(data, backend, dtype):
 
     pfield = data.draw(
         st_raw_field(
-            (nx + 1, ny + 1, nz),
-            -1e4,
-            1e4,
-            backend=backend,
-            dtype=dtype,
+            (nx + 1, ny + 1, nz), -1e4, 1e4, backend=backend, dtype=dtype,
         )
     )
 
     # ========================================
     # test
     # ========================================
+    so = StorageOptions(dtype=dtype)
     hb = HorizontalBoundary.factory(
-        "relaxed", nx, ny, nb, backend=backend, dtype=dtype, **hb_kwargs
+        "relaxed", nx, ny, nb, backend=backend, storage_options=so, **hb_kwargs
     )
 
     # (nx, 1)
@@ -229,28 +227,19 @@ def test_enforce(data, backend, dtype):
 
     storage_shape = (nx + 1, ny + 2 * nb + 1, nz + 1)
     cfield = data.draw(
-        st_raw_field(
-            storage_shape,
-            -1e4,
-            1e4,
-            backend=backend,
-            dtype=dtype,
-        )
+        st_raw_field(storage_shape, -1e4, 1e4, backend=backend, dtype=dtype,)
     )
 
     ref_state = data.draw(
-        st_state(
-            grid,
-            backend=backend,
-            storage_shape=storage_shape,
-        )
+        st_state(grid, backend=backend, storage_shape=storage_shape,)
     )
 
     # ========================================
     # test
     # ========================================
+    so = StorageOptions(dtype=dtype)
     hb = HorizontalBoundary.factory(
-        "relaxed", nx, ny, nb, backend=backend, dtype=dtype, **hb_kwargs
+        "relaxed", nx, ny, nb, backend=backend, storage_options=so, **hb_kwargs
     )
     hb.reference_state = ref_state
 
@@ -315,18 +304,15 @@ def test_outermost_layers(data, backend, dtype):
     cfield = np.zeros(storage_shape, dtype=dtype)
 
     ref_state = data.draw(
-        st_state(
-            grid,
-            backend=backend,
-            storage_shape=storage_shape,
-        )
+        st_state(grid, backend=backend, storage_shape=storage_shape,)
     )
 
     # ========================================
     # test
     # ========================================
+    so = StorageOptions(dtype=dtype)
     hb = HorizontalBoundary.factory(
-        "relaxed", nx, ny, nb, backend=backend, dtype=dtype, **hb_kwargs
+        "relaxed", nx, ny, nb, backend=backend, storage_options=so, **hb_kwargs
     )
     hb.reference_state = ref_state
 

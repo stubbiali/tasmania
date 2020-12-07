@@ -28,21 +28,17 @@ try:
 except (ImportError, ModuleNotFoundError):
     cp = np
 
-import gt4py as gt
-
 from tasmania.python.domain.horizontal_boundary import HorizontalBoundary
 from tasmania.python.domain.subclasses.horizontal_boundaries.utils import (
     repeat_axis,
     shrink_axis,
 )
-from tasmania.python.utils.framework_utils import register
-from tasmania.python.utils.gtscript_utils import stencil_irelax_defs
-from tasmania.python.utils.storage_utils import get_asarray_function, zeros
-from tasmania.python.utils.utils import get_gt_backend, is_gt
+from tasmania.python.framework.register import register
+from tasmania.python.utils.utils import is_gt
 
 
 class Relaxed(HorizontalBoundary):
-    """ Relaxed boundary conditions. """
+    """Relaxed boundary conditions."""
 
     def __init__(
         self,
@@ -50,14 +46,9 @@ class Relaxed(HorizontalBoundary):
         ny,
         nb,
         backend,
-        backend_opts,
-        dtype,
-        build_info,
-        exec_info,
-        default_origin,
-        rebuild,
+        backend_options,
         storage_shape,
-        managed_memory,
+        storage_options,
         nr=8,
         nz=None,
     ):
@@ -74,29 +65,15 @@ class Relaxed(HorizontalBoundary):
             Number of boundary layers.
         backend : str
             The backend.
-        backend_opts : dict
-            Dictionary of backend-specific options.
-        dtype : data-type
-            The data type of the storages.
-        build_info : dict
-            Dictionary of building options.
-        exec_info : dict
-            Dictionary which will store statistics and diagnostics gathered at
-            run time.
-        default_origin : tuple[int]
-            Storage default origin.
-        rebuild : bool
-            ``True`` to trigger the stencils compilation at any class
-            instantiation, ``False`` to rely on the caching mechanism
-            implemented by the backend.
+        backend_options : BackendOptions
+            Backend-specific options.
         storage_shape : tuple[int]
             The shape of the storages allocated within the class.
             If not specified, it will be inferred from the arguments passed to
             to the ``enforce_field`` method the first time it is invoked.
             It cannot be smaller than ``(nx + 1, ny + 1, nz + 1)``.
-        managed_memory : bool
-            ``True`` to allocate the storages as managed memory,
-            ``False`` otherwise.
+        storage_options : StorageOptions
+            Storage-related options.
         nr : `int`, optional
             Depth of each relaxation region close to the
             horizontal boundaries. Minimum is ``nb``, maximum is 8 (default).
@@ -105,32 +82,30 @@ class Relaxed(HorizontalBoundary):
             If not provided, it will be inferred from the arguments passed to
             to the ``enforce_field`` method the first time it is invoked.
         """
-        assert (
-            nx > 1
-        ), "Number of grid points along first dimension should be larger than 1."
-        assert (
-            ny > 1
-        ), "Number of grid points along second dimension should be larger than 1."
+        assert nx > 1, (
+            "Number of grid points along first dimension should be larger "
+            "than 1."
+        )
+        assert ny > 1, (
+            "Number of grid points along second dimension should be larger "
+            "than 1."
+        )
         assert nr <= nx / 2, "Depth of relaxation region cannot exceed nx/2."
         assert nr <= ny / 2, "Depth of relaxation region cannot exceed ny/2."
         assert nr <= 8, "Depth of relaxation region cannot exceed 8."
-        assert (
-            nb <= nr
-        ), "Number of boundary layers cannot exceed depth of relaxation region."
+        assert nb <= nr, (
+            "Number of boundary layers cannot exceed depth of relaxation "
+            "region."
+        )
 
         super().__init__(
             nx,
             ny,
             nb,
-            backend,
-            backend_opts,
-            dtype,
-            build_info,
-            exec_info,
-            default_origin,
-            rebuild,
-            storage_shape,
-            managed_memory,
+            backend=backend,
+            backend_options=backend_options,
+            storage_shape=storage_shape,
+            storage_options=storage_options,
         )
         self._kwargs["nr"] = nr
         self._kwargs["nz"] = nz
@@ -138,15 +113,9 @@ class Relaxed(HorizontalBoundary):
         self._ready2go = False
         self._allocate_coefficient_matrix()
 
-        if is_gt(backend):
-            self._stencil = gt.gtscript.stencil(
-                definition=stencil_irelax_defs,
-                backend=get_gt_backend(backend),
-                build_info=build_info,
-                dtypes={"dtype": dtype},
-                rebuild=rebuild,
-                **backend_opts
-            )
+        dtype = self.storage_options.dtype
+        self.backend_options.dtypes = {"dtype": dtype}
+        self._stencil = self.compile("irelax")
 
     @property
     def ni(self):
@@ -248,67 +217,77 @@ class Relaxed(HorizontalBoundary):
         # yneg = np.repeat(field_ref[:, 0:1], nr, axis=1)
         # ypos = np.repeat(field_ref[:, -1:], nr, axis=1)
 
-        if not is_gt(self._backend):
-            # field[:mi, :mj, :mk] -= g[:mi, :mj] * (
-            #     field[:mi, :mj, :mk] - field_ref[:mi, :mj, :mk]
-            # )
+        # if not is_gt(self._backend):
+        #     # field[:mi, :mj, :mk] -= g[:mi, :mj] * (
+        #     #     field[:mi, :mj, :mk] - field_ref[:mi, :mj, :mk]
+        #     # )
+        #
+        #     # set the outermost layers
+        #     field[:nb, :mj, k] = field_ref[:nb, :mj, k]
+        #     field[mi - nb : mi, :mj, k] = field_ref[mi - nb : mi, :mj, k]
+        #     field[nb : mi - nb, :nb, k] = field_ref[nb : mi - nb, :nb, k]
+        #     field[nb : mi - nb, mj - nb : mj, k] = field_ref[
+        #         nb : mi - nb, mj - nb : mj, k
+        #     ]
+        #
+        #     # apply the relaxed boundary conditions in the negative x-direction
+        #     i, j = slice(nb, nr), slice(nb, nr)
+        #     field[i, j, k] -= g[i, j, k] * (
+        #         field[i, j, k] - field_ref[i, j, k]
+        #     )
+        #     i, j = slice(nb, nr), slice(nr, mj - nr)
+        #     field[i, j, k] -= g[i, j, k] * (
+        #         field[i, j, k] - field_ref[i, j, k]
+        #     )
+        #     i, j = slice(nb, nr), slice(mj - nr, mj - nb)
+        #     field[i, j, k] -= g[i, j, k] * (
+        #         field[i, j, k] - field_ref[i, j, k]
+        #     )
+        #
+        #     # apply the relaxed boundary conditions in the positive x-direction
+        #     i, j = slice(nx - nr, mi - nb), slice(nb, nr)
+        #     field[i, j, k] -= g[i, j, k] * (
+        #         field[i, j, k] - field_ref[i, j, k]
+        #     )
+        #     i, j = slice(nx - nr, mi - nb), slice(nr, mj - nr)
+        #     field[i, j, k] -= g[i, j, k] * (
+        #         field[i, j, k] - field_ref[i, j, k]
+        #     )
+        #     i, j = slice(nx - nr, mi - nb), slice(mj - nr, mj - nb)
+        #     field[i, j, k] -= g[i, j, k] * (
+        #         field[i, j, k] - field_ref[i, j, k]
+        #     )
+        #
+        #     # apply the relaxed boundary conditions in the negative y-direction
+        #     i, j = slice(nr, nx - nr), slice(nb, nr)
+        #     field[i, j, k] -= g[i, j, k] * (
+        #         field[i, j, k] - field_ref[i, j, k]
+        #     )
+        #
+        #     # apply the relaxed boundary conditions in the positive y-direction
+        #     i, j = slice(nr, nx - nr), slice(ny - nr, mj - nb)
+        #     field[i, j, k] -= g[i, j, k] * (
+        #         field[i, j, k] - field_ref[i, j, k]
+        #     )
+        # else:
+        #     self._stencil(
+        #         in_gamma=g,
+        #         in_phi_ref=field_ref,
+        #         inout_phi=field,
+        #         origin=(0, 0, 0),
+        #         domain=(mi, mj, mk),
+        #         validate_args=False,
+        #     )
 
-            # set the outermost layers
-            field[:nb, :mj, k] = field_ref[:nb, :mj, k]
-            field[mi - nb : mi, :mj, k] = field_ref[mi - nb : mi, :mj, k]
-            field[nb : mi - nb, :nb, k] = field_ref[nb : mi - nb, :nb, k]
-            field[nb : mi - nb, mj - nb : mj, k] = field_ref[
-                nb : mi - nb, mj - nb : mj, k
-            ]
-
-            # apply the relaxed boundary conditions in the negative x-direction
-            i, j = slice(nb, nr), slice(nb, nr)
-            field[i, j, k] -= g[i, j, k] * (
-                field[i, j, k] - field_ref[i, j, k]
-            )
-            i, j = slice(nb, nr), slice(nr, mj - nr)
-            field[i, j, k] -= g[i, j, k] * (
-                field[i, j, k] - field_ref[i, j, k]
-            )
-            i, j = slice(nb, nr), slice(mj - nr, mj - nb)
-            field[i, j, k] -= g[i, j, k] * (
-                field[i, j, k] - field_ref[i, j, k]
-            )
-
-            # apply the relaxed boundary conditions in the positive x-direction
-            i, j = slice(nx - nr, mi - nb), slice(nb, nr)
-            field[i, j, k] -= g[i, j, k] * (
-                field[i, j, k] - field_ref[i, j, k]
-            )
-            i, j = slice(nx - nr, mi - nb), slice(nr, mj - nr)
-            field[i, j, k] -= g[i, j, k] * (
-                field[i, j, k] - field_ref[i, j, k]
-            )
-            i, j = slice(nx - nr, mi - nb), slice(mj - nr, mj - nb)
-            field[i, j, k] -= g[i, j, k] * (
-                field[i, j, k] - field_ref[i, j, k]
-            )
-
-            # apply the relaxed boundary conditions in the negative y-direction
-            i, j = slice(nr, nx - nr), slice(nb, nr)
-            field[i, j, k] -= g[i, j, k] * (
-                field[i, j, k] - field_ref[i, j, k]
-            )
-
-            # apply the relaxed boundary conditions in the positive y-direction
-            i, j = slice(nr, nx - nr), slice(ny - nr, mj - nb)
-            field[i, j, k] -= g[i, j, k] * (
-                field[i, j, k] - field_ref[i, j, k]
-            )
-        else:
-            self._stencil(
-                in_gamma=g,
-                in_phi_ref=field_ref,
-                inout_phi=field,
-                origin=(0, 0, 0),
-                domain=(mi, mj, mk),
-                validate_args=False
-            )
+        self._stencil(
+            in_gamma=g,
+            in_phi_ref=field_ref,
+            inout_phi=field,
+            origin=(0, 0, 0),
+            domain=(mi, mj, mk),
+            exec_info=self.backend_options.exec_info,
+            validate_args=False,
+        )
 
     def set_outermost_layers_x(
         self, field, field_name=None, field_units=None, time=None, grid=None
@@ -353,7 +332,7 @@ class Relaxed(HorizontalBoundary):
     def _allocate_coefficient_matrix(self, field_shape=None):
         nx, ny = self.nx, self.ny
         nb, nr = self.nb, self._kwargs["nr"]
-        backend, dtype = self._backend, self._dtype
+        backend, dtype = self._backend, self.storage_options.dtype
         nz = self._kwargs["nz"]
 
         if nz is None or (is_gt(backend) and field_shape is None):
@@ -395,30 +374,20 @@ class Relaxed(HorizontalBoundary):
         xnegypos = xnegyneg[:, ::-1]
 
         # inspect the backend properties to load the proper asarray function
-        asarray = get_asarray_function(backend or "numpy")
+        asarray = self.asarray(backend)
 
-        if not is_gt(backend):
-            # create a single coefficient matrix
-            self._gamma = zeros(
-                (nx + 1, ny + 1, 1), backend=backend, dtype=dtype
-            )
-        else:
-            # get the proper storage shape
-            min_shape = (nx + 1, ny + 1, nz + 1)
-            fshape = self._storage_shape or min_shape
-            shape = tuple(
-                max(fshape[i], field_shape[i]) for i in range(len(field_shape))
-            )
-            self._storage_shape = shape
+        # get the proper storage shape
+        min_shape = (nx + 1, ny + 1, nz + 1)
+        storage_shape = self._storage_shape or min_shape
+        field_shape = field_shape or min_shape
+        shape = tuple(
+            max(storage_shape[i], field_shape[i])
+            for i in range(len(field_shape))
+        )
+        self._storage_shape = shape
 
-            # create a single coefficient matrix
-            self._gamma = zeros(
-                shape,
-                backend=backend,
-                dtype=dtype,
-                default_origin=self._default_origin,
-                managed_memory=self._managed_memory,
-            )
+        # create a single coefficient matrix
+        self._gamma = self.zeros(backend, shape=shape)
 
         # fill the coefficient matrix
         g = self._gamma
@@ -435,7 +404,7 @@ class Relaxed(HorizontalBoundary):
 
 
 class Relaxed1DX(HorizontalBoundary):
-    """ Relaxed boundary conditions for a physical grid with ``ny=1``. """
+    """Relaxed boundary conditions for a physical grid with ``ny=1``."""
 
     def __init__(
         self,
@@ -443,14 +412,9 @@ class Relaxed1DX(HorizontalBoundary):
         ny,
         nb,
         backend,
-        backend_opts,
-        dtype,
-        build_info,
-        exec_info,
-        default_origin,
-        rebuild,
+        backend_options,
         storage_shape,
-        managed_memory,
+        storage_options,
         nr=8,
         nz=None,
     ):
@@ -467,29 +431,15 @@ class Relaxed1DX(HorizontalBoundary):
             Number of boundary layers.
         backend : str
             The backend.
-        backend_opts : dict
-            Dictionary of backend-specific options.
-        dtype : data-type
-            The data type of the storages.
-        build_info : dict
-            Dictionary of building options.
-        exec_info : dict
-            Dictionary which will store statistics and diagnostics gathered at
-            run time.
-        default_origin : tuple[int]
-            Storage default origin.
-        rebuild : bool
-            ``True`` to trigger the stencils compilation at any class
-            instantiation, ``False`` to rely on the caching mechanism
-            implemented by the backend.
+        backend_options : BackendOptions
+            Backend-specific options.
         storage_shape : tuple[int]
             The shape of the storages allocated within the class.
             If not specified, it will be inferred from the arguments passed to
             to the ``enforce_field`` method the first time it is invoked.
             It cannot be smaller than ``(nx + 1, 2 * nb + 2, nz + 1)``.
-        managed_memory : bool
-            ``True`` to allocate the storages as managed memory,
-            ``False`` otherwise.
+        storage_options : StorageOptions
+            Storage-related options.
         nr : `int`, optional
             Depth of each relaxation region close to the
             horizontal boundaries. Minimum is ``nb``, maximum is 8 (default).
@@ -498,31 +448,28 @@ class Relaxed1DX(HorizontalBoundary):
             If not provided, it will be inferred from the arguments passed to
             to the ``enforce_field`` method the first time it is invoked.
         """
-        assert (
-            nx > 1
-        ), "Number of grid points along first dimension should be larger than 1."
+        assert nx > 1, (
+            "Number of grid points along first dimension should be larger "
+            "than 1."
+        )
         assert (
             ny == 1
         ), "Number of grid points along second dimension must be 1."
         assert nr <= nx / 2, "Depth of relaxation region cannot exceed nx/2."
         assert nr <= 8, "Depth of relaxation region cannot exceed 8."
-        assert (
-            nb <= nr
-        ), "Number of boundary layers cannot exceed depth of relaxation region."
+        assert nb <= nr, (
+            "Number of boundary layers cannot exceed depth of relaxation "
+            "region."
+        )
 
         super().__init__(
             nx,
             ny,
             nb,
-            backend,
-            backend_opts,
-            dtype,
-            build_info,
-            exec_info,
-            default_origin,
-            rebuild,
-            storage_shape,
-            managed_memory,
+            backend=backend,
+            backend_options=backend_options,
+            storage_shape=storage_shape,
+            storage_options=storage_options,
         )
         self._kwargs["nr"] = nr
         self._kwargs["nz"] = nz
@@ -530,15 +477,9 @@ class Relaxed1DX(HorizontalBoundary):
         self._ready2go = False
         self._allocate_coefficient_matrix()
 
-        if is_gt(backend):
-            self._stencil = gt.gtscript.stencil(
-                definition=stencil_irelax_defs,
-                backend=get_gt_backend(backend),
-                build_info=build_info,
-                dtypes={"dtype": dtype},
-                rebuild=rebuild,
-                **backend_opts
-            )
+        dtype = self.storage_options.dtype
+        self.backend_options.dtypes = {"dtype": dtype}
+        self._stencil = self.compile("irelax")
 
     @property
     def ni(self):
@@ -563,10 +504,14 @@ class Relaxed1DX(HorizontalBoundary):
     def get_numerical_field(self, field, field_name=None):
         try:
             li, lj, lk = field.shape
-            cfield = np.zeros((li, lj + 2 * self.nb, lk), dtype=self._dtype)
+            cfield = np.zeros(
+                (li, lj + 2 * self.nb, lk), dtype=self.storage_options.dtype
+            )
         except ValueError:
             li, lj = field.shape
-            cfield = np.zeros((li, lj + 2 * self.nb), dtype=self._dtype)
+            cfield = np.zeros(
+                (li, lj + 2 * self.nb), dtype=self.storage_options.dtype
+            )
 
         cfield[:, : self.nb + 1] = field[:, :1]
         cfield[:, self.nb + 1 :] = field[:, -1:]
@@ -642,33 +587,43 @@ class Relaxed1DX(HorizontalBoundary):
         # xneg = np.repeat(field_ref[0:1, nb:-nb], nr, axis=0)
         # xpos = np.repeat(field_ref[-1:, nb:-nb], nr, axis=0)
 
-        if not is_gt(self._backend):
-            # set the outermost layers
-            field[:nb, nb : mj - nb, k] = field_ref[:nb, nb : mj - nb, k]
-            field[mi - nb : mi, nb : mj - nb, k] = field_ref[
-                mi - nb : mi, nb : mj - nb, k
-            ]
+        # if not is_gt(self._backend):
+        #     # set the outermost layers
+        #     field[:nb, nb : mj - nb, k] = field_ref[:nb, nb : mj - nb, k]
+        #     field[mi - nb : mi, nb : mj - nb, k] = field_ref[
+        #         mi - nb : mi, nb : mj - nb, k
+        #     ]
+        #
+        #     # apply the relaxed boundary conditions in the negative x-direction
+        #     i, j = slice(nb, nr), slice(nb, mj - nb)
+        #     field[i, j, k] -= g[i, j, k] * (
+        #         field[i, j, k] - field_ref[i, j, k]
+        #     )
+        #
+        #     # apply the relaxed boundary conditions in the positive x-direction
+        #     i, j = slice(nx - nr, mi - nb), slice(nb, mj - nb)
+        #     field[i, j, k] -= g[i, j, k] * (
+        #         field[i, j, k] - field_ref[i, j, k]
+        #     )
+        # else:
+        #     self._stencil(
+        #         in_gamma=g,
+        #         in_phi_ref=field_ref,
+        #         inout_phi=field,
+        #         origin=(0, nb, 0),
+        #         domain=(mi, mj - nb, mk),
+        #         validate_args=False,
+        #     )
 
-            # apply the relaxed boundary conditions in the negative x-direction
-            i, j = slice(nb, nr), slice(nb, mj - nb)
-            field[i, j, k] -= g[i, j, k] * (
-                field[i, j, k] - field_ref[i, j, k]
-            )
-
-            # apply the relaxed boundary conditions in the positive x-direction
-            i, j = slice(nx - nr, mi - nb), slice(nb, mj - nb)
-            field[i, j, k] -= g[i, j, k] * (
-                field[i, j, k] - field_ref[i, j, k]
-            )
-        else:
-            self._stencil(
-                in_gamma=g,
-                in_phi_ref=field_ref,
-                inout_phi=field,
-                origin=(0, nb, 0),
-                domain=(mi, mj - nb, mk),
-                validate_args=False
-            )
+        self._stencil(
+            in_gamma=g,
+            in_phi_ref=field_ref,
+            inout_phi=field,
+            origin=(0, nb, 0),
+            domain=(mi, mj - nb, mk),
+            exec_info=self.backend_options.exec_info,
+            validate_args=False,
+        )
 
         # repeat the innermost column(s) along the y-direction
         field[:mi, :nb, k] = field[:mi, nb : nb + 1, k]
@@ -717,7 +672,7 @@ class Relaxed1DX(HorizontalBoundary):
     def _allocate_coefficient_matrix(self, field_shape=None):
         nx, ny = self.nx, self.ny
         nb, nr = self.nb, self._kwargs["nr"]
-        backend, dtype = self._backend, self._dtype
+        backend, dtype = self._backend, self.storage_options.dtype
         nz = self._kwargs["nz"]
 
         if nz is None or (is_gt(backend) and field_shape is None):
@@ -748,30 +703,20 @@ class Relaxed1DX(HorizontalBoundary):
         xpos = np.repeat(rrel[:, np.newaxis], 2, axis=1)
 
         # inspect the backend properties to load the proper asarray function
-        asarray = get_asarray_function(backend or "numpy")
+        asarray = self.asarray(backend)
 
-        if not is_gt(backend):
-            # create a single coefficient matrix
-            self._gamma = zeros(
-                (nx + 1, 2 * nb + 2, 1), backend=backend, dtype=dtype
-            )
-        else:
-            # get the proper storage shape
-            min_shape = (nx + 1, 2 * nb + 2, nz + 1)
-            fshape = self._storage_shape or min_shape
-            shape = tuple(
-                max(fshape[i], field_shape[i]) for i in range(len(field_shape))
-            )
-            self._storage_shape = shape
+        # get the proper storage shape
+        min_shape = (nx + 1, 2 * nb + 2, nz + 1)
+        storage_shape = self._storage_shape or min_shape
+        field_shape = field_shape or min_shape
+        shape = tuple(
+            max(storage_shape[i], field_shape[i])
+            for i in range(len(field_shape))
+        )
+        self._storage_shape = shape
 
-            # create a single coefficient matrix
-            self._gamma = zeros(
-                shape,
-                backend=backend,
-                dtype=dtype,
-                default_origin=self._default_origin,
-                managed_memory=self._managed_memory,
-            )
+        # create a single coefficient matrix
+        self._gamma = self.zeros(backend, shape=shape)
 
         # fill the coefficient matrix
         g = self._gamma
@@ -781,7 +726,7 @@ class Relaxed1DX(HorizontalBoundary):
 
 
 class Relaxed1DY(HorizontalBoundary):
-    """ Relaxed boundary conditions for a physical grid with ``nx=1``. """
+    """Relaxed boundary conditions for a physical grid with ``nx=1``."""
 
     def __init__(
         self,
@@ -789,14 +734,9 @@ class Relaxed1DY(HorizontalBoundary):
         ny,
         nb,
         backend,
-        backend_opts,
-        dtype,
-        build_info,
-        exec_info,
-        default_origin,
-        rebuild,
+        backend_options,
         storage_shape,
-        managed_memory,
+        storage_options,
         nr=8,
         nz=None,
     ):
@@ -813,29 +753,15 @@ class Relaxed1DY(HorizontalBoundary):
             Number of boundary layers.
         backend : str
             The backend.
-        backend_opts : dict
-            Dictionary of backend-specific options.
-        dtype : data-type
-            The data type of the storages.
-        build_info : dict
-            Dictionary of building options.
-        exec_info : dict
-            Dictionary which will store statistics and diagnostics gathered at
-            run time.
-        default_origin : tuple[int]
-            Storage default origin.
-        rebuild : bool
-            ``True`` to trigger the stencils compilation at any class
-            instantiation, ``False`` to rely on the caching mechanism
-            implemented by the backend.
+        backend_options : BackendOptions
+            Backend-specific options.
         storage_shape : tuple[int]
             The shape of the storages allocated within the class.
             If not specified, it will be inferred from the arguments passed to
             to the ``enforce_field`` method the first time it is invoked.
             It cannot be smaller than ``(2 * nb + 2, ny + 1, nz + 1)``.
-        managed_memory : bool
-            ``True`` to allocate the storages as managed memory,
-            ``False`` otherwise.
+        storage_options : StorageOptions
+            Storage-related options.
         nr : `int`, optional
             Depth of each relaxation region close to the
             horizontal boundaries. Minimum is ``nb``, maximum is 8 (default).
@@ -847,28 +773,25 @@ class Relaxed1DY(HorizontalBoundary):
         assert (
             nx == 1
         ), "Number of grid points along first dimension must be 1."
-        assert (
-            ny > 1
-        ), "Number of grid points along second dimension should be larger than 1."
+        assert ny > 1, (
+            "Number of grid points along second dimension should be larger "
+            "than 1."
+        )
         assert nr <= ny / 2, "Depth of relaxation region cannot exceed ny/2."
         assert nr <= 8, "Depth of relaxation region cannot exceed 8."
-        assert (
-            nb <= nr
-        ), "Number of boundary layers cannot exceed depth of relaxation region."
+        assert nb <= nr, (
+            "Number of boundary layers cannot exceed depth of relaxation "
+            "region."
+        )
 
         super().__init__(
             nx,
             ny,
             nb,
-            backend,
-            backend_opts,
-            dtype,
-            build_info,
-            exec_info,
-            default_origin,
-            rebuild,
-            storage_shape,
-            managed_memory,
+            backend=backend,
+            backend_options=backend_options,
+            storage_shape=storage_shape,
+            storage_options=storage_options,
         )
         self._kwargs["nr"] = nr
         self._kwargs["nz"] = nz
@@ -876,15 +799,9 @@ class Relaxed1DY(HorizontalBoundary):
         self._ready2go = False
         self._allocate_coefficient_matrix()
 
-        if is_gt(backend):
-            self._stencil = gt.gtscript.stencil(
-                definition=stencil_irelax_defs,
-                backend=get_gt_backend(backend),
-                build_info=build_info,
-                dtypes={"dtype": dtype},
-                rebuild=rebuild,
-                **backend_opts
-            )
+        dtype = self.storage_options.dtype
+        self.backend_options.dtypes = {"dtype": dtype}
+        self._stencil = self.compile("irelax")
 
     @property
     def ni(self):
@@ -909,10 +826,14 @@ class Relaxed1DY(HorizontalBoundary):
     def get_numerical_field(self, field, field_name=None):
         try:
             li, lj, lk = field.shape
-            cfield = np.zeros((li + 2 * self.nb, lj, lk), dtype=self._dtype)
+            cfield = np.zeros(
+                (li + 2 * self.nb, lj, lk), dtype=self.storage_options.dtype
+            )
         except ValueError:
             li, lj = field.shape
-            cfield = np.zeros((li + 2 * self.nb, lj), dtype=self._dtype)
+            cfield = np.zeros(
+                (li + 2 * self.nb, lj), dtype=self.storage_options.dtype
+            )
 
         cfield[: self.nb + 1, :] = field[:1, :]
         cfield[self.nb + 1 :, :] = field[-1:, :]
@@ -987,33 +908,43 @@ class Relaxed1DY(HorizontalBoundary):
         # yneg = np.repeat(field_ref[nb:-nb, 0:1], nr, axis=1)
         # ypos = np.repeat(field_ref[nb:-nb, -1:], nr, axis=1)
 
-        if not is_gt(self._backend):
-            # set the outermost layers
-            field[nb : mi - nb, :nb, k] = field_ref[nb : mi - nb, :nb, k]
-            field[nb : mi - nb, mj - nb : mj, k] = field_ref[
-                nb : mi - nb, mj - nb : mj, k
-            ]
+        # if not is_gt(self._backend):
+        #     # set the outermost layers
+        #     field[nb : mi - nb, :nb, k] = field_ref[nb : mi - nb, :nb, k]
+        #     field[nb : mi - nb, mj - nb : mj, k] = field_ref[
+        #         nb : mi - nb, mj - nb : mj, k
+        #     ]
+        #
+        #     # apply the relaxed boundary conditions in the negative y-direction
+        #     i, j = slice(nb, mi - nb), slice(nb, nr)
+        #     field[i, j, k] -= g[i, j, k] * (
+        #         field[i, j, k] - field_ref[i, j, k]
+        #     )
+        #
+        #     # apply the relaxed boundary conditions in the positive y-direction
+        #     i, j = slice(nb, mi - nb), slice(ny - nr, mj - nb)
+        #     field[i, j, k] -= g[i, j, k] * (
+        #         field[i, j, k] - field_ref[i, j, k]
+        #     )
+        # else:
+        #     self._stencil(
+        #         in_gamma=g,
+        #         in_phi_ref=field_ref,
+        #         inout_phi=field,
+        #         origin=(nb, 0, 0),
+        #         domain=(mi - nb, mj, mk),
+        #         validate_args=False,
+        #     )
 
-            # apply the relaxed boundary conditions in the negative y-direction
-            i, j = slice(nb, mi - nb), slice(nb, nr)
-            field[i, j, k] -= g[i, j, k] * (
-                field[i, j, k] - field_ref[i, j, k]
-            )
-
-            # apply the relaxed boundary conditions in the positive y-direction
-            i, j = slice(nb, mi - nb), slice(ny - nr, mj - nb)
-            field[i, j, k] -= g[i, j, k] * (
-                field[i, j, k] - field_ref[i, j, k]
-            )
-        else:
-            self._stencil(
-                in_gamma=g,
-                in_phi_ref=field_ref,
-                inout_phi=field,
-                origin=(nb, 0, 0),
-                domain=(mi - nb, mj, mk),
-                validate_args=False
-            )
+        self._stencil(
+            in_gamma=g,
+            in_phi_ref=field_ref,
+            inout_phi=field,
+            origin=(nb, 0, 0),
+            domain=(mi - nb, mj, mk),
+            exec_info=self.backend_options.exec_info,
+            validate_args=False,
+        )
 
         # repeat the innermost row(s) along the x-direction
         field[:nb, :mj, k] = field[nb : nb + 1, :mj, k]
@@ -1062,7 +993,7 @@ class Relaxed1DY(HorizontalBoundary):
     def _allocate_coefficient_matrix(self, field_shape=None):
         nx, ny = self.nx, self.ny
         nb, nr = self.nb, self._kwargs["nr"]
-        backend, dtype = self._backend, self._dtype
+        backend, dtype = self._backend, self.storage_options.dtype
         nz = self._kwargs["nz"]
 
         if nz is None or (is_gt(backend) and field_shape is None):
@@ -1093,30 +1024,20 @@ class Relaxed1DY(HorizontalBoundary):
         ypos = np.repeat(rrel[np.newaxis, :], 2, axis=0)
 
         # inspect the backend properties to load the proper asarray function
-        asarray = get_asarray_function(backend or "numpy")
+        asarray = self.asarray(backend)
 
-        if not is_gt(backend):
-            # create a single coefficient matrix
-            self._gamma = zeros(
-                (2 * nb + 2, ny + 1, 1), backend=backend, dtype=dtype
-            )
-        else:
-            # get the proper storage shape
-            min_shape = (2 * nb + 2, ny + 1, nz + 1)
-            fshape = self._storage_shape or min_shape
-            shape = tuple(
-                max(fshape[i], field_shape[i]) for i in range(len(field_shape))
-            )
-            self._storage_shape = shape
+        # get the proper storage shape
+        min_shape = (2 * nb + 2, ny + 1, nz + 1)
+        storage_shape = self._storage_shape or min_shape
+        field_shape = field_shape or min_shape
+        shape = tuple(
+            max(storage_shape[i], field_shape[i])
+            for i in range(len(field_shape))
+        )
+        self._storage_shape = shape
 
-            # create a single coefficient matrix
-            self._gamma = zeros(
-                shape,
-                backend=backend,
-                dtype=dtype,
-                default_origin=self._default_origin,
-                managed_memory=self._managed_memory,
-            )
+        # create a single coefficient matrix
+        self._gamma = self.zeros(backend, shape=shape)
 
         # fill the coefficient matrix
         g = self._gamma
@@ -1131,14 +1052,9 @@ def dispatch(
     ny,
     nb,
     backend="numpy",
-    backend_opts=None,
-    dtype=np.float64,
-    build_info=None,
-    exec_info=None,
-    default_origin=None,
-    rebuild=False,
+    backend_options=None,
     storage_shape=None,
-    managed_memory=False,
+    storage_options=None,
     nr=8,
     nz=None,
 ):
@@ -1149,14 +1065,9 @@ def dispatch(
             ny,
             nb,
             backend,
-            backend_opts,
-            dtype,
-            build_info,
-            exec_info,
-            default_origin,
-            rebuild,
+            backend_options,
             storage_shape,
-            managed_memory,
+            storage_options,
             nr,
             nz,
         )
@@ -1166,14 +1077,9 @@ def dispatch(
             1,
             nb,
             backend,
-            backend_opts,
-            dtype,
-            build_info,
-            exec_info,
-            default_origin,
-            rebuild,
+            backend_options,
             storage_shape,
-            managed_memory,
+            storage_options,
             nr,
             nz,
         )
@@ -1183,14 +1089,9 @@ def dispatch(
             ny,
             nb,
             backend,
-            backend_opts,
-            dtype,
-            build_info,
-            exec_info,
-            default_origin,
-            rebuild,
+            backend_options,
             storage_shape,
-            managed_memory,
+            storage_options,
             nr,
             nz,
         )

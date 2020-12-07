@@ -32,23 +32,27 @@ from tasmania.python.domain.subclasses.horizontal_boundaries.utils import (
     repeat_axis,
     shrink_axis,
 )
-from tasmania.python.utils.framework_utils import register
+from tasmania.python.framework.register import register
 
 
 class Identity(HorizontalBoundary):
-    """ *Identity* boundary conditions. """
+    """*Identity* boundary conditions."""
 
-    def __init__(self, nx, ny, nb, backend, dtype):
-        assert (
-            nx > 1
-        ), "Number of grid points along first dimension should be larger than 1."
-        assert (
-            ny > 1
-        ), "Number of grid points along second dimension should be larger than 1."
+    def __init__(self, nx, ny, nb, backend, storage_options):
+        assert nx > 1, (
+            "Number of grid points along first dimension should be larger "
+            "than 1."
+        )
+        assert ny > 1, (
+            "Number of grid points along second dimension should be larger "
+            "than 1."
+        )
         assert nb <= nx / 2, "Number of boundary layers cannot exceed ny/2."
         assert nb <= ny / 2, "Number of boundary layers cannot exceed ny/2."
 
-        super().__init__(nx, ny, nb, backend=backend, dtype=dtype)
+        super().__init__(
+            nx, ny, nb, backend=backend, storage_options=storage_options
+        )
 
     @property
     def ni(self):
@@ -93,18 +97,21 @@ class Identity(HorizontalBoundary):
 
 
 class Identity1DX(HorizontalBoundary):
-    """ *Identity* boundary conditions for a physical grid with ``ny=1``. """
+    """*Identity* boundary conditions for a physical grid with ``ny=1``."""
 
-    def __init__(self, nx, ny, nb, backend, dtype):
-        assert (
-            nx > 1
-        ), "Number of grid points along first dimension should be larger than 1."
+    def __init__(self, nx, ny, nb, backend, storage_options):
+        assert nx > 1, (
+            "Number of grid points along first dimension should be larger "
+            "than 1."
+        )
         assert (
             ny == 1
         ), "Number of grid points along second dimension must be 1."
         assert nb <= nx / 2, "Number of boundary layers cannot exceed nx/2."
 
-        super().__init__(nx, ny, nb, backend=backend, dtype=dtype)
+        super().__init__(
+            nx, ny, nb, backend=backend, storage_options=storage_options
+        )
 
     @property
     def ni(self):
@@ -123,10 +130,14 @@ class Identity1DX(HorizontalBoundary):
     def get_numerical_field(self, field, field_name=None):
         try:
             li, lj, lk = field.shape
-            cfield = np.zeros((li, lj + 2 * self.nb, lk), dtype=self._dtype)
+            cfield = np.zeros(
+                (li, lj + 2 * self.nb, lk), dtype=self.storage_options.dtype
+            )
         except ValueError:
             li, lj = field.shape
-            cfield = np.zeros((li, lj + 2 * self.nb), dtype=self._dtype)
+            cfield = np.zeros(
+                (li, lj + 2 * self.nb), dtype=self.storage_options.dtype
+            )
 
         cfield[:, : self.nb + 1] = field[:, :1]
         cfield[:, self.nb + 1 :] = field[:, -1:]
@@ -170,18 +181,21 @@ class Identity1DX(HorizontalBoundary):
 
 
 class Identity1DY(HorizontalBoundary):
-    """ *Identity* boundary conditions for a physical grid with ``nx=1``. """
+    """*Identity* boundary conditions for a physical grid with ``nx=1``."""
 
-    def __init__(self, nx, ny, nb, backend, dtype):
+    def __init__(self, nx, ny, nb, backend, storage_options):
         assert (
             nx == 1
         ), "Number of grid points along first dimension must be 1."
-        assert (
-            ny > 1
-        ), "Number of grid points along second dimension should be larger than 1."
+        assert ny > 1, (
+            "Number of grid points along second dimension should be larger "
+            "than 1."
+        )
         assert nb <= ny / 2, "Number of boundary layers cannot exceed ny/2."
 
-        super().__init__(nx, ny, nb, backend=backend, dtype=dtype)
+        super().__init__(
+            nx, ny, nb, backend=backend, storage_options=storage_options
+        )
 
     @property
     def ni(self):
@@ -200,10 +214,14 @@ class Identity1DY(HorizontalBoundary):
     def get_numerical_field(self, field, field_name=None):
         try:
             li, lj, lk = field.shape
-            cfield = np.zeros((li + 2 * self.nb, lj, lk), dtype=self._dtype)
+            cfield = np.zeros(
+                (li + 2 * self.nb, lj, lk), dtype=self.storage_options.dtype
+            )
         except ValueError:
             li, lj = field.shape
-            cfield = np.zeros((li + 2 * self.nb, lj), dtype=self._dtype)
+            cfield = np.zeros(
+                (li + 2 * self.nb, lj), dtype=self.storage_options.dtype
+            )
 
         cfield[: self.nb + 1, :] = field[:1, :]
         cfield[self.nb + 1 :, :] = field[-1:, :]
@@ -252,19 +270,14 @@ def dispatch(
     ny,
     nb,
     backend="numpy",
-    backend_opts=None,
-    dtype=np.float64,
-    build_info=None,
-    exec_info=None,
-    default_origin=None,
-    rebuild=False,
+    backend_options=None,
     storage_shape=None,
-    managed_memory=False,
+    storage_options=None,
 ):
-    """ Dispatch based on the grid size. """
+    """Dispatch based on the grid size."""
     if nx == 1:
-        return Identity1DY(1, ny, nb, backend, dtype)
+        return Identity1DY(1, ny, nb, backend, storage_options)
     elif ny == 1:
-        return Identity1DX(nx, 1, nb, backend, dtype)
+        return Identity1DX(nx, 1, nb, backend, storage_options)
     else:
-        return Identity(nx, ny, nb, backend, dtype)
+        return Identity(nx, ny, nb, backend, storage_options)

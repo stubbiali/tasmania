@@ -24,7 +24,7 @@ import numpy as np
 from sympl import DataArray
 
 from tasmania.python.domain.topography import PhysicalTopography
-from tasmania.python.utils.framework_utils import register
+from tasmania.python.framework.register import register
 
 
 @register(name="schaer")

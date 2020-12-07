@@ -24,32 +24,35 @@ import abc
 from copy import deepcopy
 import numpy as np
 from sympl import DataArray
-from typing import Any, Dict, Optional, Sequence
+from typing import Any, Dict, Optional, Sequence, TYPE_CHECKING
 
 from tasmania.python.utils import taz_types
-from tasmania.python.utils.framework_utils import factorize
+from tasmania.python.framework.register import factorize
+from tasmania.python.framework.stencil import StencilFactory
 from tasmania.python.utils.storage_utils import deepcopy_dataarray
 
+if TYPE_CHECKING:
+    from tasmania.python.framework.options import (
+        BackendOptions,
+        StorageOptions,
+    )
 
-class HorizontalBoundary(abc.ABC):
+
+class HorizontalBoundary(StencilFactory, abc.ABC):
     """ Handle boundary conditions for a two-dimensional rectilinear grid. """
 
     registry = {}
 
     def __init__(
-        self,
+        self: "HorizontalBoundary",
         nx: int,
         ny: int,
         nb: int,
+        *,
         backend: str = "numpy",
-        backend_opts: Optional[taz_types.options_dict_t] = None,
-        dtype: taz_types.dtype_t = np.float64,
-        build_info: Optional[taz_types.options_dict_t] = None,
-        exec_info: Optional[taz_types.mutable_options_dict_t] = None,
-        default_origin: Optional[taz_types.triplet_int_t] = None,
-        rebuild: bool = False,
-        storage_shape: Optional[taz_types.triplet_int_t] = None,
-        managed_memory: bool = False,
+        backend_options: Optional["BackendOptions"] = None,
+        storage_shape: Optional[Sequence[int]] = None,
+        storage_options: Optional["StorageOptions"] = None
     ) -> None:
         """
         Parameters
@@ -64,40 +67,21 @@ class HorizontalBoundary(abc.ABC):
             Number of boundary layers.
         backend : `str`, optional
             The backend.
-        backend_opts : `dict`, optional
-            Dictionary of backend-specific options.
-        build_info : `dict`, optional
-            Dictionary of building options.
-        dtype : `data-type`, optional
-            The data type of the storages.
-        exec_info : `dict`, optional
-            Dictionary which will store statistics and diagnostics gathered at
-            run time.
-        default_origin : `tuple[int]`, optional
-            Storage default origin.
-        rebuild : `bool`, optional
-            ``True`` to trigger the stencils compilation at any class
-            instantiation, ``False`` to rely on the caching mechanism
-            implemented by the backend.
-        storage_shape : `tuple[int]`, optional
-            The shape of the storages allocated within this class.
-        managed_memory : `bool`, optional
-            ``True`` to allocate the storages as managed memory,
-            ``False`` otherwise.
+        backend_options : `BackendOptions`, optional
+            Backend-specific options.
+        storage_shape : `Sequence[int]`, optional
+            The shape of the storages allocated within the class.
+        storage_options : `StorageOptions`, optional
+            Storage-related options.
         """
+        super().__init__(backend, backend_options, storage_options)
+
         self._nx = nx
         self._ny = ny
         self._nb = nb
 
         self._backend = backend
-        self._backend_opt = backend_opts
-        self._dtype = dtype
-        self._build_info = build_info
-        self._exec_info = exec_info
-        self._default_origin = default_origin
-        self._rebuild = rebuild
         self._storage_shape = storage_shape
-        self._managed_memory = managed_memory
 
         self._type = ""
         self._kwargs = {}
@@ -325,11 +309,12 @@ class HorizontalBoundary(abc.ABC):
         field_name: Optional[str] = None,
         field_units: Optional[str] = None,
         time: Optional[taz_types.datetime_t] = None,
-        grid: "Optional[NumericalGrid]" = None,
+        grid: Optional["NumericalGrid"] = None,
     ) -> None:
         """Enforce the boundary conditions on a raw field.
 
-        The field must be defined on the numerical grid, and gets modified in-place.
+        The field must be defined on the numerical grid, and gets modified
+        in-place.
 
         Parameters
         ----------
@@ -350,11 +335,12 @@ class HorizontalBoundary(abc.ABC):
         self,
         state: taz_types.array_dict_t,
         field_properties: Optional[taz_types.properties_mapping_t] = None,
-        grid: "Optional[NumericalGrid]" = None,
+        grid: Optional["NumericalGrid"] = None,
     ) -> None:
         """Enforce the boundary conditions on a raw state.
 
-        The state must be defined on the numerical grid, and gets modified in-place.
+        The state must be defined on the numerical grid, and gets modified
+        in-place.
 
         Parameters
         ----------
@@ -406,11 +392,12 @@ class HorizontalBoundary(abc.ABC):
         self,
         state: taz_types.dataarray_dict_t,
         field_names: Optional[Sequence[str]] = None,
-        grid: "Optional[NumericalGrid]" = None,
+        grid: Optional["NumericalGrid"] = None,
     ) -> None:
         """Enforce the boundary conditions on a state.
 
-        The state must be defined on the numerical grid, and gets modified in-place.
+        The state must be defined on the numerical grid, and gets modified
+        in-place.
 
         Parameters
         ----------
@@ -460,7 +447,7 @@ class HorizontalBoundary(abc.ABC):
         field_name: Optional[str] = None,
         field_units: Optional[str] = None,
         time: Optional[taz_types.datetime_t] = None,
-        grid: "Optional[NumericalGrid]" = None,
+        grid: Optional["NumericalGrid"] = None,
     ) -> None:
         """Set the outermost layers along the first dimension.
 
@@ -489,7 +476,7 @@ class HorizontalBoundary(abc.ABC):
         field_name: Optional[str] = None,
         field_units: Optional[str] = None,
         time: Optional[taz_types.datetime_t] = None,
-        grid: "Optional[NumericalGrid]" = None,
+        grid: Optional["NumericalGrid"] = None,
     ) -> None:
         """Set the outermost layers along the first dimension.
 
@@ -519,14 +506,9 @@ class HorizontalBoundary(abc.ABC):
         nb: int,
         *,
         backend: str = "numpy",
-        backend_opts: Optional[taz_types.options_dict_t] = None,
-        dtype: taz_types.dtype_t = np.float64,
-        build_info: Optional[taz_types.options_dict_t] = None,
-        exec_info: Optional[taz_types.mutable_options_dict_t] = None,
-        default_origin: Optional[taz_types.triplet_int_t] = None,
-        rebuild: bool = False,
-        storage_shape: Optional[taz_types.triplet_int_t] = None,
-        managed_memory: bool = False,
+        backend_options: Optional["BackendOptions"] = None,
+        storage_shape: Optional[Sequence[int]] = None,
+        storage_options: Optional["StorageOptions"] = None,
         **kwargs
     ) -> "HorizontalBoundary":
         """Get an instance of a derived class.
@@ -552,29 +534,14 @@ class HorizontalBoundary(abc.ABC):
             Number of boundary layers.
         backend : `str`, optional
             The backend.
-        backend_opts : `dict`, optional
-            Dictionary of backend-specific options.
-        dtype : `data-type`, optional
-            The data type of the storages.
-        build_info : `dict`, optional
-            Dictionary of building options.
-        exec_info : `dict`, optional
-            Dictionary which will store statistics and diagnostics gathered at
-            run time.
-        default_origin : `tuple[int]`, optional
-            Storage default origin.
-        rebuild : `bool`, optional
-            ``True`` to trigger the stencils compilation at any class
-            instantiation, ``False`` to rely on the caching mechanism
-            implemented by the backend.
+        backend : `str`, optional
+            The backend.
+        backend_options : `BackendOptions`, optional
+            Backend-specific options.
         storage_shape : `tuple[int]`, optional
             The shape of the storages allocated within this class.
-        managed_memory : `bool`, optional
-            ``True`` to allocate the storages as managed memory,
-            ``False`` otherwise.
-        kwargs :
-            Keyword arguments to be directly forwarded to the
-            constructor of the child class.
+        storage_options : `StorageOptions`, optional
+            Storage-related options.
 
         Returns
         -------
@@ -584,14 +551,9 @@ class HorizontalBoundary(abc.ABC):
         args = (nx, ny, nb)
         child_kwargs = {
             "backend": backend,
-            "backend_opts": backend_opts or {},
-            "dtype": dtype,
-            "build_info": build_info or {},
-            "exec_info": exec_info or {},
-            "default_origin": default_origin,
-            "rebuild": rebuild,
+            "backend_options": backend_options,
             "storage_shape": storage_shape,
-            "managed_memory": managed_memory,
+            "storage_options": storage_options,
         }
         child_kwargs.update(kwargs)
 

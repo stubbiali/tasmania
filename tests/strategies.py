@@ -28,6 +28,7 @@ from sympl import DataArray
 from sympl._core.units import clean_units
 
 import tasmania as taz
+from tasmania.python.framework.options import BackendOptions, StorageOptions
 from tasmania.python.utils.data_utils import get_physical_constants
 from tasmania.python.utils.storage_utils import (
     get_dataarray_2d,
@@ -470,20 +471,25 @@ def st_horizontal_boundary(
     hb_type = draw(st_horizontal_boundary_type())
     nb = nb if nb is not None else draw(st_horizontal_boundary_layers(nx, ny))
     hb_kwargs = draw(st_horizontal_boundary_kwargs(hb_type, nx, ny, nb, nz=nz))
+    bo = BackendOptions(
+        backend_opts=backend_opts,
+        build_info=build_info,
+        exec_info=exec_info,
+        rebuild=rebuild,
+    )
+    so = StorageOptions(
+        dtype=dtype,
+        default_origin=default_origin,
+        managed_memory=managed_memory,
+    )
     return taz.HorizontalBoundary.factory(
         hb_type,
         nx,
         ny,
         nb,
         backend=backend,
-        backend_opts=backend_opts,
-        dtype=dtype,
-        build_info=build_info,
-        exec_info=exec_info,
-        default_origin=default_origin,
-        rebuild=rebuild,
-        storage_shape=storage_shape,
-        managed_memory=managed_memory,
+        backend_options=bo,
+        storage_options=so,
         **hb_kwargs
     )
 
@@ -556,6 +562,18 @@ def st_domain(
     topo_kwargs = draw(st_topography_kwargs(domain_x, domain_y))
     topography_type = topo_kwargs.pop("type")
 
+    bo = BackendOptions(
+        backend_opts=backend_opts,
+        build_info=build_info,
+        exec_info=exec_info,
+        rebuild=rebuild,
+    )
+    so = StorageOptions(
+        dtype=dtype,
+        default_origin=default_origin,
+        managed_memory=managed_memory,
+    )
+
     return taz.Domain(
         domain_x,
         nx,
@@ -569,14 +587,9 @@ def st_domain(
         topography_type=topography_type,
         topography_kwargs=topo_kwargs,
         backend=backend,
-        backend_opts=backend_opts,
-        dtype=dtype,
-        build_info=build_info,
-        exec_info=exec_info,
-        default_origin=default_origin,
-        rebuild=rebuild,
+        backend_options=bo,
         storage_shape=storage_shape,
-        managed_memory=managed_memory,
+        storage_options=so,
     )
 
 
