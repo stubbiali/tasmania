@@ -21,17 +21,20 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 import numpy as np
-from typing import Optional, TYPE_CHECKING, Tuple
+from typing import Optional, Sequence, TYPE_CHECKING, Tuple
 
 from gt4py import gtscript
 
 from tasmania.python.framework.base_components import TendencyComponent
+from tasmania.python.framework.tag import stencil_definition
 from tasmania.python.utils import taz_types
-from tasmania.python.utils.storage_utils import zeros
-from tasmania.python.utils.utils import get_gt_backend, is_gt
 
 if TYPE_CHECKING:
     from tasmania.python.domain.domain import Domain
+    from tasmania.python.framework.options import (
+        BackendOptions,
+        StorageOptions,
+    )
 
 
 class Smagorinsky2d(TendencyComponent):
@@ -53,14 +56,9 @@ class Smagorinsky2d(TendencyComponent):
         smagorinsky_constant: float = 0.18,
         *,
         backend: str = "numpy",
-        backend_opts: Optional[taz_types.options_dict_t] = None,
-        dtype: taz_types.dtype_t = np.float64,
-        build_info: Optional[taz_types.options_dict_t] = None,
-        exec_info: Optional[taz_types.mutable_options_dict_t] = None,
-        default_origin: Optional[taz_types.triplet_int_t] = None,
-        rebuild: bool = False,
-        storage_shape: Optional[taz_types.triplet_int_t] = None,
-        managed_memory: bool = False,
+        backend_options: Optional["BackendOptions"] = None,
+        storage_shape: Optional[Sequence[int]] = None,
+        storage_options: Optional["StorageOptions"] = None,
         **kwargs
     ) -> None:
         """
@@ -72,34 +70,26 @@ class Smagorinsky2d(TendencyComponent):
             The Smagorinsky constant. Defaults to 0.18.
         backend : `str`, optional
             The backend.
-        backend_opts : `dict`, optional
-            Dictionary of backend-specific options.
-        dtype : `data-type`, optional
-            Data type of the storages.
-        build_info : `dict`, optional
-            Dictionary of building options.
-        exec_info : `dict`, optional
-            Dictionary which will store statistics and diagnostics gathered at
-            run time.
-        default_origin : `tuple[int]`, optional
-            Storage default origin.
-        rebuild : `bool`, optional
-            ``True`` to trigger the stencils compilation at any class
-            instantiation, ``False`` to rely on the caching mechanism
-            implemented by the backend.
-        storage_shape : `tuple[int]`, optional
-            Shape of the storages.
-        managed_memory : `bool`, optional
-            ``True`` to allocate the storages as managed memory,
-            ``False`` otherwise.
+        backend_options : `BackendOptions`, optional
+            Backend-specific options.
+        storage_shape : `Sequence[int]`, optional
+            The shape of the storages allocated within the class.
+        storage_options : `StorageOptions`, optional
+            Storage-related options.
         **kwargs :
             Additional keyword arguments to be directly forwarded to the parent
             class.
         """
-        super().__init__(domain, "numerical", **kwargs)
+        super().__init__(
+            domain,
+            "numerical",
+            backend=backend,
+            backend_options=backend_options,
+            storage_options=storage_options,
+            **kwargs
+        )
 
         self._cs = smagorinsky_constant
-        self._exec_info = exec_info
 
         assert (
             self.horizontal_boundary.nb >= 2
@@ -119,32 +109,12 @@ class Smagorinsky2d(TendencyComponent):
         assert storage_shape[2] >= nz, error_msg
         self._storage_shape = storage_shape
 
-        self._out_u_tnd = zeros(
-            storage_shape,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-            managed_memory=managed_memory,
-        )
-        self._out_v_tnd = zeros(
-            storage_shape,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-            managed_memory=managed_memory,
-        )
+        self._out_u_tnd = self.zeros(shape=storage_shape)
+        self._out_v_tnd = self.zeros(shape=storage_shape)
 
-        if is_gt(backend):
-            self._stencil = gtscript.stencil(
-                definition=self._stencil_gt_defs,
-                backend=get_gt_backend(backend),
-                build_info=build_info,
-                rebuild=rebuild,
-                dtypes={"dtype": dtype},
-                **(backend_opts or {})
-            )
-        else:
-            self._stencil = self._stencil_numpy
+        dtype = self.storage_options.dtype
+        self.backend_options.dtypes = {"dtype": dtype}
+        self._stencil = self.compile("smagorinsky")
 
     @property
     def input_properties(self) -> taz_types.properties_dict_t:
@@ -184,7 +154,7 @@ class Smagorinsky2d(TendencyComponent):
             cs=self._cs,
             origin=(nb, nb, 0),
             domain=(nx - 2 * nb, ny - 2 * nb, nz),
-            exec_info=self._exec_info,
+            exec_info=self.backend_options.exec_info,
             validate_args=False,
         )
 
@@ -197,6 +167,7 @@ class Smagorinsky2d(TendencyComponent):
         return tendencies, diagnostics
 
     @staticmethod
+    @stencil_definition(backend=("numpy", "cupy"), stencil="smagorinsky")
     def _stencil_numpy(
         in_u: np.ndarray,
         in_v: np.ndarray,
@@ -254,7 +225,8 @@ class Smagorinsky2d(TendencyComponent):
         )
 
     @staticmethod
-    def _stencil_gt_defs(
+    @stencil_definition(backend="gt4py*", stencil="smagorinsky")
+    def _stencil_gt4py(
         in_u: gtscript.Field["dtype"],
         in_v: gtscript.Field["dtype"],
         out_u_tnd: gtscript.Field["dtype"],

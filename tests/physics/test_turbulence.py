@@ -28,6 +28,7 @@ from hypothesis import (
 )
 import pytest
 
+from tasmania.python.framework.options import BackendOptions, StorageOptions
 from tasmania.python.physics.turbulence import Smagorinsky2d
 from tasmania.python.utils.storage_utils import get_dataarray_3d
 
@@ -134,6 +135,9 @@ def test_smagorinsky2d(data, backend, dtype):
     # ========================================
     # test bed
     # ========================================
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, default_origin=default_origin)
+
     dx = grid.dx.to_units("m").values.item()
     dy = grid.dy.to_units("m").values.item()
 
@@ -153,9 +157,9 @@ def test_smagorinsky2d(data, backend, dtype):
         domain,
         smagorinsky_constant=cs,
         backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
+        backend_options=bo,
         storage_shape=storage_shape,
+        storage_options=so,
     )
 
     tendencies, diagnostics = smag(state)

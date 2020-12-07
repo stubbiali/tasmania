@@ -22,8 +22,9 @@
 #
 from gt4py import gtscript
 
+from tasmania.python.framework.register import register
+from tasmania.python.framework.tag import stencil_subroutine
 from tasmania.python.physics.microphysics.utils import SedimentationFlux
-from tasmania.python.utils.framework_utils import register
 
 
 @register(name="second_order_upwind")
@@ -32,10 +33,8 @@ class SecondOrderUpwind(SedimentationFlux):
 
     nb = 2
 
-    def __init__(self, gt_powered):
-        super().__init__(gt_powered)
-
     @staticmethod
+    @stencil_subroutine(backend=("numpy", "cupy"), stencil="flux")
     def call_numpy(rho, h, q, vt):
         # evaluate the space-dependent coefficients occurring in the
         # second-order upwind finite difference approximation of the
@@ -60,8 +59,9 @@ class SecondOrderUpwind(SedimentationFlux):
         return dfdz
 
     @staticmethod
+    @stencil_subroutine(backend="gt4py*", stencil="flux")
     @gtscript.function
-    def call_gt(rho, h, q, vt):
+    def call_gt4py(rho, h, q, vt):
         # evaluate the space-dependent coefficients occurring in the
         # second-order upwind finite difference approximation of the
         # vertical derivative of the flux

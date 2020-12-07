@@ -31,15 +31,23 @@ from tasmania.python.framework.base_components import (
     DiagnosticComponent,
     ImplicitTendencyComponent,
 )
+from tasmania.python.framework.stencil import StencilFactory
+from tasmania.python.framework.tag import (
+    stencil_definition,
+    stencil_subroutine,
+)
 from tasmania.python.utils import taz_types
 from tasmania.python.utils.data_utils import get_physical_constants
-from tasmania.python.utils.framework_utils import factorize
-from tasmania.python.utils.gtscript_utils import stencil_clip_defs
+from tasmania.python.framework.register import factorize
 from tasmania.python.utils.storage_utils import get_storage_shape, zeros
 from tasmania.python.utils.utils import get_gt_backend, is_gt
 
 if TYPE_CHECKING:
     from tasmania.python.domain.domain import Domain
+    from tasmania.python.framework.options import (
+        BackendOptions,
+        StorageOptions,
+    )
 
 
 mfwv = "mass_fraction_of_water_vapor_in_air"
@@ -48,7 +56,7 @@ mfpw = "mass_fraction_of_precipitation_water_in_air"
 
 
 class Clipping(DiagnosticComponent):
-    """ Clipping negative values of water species. """
+    """Clipping negative values of water species."""
 
     def __init__(
         self,
@@ -57,14 +65,9 @@ class Clipping(DiagnosticComponent):
         water_species_names: Optional[Sequence[str]] = None,
         *,
         backend: str = "numpy",
-        backend_opts: Optional[taz_types.options_dict_t] = None,
-        dtype: taz_types.dtype_t = np.float64,
-        build_info: Optional[taz_types.options_dict_t] = None,
-        exec_info: Optional[taz_types.mutable_options_dict_t] = None,
-        default_origin: Optional[taz_types.triplet_int_t] = None,
-        rebuild: bool = False,
-        storage_shape: Optional[taz_types.triplet_int_t] = None,
-        managed_memory: bool = False
+        backend_options: Optional["BackendOptions"] = None,
+        storage_shape: Optional[Sequence[int]] = None,
+        storage_options: Optional["StorageOptions"] = None
     ) -> None:
         """
         Parameters
@@ -78,55 +81,32 @@ class Clipping(DiagnosticComponent):
             The names of the water species to clip.
         backend : `str`, optional
             The backend.
-        backend_opts : `dict`, optional
-            Dictionary of backend-specific options.
-        dtype : `data-type`, optional
-            Data type of the storages.
-        build_info : `dict`, optional
-            Dictionary of building options.
-        exec_info : `dict`, optional
-            Dictionary which will store statistics and diagnostics gathered at
-            run time.
-        default_origin : `tuple[int]`, optional
-            Storage default origin.
-        rebuild : `bool`, optional
-            ``True`` to trigger the stencils compilation at any class
-            instantiation, ``False`` to rely on the caching mechanism
-            implemented by the backend.
-        storage_shape : `tuple[int]`, optional
-            Shape of the storages.
-        managed_memory : `bool`, optional
-            ``True`` to allocate the storages as managed memory,
-            ``False`` otherwise.
+        backend_options : `BackendOptions`, optional
+            Backend-specific options.
+        storage_shape : `Sequence[int]`, optional
+            The shape of the storages allocated within the class.
+        storage_options : `StorageOptions`, optional
+            Storage-related options.
         """
         self._names = water_species_names
-        super().__init__(domain, grid_type)
+        super().__init__(
+            domain,
+            grid_type,
+            backend=backend,
+            backend_options=backend_options,
+            storage_options=storage_options,
+        )
 
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
-        in_shape = storage_shape or None
-        storage_shape = get_storage_shape(in_shape, (nx, ny, nz))
+        storage_shape = get_storage_shape(storage_shape, (nx, ny, nz))
         self._outs = {
-            name: zeros(
-                storage_shape,
-                backend=backend,
-                dtype=dtype,
-                default_origin=default_origin,
-                managed_memory=managed_memory,
-            )
+            name: self.zeros(shape=storage_shape)
             for name in water_species_names
         }
 
-        if is_gt(backend):
-            self._stencil = gtscript.stencil(
-                backend=get_gt_backend(backend),
-                definition=stencil_clip_defs,
-                rebuild=rebuild,
-                build_info=build_info,
-                dtypes={"dtype": dtype},
-                **(backend_opts or {})
-            )
-        else:
-            self._stencil = self._stencil_numpy
+        dtype = self.storage_options.dtype
+        self.backend_options.dtypes = {"dtype": dtype}
+        self._stencil = self.compile("clip")
 
     @property
     def input_properties(self) -> taz_types.properties_dict_t:
@@ -161,32 +141,16 @@ class Clipping(DiagnosticComponent):
                 out_field=out_q,
                 origin=(0, 0, 0),
                 domain=out_q.shape,
+                exec_info=self.backend_options.exec_info,
                 validate_args=False,
             )
             diagnostics[name] = out_q
 
         return diagnostics
 
-    @staticmethod
-    def _stencil_numpy(
-        in_field: np.ndarray,
-        out_field: np.ndarray,
-        *,
-        origin: taz_types.triplet_int_t,
-        domain: taz_types.triplet_int_t,
-        **kwargs  # catch-all
-    ) -> None:
-        i = slice(origin[0], origin[0] + domain[0])
-        j = slice(origin[1], origin[1] + domain[1])
-        k = slice(origin[2], origin[2] + domain[2])
-
-        out_field[i, j, k] = np.where(
-            in_field[i, j, k] > 0.0, in_field[i, j, k], 0.0
-        )
-
 
 class Precipitation(ImplicitTendencyComponent):
-    """ Update the (accumulated) precipitation. """
+    """Update the (accumulated) precipitation."""
 
     _d_physical_constants = {
         "density_of_liquid_water": DataArray(1e3, attrs={"units": "kg m^-3"})
@@ -199,14 +163,9 @@ class Precipitation(ImplicitTendencyComponent):
         physical_constants: Optional[Mapping[str, DataArray]] = None,
         *,
         backend: str = "numpy",
-        backend_opts: Optional[taz_types.options_dict_t] = None,
-        dtype: taz_types.dtype_t = np.float64,
-        build_info: Optional[taz_types.options_dict_t] = None,
-        exec_info: Optional[taz_types.mutable_options_dict_t] = None,
-        default_origin: Optional[taz_types.triplet_int_t] = None,
-        rebuild: bool = False,
-        storage_shape: Optional[taz_types.triplet_int_t] = None,
-        managed_memory: bool = False,
+        backend_options: Optional["BackendOptions"] = None,
+        storage_shape: Optional[Sequence[int]] = None,
+        storage_options: Optional["StorageOptions"] = None,
         **kwargs
     ) -> None:
         """
@@ -226,33 +185,24 @@ class Precipitation(ImplicitTendencyComponent):
 
         backend : `str`, optional
             The backend.
-        backend_opts : `dict`, optional
-            Dictionary of backend-specific options.
-        dtype : `data-type`, optional
-            Data type of the storages.
-        build_info : `dict`, optional
-            Dictionary of building options.
-        exec_info : `dict`, optional
-            Dictionary which will store statistics and diagnostics gathered at
-            run time.
-        default_origin : `tuple[int]`, optional
-            Storage default origin.
-        rebuild : `bool`, optional
-            ``True`` to trigger the stencils compilation at any class
-            instantiation, ``False`` to rely on the caching mechanism
-            implemented by the backend.
-        storage_shape : `tuple[int]`, optional
-            Shape of the storages.
-        managed_memory : `bool`, optional
-            ``True`` to allocate the storages as managed memory,
-            ``False`` otherwise.
+        backend_options : `BackendOptions`, optional
+            Backend-specific options.
+        storage_shape : `Sequence[int]`, optional
+            The shape of the storages allocated within the class.
+        storage_options : `StorageOptions`, optional
+            Storage-related options.
         **kwargs :
             Additional keyword arguments to be directly forwarded to the parent
             :class:`~tasmania.ImplicitTendencyComponent`.
         """
-        self._exec_info = exec_info
-
-        super().__init__(domain, grid_type, **kwargs)
+        super().__init__(
+            domain,
+            grid_type,
+            backend=backend,
+            backend_options=backend_options,
+            storage_options=storage_options,
+            **kwargs
+        )
 
         self._pcs = get_physical_constants(
             self._d_physical_constants, physical_constants
@@ -266,54 +216,18 @@ class Precipitation(ImplicitTendencyComponent):
         )
         storage_shape = get_storage_shape(in_shape, (nx, ny, 1))
 
-        self._in_rho = zeros(
-            storage_shape,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-            managed_memory=managed_memory,
-        )
-        self._in_qr = zeros(
-            storage_shape,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-            managed_memory=managed_memory,
-        )
-        self._in_vt = zeros(
-            storage_shape,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-            managed_memory=managed_memory,
-        )
-        self._out_prec = zeros(
-            storage_shape,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-            managed_memory=managed_memory,
-        )
-        self._out_accprec = zeros(
-            storage_shape,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-            managed_memory=managed_memory,
-        )
+        self._in_rho = self.zeros(shape=storage_shape)
+        self._in_qr = self.zeros(shape=storage_shape)
+        self._in_vt = self.zeros(shape=storage_shape)
+        self._out_prec = self.zeros(shape=storage_shape)
+        self._out_accprec = self.zeros(shape=storage_shape)
 
-        if is_gt(backend):
-            self._stencil = gtscript.stencil(
-                definition=self._stencil_gt_defs,
-                backend=get_gt_backend(backend),
-                build_info=build_info,
-                dtypes={"dtype": dtype},
-                externals={"rhow": self._pcs["density_of_liquid_water"]},
-                rebuild=rebuild,
-                **(backend_opts or {})
-            )
-        else:
-            self._stencil = self._stencil_numpy
+        dtype = self.storage_options.dtype
+        self.backend_options.dtypes = {"dtype": dtype}
+        self.backend_options.externals = {
+            "rhow": self._pcs["density_of_liquid_water"]
+        }
+        self._stencil = self.compile("accumulated_precipitation")
 
     @property
     def input_properties(self) -> taz_types.properties_dict_t:
@@ -377,7 +291,7 @@ class Precipitation(ImplicitTendencyComponent):
             dt=dt,
             origin=(0, 0, 0),
             domain=(nx, ny, 1),
-            exec_info=self._exec_info,
+            exec_info=self.backend_options.exec_info,
             validate_args=False,
         )
 
@@ -389,6 +303,9 @@ class Precipitation(ImplicitTendencyComponent):
 
         return tendencies, diagnostics
 
+    @stencil_definition(
+        backend=("numpy", "cupy"), stencil="accumulated_precipitation"
+    )
     def _stencil_numpy(
         self,
         in_rho: np.ndarray,
@@ -419,7 +336,8 @@ class Precipitation(ImplicitTendencyComponent):
         )
 
     @staticmethod
-    def _stencil_gt_defs(
+    @stencil_definition(backend="gt4py*", stencil="accumulated_precipitation")
+    def _stencil_gt4py(
         in_rho: gtscript.Field["dtype"],
         in_qr: gtscript.Field["dtype"],
         in_vt: gtscript.Field["dtype"],
@@ -436,7 +354,7 @@ class Precipitation(ImplicitTendencyComponent):
             out_accprec = in_accprec + dt * out_prec / 3.6e3
 
 
-class SedimentationFlux(abc.ABC):
+class SedimentationFlux(StencilFactory, abc.ABC):
     """
     Abstract base class whose derived classes discretize the
     vertical derivative of the sedimentation flux with different
@@ -449,10 +367,8 @@ class SedimentationFlux(abc.ABC):
     # registry of concrete subclasses
     registry: Dict[str, "SedimentationFlux"] = {}
 
-    def __init__(self, backend: str) -> None:
-        self.call = self.call_gt if is_gt(backend) else self.call_numpy
-
     @staticmethod
+    @stencil_subroutine(backend=("numpy", "cupy"), stencil="flux")
     @abc.abstractmethod
     def call_numpy(
         rho: np.ndarray, h: np.ndarray, q: np.ndarray, vt: np.ndarray
@@ -460,9 +376,10 @@ class SedimentationFlux(abc.ABC):
         pass
 
     @staticmethod
+    @stencil_subroutine(backend="gt4py*", stencil="flux")
     @gtscript.function
     @abc.abstractmethod
-    def call_gt(
+    def call_gt4py(
         rho: taz_types.gtfield_t,
         h: taz_types.gtfield_t,
         q: taz_types.gtfield_t,

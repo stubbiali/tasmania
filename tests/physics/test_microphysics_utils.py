@@ -32,6 +32,8 @@ import pytest
 
 from gt4py import gtscript
 
+from tasmania.python.framework.allocators import zeros
+from tasmania.python.framework.options import BackendOptions, StorageOptions
 from tasmania.python.physics.microphysics.kessler import KesslerFallVelocity
 from tasmania.python.physics.microphysics.sedimentation_fluxes import (
     FirstOrderUpwind,
@@ -42,7 +44,7 @@ from tasmania.python.physics.microphysics.utils import (
     SedimentationFlux,
     Precipitation,
 )
-from tasmania.python.utils.storage_utils import get_dataarray_3d, zeros
+from tasmania.python.utils.storage_utils import get_dataarray_3d
 from tasmania.python.utils.utils import get_gt_backend, is_gt
 
 from tests.conf import (
@@ -128,15 +130,17 @@ def test_clipping(data, backend, dtype, subtests):
     # ========================================
     # test bed
     # ========================================
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, default_origin=default_origin)
+
     clip = Clipping(
         domain,
         grid_type,
         names,
         backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
+        backend_options=bo,
         storage_shape=storage_shape,
-        rebuild=False,
+        storage_options=so,
     )
 
     diagnostics = clip(state)
@@ -209,13 +213,16 @@ def test_precipitation(data, backend, dtype):
     # ========================================
     # test bed
     # ========================================
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, default_origin=default_origin)
+
     rfv = KesslerFallVelocity(
         domain,
         grid_type,
         backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
+        backend_options=bo,
         storage_shape=storage_shape,
+        storage_options=so,
     )
     state.update(rfv(state))
 
@@ -223,9 +230,9 @@ def test_precipitation(data, backend, dtype):
         domain,
         grid_type,
         backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
+        backend_options=bo,
         storage_shape=storage_shape,
+        storage_options=so,
     )
 
     tendencies, diagnostics = comp(state, timestep)
@@ -268,7 +275,7 @@ class WrappingStencil:
             name=core.__class__.__name__,
             rebuild=rebuild,
             dtypes={"dtype": dtype},
-            externals={"core": core.call_gt, "extent": core.nb},
+            externals={"core": core.call_gt4py, "extent": core.nb},
         )
         self.stencil = decorator(self.stencil_defs)
 
@@ -377,11 +384,7 @@ def test_sedimentation_flux(data, backend, dtype, flux_type):
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
     domain = data.draw(
-        st_domain(
-            zaxis_length=(3, 20),
-            backend=backend,
-            dtype=dtype,
-        ),
+        st_domain(zaxis_length=(3, 20), backend=backend, dtype=dtype,),
         label="domain",
     )
     grid_type = data.draw(
@@ -445,6 +448,8 @@ def test_sedimentation_flux(data, backend, dtype, flux_type):
     # ========================================
     # test bed
     # ========================================
+    so = StorageOptions(dtype=dtype, default_origin=default_origin)
+
     dfdz_val = flux_properties[flux_type]["validation"](
         rho[:nx, :ny, :nz],
         h[:nx, :ny, :nz],
@@ -456,14 +461,11 @@ def test_sedimentation_flux(data, backend, dtype, flux_type):
     assert isinstance(core, flux_properties[flux_type]["type"])
 
     if is_gt(backend):
-        dfdz = zeros(
-            storage_shape,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-        )
+        dfdz = zeros(backend, shape=storage_shape, storage_options=so)
 
-        ws = WrappingStencil(core, get_gt_backend(backend), dtype, rebuild=False)
+        ws = WrappingStencil(
+            core, get_gt_backend(backend), dtype, rebuild=False
+        )
         ws(rho, h, qr, vt, dfdz)
 
         compare_arrays(dfdz[:nx, :ny, :nz], dfdz_val)

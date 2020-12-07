@@ -22,8 +22,9 @@
 #
 from gt4py import gtscript
 
+from tasmania.python.framework.register import register
+from tasmania.python.framework.tag import stencil_subroutine
 from tasmania.python.physics.microphysics.utils import SedimentationFlux
-from tasmania.python.utils.framework_utils import register
 
 
 @register(name="first_order_upwind")
@@ -32,10 +33,8 @@ class FirstOrderUpwind(SedimentationFlux):
 
     nb = 1
 
-    def __init__(self, gt_powered):
-        super().__init__(gt_powered)
-
     @staticmethod
+    @stencil_subroutine(backend=("numpy", "cupy"), stencil="flux")
     def call_numpy(rho, h, q, vt):
         dfdz = (
             rho[:, :, :-1] * q[:, :, :-1] * vt[:, :, :-1]
@@ -44,8 +43,9 @@ class FirstOrderUpwind(SedimentationFlux):
         return dfdz
 
     @staticmethod
+    @stencil_subroutine(backend="gt4py*", stencil="flux")
     @gtscript.function
-    def call_gt(rho, h, q, vt):
+    def call_gt4py(rho, h, q, vt):
         dfdz = (
             rho[0, 0, -1] * q[0, 0, -1] * vt[0, 0, -1]
             - rho[0, 0, 0] * q[0, 0, 0] * vt[0, 0, 0]

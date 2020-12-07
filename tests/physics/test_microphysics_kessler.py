@@ -31,6 +31,8 @@ import numpy as np
 import pytest
 from sympl import DataArray
 
+from tasmania.python.framework.allocators import zeros
+from tasmania.python.framework.options import BackendOptions, StorageOptions
 from tasmania.python.physics.microphysics.kessler import (
     KesslerFallVelocity,
     KesslerMicrophysics,
@@ -39,10 +41,7 @@ from tasmania.python.physics.microphysics.kessler import (
     KesslerSedimentation,
 )
 from tasmania import get_dataarray_3d
-from tasmania.python.utils.meteo_utils import (
-    tetens_formula,
-)
-from tasmania.python.utils.storage_utils import zeros
+from tasmania.python.utils.meteo_utils import tetens_formula
 
 from tests.conf import (
     backend as conf_backend,
@@ -143,16 +142,12 @@ def test_kessler_microphysics(data, backend, dtype, subtests):
     # ========================================
     # test bed
     # ========================================
-    dtype = grid.x.dtype
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, default_origin=default_origin)
 
     if not apoif:
         p = state["air_pressure_on_interface_levels"].to_units("Pa").data
-        p_unstg = zeros(
-            storage_shape,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-        )
+        p_unstg = zeros(backend, shape=storage_shape, storage_options=so)
         p_unstg[:, :, :-1] = 0.5 * (p[:, :, :-1] + p[:, :, 1:])
         state["air_pressure"] = get_dataarray_3d(
             p_unstg,
@@ -168,12 +163,7 @@ def test_kessler_microphysics(data, backend, dtype, subtests):
             .to_units("J kg^-1 K^-1")
             .data
         )
-        exn_unstg = zeros(
-            storage_shape,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-        )
+        exn_unstg = zeros(backend, shape=storage_shape, storage_options=so)
         exn_unstg[:, :, :-1] = 0.5 * (exn[:, :, :-1] + exn[:, :, 1:])
         state["exner_function"] = get_dataarray_3d(
             exn_unstg,
@@ -202,10 +192,9 @@ def test_kessler_microphysics(data, backend, dtype, subtests):
         autoconversion_rate=DataArray(k1, attrs={"units": "s^-1"}),
         collection_rate=DataArray(k2, attrs={"units": "hr^-1"}),
         backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-        rebuild=False,
+        backend_options=bo,
         storage_shape=storage_shape,
+        storage_options=so,
     )
 
     assert "air_density" in kessler.input_properties
@@ -401,14 +390,12 @@ def test_kessler_saturation_adjustment_diagnostic(data, backend, dtype):
     # ========================================
     # test bed
     # ========================================
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, default_origin=default_origin)
+
     if not apoif:
         p = state["air_pressure_on_interface_levels"].to_units("Pa").data
-        p_unstg = zeros(
-            storage_shape,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-        )
+        p_unstg = zeros(backend, shape=storage_shape, storage_options=so)
         p_unstg[:, :, :-1] = 0.5 * (p[:, :, :-1] + p[:, :, 1:])
         state["air_pressure"] = get_dataarray_3d(
             p_unstg,
@@ -424,12 +411,7 @@ def test_kessler_saturation_adjustment_diagnostic(data, backend, dtype):
             .to_units("J kg^-1 K^-1")
             .data
         )
-        exn_unstg = zeros(
-            storage_shape,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-        )
+        exn_unstg = zeros(backend, shape=storage_shape, storage_options=so)
         exn_unstg[:, :, :-1] = 0.5 * (exn[:, :, :-1] + exn[:, :, 1:])
         state["exner_function"] = get_dataarray_3d(
             exn_unstg,
@@ -454,9 +436,9 @@ def test_kessler_saturation_adjustment_diagnostic(data, backend, dtype):
         grid_type,
         air_pressure_on_interface_levels=apoif,
         backend=backend,
-        dtype=dtype,
-        rebuild=False,
+        backend_options=bo,
         storage_shape=storage_shape,
+        storage_options=so,
     )
 
     assert "air_temperature" in sak.input_properties
@@ -617,14 +599,12 @@ def test_kessler_saturation_adjustment_prognostic(data, backend, dtype):
     # ========================================
     # test bed
     # ========================================
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, default_origin=default_origin)
+
     if not apoif:
         p = state["air_pressure_on_interface_levels"].to_units("Pa").data
-        p_unstg = zeros(
-            storage_shape,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-        )
+        p_unstg = zeros(backend, shape=storage_shape, storage_options=so)
         p_unstg[:, :, :-1] = 0.5 * (p[:, :, :-1] + p[:, :, 1:])
         state["air_pressure"] = get_dataarray_3d(
             p_unstg,
@@ -640,12 +620,7 @@ def test_kessler_saturation_adjustment_prognostic(data, backend, dtype):
             .to_units("J kg^-1 K^-1")
             .data
         )
-        exn_unstg = zeros(
-            storage_shape,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-        )
+        exn_unstg = zeros(backend, shape=storage_shape, storage_options=so)
         exn_unstg[:, :, :-1] = 0.5 * (exn[:, :, :-1] + exn[:, :, 1:])
         state["exner_function"] = get_dataarray_3d(
             exn_unstg,
@@ -671,9 +646,9 @@ def test_kessler_saturation_adjustment_prognostic(data, backend, dtype):
         air_pressure_on_interface_levels=apoif,
         saturation_rate=DataArray(sr, attrs={"units": "s^-1"}),
         backend=backend,
-        dtype=dtype,
-        rebuild=False,
+        backend_options=bo,
         storage_shape=storage_shape,
+        storage_options=so,
     )
 
     assert "air_temperature" in sak.input_properties
@@ -804,6 +779,9 @@ def test_kessler_fall_velocity(data, backend, dtype):
     # ========================================
     # test bed
     # ========================================
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, default_origin=default_origin)
+
     #
     # test properties
     #
@@ -811,10 +789,9 @@ def test_kessler_fall_velocity(data, backend, dtype):
         domain,
         grid_type,
         backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-        rebuild=False,
+        backend_options=bo,
         storage_shape=storage_shape,
+        storage_options=so,
     )
 
     assert "air_density" in rfv.input_properties
@@ -896,13 +873,16 @@ def test_kessler_sedimentation(data, backend, dtype):
     # ========================================
     # test bed
     # ========================================
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, default_origin=default_origin)
+
     rfv = KesslerFallVelocity(
         domain,
         grid_type,
         backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
+        backend_options=bo,
         storage_shape=storage_shape,
+        storage_options=so,
     )
     diagnostics = rfv(state)
     state.update(diagnostics)
@@ -913,10 +893,9 @@ def test_kessler_sedimentation(data, backend, dtype):
         flux_type,
         maxcfl,
         backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-        rebuild=False,
+        backend_options=bo,
         storage_shape=storage_shape,
+        storage_options=so,
     )
 
     #
