@@ -22,52 +22,67 @@
 #
 import abc
 import sympl
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 
-from tasmania.python.domain.domain import Domain
-from tasmania.python.domain.grid import Grid
-from tasmania.python.domain.horizontal_boundary import HorizontalBoundary
-from tasmania.python.framework.stencil_factory import StencilFactory
+from tasmania.python.framework.stencil import StencilFactory
 from tasmania.python.utils import taz_types
 from tasmania.python.utils.utils import Timer
 
+if TYPE_CHECKING:
+    from tasmania.python.domain.domain import Domain
+    from tasmania.python.domain.grid import Grid
+    from tasmania.python.domain.horizontal_boundary import HorizontalBoundary
+    from tasmania.python.framework.options import (
+        BackendOptions,
+        StorageOptions,
+    )
 
-class GriddedComponent(abc.ABC):
-    allowed_grid_types = ("numerical_grid", "physical_grid")
+
+class GridComponent(abc.ABC):
+    """A component built over a :class:`~tasmania.Grid`."""
+
+    def __init__(self: "GridComponent", grid: "Grid") -> None:
+        self._grid = grid
+
+    @property
+    def grid(self: "GridComponent") -> "Grid":
+        """The underlying :class:`~tasmania.Grid`."""
+        return self._grid
+
+
+class DomainComponent(GridComponent, abc.ABC):
+    """A component built over a :class:`~tasmania.Domain`."""
+
+    allowed_grid_types = ("numerical", "physical")
 
     def __init__(
-        self: "GriddedComponent", domain: Domain, grid_type: str
+        self: "DomainComponent", domain: "Domain", grid_type: str
     ) -> None:
         assert grid_type in self.allowed_grid_types, (
             f"grid_type is {grid_type}, but either "
             f"({', '.join(self.allowed_grid_types)}) was expected."
         )
-        self._grid_type = grid_type
-        self._grid = (
+        super().__init__(
             domain.physical_grid
             if grid_type == "physical"
             else domain.numerical_grid
         )
+        self._grid_type = grid_type
         self._hb = domain.horizontal_boundary
 
     @property
-    def grid_type(self: "GriddedComponent") -> str:
+    def grid_type(self: "DomainComponent") -> str:
         """The grid type, either "physical" or "numerical"."""
         return self._grid_type
 
     @property
-    def grid(self: "GriddedComponent") -> Grid:
-        """The underlying :class:`~tasmania.Grid`."""
-        return self._grid
-
-    @property
-    def horizontal_boundary(self: "GriddedComponent") -> HorizontalBoundary:
+    def horizontal_boundary(self: "DomainComponent") -> "HorizontalBoundary":
         """The object handling the lateral boundary conditions."""
         return self._hb
 
 
 class DiagnosticComponent(
-    GriddedComponent, StencilFactory, sympl.DiagnosticComponent
+    DomainComponent, StencilFactory, sympl.DiagnosticComponent
 ):
     """
     Custom version of :class:`sympl.DiagnosticComponent` which is aware
@@ -78,8 +93,12 @@ class DiagnosticComponent(
 
     def __init__(
         self: "DiagnosticComponent",
-        domain: Domain,
+        domain: "Domain",
         grid_type: str = "numerical",
+        *,
+        backend: Optional[str] = None,
+        backend_options: Optional["BackendOptions"] = None,
+        storage_options: Optional["StorageOptions"] = None
     ) -> None:
         """
         Parameters
@@ -89,9 +108,17 @@ class DiagnosticComponent(
         grid_type : `str`, optional
             The type of grid over which instantiating the class.
             Either "physical" or "numerical" (default).
+        backend : `str`, optional
+            The backend.
+        backend_options : `BackendOptions`, optional
+            Backend-specific options.
+        storage_options : `StorageOptions`, optional
+            Storage-related options.
         """
         super().__init__(domain, grid_type)
-        super(GriddedComponent, self).__init__()
+        super(GridComponent, self).__init__(
+            backend, backend_options, storage_options
+        )
         super(StencilFactory, self).__init__()
 
     def __call__(
@@ -104,7 +131,7 @@ class DiagnosticComponent(
 
 
 class ImplicitTendencyComponent(
-    GriddedComponent, StencilFactory, sympl.ImplicitTendencyComponent
+    DomainComponent, StencilFactory, sympl.ImplicitTendencyComponent
 ):
     """
     Customized version of :class:`sympl.ImplicitTendencyComponent` which is
@@ -115,10 +142,14 @@ class ImplicitTendencyComponent(
 
     def __init__(
         self: "ImplicitTendencyComponent",
-        domain: Domain,
+        domain: "Domain",
         grid_type: str = "numerical",
         tendencies_in_diagnostics: bool = False,
         name: Optional[str] = None,
+        *,
+        backend: Optional[str] = None,
+        backend_options: Optional["BackendOptions"] = None,
+        storage_options: Optional["StorageOptions"] = None
     ) -> None:
         """
         Parameters
@@ -135,9 +166,17 @@ class ImplicitTendencyComponent(
             A label to be used for this object, for example as would be used for
             Y in the name "X_tendency_from_Y". By default the class name in
             lowercase is used.
+        backend : `str`, optional
+            The backend.
+        backend_options : `BackendOptions`, optional
+            Backend-specific options.
+        storage_options : `StorageOptions`, optional
+            Storage-related options.
         """
         super().__init__(domain, grid_type)
-        super(GriddedComponent, self).__init__()
+        super(GridComponent, self).__init__(
+            backend, backend_options, storage_options
+        )
         super(StencilFactory, self).__init__(tendencies_in_diagnostics, name)
 
     def __call__(
@@ -151,7 +190,7 @@ class ImplicitTendencyComponent(
         return out
 
 
-class Stepper(GriddedComponent, StencilFactory, sympl.Stepper):
+class Stepper(DomainComponent, StencilFactory, sympl.Stepper):
     """
     Customized version of :class:`sympl.Stepper` which is aware
     of the grid over which the component is instantiated.
@@ -161,10 +200,14 @@ class Stepper(GriddedComponent, StencilFactory, sympl.Stepper):
 
     def __init__(
         self: "Stepper",
-        domain: Domain,
+        domain: "Domain",
         grid_type: str = "numerical",
         tendencies_in_diagnostics: bool = False,
         name: Optional[str] = None,
+        *,
+        backend: Optional[str] = None,
+        backend_options: Optional["BackendOptions"] = None,
+        storage_options: Optional["StorageOptions"] = None
     ) -> None:
         """
         Parameters
@@ -181,14 +224,22 @@ class Stepper(GriddedComponent, StencilFactory, sympl.Stepper):
             A label to be used for this object, for example as would be used for
             Y in the name "X_tendency_from_Y". By default the class name in
             lowercase is used.
+        backend : `str`, optional
+            The backend.
+        backend_options : `BackendOptions`, optional
+            Backend-specific options.
+        storage_options : `StorageOptions`, optional
+            Storage-related options.
         """
         super().__init__(domain, grid_type)
-        super(GriddedComponent, self).__init__()
+        super(GridComponent, self).__init__(
+            backend, backend_options, storage_options
+        )
         super(StencilFactory, self).__init__(tendencies_in_diagnostics, name)
 
 
 class TendencyComponent(
-    GriddedComponent, StencilFactory, sympl.TendencyComponent
+    DomainComponent, StencilFactory, sympl.TendencyComponent
 ):
     """
     Customized version of :class:`sympl.TendencyComponent` which is aware
@@ -199,10 +250,14 @@ class TendencyComponent(
 
     def __init__(
         self: "TendencyComponent",
-        domain: Domain,
+        domain: "Domain",
         grid_type: str = "numerical",
         tendencies_in_diagnostics: bool = False,
         name: Optional[str] = None,
+        *,
+        backend: Optional[str] = None,
+        backend_options: Optional["BackendOptions"] = None,
+        storage_options: Optional["StorageOptions"] = None
     ) -> None:
         """
         Parameters
@@ -219,9 +274,17 @@ class TendencyComponent(
             A label to be used for this object, for example as would be used for
             Y in the name "X_tendency_from_Y". By default the class name in
             lowercase is used.
+        backend : `str`, optional
+            The backend.
+        backend_options : `BackendOptions`, optional
+            Backend-specific options.
+        storage_options : `StorageOptions`, optional
+            Storage-related options.
         """
         super().__init__(domain, grid_type)
-        super(GriddedComponent, self).__init__()
+        super(GridComponent, self).__init__(
+            backend, backend_options, storage_options
+        )
         super(StencilFactory, self).__init__(tendencies_in_diagnostics, name)
 
     def __call__(
