@@ -202,6 +202,7 @@ class StencilFactory(abc.ABC):
     _default_asarray_registry = AsArray.registry
     _default_definition_registry = StencilDefinition.registry
     _default_compiler_registry = StencilCompiler.registry
+    _default_subroutine_registry = StencilSubroutine.registry
 
     def __init__(
         self: "StencilFactory",
@@ -271,6 +272,15 @@ class StencilFactory(abc.ABC):
                 )
 
         set_runtime_attribute(
+            definition,
+            "function",
+            "stencil_definition",
+            "backend",
+            backend,
+            "stencil",
+            stencil,
+        )
+        set_runtime_attribute(
             compiler,
             "function",
             "stencil_compiler",
@@ -305,6 +315,64 @@ class StencilFactory(abc.ABC):
         storage_options: Optional[StorageOptions] = None
     ) -> NDArray:
         return self._allocate("ones", backend, stencil, shape, storage_options)
+
+    def stencil_definition(
+        self: "StencilFactory", stencil: str, backend: Optional[str] = None
+    ) -> Callable:
+        backend = backend or self.backend
+        key = ("stencil_definition", backend, stencil)
+
+        try:
+            obj = self._registry[key]
+        except KeyError:
+            try:
+                obj = self._default_definition_registry[key]
+            except KeyError:
+                raise FactoryRegistryError(
+                    f"No definition of the stencil '{stencil}' found for the "
+                    f"backend '{backend}'."
+                )
+
+        set_runtime_attribute(
+            obj,
+            "function",
+            "stencil_definition",
+            "backend",
+            backend,
+            "stencil",
+            stencil,
+        )
+
+        return obj
+
+    def stencil_subroutine(
+        self: "StencilFactory", stencil: str, backend: Optional[str] = None
+    ) -> Callable:
+        backend = backend or self.backend
+        key = ("stencil_subroutine", backend, stencil)
+
+        try:
+            obj = self._registry[key]
+        except KeyError:
+            try:
+                obj = self._default_subroutine_registry[key]
+            except KeyError:
+                raise FactoryRegistryError(
+                    f"No definition of the subroutine '{stencil}' found for "
+                    f"the backend '{backend}'."
+                )
+
+        set_runtime_attribute(
+            obj,
+            "function",
+            "stencil_subroutine",
+            "backend",
+            backend,
+            "stencil",
+            stencil,
+        )
+
+        return obj
 
     def zeros(
         self: "StencilFactory",
