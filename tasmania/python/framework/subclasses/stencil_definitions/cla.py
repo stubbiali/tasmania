@@ -25,7 +25,7 @@ import numpy as np
 
 from gt4py import gtscript
 
-from tasmania.python.framework.stencil_compiler import stencil_definition
+from tasmania.python.framework.stencil import stencil_definition
 
 
 @stencil_definition.register(backend=("numpy", "cupy"), stencil="thomas")
@@ -59,7 +59,7 @@ def thomas_numpy(a, b, c, d, out, *, origin, domain, **kwargs):
 
 
 @stencil_definition.register(backend="gt4py*", stencil="thomas")
-def stencil_thomas_defs(
+def thomas_gt4py(
     a: gtscript.Field["dtype"],
     b: gtscript.Field["dtype"],
     c: gtscript.Field["dtype"],

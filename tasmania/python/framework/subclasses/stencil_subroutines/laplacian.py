@@ -24,7 +24,7 @@ import numpy as np
 
 from gt4py import gtscript
 
-from tasmania.python.framework.stencil_compiler import stencil_subroutine
+from tasmania.python.framework.stencil import stencil_subroutine
 
 
 @stencil_subroutine.register(backend=("numpy", "cupy"), stencil="laplacian")

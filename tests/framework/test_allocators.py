@@ -57,23 +57,25 @@ class _TestAllocator(abc.ABC):
     backends = ("numpy", "numba:cpu", "cupy", "numba:gpu", "gt4py*")
     values = {}
 
-    def test_registry_keys(self):
-        r = self.subclass.registry
-        f = self.function
+    def check_registry_keys(self, r, f):
         assert f in r
         assert all(backend in r[f] for backend in self.backends)
         assert all(prt.wildcard in r[f][backend] for backend in self.backends)
 
-    def test_registry_values(self):
-        r = self.subclass.registry
-        f = self.function
+    def test_registry_keys(self):
+        self.check_registry_keys(self.subclass.registry, self.function)
+
+    def check_registry_values(self, r, f):
         assert all(
             r[f][backend][prt.wildcard] == self.values[backend]
             for backend in self.backends
         )
 
-    def test_factory(self):
-        s = self.subclass
+    def test_registry_values(self):
+        self.check_registry_values(self.subclass.registry, self.function)
+
+    @staticmethod
+    def check_factory(s):
         shape = (3, 4, 5)
         so = StorageOptions()
 
@@ -97,6 +99,9 @@ class _TestAllocator(abc.ABC):
             assert all(it1 == it2 for it1, it2 in zip(obj.shape, shape))
             assert obj.dtype == so.dtype
             assert obj.backend == gt_backend
+
+    def test_factory(self):
+        self.check_factory(self.subclass)
 
 
 class TestEmpty(_TestAllocator):

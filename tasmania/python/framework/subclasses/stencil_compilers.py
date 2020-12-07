@@ -25,7 +25,7 @@ import numba
 import gt4py as gt
 
 from tasmania.python.framework.options import BackendOptions
-from tasmania.python.framework.stencil_compiler import stencil_compiler
+from tasmania.python.framework.stencil import stencil_compiler
 from tasmania.python.utils.utils import get_gt_backend
 
 

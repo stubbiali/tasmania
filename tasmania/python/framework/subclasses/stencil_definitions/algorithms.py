@@ -24,10 +24,10 @@ import numpy as np
 
 from gt4py import gtscript
 
-from tasmania.python.framework.stencil_compiler import stencil_definition
+from tasmania.python.framework.stencil import stencil_definition
 
 
-@stencil_definition.register(backend=("numpy", "cupy"), stencil="relax")
+@stencil_definition.register(backend=("numpy", "cupy"), stencil="irelax")
 def irelax_numpy(in_gamma, in_phi_ref, inout_phi, *, origin, domain, **kwargs):
     idx = tuple(slice(o, o + d) for o, d in zip(origin, domain))
     inout_phi[idx] = np.where(

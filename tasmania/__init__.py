@@ -84,7 +84,7 @@ from tasmania.python.framework.sequential_tendency_splitting import (
 from tasmania.python.framework.sequential_update_splitting import (
     SequentialUpdateSplitting,
 )
-from tasmania.python.framework.stencil_compiler import (
+from tasmania.python.framework.stencil import (
     stencil_compiler,
     stencil_definition,
     stencil_subroutine,

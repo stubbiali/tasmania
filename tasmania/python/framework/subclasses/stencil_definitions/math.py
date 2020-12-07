@@ -29,7 +29,7 @@ except ImportError:
 
 from gt4py import gtscript
 
-from tasmania.python.framework.stencil_compiler import stencil_definition
+from tasmania.python.framework.stencil import stencil_definition
 
 
 @stencil_definition.register(backend=("numpy", "cupy"), stencil="abs")
@@ -166,7 +166,7 @@ def iclip_numpy(inout_field, *, origin, domain, **kwargs):
 
 
 @stencil_definition.register(backend="cupy", stencil="iclip")
-def iclip_numpy(inout_field, *, origin, domain, **kwargs):
+def iclip_cupy(inout_field, *, origin, domain, **kwargs):
     idx = tuple(slice(o, o + d) for o, d in zip(origin, domain))
     inout_field[idx] = cp.where(inout_field[idx] > 0, inout_field[idx], 0)
 

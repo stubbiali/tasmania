@@ -22,7 +22,7 @@
 #
 from gt4py import gtscript
 
-from tasmania.python.framework.stencil_compiler import stencil_definition
+from tasmania.python.framework.stencil import stencil_definition
 
 
 @stencil_definition.register(backend=("numpy", "cupy"), stencil="copy")
