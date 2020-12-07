@@ -27,6 +27,7 @@ from hypothesis import (
 )
 import pytest
 
+from tasmania.python.framework.options import BackendOptions, StorageOptions
 from tasmania.python.physics.static_energy import (
     DryStaticEnergy,
     MoistStaticEnergy,
@@ -108,6 +109,9 @@ def test_dry(data, backend, dtype):
     # ========================================
     # test bed
     # ========================================
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, default_origin=default_origin)
+
     state = {
         "time": time,
         "air_temperature": get_dataarray_3d(
@@ -129,10 +133,9 @@ def test_dry(data, backend, dtype):
         grid_type,
         height_on_interface_levels=False,
         backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
+        backend_options=bo,
         storage_shape=storage_shape,
-        rebuild=False,
+        storage_options=so,
     )
 
     diagnostics = comp(state)
@@ -160,10 +163,9 @@ def test_dry(data, backend, dtype):
         grid_type,
         height_on_interface_levels=True,
         backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
+        backend_options=bo,
         storage_shape=storage_shape,
-        rebuild=False,
+        storage_options=so,
     )
 
     diagnostics = comp(state)
@@ -248,6 +250,9 @@ def test_moist(data, backend, dtype):
     # ========================================
     # test bed
     # ========================================
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, default_origin=default_origin)
+
     state = {
         "time": time,
         "montgomery_potential": get_dataarray_3d(
@@ -266,10 +271,9 @@ def test_moist(data, backend, dtype):
         domain,
         grid_type,
         backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
+        backend_options=bo,
         storage_shape=storage_shape,
-        rebuild=False,
+        storage_options=so,
     )
 
     diagnostics = comp(state)

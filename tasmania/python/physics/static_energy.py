@@ -22,22 +22,26 @@
 #
 import numpy as np
 from sympl import DataArray
-from typing import Mapping, Optional, TYPE_CHECKING
+from typing import Mapping, Optional, Sequence, TYPE_CHECKING
 
 from gt4py import gtscript
 
 from tasmania.python.framework.base_components import DiagnosticComponent
+from tasmania.python.framework.tag import stencil_definition
 from tasmania.python.utils import taz_types
 from tasmania.python.utils.data_utils import get_physical_constants
-from tasmania.python.utils.storage_utils import get_storage_shape, zeros
-from tasmania.python.utils.utils import get_gt_backend, is_gt
+from tasmania.python.utils.storage_utils import get_storage_shape
 
 if TYPE_CHECKING:
     from tasmania.python.domain.domain import Domain
+    from tasmania.python.framework.options import (
+        BackendOptions,
+        StorageOptions,
+    )
 
 
 class DryStaticEnergy(DiagnosticComponent):
-    """ Diagnose the dry static energy. """
+    """Diagnose the dry static energy."""
 
     # default values for the physical constants used in the class
     _d_physical_constants = {
@@ -57,21 +61,21 @@ class DryStaticEnergy(DiagnosticComponent):
         physical_constants: Optional[Mapping[str, DataArray]] = None,
         *,
         backend: str = "numpy",
-        backend_opts: Optional[taz_types.options_dict_t] = None,
-        dtype: taz_types.dtype_t = np.float64,
-        build_info: Optional[taz_types.options_dict_t] = None,
-        exec_info: Optional[taz_types.mutable_options_dict_t] = None,
-        default_origin: Optional[taz_types.triplet_int_t] = None,
-        rebuild: bool = False,
-        storage_shape: Optional[taz_types.triplet_int_t] = None,
-        managed_memory: bool = False
+        backend_options: Optional["BackendOptions"] = None,
+        storage_shape: Optional[Sequence[int]] = None,
+        storage_options: Optional["StorageOptions"] = None
     ) -> None:
         # keep track of input arguments needed at run-time
         self._stgz = height_on_interface_levels
-        self._exec_info = exec_info
 
         # call parent's constructor
-        super().__init__(domain, grid_type)
+        super().__init__(
+            domain,
+            grid_type,
+            backend=backend,
+            backend_options=backend_options,
+            storage_options=storage_options,
+        )
 
         # set physical parameters values
         pcs = get_physical_constants(
@@ -86,32 +90,18 @@ class DryStaticEnergy(DiagnosticComponent):
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
         storage_shape = get_storage_shape(storage_shape, (nx, ny, nz))
 
-        # allocate the gt4py storage storing the output
-        self._out_dse = zeros(
-            storage_shape,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-            managed_memory=managed_memory,
-        )
+        # allocate the storage collecting the output
+        self._out_dse = self.zeros(shape=storage_shape)
 
-        if is_gt(backend):
-            # instantiate the underlying gt4py stencil object
-            self._stencil = gtscript.stencil(
-                definition=self._stencil_gt_defs,
-                backend=get_gt_backend(backend),
-                build_info=build_info,
-                rebuild=rebuild,
-                dtypes={"dtype": dtype},
-                externals={
-                    "height_on_interface_levels": self._stgz,
-                    "g": pcs["gravitational_acceleration"],
-                    "cp": pcs["specific_heat_of_dry_air_at_constant_pressure"],
-                },
-                **(backend_opts or {})
-            )
-        else:
-            self._stencil = self._stencil_numpy
+        # instantiate the underlying stencil object
+        dtype = self.storage_options.dtype
+        self.backend_options.dtypes = {"dtype": dtype}
+        self.backend_options.externals = {
+            "height_on_interface_levels": self._stgz,
+            "g": pcs["gravitational_acceleration"],
+            "cp": pcs["specific_heat_of_dry_air_at_constant_pressure"],
+        }
+        self._stencil = self.compile("static_energy")
 
     @property
     def input_properties(self) -> taz_types.properties_dict_t:
@@ -160,7 +150,7 @@ class DryStaticEnergy(DiagnosticComponent):
             out_dse=out_dse,
             origin=(0, 0, 0),
             domain=(nx, ny, nz),
-            exec_info=self._exec_info,
+            exec_info=self.backend_options.exec_info,
             validate_args=False,
         )
 
@@ -168,6 +158,7 @@ class DryStaticEnergy(DiagnosticComponent):
 
         return diagnostics
 
+    @stencil_definition(backend=("numpy", "cupy"), stencil="static_energy")
     def _stencil_numpy(
         self,
         in_t: np.ndarray,
@@ -193,7 +184,8 @@ class DryStaticEnergy(DiagnosticComponent):
             )
 
     @staticmethod
-    def _stencil_gt_defs(
+    @stencil_definition(backend="gt4py*", stencil="static_energy")
+    def _stencil_gt4py(
         in_t: gtscript.Field["dtype"],
         in_h: gtscript.Field["dtype"],
         out_dse: gtscript.Field["dtype"],
@@ -210,7 +202,7 @@ class DryStaticEnergy(DiagnosticComponent):
 
 
 class MoistStaticEnergy(DiagnosticComponent):
-    """ Diagnose the moist static energy. """
+    """Diagnose the moist static energy."""
 
     # default values for the physical constants used in the class
     _d_physical_constants = {
@@ -226,20 +218,18 @@ class MoistStaticEnergy(DiagnosticComponent):
         physical_constants: Optional[Mapping[str, DataArray]] = None,
         *,
         backend: str = "numpy",
-        backend_opts: Optional[taz_types.options_dict_t] = None,
-        dtype: taz_types.dtype_t = np.float64,
-        build_info: Optional[taz_types.options_dict_t] = None,
-        exec_info: Optional[taz_types.mutable_options_dict_t] = None,
-        default_origin: Optional[taz_types.triplet_int_t] = None,
-        rebuild: bool = False,
-        storage_shape: Optional[taz_types.triplet_int_t] = None,
-        managed_memory: bool = False,
+        backend_options: Optional["BackendOptions"] = None,
+        storage_shape: Optional[Sequence[int]] = None,
+        storage_options: Optional["StorageOptions"] = None
     ) -> None:
-        # keep track of input arguments needed at run-time
-        self._exec_info = exec_info
-
         # call parent's constructor
-        super().__init__(domain, grid_type)
+        super().__init__(
+            domain,
+            grid_type,
+            backend=backend,
+            backend_options=backend_options,
+            storage_options=storage_options,
+        )
 
         # set physical parameters values
         pcs = get_physical_constants(
@@ -251,30 +241,16 @@ class MoistStaticEnergy(DiagnosticComponent):
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
         storage_shape = get_storage_shape(storage_shape, (nx, ny, nz))
 
-        # allocate the gt4py storage storing the output
-        self._out_mse = zeros(
-            storage_shape,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-            managed_memory=managed_memory,
-        )
+        # allocate the storage collecting the output
+        self._out_mse = self.zeros(shape=storage_shape)
 
-        if is_gt(backend):
-            # instantiate the underlying gt4py stencil object
-            self._stencil = gtscript.stencil(
-                definition=self._stencil_gt_defs,
-                backend=get_gt_backend(backend),
-                build_info=build_info,
-                rebuild=rebuild,
-                dtypes={"dtype": dtype},
-                externals={
-                    "lhvw": pcs["latent_heat_of_vaporization_of_water"]
-                },
-                **(backend_opts or {})
-            )
-        else:
-            self._stencil = self._stencil_numpy
+        # instantiate the underlying stencil object
+        dtype = self.storage_options.dtype
+        self.backend_options.dtypes = {"dtype": dtype}
+        self.backend_options.externals = {
+            "lhvw": pcs["latent_heat_of_vaporization_of_water"]
+        }
+        self._stencil = self.compile("static_energy")
 
     @property
     def input_properties(self) -> taz_types.properties_dict_t:
@@ -317,7 +293,7 @@ class MoistStaticEnergy(DiagnosticComponent):
             out_mse=out_mse,
             origin=(0, 0, 0),
             domain=(nx, ny, nz),
-            exec_info=self._exec_info,
+            exec_info=self.backend_options.exec_info,
             validate_args=False,
         )
 
@@ -325,6 +301,7 @@ class MoistStaticEnergy(DiagnosticComponent):
 
         return diagnostics
 
+    @stencil_definition(backend=("numpy", "cupy"), stencil="static_energy")
     def _stencil_numpy(
         self,
         in_dse: np.ndarray,
@@ -342,7 +319,8 @@ class MoistStaticEnergy(DiagnosticComponent):
         out_mse[i, j, k] = in_dse[i, j, k] + self._lhvw * in_qv[i, j, k]
 
     @staticmethod
-    def _stencil_gt_defs(
+    @stencil_definition(backend="gt4py*", stencil="static_energy")
+    def _stencil_gt4py(
         in_dse: gtscript.Field["dtype"],
         in_qv: gtscript.Field["dtype"],
         out_mse: gtscript.Field["dtype"],
