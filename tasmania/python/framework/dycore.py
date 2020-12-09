@@ -21,7 +21,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 import abc
-import numpy as np
 from sympl import (
     DiagnosticComponent,
     DiagnosticComponentComposite as SymplDiagnosticComponentComposite,
@@ -33,6 +32,7 @@ from sympl import (
 from sympl._core.base_components import InputChecker, OutputChecker
 from typing import Optional, Sequence, TYPE_CHECKING, Union
 
+from tasmania.python.framework.base_components import DomainComponent
 from tasmania.python.framework.composite import (
     DiagnosticComponentComposite as TasmaniaDiagnosticComponentComposite,
 )
@@ -54,11 +54,15 @@ if TYPE_CHECKING:
     from tasmania.python.domain.domain import Domain
     from tasmania.python.domain.grid import Grid
     from tasmania.python.domain.horizontal_boundary import HorizontalBoundary
+    from tasmania.python.framework.options import (
+        BackendOptions,
+        StorageOptions,
+    )
 
 
-class DynamicalCore(abc.ABC):
-    """ A dynamical core which implements a multi-stage time-marching scheme
-    coupled with some form of partial time-splitting (i.e. substepping). """
+class DynamicalCore(DomainComponent, abc.ABC):
+    """A dynamical core which implements a multi-stage time-marching scheme
+    coupled with some form of partial time-splitting (i.e. substepping)."""
 
     allowed_tendency_type = (
         TendencyComponent,
@@ -95,10 +99,8 @@ class DynamicalCore(abc.ABC):
         ] = None,
         *,
         backend: str = "numpy",
-        backend_opts: Optional[taz_types.options_dict_t] = None,
-        dtype: taz_types.dtype_t = np.float64,
-        build_info: Optional[taz_types.options_dict_t] = None,
-        rebuild: bool = False
+        backend_options: Optional["BackendOptions"] = None,
+        storage_options: Optional["StorageOptions"] = None
     ) -> None:
         """
         Parameters
@@ -163,24 +165,12 @@ class DynamicalCore(abc.ABC):
             provisional state.
         backend : `str`, optional
             The backend.
-        backend_opts : `dict`, optional
-            Dictionary of backend-specific options.
-        dtype : `data-type`, optional
-            Data type of the storages.
-        build_info : `dict`, optional
-            Dictionary of building options.
-        rebuild : `bool`, optional
-            ``True`` to trigger the stencils compilation at any class
-            instantiation, ``False`` to rely on the caching mechanism
-            implemented by the backend.
+        backend_options : `BackendOptions`, optional
+            Backend-specific options.
+        storage_options : `StorageOptions`, optional
+            Storage-related options.
         """
-        self._grid = (
-            domain.physical_grid
-            if grid_type == "physical"
-            else domain.numerical_grid
-        )
-        self._hb = domain.horizontal_boundary
-        self._dtype = dtype
+        super().__init__(domain, grid_type)
 
         self._inter_tc = intermediate_tendency_component
         if self._inter_tc is not None:
@@ -241,10 +231,8 @@ class DynamicalCore(abc.ABC):
         # instantiate the dictionary operator
         self._dict_op = DataArrayDictOperator(
             backend=backend,
-            backend_opts=backend_opts,
-            build_info=build_info,
-            dtype=self._dtype,
-            rebuild=rebuild,
+            backend_options=backend_options,
+            storage_options=storage_options,
         )
 
         # allocate the output state
