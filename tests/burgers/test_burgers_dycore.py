@@ -30,6 +30,7 @@ from hypothesis import (
 import pytest
 
 from tasmania.python.burgers.dynamics.dycore import BurgersDynamicalCore
+from tasmania.python.framework.options import BackendOptions, StorageOptions
 from tasmania.python.utils.utils import is_gt
 
 from tests.conf import (
@@ -99,15 +100,17 @@ def test_forward_euler(data, backend, dtype):
     # ========================================
     # test
     # ========================================
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, default_origin=default_origin)
+
     dycore = BurgersDynamicalCore(
         domain,
         intermediate_tendency_component=None,
         time_integration_scheme="forward_euler",
         flux_scheme="first_order",
         backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-        rebuild=False,
+        backend_options=bo,
+        storage_options=so,
     )
 
     domain.horizontal_boundary.reference_state = state
@@ -203,15 +206,17 @@ def test_rk2(data, backend, dtype):
     # ========================================
     # test
     # ========================================
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, default_origin=default_origin)
+
     dycore = BurgersDynamicalCore(
         domain,
         intermediate_tendency_component=None,
         time_integration_scheme="rk2",
         flux_scheme="third_order",
         backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-        rebuild=False,
+        backend_options=bo,
+        storage_options=so,
     )
 
     domain.horizontal_boundary.reference_state = state
@@ -328,15 +333,17 @@ def test_rk3ws(data, backend, dtype):
     # ========================================
     # test
     # ========================================
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, default_origin=default_origin)
+
     dycore = BurgersDynamicalCore(
         domain,
         intermediate_tendency_component=None,
         time_integration_scheme="rk3ws",
         flux_scheme="fifth_order",
         backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-        rebuild=False,
+        backend_options=bo,
+        storage_options=so,
     )
 
     domain.horizontal_boundary.reference_state = state

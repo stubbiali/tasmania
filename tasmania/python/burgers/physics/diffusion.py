@@ -20,17 +20,19 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-import numpy as np
 from sympl import DataArray
 from typing import Optional, TYPE_CHECKING, Tuple
 
 from tasmania.python.dwarfs.horizontal_diffusion import HorizontalDiffusion
 from tasmania.python.framework.base_components import TendencyComponent
 from tasmania.python.utils import taz_types
-from tasmania.python.utils.storage_utils import zeros
 
 if TYPE_CHECKING:
     from tasmania.python.domain.domain import Domain
+    from tasmania.python.framework.options import (
+        BackendOptions,
+        StorageOptions,
+    )
 
 
 class BurgersHorizontalDiffusion(TendencyComponent):
@@ -47,13 +49,8 @@ class BurgersHorizontalDiffusion(TendencyComponent):
         diffusion_coeff: DataArray,
         *,
         backend: str = "numpy",
-        backend_opts: Optional[taz_types.options_dict_t] = None,
-        dtype: taz_types.dtype_t = np.float64,
-            build_info: Optional[taz_types.options_dict_t] = None,
-        exec_info: Optional[taz_types.mutable_options_dict_t] = None,
-        default_origin: Optional[taz_types.triplet_int_t] = None,
-        rebuild: bool = False,
-        managed_memory: bool = False,
+        backend_options: Optional["BackendOptions"] = None,
+        storage_options: Optional["StorageOptions"] = None,
         **kwargs
     ) -> None:
         """
@@ -72,28 +69,21 @@ class BurgersHorizontalDiffusion(TendencyComponent):
             coefficient. The units should be compatible with 'm^2 s^-1'.
         backend : `str`, optional
             The backend.
-        backend_opts : `dict`, optional
-            Dictionary of backend-specific options.
-        dtype : `data-type`, optional
-            Data type of the storages.
-        build_info : `dict`, optional
-            Dictionary of building options.
-        exec_info : `dict`, optional
-            Dictionary which will store statistics and diagnostics gathered at
-            run time.
-        default_origin : `tuple[int]`, optional
-            Storage default origin.
-        rebuild : `bool`, optional
-            ``True`` to trigger the stencils compilation at any class
-            instantiation, ``False`` to rely on the caching mechanism
-            implemented by the backend.
-        managed_memory : `bool`, optional
-            ``True`` to allocate the storages as managed memory,
-            ``False`` otherwise.
+        backend_options : `BackendOptions`, optional
+            Backend-specific options.
+        storage_options : `StorageOptions`, optional
+            Storage-related options.
         kwargs :
             Keyword arguments to be broadcast to :class:`sympl.TendencyComponent`.
         """
-        super().__init__(domain, grid_type, **kwargs)
+        super().__init__(
+            domain,
+            grid_type,
+            backend=backend,
+            backend_options=backend_options,
+            storage_options=storage_options,
+            **kwargs
+        )
 
         nx, ny = self.grid.grid_xy.nx, self.grid.grid_xy.ny
         dx = self.grid.grid_xy.dx.to_units("m").values.item()
@@ -105,33 +95,18 @@ class BurgersHorizontalDiffusion(TendencyComponent):
             dx,
             dy,
             diffusion_coeff=diffusion_coeff.to_units("m^2 s^-1").values.item(),
-            diffusion_coeff_max=diffusion_coeff.to_units("m^2 s^-1").values.item(),
+            diffusion_coeff_max=diffusion_coeff.to_units(
+                "m^2 s^-1"
+            ).values.item(),
             diffusion_damp_depth=0,
             nb=self.horizontal_boundary.nb,
             backend=backend,
-            backend_opts=backend_opts,
-            dtype=dtype,
-            build_info=build_info,
-            exec_info=exec_info,
-            default_origin=default_origin,
-            rebuild=rebuild,
-            managed_memory=managed_memory,
+            backend_options=backend_options,
+            storage_options=storage_options,
         )
 
-        self._out_u_tnd = zeros(
-            (nx, ny, 1),
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-            managed_memory=managed_memory,
-        )
-        self._out_v_tnd = zeros(
-            (nx, ny, 1),
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-            managed_memory=managed_memory,
-        )
+        self._out_u_tnd = self.zeros(shape=(nx, ny, 1))
+        self._out_v_tnd = self.zeros(shape=(nx, ny, 1))
 
     @property
     def input_properties(self) -> taz_types.properties_dict_t:
@@ -161,7 +136,10 @@ class BurgersHorizontalDiffusion(TendencyComponent):
         self._diffuser(state["x_velocity"], self._out_u_tnd)
         self._diffuser(state["y_velocity"], self._out_v_tnd)
 
-        tendencies = {"x_velocity": self._out_u_tnd, "y_velocity": self._out_v_tnd}
+        tendencies = {
+            "x_velocity": self._out_u_tnd,
+            "y_velocity": self._out_v_tnd,
+        }
         diagnostics = {}
 
         return tendencies, diagnostics

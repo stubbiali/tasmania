@@ -20,6 +20,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+import functools
 import numpy as np
 import pint
 from sympl import DataArray
@@ -30,11 +31,13 @@ try:
 except ImportError:
     cp = np
 
+from tasmania.python.framework.allocators import zeros
+from tasmania.python.framework.options import StorageOptions
+from tasmania.python.framework.stencil import StencilFactory
 from tasmania.python.utils import taz_types
 from tasmania.python.utils.storage_utils import (
     get_asarray_function,
     get_dataarray_3d,
-    zeros,
 )
 
 if TYPE_CHECKING:
@@ -42,7 +45,7 @@ if TYPE_CHECKING:
 
 
 class ZhaoSolutionFactory:
-    """ Factory of valid velocity fields for the Zhao test case. """
+    """Factory of valid velocity fields for the Zhao test case."""
 
     def __init__(
         self, initial_time: taz_types.datetime_t, eps: DataArray
@@ -157,8 +160,8 @@ class ZhaoSolutionFactory:
         return factor * tmp
 
 
-class ZhaoStateFactory:
-    """ Factory of valid states for the Zhao test case. """
+class ZhaoStateFactory(StencilFactory):
+    """Factory of valid states for the Zhao test case."""
 
     def __init__(
         self,
@@ -166,9 +169,7 @@ class ZhaoStateFactory:
         eps: DataArray,
         *,
         backend: str = "numpy",
-        dtype: taz_types.dtype_t = np.float64,
-        default_origin: Optional[taz_types.triplet_int_t] = None,
-        managed_memory: bool = False
+        storage_options: Optional["StorageOptions"] = None
     ) -> None:
         """
         Parameters
@@ -180,19 +181,11 @@ class ZhaoStateFactory:
             The units should be compatible with 'm s^-2'.
         backend : `str`, optional
             The backend.
-        dtype : `data-type`, optional
-            Data type of the storages.
-        default_origin : `tuple[int]`, optional
-            Storage default origin.
-        managed_memory : `bool`, optional
-            ``True`` to allocate the storages as managed memory,
-            ``False`` otherwise.
+        storage_options : `StorageOptions`, optional
+            Storage-related options.
         """
+        super().__init__(backend=backend, storage_options=storage_options)
         self._solution_factory = ZhaoSolutionFactory(initial_time, eps)
-        self._backend = backend
-        self._dtype = dtype
-        self._default_origin = default_origin
-        self._managed_memory = managed_memory
 
     def __call__(
         self, time: taz_types.datetime_t, grid: "Grid"
@@ -211,43 +204,27 @@ class ZhaoStateFactory:
             The computed model state dictionary.
         """
         nx, ny = grid.nx, grid.ny
-        backend = self._backend
-        dtype = self._dtype
-        default_origin = self._default_origin
-        managed_memory = self._managed_memory
 
-        asarray = get_asarray_function(backend)
+        asarray = self.asarray()
 
-        u = zeros(
-            (nx, ny, 1),
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-            managed_memory=managed_memory,
-        )
+        u = self.zeros(shape=(nx, ny, 1))
         u[...] = asarray(
             self._solution_factory(time, grid, field_name="x_velocity")
         )
         u_da = get_dataarray_3d(
             u, grid, "m s^-1", "x_velocity", set_coordinates=False
         )
-        u_da.attrs["backend"] = backend
-        u_da.attrs["default_origin"] = default_origin
+        # u_da.attrs["backend"] = backend
+        # u_da.attrs["default_origin"] = default_origin
 
-        v = zeros(
-            (nx, ny, 1),
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-            managed_memory=managed_memory,
-        )
+        v = self.zeros(shape=(nx, ny, 1))
         v[...] = asarray(
             self._solution_factory(time, grid, field_name="y_velocity")
         )
         v_da = get_dataarray_3d(
             v, grid, "m s^-1", "y_velocity", set_coordinates=False
         )
-        v_da.attrs["backend"] = backend
-        v_da.attrs["default_origin"] = default_origin
+        # v_da.attrs["backend"] = backend
+        # v_da.attrs["default_origin"] = default_origin
 
         return {"time": time, "x_velocity": u_da, "y_velocity": v_da}

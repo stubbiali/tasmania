@@ -34,6 +34,7 @@ from tasmania.python.burgers.dynamics.stepper import (
     RK2,
     RK3WS,
 )
+from tasmania.python.framework.options import BackendOptions, StorageOptions
 from tasmania.python.utils.storage_utils import deepcopy_array_dict
 
 from tests.conf import (
@@ -118,15 +119,17 @@ def test_forward_euler(data, backend, dtype):
     # ========================================
     # test
     # ========================================
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, default_origin=default_origin)
+
     bs = BurgersStepper.factory(
         "forward_euler",
         grid.grid_xy,
         nb,
         "first_order",
         backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-        rebuild=False,
+        backend_options=bo,
+        storage_options=so,
     )
 
     assert isinstance(bs, ForwardEuler)
@@ -231,15 +234,17 @@ def test_rk2(data, backend, dtype):
     # ========================================
     # test
     # ========================================
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, default_origin=default_origin)
+
     bs = BurgersStepper.factory(
         "rk2",
         grid.grid_xy,
         nb,
         "third_order",
         backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-        rebuild=False,
+        backend_options=bo,
+        storage_options=so,
     )
 
     assert isinstance(bs, RK2)
@@ -371,15 +376,17 @@ def test_rk3ws(data, backend, dtype):
     # ========================================
     # test
     # ========================================
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, default_origin=default_origin)
+
     bs = BurgersStepper.factory(
         "rk3ws",
         grid.grid_xy,
         nb,
         "fifth_order",
         backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-        rebuild=False,
+        backend_options=bo,
+        storage_options=so,
     )
 
     assert isinstance(bs, RK2)

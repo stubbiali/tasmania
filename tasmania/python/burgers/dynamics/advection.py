@@ -26,19 +26,21 @@ from typing import Tuple
 
 from gt4py import gtscript
 
+from tasmania.python.framework.register import factorize, register
+from tasmania.python.framework.stencil import StencilFactory
+from tasmania.python.framework.tag import stencil_subroutine
 from tasmania.python.utils import taz_types
-from tasmania.python.utils.utils import get_gt_backend, is_gt
 
 
-class BurgersAdvection(abc.ABC):
-    """ A discretizer for the 2-D Burgers advection flux. """
+class BurgersAdvection(StencilFactory, abc.ABC):
+    """A discretizer for the 2-D Burgers advection flux."""
+
+    registry = {}
 
     extent: int = 0
 
-    def __init__(self, backend: str) -> None:
-        self.call = self.call_gt if is_gt(backend) else self.call_numpy
-
     @staticmethod
+    @stencil_subroutine(backend=("numpy", "cupy"), stencil="advection")
     @abc.abstractmethod
     def call_numpy(
         dx: float, dy: float, u: np.ndarray, v: np.ndarray
@@ -72,9 +74,10 @@ class BurgersAdvection(abc.ABC):
         pass
 
     @staticmethod
+    @stencil_subroutine(backend="gt4py*", stencil="advection")
     @gtscript.function
     @abc.abstractmethod
-    def call_gt(
+    def call_gt4py(
         dx: float, dy: float, u: taz_types.gtfield_t, v: taz_types.gtfield_t
     ) -> "Tuple[taz_types.gtfield_t, taz_types.gtfield_t, taz_types.gtfield_t, taz_types.gtfield_t]":
         """
@@ -106,26 +109,15 @@ class BurgersAdvection(abc.ABC):
 
     @staticmethod
     def factory(flux_scheme: str, backend: str) -> "BurgersAdvection":
-        if flux_scheme == "first_order":
-            return _FirstOrder(backend)
-        elif flux_scheme == "second_order":
-            return _SecondOrder(backend)
-        elif flux_scheme == "third_order":
-            return _ThirdOrder(backend)
-        elif flux_scheme == "fourth_order":
-            return _FourthOrder(backend)
-        elif flux_scheme == "fifth_order":
-            return _FifthOrder(backend)
-        elif flux_scheme == "sixth_order":
-            return _SixthOrder(backend)
-        else:
-            raise RuntimeError()
+        return factorize(flux_scheme, BurgersAdvection, (backend,))
 
 
+@register("first_order")
 class _FirstOrder(BurgersAdvection):
     extent = 1
 
     @staticmethod
+    @stencil_subroutine(backend=("numpy", "cupy"), stencil="advection")
     def call_numpy(dx, dy, u, v):
         abs_u = np.abs(u[1:-1, 1:-1])
         abs_v = np.abs(v[1:-1, 1:-1])
@@ -154,8 +146,9 @@ class _FirstOrder(BurgersAdvection):
         return adv_u_x, adv_u_y, adv_v_x, adv_v_y
 
     @staticmethod
+    @stencil_subroutine(backend="gt4py*", stencil="advection")
     @gtscript.function
-    def call_gt(dx, dy, u, v):
+    def call_gt4py(dx, dy, u, v):
         abs_u = u if u > 0 else -u
         abs_v = v if v > 0 else -v
 
@@ -183,10 +176,12 @@ class _FirstOrder(BurgersAdvection):
         return adv_u_x, adv_u_y, adv_v_x, adv_v_y
 
 
+@register("second_order")
 class _SecondOrder(BurgersAdvection):
     extent = 1
 
     @staticmethod
+    @stencil_subroutine(backend=("numpy", "cupy"), stencil="advection")
     def call_numpy(dx, dy, u, v):
         adv_u_x = u[1:-1, 1:-1] / (2.0 * dx) * (u[2:, 1:-1] - u[:-2, 1:-1])
         adv_u_y = v[1:-1, 1:-1] / (2.0 * dy) * (u[1:-1, 2:] - u[1:-1, :-2])
@@ -196,8 +191,9 @@ class _SecondOrder(BurgersAdvection):
         return adv_u_x, adv_u_y, adv_v_x, adv_v_y
 
     @staticmethod
+    @stencil_subroutine(backend="gt4py*", stencil="advection")
     @gtscript.function
-    def call_gt(dx, dy, u, v):
+    def call_gt4py(dx, dy, u, v):
         adv_u_x = u[0, 0, 0] / (2.0 * dx) * (u[+1, 0, 0] - u[-1, 0, 0])
         adv_u_y = v[0, 0, 0] / (2.0 * dy) * (u[0, +1, 0] - u[0, -1, 0])
         adv_v_x = u[0, 0, 0] / (2.0 * dx) * (v[+1, 0, 0] - v[-1, 0, 0])
@@ -206,10 +202,12 @@ class _SecondOrder(BurgersAdvection):
         return adv_u_x, adv_u_y, adv_v_x, adv_v_y
 
 
+@register("third_order")
 class _ThirdOrder(BurgersAdvection):
     extent = 2
 
     @staticmethod
+    @stencil_subroutine(backend=("numpy", "cupy"), stencil="advection")
     def call_numpy(dx, dy, u, v):
         abs_u = np.abs(u[2:-2, 2:-2])
         abs_v = np.abs(v[2:-2, 2:-2])
@@ -254,8 +252,9 @@ class _ThirdOrder(BurgersAdvection):
         return adv_u_x, adv_u_y, adv_v_x, adv_v_y
 
     @staticmethod
+    @stencil_subroutine(backend="gt4py*", stencil="advection")
     @gtscript.function
-    def call_gt(dx, dy, u, v):
+    def call_gt4py(dx, dy, u, v):
         abs_u = u if u > 0 else -u
         abs_v = v if v > 0 else -v
 
@@ -295,10 +294,12 @@ class _ThirdOrder(BurgersAdvection):
         return adv_u_x, adv_u_y, adv_v_x, adv_v_y
 
 
+@register("fourth_order")
 class _FourthOrder(BurgersAdvection):
     extent = 2
 
     @staticmethod
+    @stencil_subroutine(backend=("numpy", "cupy"), stencil="advection")
     def call_numpy(dx, dy, u, v):
         adv_u_x = (
             u[2:-2, 2:-2]
@@ -336,8 +337,9 @@ class _FourthOrder(BurgersAdvection):
         return adv_u_x, adv_u_y, adv_v_x, adv_v_y
 
     @staticmethod
+    @stencil_subroutine(backend="gt4py*", stencil="advection")
     @gtscript.function
-    def call_gt(dx, dy, u, v):
+    def call_gt4py(dx, dy, u, v):
         adv_u_x = (
             u[0, 0, 0]
             / (12.0 * dx)
@@ -362,10 +364,12 @@ class _FourthOrder(BurgersAdvection):
         return adv_u_x, adv_u_y, adv_v_x, adv_v_y
 
 
+@register("fifth_order")
 class _FifthOrder(BurgersAdvection):
     extent = 3
 
     @staticmethod
+    @stencil_subroutine(backend=("numpy", "cupy"), stencil="advection")
     def call_numpy(dx, dy, u, v):
         abs_u = np.abs(u[3:-3, 3:-3])
         abs_v = np.abs(v[3:-3, 3:-3])
@@ -414,8 +418,9 @@ class _FifthOrder(BurgersAdvection):
         return adv_u_x, adv_u_y, adv_v_x, adv_v_y
 
     @staticmethod
+    @stencil_subroutine(backend="gt4py*", stencil="advection")
     @gtscript.function
-    def call_gt(dx, dy, u, v):
+    def call_gt4py(dx, dy, u, v):
         abs_u = u if u > 0 else -u
         abs_v = v if v > 0 else -v
 
@@ -463,10 +468,12 @@ class _FifthOrder(BurgersAdvection):
         return adv_u_x, adv_u_y, adv_v_x, adv_v_y
 
 
+@register("sixth_order")
 class _SixthOrder(BurgersAdvection):
     extent = 3
 
     @staticmethod
+    @stencil_subroutine(backend=("numpy", "cupy"), stencil="advection")
     def call_numpy(dx, dy, u, v):
         adv_u_x = (
             u[3:-3, 3:-3]
@@ -508,8 +515,9 @@ class _SixthOrder(BurgersAdvection):
         return adv_u_x, adv_u_y, adv_v_x, adv_v_y
 
     @staticmethod
+    @stencil_subroutine(backend="gt4py*", stencil="advection")
     @gtscript.function
-    def call_gt(dx, dy, u, v):
+    def call_gt4py(dx, dy, u, v):
         adv_u_x = (
             u[0, 0, 0]
             / (60.0 * dx)

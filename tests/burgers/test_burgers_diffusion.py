@@ -29,6 +29,7 @@ from hypothesis import (
 import pytest
 from sympl import DataArray
 
+from tasmania.python.framework.options import BackendOptions, StorageOptions
 from tasmania.python.burgers.physics.diffusion import (
     BurgersHorizontalDiffusion,
 )
@@ -120,6 +121,9 @@ def test_second_order(data, backend, dtype):
     # ========================================
     # test
     # ========================================
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, default_origin=default_origin)
+
     #
     # physical grid
     #
@@ -135,9 +139,8 @@ def test_second_order(data, backend, dtype):
         order,
         DataArray(smooth_coeff, attrs={"units": "m^2 s^-1"}),
         backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-        rebuild=False,
+        backend_options=bo,
+        storage_options=so,
     )
 
     tendencies, diagnostics = pbhd(pstate)
@@ -175,9 +178,8 @@ def test_second_order(data, backend, dtype):
         "second_order",
         DataArray(smooth_coeff, attrs={"units": "m^2 s^-1"}),
         backend=backend,
-        dtype=cgrid.x.dtype,
-        default_origin=default_origin,
-        rebuild=False,
+        backend_options=bo,
+        storage_options=so,
     )
 
     tendencies, diagnostics = cbhd(cstate)
@@ -251,17 +253,13 @@ def test_fourth_order(data, backend, dtype):
 
     pstate = data.draw(
         st_burgers_state(
-            pgrid,
-            backend=backend,
-            default_origin=default_origin,
+            pgrid, backend=backend, default_origin=default_origin
         ),
         label="pstate",
     )
     cstate = data.draw(
         st_burgers_state(
-            cgrid,
-            backend=backend,
-            default_origin=default_origin,
+            cgrid, backend=backend, default_origin=default_origin
         ),
         label="cstate",
     )
@@ -273,6 +271,9 @@ def test_fourth_order(data, backend, dtype):
     # ========================================
     # test
     # ========================================
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, default_origin=default_origin)
+
     #
     # physical grid
     #
@@ -288,9 +289,8 @@ def test_fourth_order(data, backend, dtype):
         order,
         DataArray(smooth_coeff, attrs={"units": "m^2 s^-1"}),
         backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-        rebuild=False,
+        backend_options=bo,
+        storage_options=so,
     )
 
     tendencies, diagnostics = pbhd(pstate)
@@ -328,9 +328,8 @@ def test_fourth_order(data, backend, dtype):
         "fourth_order",
         DataArray(smooth_coeff, attrs={"units": "m^2 s^-1"}),
         backend=backend,
-        dtype=cgrid.x.dtype,
-        default_origin=default_origin,
-        rebuild=False,
+        backend_options=bo,
+        storage_options=so,
     )
 
     tendencies, diagnostics = cbhd(cstate)

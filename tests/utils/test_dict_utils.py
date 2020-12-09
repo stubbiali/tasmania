@@ -29,6 +29,7 @@ from hypothesis import (
 )
 import pytest
 
+from tasmania.python.framework.options import BackendOptions, StorageOptions
 from tasmania.python.utils.dict_utils import DataArrayDictOperator
 from tasmania.python.utils.storage_utils import (
     deepcopy_dataarray_dict,
@@ -103,7 +104,12 @@ def test_copy(data, backend, dtype, subtests):
     # ========================================
     # test bed
     # ========================================
-    op = DataArrayDictOperator(backend=backend, dtype=dtype, rebuild=False)
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, default_origin=default_origin)
+
+    op = DataArrayDictOperator(
+        backend=backend, backend_options=bo, storage_options=so
+    )
 
     shared_keys = tuple(key for key in src if key in dst and key != "time")
     unshared_keys = tuple(
@@ -198,7 +204,12 @@ def test_add(data, backend, dtype, subtests):
     # ========================================
     # test bed
     # ========================================
-    op = DataArrayDictOperator(backend=backend, dtype=dtype, rebuild=False)
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, default_origin=default_origin)
+
+    op = DataArrayDictOperator(
+        backend=backend, backend_options=bo, storage_options=so
+    )
 
     shared_keys = tuple(key for key in dict1 if key in dict2 and key != "time")
     unshared_keys = tuple(
@@ -385,7 +396,12 @@ def test_iadd(data, backend, dtype, subtests):
     # ========================================
     # test bed
     # ========================================
-    op = DataArrayDictOperator(backend=backend, dtype=dtype, rebuild=False)
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, default_origin=default_origin)
+
+    op = DataArrayDictOperator(
+        backend=backend, backend_options=bo, storage_options=so
+    )
 
     shared_keys = tuple(key for key in dict1 if key in dict2 and key != "time")
     unshared_keys = tuple(
@@ -516,7 +532,12 @@ def test_sub(data, backend, dtype, subtests):
     # ========================================
     # test bed
     # ========================================
-    op = DataArrayDictOperator(backend=backend, dtype=dtype, rebuild=False)
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, default_origin=default_origin)
+
+    op = DataArrayDictOperator(
+        backend=backend, backend_options=bo, storage_options=so
+    )
 
     shared_keys = tuple(key for key in dict1 if key in dict2 and key != "time")
     unshared_keys = tuple(
@@ -717,7 +738,12 @@ def test_isub(data, backend, dtype, subtests):
     # ========================================
     # test bed
     # ========================================
-    op = DataArrayDictOperator(backend=backend, dtype=dtype, rebuild=False)
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, default_origin=default_origin)
+
+    op = DataArrayDictOperator(
+        backend=backend, backend_options=bo, storage_options=so
+    )
 
     shared_keys = tuple(key for key in dict1 if key in dict2 and key != "time")
     unshared_keys = tuple(
@@ -838,7 +864,12 @@ def test_scale(data, backend, dtype, subtests):
     # ========================================
     # test bed
     # ========================================
-    op = DataArrayDictOperator(backend=backend, dtype=dtype, rebuild=False)
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, default_origin=default_origin)
+
+    op = DataArrayDictOperator(
+        backend=backend, backend_options=bo, storage_options=so
+    )
 
     #
     # out=None
@@ -927,7 +958,12 @@ def test_iscale(data, backend, dtype, subtests):
     # ========================================
     # test bed
     # ========================================
-    op = DataArrayDictOperator(backend=backend, dtype=dtype, rebuild=False)
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, default_origin=default_origin)
+
+    op = DataArrayDictOperator(
+        backend=backend, backend_options=bo, storage_options=so
+    )
 
     op.iscale(dict1, f, field_properties=field_properties_passed)
 
@@ -1015,7 +1051,12 @@ def test_addsub(data, backend, dtype, subtests):
     # ========================================
     # test bed
     # ========================================
-    op = DataArrayDictOperator(backend=backend, dtype=dtype, rebuild=False)
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, default_origin=default_origin)
+
+    op = DataArrayDictOperator(
+        backend=backend, backend_options=bo, storage_options=so
+    )
 
     shared_keys = tuple(key for key in dict1 if key in dict2 and key != "time")
     shared_keys = tuple(key for key in shared_keys if key in dict3)
@@ -1138,7 +1179,12 @@ def test_iaddsub(data, backend, dtype, subtests):
     # ========================================
     # test bed
     # ========================================
-    op = DataArrayDictOperator(backend=backend, dtype=dtype, rebuild=False)
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, default_origin=default_origin)
+
+    op = DataArrayDictOperator(
+        backend=backend, backend_options=bo, storage_options=so
+    )
 
     shared_keys = tuple(key for key in dict1 if key in dict2 and key != "time")
     shared_keys = tuple(key for key in shared_keys if key in dict3)
@@ -1223,7 +1269,12 @@ def test_fma(data, backend, dtype, subtests):
     # ========================================
     # test bed
     # ========================================
-    op = DataArrayDictOperator(backend=backend, dtype=dtype, rebuild=False)
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, default_origin=default_origin)
+
+    op = DataArrayDictOperator(
+        backend=backend, backend_options=bo, storage_options=so
+    )
 
     shared_keys = tuple(key for key in dict1 if key in dict2 and key != "time")
 
@@ -1342,7 +1393,12 @@ def test_sts_rk2_0(data, backend, dtype, subtests):
     # ========================================
     # test bed
     # ========================================
-    op = DataArrayDictOperator(backend=backend, dtype=dtype, rebuild=False)
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, default_origin=default_origin)
+
+    op = DataArrayDictOperator(
+        backend=backend, backend_options=bo, storage_options=so
+    )
 
     shared_keys = tuple(key for key in dict1 if key in dict2 and key != "time")
 
@@ -1472,7 +1528,12 @@ def test_sts_rk3ws_0(data, backend, dtype, subtests):
     # ========================================
     # test bed
     # ========================================
-    op = DataArrayDictOperator(backend=backend, dtype=dtype, rebuild=False)
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, default_origin=default_origin)
+
+    op = DataArrayDictOperator(
+        backend=backend, backend_options=bo, storage_options=so
+    )
 
     shared_keys = tuple(key for key in dict1 if key in dict2 and key != "time")
 

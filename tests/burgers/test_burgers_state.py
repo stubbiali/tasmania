@@ -31,6 +31,7 @@ import pytest
 from sympl import DataArray
 
 from tasmania.python.burgers.state import ZhaoSolutionFactory, ZhaoStateFactory
+from tasmania.python.framework.options import StorageOptions
 
 from tests.conf import (
     backend as conf_backend,
@@ -125,13 +126,9 @@ def test_zhao_state_factory(data, backend, dtype):
     # ========================================
     # test
     # ========================================
-    zsf = ZhaoStateFactory(
-        init_time,
-        eps,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
+    so = StorageOptions(dtype=dtype, default_origin=default_origin)
+
+    zsf = ZhaoStateFactory(init_time, eps, backend=backend, storage_options=so)
 
     state = zsf(init_time, grid)
 

@@ -33,7 +33,8 @@ from gt4py import gtscript
 from gt4py.gtscript import PARALLEL, computation, interval
 
 from tasmania.python.burgers.dynamics.advection import BurgersAdvection
-from tasmania.python.utils.storage_utils import zeros
+from tasmania.python.framework.allocators import zeros
+from tasmania.python.framework.options import StorageOptions
 from tasmania.python.utils.utils import get_gt_backend, is_gt
 
 from tests.conf import (
@@ -52,7 +53,7 @@ class WrappingStencil:
             backend,
             rebuild=False,
             dtypes={"dtype": dtype},
-            externals={"call_func": advection.call},
+            externals={"call_func": advection.stencil_subroutine("advection")},
         )
         self.stencil = decorator(self.stencil_defs)
 
@@ -258,36 +259,18 @@ def test(data, order, backend, dtype):
     # ========================================
     # test bed
     # ========================================
+    so = StorageOptions(dtype=dtype, default_origin=default_origin)
+
     dx = grid.grid_xy.dx.to_units("m").values.item()
     dy = grid.grid_xy.dy.to_units("m").values.item()
     u = state["x_velocity"].to_units("m s^-1").data
     v = state["y_velocity"].to_units("m s^-1").data
 
     grid_shape = u.shape
-    adv_u_x = zeros(
-        grid_shape,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
-    adv_u_y = zeros(
-        grid_shape,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
-    adv_v_x = zeros(
-        grid_shape,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
-    adv_v_y = zeros(
-        grid_shape,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
+    adv_u_x = zeros(backend, shape=grid_shape, storage_options=so)
+    adv_u_y = zeros(backend, shape=grid_shape, storage_options=so)
+    adv_v_x = zeros(backend, shape=grid_shape, storage_options=so)
+    adv_v_y = zeros(backend, shape=grid_shape, storage_options=so)
 
     if is_gt(backend):
         ws = WrappingStencil(advection, get_gt_backend(backend), dtype)
@@ -298,7 +281,7 @@ def test(data, order, backend, dtype):
             adv_u_y[nb:-nb, nb:-nb],
             adv_v_x[nb:-nb, nb:-nb],
             adv_v_y[nb:-nb, nb:-nb],
-        ) = advection.call(dx, dy, u, v)
+        ) = advection.stencil_subroutine("advection")(dx, dy, u, v)
 
     adv_u_x_val, adv_u_y_val = validation_functions[order](dx, dy, u, v, u)
     adv_v_x_val, adv_v_y_val = validation_functions[order](dx, dy, u, v, v)
