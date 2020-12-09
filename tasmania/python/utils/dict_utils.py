@@ -20,75 +20,42 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-import numpy as np
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 
 from gt4py import gtscript
 
+from tasmania.python.framework.stencil import StencilFactory
 from tasmania.python.utils import taz_types
-from tasmania.python.utils.gtscript_utils import (
-    stencil_copy_defs,
-    stencil_copychange_defs,
-    stencil_add_defs,
-    stencil_iadd_defs,
-    stencil_sub_defs,
-    stencil_isub_defs,
-    stencil_scale_defs,
-    stencil_iscale_defs,
-    stencil_addsub_defs,
-    stencil_iaddsub_defs,
-    stencil_fma_defs,
-    stencil_sts_rk2_0_defs,
-    stencil_sts_rk3ws_0_defs,
-)
 from tasmania.python.utils.storage_utils import deepcopy_dataarray
-from tasmania.python.utils.utils import get_gt_backend, is_gt
+
+if TYPE_CHECKING:
+    from tasmania.python.framework.options import (
+        BackendOptions,
+        StorageOptions,
+    )
 
 
-class DataArrayDictOperator:
-    """ Operate on multiple dictionaries of :class:`sympl.DataArray`. """
+class DataArrayDictOperator(StencilFactory):
+    """Operate on multiple dictionaries of :class:`sympl.DataArray`."""
 
     def __init__(
         self,
         *,
         backend: str = "numpy",
-        backend_opts: Optional[taz_types.options_dict_t] = None,
-        build_info: Optional[taz_types.options_dict_t] = None,
-        dtype: taz_types.dtype_t = np.float64,
-        rebuild: bool = False,
-        **kwargs
+        backend_options: Optional["BackendOptions"] = None,
+        storage_options: Optional["StorageOptions"] = None
     ) -> None:
         """
         Parameters
         ----------
         backend : `str`, optional
             The backend.
-        backend_opts : `dict`, optional
-            Dictionary of backend-specific options.
-        dtype : `data-type`, optional
-            Data type of the storages.
-        build_info : `dict`, optional
-            Dictionary of building options.
-        rebuild : `bool`, optional
-            ``True`` to trigger the stencils compilation at any class
-            instantiation, ``False`` to rely on the caching mechanism
-            implemented by the backend.
-        **kwargs :
-            Catch-all for unused keyword arguments.
+        backend_options : `BackendOptions`, optional
+            Backend-specific options.
+        storage_options : `StorageOptions`, optional
+            Storage-related options.
         """
-        self._gt_powered = is_gt(backend)
-        self._dtype = dtype
-        self._gt_kwargs = (
-            {
-                "backend": get_gt_backend(backend),
-                "build_info": build_info,
-                "dtypes": {"dtype": dtype},
-                "rebuild": rebuild,
-            }
-            if self._gt_powered
-            else {}
-        )
-        self._gt_kwargs.update(backend_opts or {})
+        super().__init__(backend, backend_options, storage_options)
 
         self._stencil_copy = None
         self._stencil_copychange = None
@@ -132,29 +99,23 @@ class DataArrayDictOperator:
             key for key in src if key not in dst and key != "time"
         )
 
-        if self._gt_powered:
-            if self._stencil_copy is None:
-                self._stencil_copy = gtscript.stencil(
-                    definition=stencil_copy_defs, **self._gt_kwargs
-                )
+        if self._stencil_copy is None:
+            dtype = self.storage_options.dtype
+            self.backend_options.dtypes = {"dtype": dtype}
+            self._stencil_copy = self.compile("copy")
 
-            for key in shared_keys:
-                assert "units" in dst[key].attrs
-                src_field = src[key].to_units(dst[key].attrs["units"]).data
-                dst_field = dst[key].data
-                self._stencil_copy(
-                    src=src_field,
-                    dst=dst_field,
-                    origin=(0, 0, 0),
-                    domain=src_field.shape,
-                    validate_args=False
-                )
-        else:
-            for key in shared_keys:
-                assert "units" in dst[key].attrs
-                dst[key].data[...] = (
-                    src[key].to_units(dst[key].attrs["units"]).data
-                )
+        for key in shared_keys:
+            assert "units" in dst[key].attrs
+            src_field = src[key].to_units(dst[key].attrs["units"]).data
+            dst_field = dst[key].data
+            self._stencil_copy(
+                src=src_field,
+                dst=dst_field,
+                origin=(0, 0, 0),
+                domain=src_field.shape,
+                exec_info=self.backend_options.exec_info,
+                validate_args=False,
+            )
 
         if unshared_variables_in_output:
             for key in unshared_keys:
@@ -205,10 +166,10 @@ class DataArrayDictOperator:
         unshared_keys = set(dict1.keys()).symmetric_difference(dict2.keys())
         unshared_keys = unshared_keys.difference(("time",))
 
-        if self._gt_powered and self._stencil_add is None:
-            self._stencil_add = gtscript.stencil(
-                definition=stencil_add_defs, **self._gt_kwargs
-            )
+        if self._stencil_add is None:
+            dtype = self.storage_options.dtype
+            self.backend_options.dtypes = {"dtype": dtype}
+            self._stencil_add = self.compile("add")
 
         for key in shared_keys:
             props = field_properties.get(key, {})
@@ -222,44 +183,36 @@ class DataArrayDictOperator:
             field1 = dict1[key].to_units(units).data
             field2 = dict2[key].to_units(units).data
             out_da.attrs["units"] = units
-
-            if self._gt_powered:
-                self._stencil_add(
-                    in_a=field1,
-                    in_b=field2,
-                    out_c=out_da.data,
-                    origin=(0, 0, 0),
-                    domain=field1.shape,
-                    validate_args=False
-                )
-            else:
-                out_da.data[...] = field1 + field2
-
+            self._stencil_add(
+                in_a=field1,
+                in_b=field2,
+                out_c=out_da.data,
+                origin=(0, 0, 0),
+                domain=field1.shape,
+                exec_info=self.backend_options.exec_info,
+                validate_args=False,
+            )
             out[key] = out_da
 
         if unshared_variables_in_output and len(unshared_keys) > 0:
-            if self._gt_powered and self._stencil_copy is None:
-                self._stencil_copy = gtscript.stencil(
-                    definition=stencil_copy_defs, **self._gt_kwargs
-                )
+            if self._stencil_copy is None:
+                dtype = self.storage_options.dtype
+                self.backend_options.dtypes = {"dtype": dtype}
+                self._stencil_copy = self.compile("copy")
 
             for key in unshared_keys:
                 _dict = dict1 if key in dict1 else dict2
-
                 props = field_properties.get(key, {})
                 units = props.get("units", _dict[key].attrs["units"])
                 if key in out:
-                    if self._gt_powered:
-                        self._stencil_copy(
-                            src=_dict[key].to_units(units).data,
-                            dst=out[key].data,
-                            origin=(0, 0, 0),
-                            domain=_dict[key].shape,
-                            validate_args=False
-                        )
-                    else:
-                        out[key].data[...] = _dict[key].to_units(units).data
-
+                    self._stencil_copy(
+                        src=_dict[key].to_units(units).data,
+                        dst=out[key].data,
+                        origin=(0, 0, 0),
+                        domain=_dict[key].shape,
+                        exec_info=self.backend_options.exec_info,
+                        validate_args=False,
+                    )
                     out[key].attrs["units"] = units
                 else:
                     out[key] = _dict[key].to_units(units)
@@ -302,14 +255,11 @@ class DataArrayDictOperator:
         shared_keys = shared_keys.difference(("time",))
         unshared_keys = set(dict1.keys()).symmetric_difference(dict2.keys())
         unshared_keys = unshared_keys.difference(("time",))
-        # shared_keys = tuple(key for key in dict1 if key in dict2 and key != "time")
-        # unshared_keys = list(key for key in dict1 if key not in dict2 and key != "time")
-        # unshared_keys += list(key for key in dict2 if key not in dict1 and key != "time")
 
-        if self._gt_powered and self._stencil_iadd is None:
-            self._stencil_iadd = gtscript.stencil(
-                definition=stencil_iadd_defs, **self._gt_kwargs
-            )
+        if self._stencil_iadd is None:
+            dtype = self.storage_options.dtype
+            self.backend_options.dtypes = {"dtype": dtype}
+            self._stencil_iadd = self.compile("iadd")
 
         for key in shared_keys:
             props = field_properties.get(key, {})
@@ -317,17 +267,14 @@ class DataArrayDictOperator:
             dict1[key] = dict1[key].to_units(units)
             field1 = dict1[key].data
             field2 = dict2[key].to_units(units).data
-
-            if self._gt_powered:
-                self._stencil_iadd(
-                    inout_a=field1,
-                    in_b=field2,
-                    origin=(0, 0, 0),
-                    domain=field1.shape,
-                    validate_args=False
-                )
-            else:
-                field1 += field2
+            self._stencil_iadd(
+                inout_a=field1,
+                in_b=field2,
+                origin=(0, 0, 0),
+                domain=field1.shape,
+                exec_info=self.backend_options.exec_info,
+                validate_args=False,
+            )
 
         if unshared_variables_in_output and len(unshared_keys) > 0:
             for key in unshared_keys:
@@ -385,10 +332,10 @@ class DataArrayDictOperator:
         unshared_keys = set(dict1.keys()).symmetric_difference(dict2.keys())
         unshared_keys = unshared_keys.difference(("time",))
 
-        if self._gt_powered and self._stencil_sub is None:
-            self._stencil_sub = gtscript.stencil(
-                definition=stencil_sub_defs, **self._gt_kwargs
-            )
+        if self._stencil_sub is None:
+            dtype = self.storage_options.dtype
+            self.backend_options.dtypes = {"dtype": dtype}
+            self._stencil_sub = self.compile("sub")
 
         for key in shared_keys:
             props = field_properties.get(key, {})
@@ -402,31 +349,26 @@ class DataArrayDictOperator:
             field1 = dict1[key].to_units(units).data
             field2 = dict2[key].to_units(units).data
             out_da.attrs["units"] = units
-
-            if self._gt_powered:
-                self._stencil_sub(
-                    in_a=field1,
-                    in_b=field2,
-                    out_c=out_da.data,
-                    origin=(0, 0, 0),
-                    domain=field1.shape,
-                    validate_args=False
-                )
-            else:
-                out_da.data[...] = field1 - field2
-
+            self._stencil_sub(
+                in_a=field1,
+                in_b=field2,
+                out_c=out_da.data,
+                origin=(0, 0, 0),
+                domain=field1.shape,
+                exec_info=self.backend_options.exec_info,
+                validate_args=False,
+            )
             out[key] = out_da
 
         if unshared_variables_in_output and len(unshared_keys) > 0:
-            if self._gt_powered:
-                if self._stencil_copy is None:
-                    self._stencil_copy = gtscript.stencil(
-                        definition=stencil_copy_defs, **self._gt_kwargs
-                    )
-                if self._stencil_copychange is None:
-                    self._stencil_copychange = gtscript.stencil(
-                        definition=stencil_copychange_defs, **self._gt_kwargs
-                    )
+            if self._stencil_copy is None:
+                dtype = self.storage_options.dtype
+                self.backend_options.dtypes = {"dtype": dtype}
+                self._stencil_copy = self.compile("copy")
+            if self._stencil_copychange is None:
+                dtype = self.storage_options.dtype
+                self.backend_options.dtypes = {"dtype": dtype}
+                self._stencil_copychange = self.compile("copychange")
 
             for key in unshared_keys:
                 props = field_properties.get(key, {})
@@ -435,19 +377,14 @@ class DataArrayDictOperator:
                     units = props.get("units", dict1[key].attrs["units"])
 
                     if key in out:
-                        if self._gt_powered:
-                            self._stencil_copy(
-                                src=dict1[key].to_units(units).data,
-                                dst=out[key].data,
-                                origin=(0, 0, 0),
-                                domain=dict1[key].shape,
-                                validate_args=False
-                            )
-                        else:
-                            out[key].data[...] = (
-                                dict1[key].to_units(units).data
-                            )
-
+                        self._stencil_copy(
+                            src=dict1[key].to_units(units).data,
+                            dst=out[key].data,
+                            origin=(0, 0, 0),
+                            domain=dict1[key].shape,
+                            exec_info=self.backend_options.exec_info,
+                            validate_args=False,
+                        )
                         out[key].attrs["units"] = units
                     else:
                         out[key] = dict1[key].to_units(units)
@@ -455,19 +392,14 @@ class DataArrayDictOperator:
                     units = props.get("units", dict2[key].attrs["units"])
 
                     if key in out:
-                        if self._gt_powered:
-                            self._stencil_copychange(
-                                src=dict2[key].to_units(units).data,
-                                dst=out[key].data,
-                                origin=(0, 0, 0),
-                                domain=dict2[key].shape,
-                                validate_args=False
-                            )
-                        else:
-                            out[key].data[...] = (
-                                -dict2[key].to_units(units).data
-                            )
-
+                        self._stencil_copychange(
+                            src=dict2[key].to_units(units).data,
+                            dst=out[key].data,
+                            origin=(0, 0, 0),
+                            domain=dict2[key].shape,
+                            exec_info=self.backend_options.exec_info,
+                            validate_args=False,
+                        )
                         out[key].attrs["units"] = units
                     else:
                         out[key] = dict2[key].to_units(units)
@@ -510,10 +442,10 @@ class DataArrayDictOperator:
         unshared_keys = set(dict1.keys()).symmetric_difference(dict2.keys())
         unshared_keys = unshared_keys.difference(("time",))
 
-        if self._gt_powered and self._stencil_isub is None:
-            self._stencil_isub = gtscript.stencil(
-                definition=stencil_isub_defs, **self._gt_kwargs
-            )
+        if self._stencil_isub is None:
+            dtype = self.storage_options.dtype
+            self.backend_options.dtypes = {"dtype": dtype}
+            self._stencil_isub = self.compile("isub")
 
         for key in shared_keys:
             props = field_properties.get(key, {})
@@ -521,23 +453,20 @@ class DataArrayDictOperator:
             dict1[key] = dict1[key].to_units(units)
             field1 = dict1[key].data
             field2 = dict2[key].to_units(units).data
-
-            if self._gt_powered:
-                self._stencil_isub(
-                    inout_a=field1,
-                    in_b=field2,
-                    origin=(0, 0, 0),
-                    domain=field1.shape,
-                    validate_args=False
-                )
-            else:
-                field1 -= field2
+            self._stencil_isub(
+                inout_a=field1,
+                in_b=field2,
+                origin=(0, 0, 0),
+                domain=field1.shape,
+                exec_info=self.backend_options.exec_info,
+                validate_args=False,
+            )
 
         if unshared_variables_in_output and len(unshared_keys) > 0:
-            if self._gt_powered and self._stencil_iscale is None:
-                self._stencil_iscale = gtscript.stencil(
-                    definition=stencil_iscale_defs, **self._gt_kwargs
-                )
+            if self._stencil_iscale is None:
+                dtype = self.storage_options.dtype
+                self.backend_options.dtypes = {"dtype": dtype}
+                self._stencil_iscale = self.compile("iscale")
 
             for key in unshared_keys:
                 props = field_properties.get(key, {})
@@ -548,17 +477,14 @@ class DataArrayDictOperator:
                 else:
                     units = props.get("units", dict2[key].attrs["units"])
                     dict1[key] = deepcopy_dataarray(dict2[key].to_units(units))
-
-                    if self._gt_powered:
-                        self._stencil_iscale(
-                            inout_a=dict1[key].data,
-                            f=-1.0,
-                            origin=(0, 0, 0),
-                            domain=dict1[key].shape,
-                            validate_args=False
-                        )
-                    else:
-                        dict1[key].data *= -1
+                    self._stencil_iscale(
+                        inout_a=dict1[key].data,
+                        f=-1.0,
+                        origin=(0, 0, 0),
+                        domain=dict1[key].shape,
+                        exec_info=self.backend_options.exec_info,
+                        validate_args=False,
+                    )
 
     def scale(
         self,
@@ -575,10 +501,10 @@ class DataArrayDictOperator:
         if "time" in dictionary:
             out["time"] = dictionary["time"]
 
-        if self._gt_powered and self._stencil_scale is None:
-            self._stencil_scale = gtscript.stencil(
-                definition=stencil_scale_defs, **self._gt_kwargs
-            )
+        if self._stencil_scale is None:
+            dtype = self.storage_options.dtype
+            self.backend_options.dtypes = {"dtype": dtype}
+            self._stencil_scale = self.compile("scale")
 
         for key in dictionary:
             if key == "time":
@@ -595,18 +521,15 @@ class DataArrayDictOperator:
                     out[key] = deepcopy_dataarray(field)
 
                 rout = out[key].data
-
-                if self._gt_powered:
-                    self._stencil_scale(
-                        in_a=rfield,
-                        out_a=rout,
-                        f=factor,
-                        origin=(0, 0, 0),
-                        domain=rout.shape,
-                        validate_args=False
-                    )
-                else:
-                    rout[...] = factor * rfield
+                self._stencil_scale(
+                    in_a=rfield,
+                    out_a=rout,
+                    f=factor,
+                    origin=(0, 0, 0),
+                    domain=rout.shape,
+                    exec_info=self.backend_options.exec_info,
+                    validate_args=False,
+                )
 
         return out
 
@@ -620,10 +543,10 @@ class DataArrayDictOperator:
 
         field_properties = field_properties or {}
 
-        if self._gt_powered and self._stencil_iscale is None:
-            self._stencil_iscale = gtscript.stencil(
-                definition=stencil_iscale_defs, **self._gt_kwargs
-            )
+        if self._stencil_iscale is None:
+            dtype = self.storage_options.dtype
+            self.backend_options.dtypes = {"dtype": dtype}
+            self._stencil_iscale = self.compile("iscale")
 
         for key in dictionary:
             if key != "time":
@@ -631,17 +554,14 @@ class DataArrayDictOperator:
                 units = props.get("units", dictionary[key].attrs["units"])
                 dictionary[key] = dictionary[key].to_units(units)
                 rfield = dictionary[key].data
-
-                if self._gt_powered:
-                    self._stencil_iscale(
-                        inout_a=rfield,
-                        f=factor,
-                        origin=(0, 0, 0),
-                        domain=rfield.shape,
-                        validate_args=False
-                    )
-                else:
-                    rfield[...] *= factor
+                self._stencil_iscale(
+                    inout_a=rfield,
+                    f=factor,
+                    origin=(0, 0, 0),
+                    domain=rfield.shape,
+                    exec_info=self.backend_options.exec_info,
+                    validate_args=False,
+                )
 
     def addsub(
         self,
@@ -665,10 +585,10 @@ class DataArrayDictOperator:
         shared_keys = shared_keys.intersection(dict3.keys())
         shared_keys = shared_keys.difference(("time",))
 
-        if self._gt_powered and self._stencil_addsub is None:
-            self._stencil_addsub = gtscript.stencil(
-                definition=stencil_addsub_defs, **self._gt_kwargs
-            )
+        if self._stencil_addsub is None:
+            dtype = self.storage_options.dtype
+            self.backend_options.dtypes = {"dtype": dtype}
+            self._stencil_addsub = self.compile("addsub")
 
         for key in shared_keys:
             props = field_properties.get(key, {})
@@ -685,19 +605,16 @@ class DataArrayDictOperator:
                 out[key] = deepcopy_dataarray(field1)
 
             rout = out[key].data
-
-            if self._gt_powered:
-                self._stencil_addsub(
-                    in_a=rfield1,
-                    in_b=rfield2,
-                    in_c=rfield3,
-                    out_d=rout,
-                    origin=(0, 0, 0),
-                    domain=rout.shape,
-                    validate_args=False
-                )
-            else:
-                rout[...] = rfield1 + rfield2 - rfield3
+            self._stencil_addsub(
+                in_a=rfield1,
+                in_b=rfield2,
+                in_c=rfield3,
+                out_d=rout,
+                origin=(0, 0, 0),
+                domain=rout.shape,
+                exec_info=self.backend_options.exec_info,
+                validate_args=False,
+            )
 
         return out
 
@@ -716,10 +633,10 @@ class DataArrayDictOperator:
         shared_keys = shared_keys.intersection(dict3.keys())
         shared_keys = shared_keys.difference(("time",))
 
-        if self._gt_powered and self._stencil_iaddsub is None:
-            self._stencil_iaddsub = gtscript.stencil(
-                definition=stencil_iaddsub_defs, **self._gt_kwargs
-            )
+        if self._stencil_iaddsub is None:
+            dtype = self.storage_options.dtype
+            self.backend_options.dtypes = {"dtype": dtype}
+            self._stencil_iaddsub = self.compile("iaddsub")
 
         for key in shared_keys:
             props = field_properties.get(key, {})
@@ -730,17 +647,15 @@ class DataArrayDictOperator:
             rfield2 = dict2[key].to_units(units).data
             rfield3 = dict3[key].to_units(units).data
 
-            if self._gt_powered:
-                self._stencil_iaddsub(
-                    inout_a=rfield1,
-                    in_b=rfield2,
-                    in_c=rfield3,
-                    origin=(0, 0, 0),
-                    domain=rfield1.shape,
-                    validate_args=False
-                )
-            else:
-                rfield1 += rfield2 - rfield3
+            self._stencil_iaddsub(
+                inout_a=rfield1,
+                in_b=rfield2,
+                in_c=rfield3,
+                origin=(0, 0, 0),
+                domain=rfield1.shape,
+                exec_info=self.backend_options.exec_info,
+                validate_args=False,
+            )
 
     def fma(
         self,
@@ -761,10 +676,10 @@ class DataArrayDictOperator:
         shared_keys = set(dict1.keys()).intersection(dict2.keys())
         shared_keys = shared_keys.difference(("time",))
 
-        if self._gt_powered and self._stencil_fma is None:
-            self._stencil_fma = gtscript.stencil(
-                definition=stencil_fma_defs, **self._gt_kwargs
-            )
+        if self._stencil_fma is None:
+            dtype = self.storage_options.dtype
+            self.backend_options.dtypes = {"dtype": dtype}
+            self._stencil_fma = self.compile("fma")
 
         for key in shared_keys:
             props = field_properties.get(key, {})
@@ -780,19 +695,16 @@ class DataArrayDictOperator:
                 out[key] = deepcopy_dataarray(field1)
 
             rout = out[key].data
-
-            if self._gt_powered:
-                self._stencil_fma(
-                    in_a=rfield1,
-                    in_b=rfield2,
-                    out_c=rout,
-                    f=factor,
-                    origin=(0, 0, 0),
-                    domain=rout.shape,
-                    validate_args=False
-                )
-            else:
-                rout[...] = rfield1 + factor * rfield2
+            self._stencil_fma(
+                in_a=rfield1,
+                in_b=rfield2,
+                out_c=rout,
+                f=factor,
+                origin=(0, 0, 0),
+                domain=rout.shape,
+                exec_info=self.backend_options.exec_info,
+                validate_args=False,
+            )
 
         return out
 
@@ -817,10 +729,10 @@ class DataArrayDictOperator:
         shared_keys = shared_keys.intersection(tnd.keys())
         shared_keys = shared_keys.difference(("time",))
 
-        if self._gt_powered and self._stencil_sts_rk2_0 is None:
-            self._stencil_sts_rk2_0 = gtscript.stencil(
-                definition=stencil_sts_rk2_0_defs, **self._gt_kwargs
-            )
+        if self._stencil_sts_rk2_0 is None:
+            dtype = self.storage_options.dtype
+            self.backend_options.dtypes = {"dtype": dtype}
+            self._stencil_sts_rk2_0 = self.compile("sts_rk2_0")
 
         for key in shared_keys:
             props = field_properties.get(key, {})
@@ -837,20 +749,17 @@ class DataArrayDictOperator:
                 out[key] = deepcopy_dataarray(field)
 
             r_out = out[key].data
-
-            if self._gt_powered:
-                self._stencil_sts_rk2_0(
-                    in_field=r_field,
-                    in_field_prv=r_field_prv,
-                    in_tnd=r_tnd,
-                    out_field=r_out,
-                    dt=dt,
-                    origin=(0, 0, 0),
-                    domain=r_out.shape,
-                    validate_args=False
-                )
-            else:
-                r_out[...] = 0.5 * (r_field + r_field_prv + dt * r_tnd)
+            self._stencil_sts_rk2_0(
+                in_field=r_field,
+                in_field_prv=r_field_prv,
+                in_tnd=r_tnd,
+                out_field=r_out,
+                dt=dt,
+                origin=(0, 0, 0),
+                domain=r_out.shape,
+                exec_info=self.backend_options.exec_info,
+                validate_args=False,
+            )
 
         return out
 
@@ -875,10 +784,10 @@ class DataArrayDictOperator:
         shared_keys = shared_keys.intersection(tnd.keys())
         shared_keys = shared_keys.difference(("time",))
 
-        if self._gt_powered and self._stencil_sts_rk3ws_0 is None:
-            self._stencil_sts_rk3ws_0 = gtscript.stencil(
-                definition=stencil_sts_rk3ws_0_defs, **self._gt_kwargs
-            )
+        if self._stencil_sts_rk3ws_0 is None:
+            dtype = self.storage_options.dtype
+            self.backend_options.dtypes = {"dtype": dtype}
+            self._stencil_sts_rk3ws_0 = self.compile("sts_rk3ws_0")
 
         for key in shared_keys:
             props = field_properties.get(key, {})
@@ -895,19 +804,16 @@ class DataArrayDictOperator:
                 out[key] = deepcopy_dataarray(field)
 
             r_out = out[key].data
-
-            if self._gt_powered:
-                self._stencil_sts_rk3ws_0(
-                    in_field=r_field,
-                    in_field_prv=r_field_prv,
-                    in_tnd=r_tnd,
-                    out_field=r_out,
-                    dt=dt,
-                    origin=(0, 0, 0),
-                    domain=r_out.shape,
-                    validate_args=False
-                )
-            else:
-                r_out[...] = (2.0 * r_field + r_field_prv + dt * r_tnd) / 3.0
+            self._stencil_sts_rk3ws_0(
+                in_field=r_field,
+                in_field_prv=r_field_prv,
+                in_tnd=r_tnd,
+                out_field=r_out,
+                dt=dt,
+                origin=(0, 0, 0),
+                domain=r_out.shape,
+                exec_info=self.backend_options.exec_info,
+                validate_args=False,
+            )
 
         return out
