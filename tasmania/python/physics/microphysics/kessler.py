@@ -39,10 +39,6 @@ from tasmania.python.framework.base_components import (
 from tasmania.python.framework.tag import stencil_definition
 from tasmania.python.physics.microphysics.utils import SedimentationFlux
 from tasmania.python.utils import taz_types
-from tasmania.python.utils.data_utils import get_physical_constants
-from tasmania.python.utils.storage_utils import get_storage_shape, zeros
-
-from tasmania.python.utils.utils import get_gt_backend, is_gt
 
 if TYPE_CHECKING:
     from tasmania.python.domain.domain import Domain
@@ -81,7 +77,7 @@ class KesslerMicrophysics(TendencyComponent):
     _d_k2 = DataArray(2.2, attrs={"units": "s^-1"})
 
     # default values for the physical constants used in the class
-    _d_physical_constants = {
+    default_physical_constants = {
         "gas_constant_of_dry_air": DataArray(
             287.05, attrs={"units": "J K^-1 kg^-1"}
         ),
@@ -174,25 +170,21 @@ class KesslerMicrophysics(TendencyComponent):
         super().__init__(
             domain,
             grid_type,
+            physical_constants=physical_constants,
             backend=backend,
             backend_options=backend_options,
             storage_options=storage_options,
             **kwargs
         )
 
-        # set physical parameters values
-        self._pcs = get_physical_constants(
-            self._d_physical_constants, physical_constants
-        )
-
         # shortcuts
-        rd = self._pcs["gas_constant_of_dry_air"]
-        rv = self._pcs["gas_constant_of_water_vapor"]
+        rd = self.rpc["gas_constant_of_dry_air"]
+        rv = self.rpc["gas_constant_of_water_vapor"]
         self._beta = rd / rv
 
         # set the storage shape
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
-        storage_shape = get_storage_shape(storage_shape, (nx, ny, nz + 1))
+        storage_shape = self.get_storage_shape(storage_shape, (nx, ny, nz + 1))
 
         # allocate the storages collecting the outputs
         self._out_qc_tnd = self.zeros(shape=storage_shape)
@@ -208,7 +200,7 @@ class KesslerMicrophysics(TendencyComponent):
             "air_pressure_on_interface_levels": air_pressure_on_interface_levels,
             "beta": self._beta,
             "e": np.exp(1),
-            "lhvw": self._pcs["latent_heat_of_vaporization_of_water"],
+            "lhvw": self.rpc["latent_heat_of_vaporization_of_water"],
             "rain_evaporation": rain_evaporation,
         }
         self._stencil = self.compile("kessler")
@@ -328,7 +320,7 @@ class KesslerMicrophysics(TendencyComponent):
             origin=(0, 0, 0),
             domain=(nx, ny, nz),
             exec_info=self.backend_options.exec_info,
-            validate_args=False
+            validate_args=self.backend_options.validate_args
         )
 
         # collect the tendencies
@@ -374,11 +366,6 @@ class KesslerMicrophysics(TendencyComponent):
         j = slice(origin[1], origin[1] + domain[1])
         k = slice(origin[2], origin[2] + domain[2])
         kp1 = slice(origin[2] + 1, origin[2] + domain[2] + 1)
-        _np = (
-            np
-            if self._stencil_numpy.__tasmania_runtime__["backend"] == "numpy"
-            else cp
-        )
 
         # interpolate the pressure and the Exner function at the vertical
         # main levels
@@ -390,7 +377,7 @@ class KesslerMicrophysics(TendencyComponent):
             exn = in_exn[i, j, k]
 
         # compute the saturation water vapor pressure using Tetens' formula
-        ps = 610.78 * _np.exp(
+        ps = 610.78 * np.exp(
             17.27 * (in_t[i, j, k] - 273.16) / (in_t[i, j, k] - 35.86)
         )
 
@@ -398,18 +385,18 @@ class KesslerMicrophysics(TendencyComponent):
         qvs = self._beta * ps / p
 
         # compute the contribution of autoconversion to rain development
-        ar = k1 * _np.where(in_qc[i, j, k] > a, in_qc[i, j, k] - a, 0.0)
+        ar = k1 * np.where(in_qc[i, j, k] > a, in_qc[i, j, k] - a, 0.0)
 
         # compute the contribution of accretion to rain development
         cr = (
             k2
             * in_qc[i, j, k]
-            * _np.where(in_qr[i, j, k] > 0.0, in_qr[i, j, k] ** 0.875, 0.0)
+            * np.where(in_qr[i, j, k] > 0.0, in_qr[i, j, k] ** 0.875, 0.0)
         )
 
         if self._rain_evaporation:  # compile-time if
             # compute the contribution of evaporation to rain development
-            er = _np.where(
+            er = np.where(
                 in_qr[i, j, k] > 0.0,
                 0.0484794
                 * (qvs - in_qv[i, j, k])
@@ -426,7 +413,7 @@ class KesslerMicrophysics(TendencyComponent):
             out_qc_tnd[i, j, k] = -(ar + cr)
             out_qr_tnd[i, j, k] = ar + cr - er
 
-            lhvw = self._pcs["latent_heat_of_vaporization_of_water"]
+            lhvw = self.rpc["latent_heat_of_vaporization_of_water"]
             out_theta_tnd[i, j, k] = -lhvw / exn * er
 
     @staticmethod
@@ -519,7 +506,7 @@ class KesslerSaturationAdjustmentDiagnostic(ImplicitTendencyComponent):
     """
 
     # default values for the physical constants used in the class
-    _d_physical_constants = {
+    default_physical_constants = {
         "gas_constant_of_dry_air": DataArray(
             287.05, attrs={"units": "J K^-1 kg^-1"}
         ),
@@ -589,26 +576,22 @@ class KesslerSaturationAdjustmentDiagnostic(ImplicitTendencyComponent):
         super().__init__(
             domain,
             grid_type,
+            physical_constants,
             backend=backend,
             backend_options=backend_options,
             storage_options=storage_options,
         )
 
-        # set physical parameters values
-        pcs = get_physical_constants(
-            self._d_physical_constants, physical_constants
-        )
-
         # shortcuts
-        rd = pcs["gas_constant_of_dry_air"]
-        self._rv = pcs["gas_constant_of_water_vapor"]
+        rd = self.rpc["gas_constant_of_dry_air"]
+        self._rv = self.rpc["gas_constant_of_water_vapor"]
         self._beta = rd / self._rv
-        self._lhvw = pcs["latent_heat_of_vaporization_of_water"]
-        self._cp = pcs["specific_heat_of_dry_air_at_constant_pressure"]
+        self._lhvw = self.rpc["latent_heat_of_vaporization_of_water"]
+        self._cp = self.rpc["specific_heat_of_dry_air_at_constant_pressure"]
 
         # set the storage shape
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
-        storage_shape = get_storage_shape(storage_shape, (nx, ny, nz + 1))
+        storage_shape = self.get_storage_shape(storage_shape, (nx, ny, nz + 1))
 
         # allocate the storages collecting inputs and outputs
         self._out_qv = self.zeros(shape=storage_shape)
@@ -718,7 +701,7 @@ class KesslerSaturationAdjustmentDiagnostic(ImplicitTendencyComponent):
             origin=(0, 0, 0),
             domain=(nx, ny, nz),
             exec_info=self.backend_options.exec_info,
-            validate_args=False,
+            validate_args=self.backend_options.validate_args,
         )
 
         # collect the tendencies and the diagnostics
@@ -753,11 +736,6 @@ class KesslerSaturationAdjustmentDiagnostic(ImplicitTendencyComponent):
         j = slice(origin[1], origin[1] + domain[1])
         k = slice(origin[2], origin[2] + domain[2])
         kp1 = slice(origin[2] + 1, origin[2] + domain[2] + 1)
-        _np = (
-            np
-            if self._stencil_numpy.__tasmania_runtime__["backend"] == "numpy"
-            else cp
-        )
 
         # interpolate the pressure at the vertical main levels
         if self._apoil:
@@ -768,7 +746,7 @@ class KesslerSaturationAdjustmentDiagnostic(ImplicitTendencyComponent):
             exn = in_exn[i, j, k]
 
         # compute the saturation water vapor pressure using Tetens' formula
-        ps = 610.78 * _np.exp(
+        ps = 610.78 * np.exp(
             17.27 * (in_t[i, j, k] - 273.16) / (in_t[i, j, k] - 35.86)
         )
 
@@ -786,7 +764,7 @@ class KesslerSaturationAdjustmentDiagnostic(ImplicitTendencyComponent):
 
         # compute the source term representing the evaporation of
         # cloud liquid water
-        dq = _np.where(sat <= in_qc[i, j, k], sat, in_qc[i, j, k])
+        dq = np.where(sat <= in_qc[i, j, k], sat, in_qc[i, j, k])
 
         # perform the adjustment
         out_qv[i, j, k] = in_qv[i, j, k] + dq
@@ -871,7 +849,7 @@ class KesslerSaturationAdjustmentPrognostic(TendencyComponent):
     """
 
     # default values for the physical constants used in the class
-    _d_physical_constants = {
+    default_physical_constants = {
         "gas_constant_of_dry_air": DataArray(
             287.05, attrs={"units": "J K^-1 kg^-1"}
         ),
@@ -944,6 +922,7 @@ class KesslerSaturationAdjustmentPrognostic(TendencyComponent):
         super().__init__(
             domain,
             grid_type,
+            physical_constants=physical_constants,
             backend=backend,
             backend_options=backend_options,
             storage_options=storage_options,
@@ -956,21 +935,16 @@ class KesslerSaturationAdjustmentPrognostic(TendencyComponent):
             else 0.5
         )
 
-        # set physical parameters values
-        pcs = get_physical_constants(
-            self._d_physical_constants, physical_constants
-        )
-
         # shortcuts
-        rd = pcs["gas_constant_of_dry_air"]
-        self._rv = pcs["gas_constant_of_water_vapor"]
+        rd = self.rpc["gas_constant_of_dry_air"]
+        self._rv = self.rpc["gas_constant_of_water_vapor"]
         self._beta = rd / self._rv
-        self._lhvw = pcs["latent_heat_of_vaporization_of_water"]
-        self._cp = pcs["specific_heat_of_dry_air_at_constant_pressure"]
+        self._lhvw = self.rpc["latent_heat_of_vaporization_of_water"]
+        self._cp = self.rpc["specific_heat_of_dry_air_at_constant_pressure"]
 
         # set the storage shape
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
-        storage_shape = get_storage_shape(storage_shape, (nx, ny, nz + 1))
+        storage_shape = self.get_storage_shape(storage_shape, (nx, ny, nz + 1))
 
         # allocate the storages collecting inputs and outputs
         self._tnd_qv = self.zeros(shape=storage_shape)
@@ -1071,7 +1045,7 @@ class KesslerSaturationAdjustmentPrognostic(TendencyComponent):
             origin=(0, 0, 0),
             domain=(nx, ny, nz),
             exec_info=self.backend_options.exec_info,
-            validate_args=False,
+            validate_args=self.backend_options.validate_args,
         )
 
         # collect the tendencies and the diagnostics
@@ -1105,11 +1079,6 @@ class KesslerSaturationAdjustmentPrognostic(TendencyComponent):
         j = slice(origin[1], origin[1] + domain[1])
         k = slice(origin[2], origin[2] + domain[2])
         kp1 = slice(origin[2] + 1, origin[2] + domain[2] + 1)
-        _np = (
-            np
-            if self._stencil_numpy.__tasmania_runtime__["backend"] == "numpy"
-            else cp
-        )
 
         # interpolate the pressure at the vertical main levels
         if self._apoil:  # compile-time if
@@ -1120,7 +1089,7 @@ class KesslerSaturationAdjustmentPrognostic(TendencyComponent):
             exn = in_exn[i, j, k]
 
         # compute the saturation water vapor pressure using Tetens' formula
-        ps = 610.78 * _np.exp(
+        ps = 610.78 * np.exp(
             17.27 * (in_t[i, j, k] - 273.16) / (in_t[i, j, k] - 35.86)
         )
 
@@ -1138,7 +1107,7 @@ class KesslerSaturationAdjustmentPrognostic(TendencyComponent):
 
         # compute the source term representing the evaporation of
         # cloud liquid water
-        dq = _np.where(sat <= in_qc[i, j, k], sat, in_qc[i, j, k])
+        dq = np.where(sat <= in_qc[i, j, k], sat, in_qc[i, j, k])
 
         # calculate the tendencies
         tnd_qv[i, j, k] = sr * dq
@@ -1147,7 +1116,7 @@ class KesslerSaturationAdjustmentPrognostic(TendencyComponent):
 
     @staticmethod
     @stencil_definition(backend="gt4py*", stencil="saturation")
-    def _stencil_gt_defs(
+    def _stencil_gt4py(
         in_p: gtscript.Field["dtype"],
         in_t: gtscript.Field["dtype"],
         in_exn: gtscript.Field["dtype"],
@@ -1247,8 +1216,7 @@ class KesslerFallVelocity(DiagnosticComponent):
             storage_options=storage_options,
         )
 
-        nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
-        storage_shape = get_storage_shape(storage_shape, (nx, ny, nz))
+        storage_shape = self.get_storage_shape(storage_shape)
 
         self._in_rho_s = self.zeros(shape=storage_shape)
         self._out_vt = self.zeros(shape=storage_shape)
@@ -1295,7 +1263,7 @@ class KesslerFallVelocity(DiagnosticComponent):
             origin=(0, 0, 0),
             domain=(nx, ny, nz),
             exec_info=self.backend_options.exec_info,
-            validate_args=False,
+            validate_args=self.backend_options.validate_args,
         )
 
         # collect the diagnostics
@@ -1318,21 +1286,13 @@ class KesslerFallVelocity(DiagnosticComponent):
         i = slice(origin[0], origin[0] + domain[0])
         j = slice(origin[1], origin[1] + domain[1])
         k = slice(origin[2], origin[2] + domain[2])
-        _np = (
-            np
-            if KesslerFallVelocity._stencil_numpy.__tasmania_runtime__[
-                "backend"
-            ]
-            == "numpy"
-            else cp
-        )
 
         out_vt[i, j, k] = (
             36.34
             * (
                 1.0e-3
                 * in_rho[i, j, k]
-                * _np.where(in_qr[i, j, k] > 0.0, in_qr[i, j, k], 0.0)
+                * np.where(in_qr[i, j, k] > 0.0, in_qr[i, j, k], 0.0)
             )
             ** 0.1346
             * (in_rho_s[i, j, k] / in_rho[i, j, k]) ** 0.5
@@ -1413,7 +1373,7 @@ class KesslerSedimentation(ImplicitTendencyComponent):
         )
 
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
-        storage_shape = get_storage_shape(storage_shape, (nx, ny, nz + 1))
+        storage_shape = self.get_storage_shape(storage_shape, (nx, ny, nz + 1))
         self._out_qr = self.zeros(shape=storage_shape)
 
         dtype = self.storage_options.dtype
@@ -1476,7 +1436,7 @@ class KesslerSedimentation(ImplicitTendencyComponent):
             origin=(nbh, nbh, 0),
             domain=(nx - 2 * nbh, ny - 2 * nbh, nz),
             exec_info=self.backend_options.exec_info,
-            validate_args=False,
+            validate_args=self.backend_options.validate_args,
         )
 
         tendencies = {mfpw: self._out_qr}

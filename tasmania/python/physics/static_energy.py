@@ -30,7 +30,6 @@ from tasmania.python.framework.base_components import DiagnosticComponent
 from tasmania.python.framework.tag import stencil_definition
 from tasmania.python.utils import taz_types
 from tasmania.python.utils.data_utils import get_physical_constants
-from tasmania.python.utils.storage_utils import get_storage_shape
 
 if TYPE_CHECKING:
     from tasmania.python.domain.domain import Domain
@@ -44,7 +43,7 @@ class DryStaticEnergy(DiagnosticComponent):
     """Diagnose the dry static energy."""
 
     # default values for the physical constants used in the class
-    _d_physical_constants = {
+    default_physical_constants = {
         "gravitational_acceleration": DataArray(
             9.80665, attrs={"units": "m s^-2"}
         ),
@@ -72,23 +71,20 @@ class DryStaticEnergy(DiagnosticComponent):
         super().__init__(
             domain,
             grid_type,
+            physical_constants,
             backend=backend,
             backend_options=backend_options,
             storage_options=storage_options,
         )
 
         # set physical parameters values
-        pcs = get_physical_constants(
-            self._d_physical_constants, physical_constants
-        )
-        self._g = pcs["gravitational_acceleration"]  # debug purposes
-        self._cp = pcs[
+        self._g = self.rpc["gravitational_acceleration"]  # debug purposes
+        self._cp = self.rpc[
             "specific_heat_of_dry_air_at_constant_pressure"
         ]  # debug purposes
 
         # set the storage shape
-        nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
-        storage_shape = get_storage_shape(storage_shape, (nx, ny, nz))
+        storage_shape = self.get_storage_shape(storage_shape)
 
         # allocate the storage collecting the output
         self._out_dse = self.zeros(shape=storage_shape)
@@ -98,8 +94,8 @@ class DryStaticEnergy(DiagnosticComponent):
         self.backend_options.dtypes = {"dtype": dtype}
         self.backend_options.externals = {
             "height_on_interface_levels": self._stgz,
-            "g": pcs["gravitational_acceleration"],
-            "cp": pcs["specific_heat_of_dry_air_at_constant_pressure"],
+            "g": self.rpc["gravitational_acceleration"],
+            "cp": self.rpc["specific_heat_of_dry_air_at_constant_pressure"],
         }
         self._stencil = self.compile("static_energy")
 
@@ -151,7 +147,7 @@ class DryStaticEnergy(DiagnosticComponent):
             origin=(0, 0, 0),
             domain=(nx, ny, nz),
             exec_info=self.backend_options.exec_info,
-            validate_args=False,
+            validate_args=self.backend_options.validate_args,
         )
 
         diagnostics = {"montgomery_potential": out_dse}
@@ -205,7 +201,7 @@ class MoistStaticEnergy(DiagnosticComponent):
     """Diagnose the moist static energy."""
 
     # default values for the physical constants used in the class
-    _d_physical_constants = {
+    default_physical_constants = {
         "latent_heat_of_vaporization_of_water": DataArray(
             2.5e6, attrs={"units": "J kg^-1"}
         )
@@ -226,20 +222,17 @@ class MoistStaticEnergy(DiagnosticComponent):
         super().__init__(
             domain,
             grid_type,
+            physical_constants,
             backend=backend,
             backend_options=backend_options,
             storage_options=storage_options,
         )
 
         # set physical parameters values
-        pcs = get_physical_constants(
-            self._d_physical_constants, physical_constants
-        )
-        self._lhvw = pcs["latent_heat_of_vaporization_of_water"]
+        self._lhvw = self.rpc["latent_heat_of_vaporization_of_water"]
 
         # set the storage shape
-        nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
-        storage_shape = get_storage_shape(storage_shape, (nx, ny, nz))
+        storage_shape = self.get_storage_shape(storage_shape)
 
         # allocate the storage collecting the output
         self._out_mse = self.zeros(shape=storage_shape)
@@ -248,7 +241,7 @@ class MoistStaticEnergy(DiagnosticComponent):
         dtype = self.storage_options.dtype
         self.backend_options.dtypes = {"dtype": dtype}
         self.backend_options.externals = {
-            "lhvw": pcs["latent_heat_of_vaporization_of_water"]
+            "lhvw": self.rpc["latent_heat_of_vaporization_of_water"]
         }
         self._stencil = self.compile("static_energy")
 
@@ -294,7 +287,7 @@ class MoistStaticEnergy(DiagnosticComponent):
             origin=(0, 0, 0),
             domain=(nx, ny, nz),
             exec_info=self.backend_options.exec_info,
-            validate_args=False,
+            validate_args=self.backend_options.validate_args,
         )
 
         diagnostics = {"moist_static_energy": out_mse}

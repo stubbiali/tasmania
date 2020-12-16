@@ -246,7 +246,7 @@ def test_precipitation(data, backend, dtype):
         .to_units("m s^-1")
         .data[:nx, :ny, nz - 1 : nz]
     )
-    rhow = comp._pcs["density_of_liquid_water"]
+    rhow = comp.rpc["density_of_liquid_water"]
     prec = 3.6e6 * rho * qr * vt / rhow
     assert "precipitation" in diagnostics
     compare_dataarrays(

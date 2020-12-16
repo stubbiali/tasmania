@@ -22,13 +22,17 @@
 #
 import abc
 import sympl
-from typing import Optional, TYPE_CHECKING
+from typing import Any, Dict, Mapping, Optional, Sequence, TYPE_CHECKING
 
 from tasmania.python.framework.stencil import StencilFactory
 from tasmania.python.utils import taz_types
+from tasmania.python.utils.data_utils import get_physical_constants
+from tasmania.python.utils.storage_utils import get_storage_shape
 from tasmania.python.utils.utils import Timer
 
 if TYPE_CHECKING:
+    from xarray import DataArray
+
     from tasmania.python.domain.domain import Domain
     from tasmania.python.domain.grid import Grid
     from tasmania.python.domain.horizontal_boundary import HorizontalBoundary
@@ -36,6 +40,30 @@ if TYPE_CHECKING:
         BackendOptions,
         StorageOptions,
     )
+
+
+class PhysicalConstantsComponent(abc.ABC):
+    default_physical_constants = {}
+
+    def __init__(
+        self: "PhysicalConstantsComponent",
+        physical_constants: Mapping[str, "DataArray"],
+    ) -> None:
+        self.rpc = get_physical_constants(
+            self.default_physical_constants, physical_constants
+        )
+
+    @property
+    def raw_physical_constants(
+        self: "PhysicalConstantsComponent",
+    ) -> Dict[str, float]:
+        return self.rpc.copy()
+
+    @raw_physical_constants.setter
+    def raw_physical_constants(
+        self: "PhysicalConstantsComponent", value: Any
+    ) -> None:
+        raise RuntimeError()
 
 
 class GridComponent(abc.ABC):
@@ -48,6 +76,15 @@ class GridComponent(abc.ABC):
     def grid(self: "GridComponent") -> "Grid":
         """The underlying :class:`~tasmania.Grid`."""
         return self._grid
+
+    def get_storage_shape(
+        self,
+        shape: Sequence[int],
+        min_shape: Optional[Sequence[int]] = None,
+        max_shape: Optional[Sequence[int]] = None,
+    ) -> Sequence[int]:
+        min_shape = min_shape or (self.grid.nx, self.grid.ny, self.grid.nz)
+        return get_storage_shape(shape, min_shape, max_shape)
 
 
 class DomainComponent(GridComponent, abc.ABC):
@@ -82,7 +119,10 @@ class DomainComponent(GridComponent, abc.ABC):
 
 
 class DiagnosticComponent(
-    DomainComponent, StencilFactory, sympl.DiagnosticComponent
+    DomainComponent,
+    PhysicalConstantsComponent,
+    StencilFactory,
+    sympl.DiagnosticComponent,
 ):
     """
     Custom version of :class:`sympl.DiagnosticComponent` which is aware
@@ -95,6 +135,7 @@ class DiagnosticComponent(
         self: "DiagnosticComponent",
         domain: "Domain",
         grid_type: str = "numerical",
+        physical_constants: Optional[Mapping[str, "DataArray"]] = None,
         *,
         backend: Optional[str] = None,
         backend_options: Optional["BackendOptions"] = None,
@@ -108,6 +149,8 @@ class DiagnosticComponent(
         grid_type : `str`, optional
             The type of grid over which instantiating the class.
             Either "physical" or "numerical" (default).
+        physical_constants : `dict`, optional
+            Dictionary of physical constants.
         backend : `str`, optional
             The backend.
         backend_options : `BackendOptions`, optional
@@ -116,7 +159,8 @@ class DiagnosticComponent(
             Storage-related options.
         """
         super().__init__(domain, grid_type)
-        super(GridComponent, self).__init__(
+        super(GridComponent, self).__init__(physical_constants)
+        super(PhysicalConstantsComponent, self).__init__(
             backend, backend_options, storage_options
         )
         super(StencilFactory, self).__init__()
@@ -131,7 +175,10 @@ class DiagnosticComponent(
 
 
 class ImplicitTendencyComponent(
-    DomainComponent, StencilFactory, sympl.ImplicitTendencyComponent
+    DomainComponent,
+    PhysicalConstantsComponent,
+    StencilFactory,
+    sympl.ImplicitTendencyComponent,
 ):
     """
     Customized version of :class:`sympl.ImplicitTendencyComponent` which is
@@ -144,6 +191,7 @@ class ImplicitTendencyComponent(
         self: "ImplicitTendencyComponent",
         domain: "Domain",
         grid_type: str = "numerical",
+        physical_constants: Optional[Mapping[str, "DataArray"]] = None,
         tendencies_in_diagnostics: bool = False,
         name: Optional[str] = None,
         *,
@@ -159,6 +207,8 @@ class ImplicitTendencyComponent(
         grid_type : `str`, optional
             The type of grid over which instantiating the class.
             Either "physical" or "numerical" (default).
+        physical_constants : `dict`, optional
+            Dictionary of physical constants.
         tendencies_in_diagnostics : `bool`, optional
             A boolean indicating whether this object will put tendencies of
             quantities in its diagnostic output.
@@ -174,7 +224,8 @@ class ImplicitTendencyComponent(
             Storage-related options.
         """
         super().__init__(domain, grid_type)
-        super(GridComponent, self).__init__(
+        super(GridComponent, self).__init__(physical_constants)
+        super(PhysicalConstantsComponent, self).__init__(
             backend, backend_options, storage_options
         )
         super(StencilFactory, self).__init__(tendencies_in_diagnostics, name)
@@ -190,7 +241,9 @@ class ImplicitTendencyComponent(
         return out
 
 
-class Stepper(DomainComponent, StencilFactory, sympl.Stepper):
+class Stepper(
+    DomainComponent, PhysicalConstantsComponent, StencilFactory, sympl.Stepper
+):
     """
     Customized version of :class:`sympl.Stepper` which is aware
     of the grid over which the component is instantiated.
@@ -202,6 +255,7 @@ class Stepper(DomainComponent, StencilFactory, sympl.Stepper):
         self: "Stepper",
         domain: "Domain",
         grid_type: str = "numerical",
+        physical_constants: Optional[Mapping[str, "DataArray"]] = None,
         tendencies_in_diagnostics: bool = False,
         name: Optional[str] = None,
         *,
@@ -217,6 +271,8 @@ class Stepper(DomainComponent, StencilFactory, sympl.Stepper):
         grid_type : `str`, optional
             The type of grid over which instantiating the class.
             Either "physical" or "numerical" (default).
+        physical_constants : `dict`, optional
+            Dictionary of physical constants.
         tendencies_in_diagnostics : `bool`, optional
             A boolean indicating whether this object will put tendencies of
             quantities in its diagnostic output.
@@ -232,14 +288,18 @@ class Stepper(DomainComponent, StencilFactory, sympl.Stepper):
             Storage-related options.
         """
         super().__init__(domain, grid_type)
-        super(GridComponent, self).__init__(
+        super(GridComponent, self).__init__(physical_constants)
+        super(PhysicalConstantsComponent, self).__init__(
             backend, backend_options, storage_options
         )
         super(StencilFactory, self).__init__(tendencies_in_diagnostics, name)
 
 
 class TendencyComponent(
-    DomainComponent, StencilFactory, sympl.TendencyComponent
+    DomainComponent,
+    PhysicalConstantsComponent,
+    StencilFactory,
+    sympl.TendencyComponent,
 ):
     """
     Customized version of :class:`sympl.TendencyComponent` which is aware
@@ -252,6 +312,7 @@ class TendencyComponent(
         self: "TendencyComponent",
         domain: "Domain",
         grid_type: str = "numerical",
+        physical_constants: Optional[Mapping[str, "DataArray"]] = None,
         tendencies_in_diagnostics: bool = False,
         name: Optional[str] = None,
         *,
@@ -267,6 +328,8 @@ class TendencyComponent(
         grid_type : `str`, optional
             The type of grid over which instantiating the class.
             Either "physical" or "numerical" (default).
+        physical_constants : `dict`, optional
+            Dictionary of physical constants.
         tendencies_in_diagnostics : `bool`, optional
             A boolean indicating whether this object will put tendencies of
             quantities in its diagnostic output.
@@ -282,7 +345,8 @@ class TendencyComponent(
             Storage-related options.
         """
         super().__init__(domain, grid_type)
-        super(GridComponent, self).__init__(
+        super(GridComponent, self).__init__(physical_constants)
+        super(PhysicalConstantsComponent, self).__init__(
             backend, backend_options, storage_options
         )
         super(StencilFactory, self).__init__(tendencies_in_diagnostics, name)

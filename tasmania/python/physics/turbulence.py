@@ -97,17 +97,7 @@ class Smagorinsky2d(TendencyComponent):
 
         self._nb = max(2, self.horizontal_boundary.nb)
 
-        nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
-        storage_shape = (
-            (nx, ny, nz) if storage_shape is None else storage_shape
-        )
-        error_msg = "storage_shape must be larger or equal than {}.".format(
-            (nx, ny, nz)
-        )
-        assert storage_shape[0] >= nx, error_msg
-        assert storage_shape[1] >= ny, error_msg
-        assert storage_shape[2] >= nz, error_msg
-        self._storage_shape = storage_shape
+        storage_shape = self.get_storage_shape(storage_shape)
 
         self._out_u_tnd = self.zeros(shape=storage_shape)
         self._out_v_tnd = self.zeros(shape=storage_shape)
@@ -155,7 +145,7 @@ class Smagorinsky2d(TendencyComponent):
             origin=(nb, nb, 0),
             domain=(nx - 2 * nb, ny - 2 * nb, nz),
             exec_info=self.backend_options.exec_info,
-            validate_args=False,
+            validate_args=self.backend_options.validate_args,
         )
 
         tendencies = {

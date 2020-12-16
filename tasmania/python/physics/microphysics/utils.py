@@ -39,8 +39,6 @@ from tasmania.python.framework.tag import (
 from tasmania.python.utils import taz_types
 from tasmania.python.utils.data_utils import get_physical_constants
 from tasmania.python.framework.register import factorize
-from tasmania.python.utils.storage_utils import get_storage_shape, zeros
-from tasmania.python.utils.utils import get_gt_backend, is_gt
 
 if TYPE_CHECKING:
     from tasmania.python.domain.domain import Domain
@@ -97,8 +95,7 @@ class Clipping(DiagnosticComponent):
             storage_options=storage_options,
         )
 
-        nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
-        storage_shape = get_storage_shape(storage_shape, (nx, ny, nz))
+        storage_shape = self.get_storage_shape(storage_shape)
         self._outs = {
             name: self.zeros(shape=storage_shape)
             for name in water_species_names
@@ -142,7 +139,7 @@ class Clipping(DiagnosticComponent):
                 origin=(0, 0, 0),
                 domain=out_q.shape,
                 exec_info=self.backend_options.exec_info,
-                validate_args=False,
+                validate_args=self.backend_options.validate_args,
             )
             diagnostics[name] = out_q
 
@@ -152,7 +149,7 @@ class Clipping(DiagnosticComponent):
 class Precipitation(ImplicitTendencyComponent):
     """Update the (accumulated) precipitation."""
 
-    _d_physical_constants = {
+    default_physical_constants = {
         "density_of_liquid_water": DataArray(1e3, attrs={"units": "kg m^-3"})
     }
 
@@ -198,14 +195,11 @@ class Precipitation(ImplicitTendencyComponent):
         super().__init__(
             domain,
             grid_type,
+            physical_constants=physical_constants,
             backend=backend,
             backend_options=backend_options,
             storage_options=storage_options,
             **kwargs
-        )
-
-        self._pcs = get_physical_constants(
-            self._d_physical_constants, physical_constants
         )
 
         nx, ny = self.grid.nx, self.grid.ny
@@ -214,7 +208,7 @@ class Precipitation(ImplicitTendencyComponent):
             if storage_shape is not None
             else None
         )
-        storage_shape = get_storage_shape(in_shape, (nx, ny, 1))
+        storage_shape = self.get_storage_shape(in_shape, (nx, ny, 1))
 
         self._in_rho = self.zeros(shape=storage_shape)
         self._in_qr = self.zeros(shape=storage_shape)
@@ -225,7 +219,7 @@ class Precipitation(ImplicitTendencyComponent):
         dtype = self.storage_options.dtype
         self.backend_options.dtypes = {"dtype": dtype}
         self.backend_options.externals = {
-            "rhow": self._pcs["density_of_liquid_water"]
+            "rhow": self.rpc["density_of_liquid_water"]
         }
         self._stencil = self.compile("accumulated_precipitation")
 
@@ -292,7 +286,7 @@ class Precipitation(ImplicitTendencyComponent):
             origin=(0, 0, 0),
             domain=(nx, ny, 1),
             exec_info=self.backend_options.exec_info,
-            validate_args=False,
+            validate_args=self.backend_options.validate_args,
         )
 
         tendencies = {}
@@ -329,7 +323,7 @@ class Precipitation(ImplicitTendencyComponent):
             * in_rho[i, j, k]
             * in_qr[i, j, k]
             * in_vt[i, j, k]
-            / self._pcs["density_of_liquid_water"]
+            / self.rpc["density_of_liquid_water"]
         )
         out_accprec[i, j, k] = (
             in_accprec[i, j, k] + dt * out_prec[i, j, k] / 3.6e3
