@@ -114,7 +114,7 @@ class DataArrayDictOperator(StencilFactory):
                 origin=(0, 0, 0),
                 domain=src_field.shape,
                 exec_info=self.backend_options.exec_info,
-                validate_args=False,
+                validate_args=self.backend_options.validate_args,
             )
 
         if unshared_variables_in_output:
@@ -190,7 +190,7 @@ class DataArrayDictOperator(StencilFactory):
                 origin=(0, 0, 0),
                 domain=field1.shape,
                 exec_info=self.backend_options.exec_info,
-                validate_args=False,
+                validate_args=self.backend_options.validate_args,
             )
             out[key] = out_da
 
@@ -211,7 +211,7 @@ class DataArrayDictOperator(StencilFactory):
                         origin=(0, 0, 0),
                         domain=_dict[key].shape,
                         exec_info=self.backend_options.exec_info,
-                        validate_args=False,
+                        validate_args=self.backend_options.validate_args,
                     )
                     out[key].attrs["units"] = units
                 else:
@@ -273,7 +273,7 @@ class DataArrayDictOperator(StencilFactory):
                 origin=(0, 0, 0),
                 domain=field1.shape,
                 exec_info=self.backend_options.exec_info,
-                validate_args=False,
+                validate_args=self.backend_options.validate_args,
             )
 
         if unshared_variables_in_output and len(unshared_keys) > 0:
@@ -356,7 +356,7 @@ class DataArrayDictOperator(StencilFactory):
                 origin=(0, 0, 0),
                 domain=field1.shape,
                 exec_info=self.backend_options.exec_info,
-                validate_args=False,
+                validate_args=self.backend_options.validate_args,
             )
             out[key] = out_da
 
@@ -383,7 +383,7 @@ class DataArrayDictOperator(StencilFactory):
                             origin=(0, 0, 0),
                             domain=dict1[key].shape,
                             exec_info=self.backend_options.exec_info,
-                            validate_args=False,
+                            validate_args=self.backend_options.validate_args,
                         )
                         out[key].attrs["units"] = units
                     else:
@@ -398,7 +398,7 @@ class DataArrayDictOperator(StencilFactory):
                             origin=(0, 0, 0),
                             domain=dict2[key].shape,
                             exec_info=self.backend_options.exec_info,
-                            validate_args=False,
+                            validate_args=self.backend_options.validate_args,
                         )
                         out[key].attrs["units"] = units
                     else:
@@ -459,7 +459,7 @@ class DataArrayDictOperator(StencilFactory):
                 origin=(0, 0, 0),
                 domain=field1.shape,
                 exec_info=self.backend_options.exec_info,
-                validate_args=False,
+                validate_args=self.backend_options.validate_args,
             )
 
         if unshared_variables_in_output and len(unshared_keys) > 0:
@@ -483,7 +483,7 @@ class DataArrayDictOperator(StencilFactory):
                         origin=(0, 0, 0),
                         domain=dict1[key].shape,
                         exec_info=self.backend_options.exec_info,
-                        validate_args=False,
+                        validate_args=self.backend_options.validate_args,
                     )
 
     def scale(
@@ -528,7 +528,7 @@ class DataArrayDictOperator(StencilFactory):
                     origin=(0, 0, 0),
                     domain=rout.shape,
                     exec_info=self.backend_options.exec_info,
-                    validate_args=False,
+                    validate_args=self.backend_options.validate_args,
                 )
 
         return out
@@ -560,7 +560,7 @@ class DataArrayDictOperator(StencilFactory):
                     origin=(0, 0, 0),
                     domain=rfield.shape,
                     exec_info=self.backend_options.exec_info,
-                    validate_args=False,
+                    validate_args=self.backend_options.validate_args,
                 )
 
     def addsub(
@@ -613,7 +613,7 @@ class DataArrayDictOperator(StencilFactory):
                 origin=(0, 0, 0),
                 domain=rout.shape,
                 exec_info=self.backend_options.exec_info,
-                validate_args=False,
+                validate_args=self.backend_options.validate_args,
             )
 
         return out
@@ -654,7 +654,7 @@ class DataArrayDictOperator(StencilFactory):
                 origin=(0, 0, 0),
                 domain=rfield1.shape,
                 exec_info=self.backend_options.exec_info,
-                validate_args=False,
+                validate_args=self.backend_options.validate_args,
             )
 
     def fma(
@@ -703,7 +703,7 @@ class DataArrayDictOperator(StencilFactory):
                 origin=(0, 0, 0),
                 domain=rout.shape,
                 exec_info=self.backend_options.exec_info,
-                validate_args=False,
+                validate_args=self.backend_options.validate_args,
             )
 
         return out
@@ -758,7 +758,7 @@ class DataArrayDictOperator(StencilFactory):
                 origin=(0, 0, 0),
                 domain=r_out.shape,
                 exec_info=self.backend_options.exec_info,
-                validate_args=False,
+                validate_args=self.backend_options.validate_args,
             )
 
         return out
@@ -813,7 +813,7 @@ class DataArrayDictOperator(StencilFactory):
                 origin=(0, 0, 0),
                 domain=r_out.shape,
                 exec_info=self.backend_options.exec_info,
-                validate_args=False,
+                validate_args=self.backend_options.validate_args,
             )
 
         return out

@@ -20,7 +20,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-import numba
+# import numba
 
 import gt4py as gt
 
@@ -51,7 +51,7 @@ def compiler_gt4py(definition, *, backend_options=None):
     )
 
 
-@stencil_compiler.register(backend="numba:cpu")
-def compiler_numba(definition, *, backend_options=None):
-    bo = backend_options or BackendOptions()
-    return numba.njit(definition, parallel=bo.parallel)
+# @stencil_compiler.register(backend="numba:cpu")
+# def compiler_numba(definition, *, backend_options=None):
+#     bo = backend_options or BackendOptions()
+#     return numba.njit(definition, parallel=bo.parallel)

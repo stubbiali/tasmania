@@ -20,16 +20,18 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from typing import Tuple
+from typing import TYPE_CHECKING, Tuple
 
 from tasmania.python.framework.base_components import TendencyComponent
-from tasmania.python.domain.domain import Domain
 from tasmania.python.utils import taz_types
+
+if TYPE_CHECKING:
+    from tasmania.python.domain.domain import Domain
 
 
 class FakeTendencyComponent(TendencyComponent):
     def __init__(
-        self, domain: Domain, grid_type: str = "numerical", **kwargs
+        self, domain: "Domain", grid_type: str = "numerical", **kwargs
     ) -> None:
         super().__init__(domain, grid_type, **kwargs)
 

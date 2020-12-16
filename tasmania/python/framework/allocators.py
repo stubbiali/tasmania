@@ -21,8 +21,15 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 import abc
-from nptyping import NDArray
-from typing import Callable, Optional, Sequence, TYPE_CHECKING, Type, Union
+from typing import (
+    Any,
+    Callable,
+    Optional,
+    Sequence,
+    TYPE_CHECKING,
+    Type,
+    Union,
+)
 
 from tasmania.python.framework import protocol as prt
 from tasmania.python.utils.exceptions import FactoryRegistryError
@@ -52,7 +59,7 @@ class Allocator(abc.ABC):
         *,
         shape: Sequence[int],
         storage_options: Optional["StorageOptions"] = None
-    ) -> NDArray:
+    ) -> Any:
         """Dispatch the call to the proper registered object."""
         key = (cls.function, backend, stencil)
         try:

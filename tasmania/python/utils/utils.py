@@ -365,7 +365,10 @@ class Timer:
 
         # tic
         if cp is not None:
-            cp.cuda.Device(0).synchronize()
+            try:
+                cp.cuda.Device(0).synchronize()
+            except RuntimeError:
+                pass
         cls.tic[label] = timeit.default_timer()
 
     @classmethod
@@ -382,7 +385,10 @@ class Timer:
 
         # toc
         if cp is not None:
-            cp.cuda.Device(0).synchronize()
+            try:
+                cp.cuda.Device(0).synchronize()
+            except RuntimeError:
+                pass
         toc = timeit.default_timer()
 
         # update runtime

@@ -34,6 +34,7 @@ class BackendOptions:
     exec_info: Mapping[str, Any] = None
     externals: Mapping[str, Any] = None
     rebuild: bool = False
+    validate_args: bool = False
 
     # numba
     parallel: bool = True

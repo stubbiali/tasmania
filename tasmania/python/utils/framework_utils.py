@@ -28,7 +28,6 @@ from sympl._core.combine_properties import (
 from sympl._core.units import clean_units
 from typing import (
     Any,
-    Callable,
     Dict,
     Mapping,
     Optional,
@@ -132,21 +131,27 @@ def check_missing_properties(
         raise InvalidPropertyDictError(
             "{} are present in {} but missing in {}.".format(
                 ", ".join(missing_vars),
-                "properties1" if properties1_name is None else properties1_name,
-                "properties2" if properties2_name is None else properties2_name,
+                "properties1"
+                if properties1_name is None
+                else properties1_name,
+                "properties2"
+                if properties2_name is None
+                else properties2_name,
             )
         )
 
 
 def resolve_aliases(
-    data_dict: taz_types.dataarray_dict_t, properties_dict: taz_types.properties_dict_t
+    data_dict: taz_types.dataarray_dict_t,
+    properties_dict: taz_types.properties_dict_t,
 ) -> taz_types.dataarray_dict_t:
     name_to_alias = _get_name_to_alias_map(data_dict, properties_dict)
     return _replace_aliases(data_dict, name_to_alias)
 
 
 def _get_name_to_alias_map(
-    data_dict: taz_types.dataarray_dict_t, properties_dict: taz_types.properties_dict_t
+    data_dict: taz_types.dataarray_dict_t,
+    properties_dict: taz_types.properties_dict_t,
 ) -> Dict[str, str]:
     return_dict = {}
 
@@ -193,12 +198,16 @@ def get_input_properties(
     for component_properties in components_list:
         component = component_properties.get("component", None)
         attribute_name = component_properties.get("attribute_name", None)
-        consider_diagnostics = component_properties.get("consider_diagnostics", True)
+        consider_diagnostics = component_properties.get(
+            "consider_diagnostics", True
+        )
 
         if component is not None:
             # Extract the desired property dictionary from the component
             component_dict = (
-                getattr(component, attribute_name) if attribute_name is not None else {}
+                getattr(component, attribute_name)
+                if attribute_name is not None
+                else {}
             )
 
             # Ensure the requirements of the component are compatible
@@ -207,7 +216,8 @@ def get_input_properties(
                 output_properties,
                 component_dict,
                 properties1_name="{} of {}".format(
-                    attribute_name, getattr(component, "name", str(component.__class__))
+                    attribute_name,
+                    getattr(component, "name", str(component.__class__)),
                 ),
                 properties2_name="output_properties",
             )
@@ -229,7 +239,10 @@ def get_input_properties(
             if consider_diagnostics:
                 # Use the diagnostics calculated by the component to update
                 # the properties of the output variables
-                for name, properties in component.diagnostic_properties.items():
+                for (
+                    name,
+                    properties,
+                ) in component.diagnostic_properties.items():
                     if name not in output_properties.keys():
                         output_properties[name] = {}
                     else:
@@ -239,7 +252,9 @@ def get_input_properties(
                             property_name=name,
                             origin1_name="output_properties",
                             origin2_name="diagnostic_properties of {}".format(
-                                getattr(component, "name", str(component.__class__))
+                                getattr(
+                                    component, "name", str(component.__class__)
+                                )
                             ),
                         )
 
@@ -264,7 +279,9 @@ def get_tendency_properties(
         else:
             tendencies = getattr(component, "tendency_properties", {})
 
-            already_at_disposal = tuple(key for key in tendencies if key in return_dict)
+            already_at_disposal = tuple(
+                key for key in tendencies if key in return_dict
+            )
             for name in already_at_disposal:
                 check_property_compatibility(
                     tendencies[name],
@@ -292,12 +309,16 @@ def get_output_properties(
     for component_properties in components_list:
         component = component_properties.get("component", None)
         attribute_name = component_properties.get("attribute_name", None)
-        consider_diagnostics = component_properties.get("consider_diagnostics", True)
+        consider_diagnostics = component_properties.get(
+            "consider_diagnostics", True
+        )
 
         if component is not None:
             # Extract the desired property dictionary from the component
             component_dict = (
-                getattr(component, attribute_name) if attribute_name is not None else {}
+                getattr(component, attribute_name)
+                if attribute_name is not None
+                else {}
             )
 
             # Ensure the requirements of the component are compatible
@@ -307,13 +328,16 @@ def get_output_properties(
                 component_dict,
                 properties1_name="return_dict",
                 properties2_name="{} of {}".format(
-                    attribute_name, getattr(component, "name", str(component.__class__))
+                    attribute_name,
+                    getattr(component, "name", str(component.__class__)),
                 ),
             )
 
             # Check if there exists any variable which the component
             # requires but which is not yet at disposal
-            not_at_disposal = set(component_dict.keys()).difference(return_dict.keys())
+            not_at_disposal = set(component_dict.keys()).difference(
+                return_dict.keys()
+            )
 
             for name in not_at_disposal:
                 # Add the missing variable to the return dictionary
@@ -323,7 +347,10 @@ def get_output_properties(
             # Consider the diagnostics calculated by the component to update
             # the return dictionary
             if consider_diagnostics:
-                for name, properties in component.diagnostic_properties.items():
+                for (
+                    name,
+                    properties,
+                ) in component.diagnostic_properties.items():
                     if name not in return_dict.keys():
                         return_dict[name] = {}
                     else:
@@ -333,7 +360,9 @@ def get_output_properties(
                             property_name=name,
                             origin1_name="return_dict",
                             origin2_name="diagnostic_properties of {}".format(
-                                getattr(component, "name", str(component.__class__))
+                                getattr(
+                                    component, "name", str(component.__class__)
+                                )
                             ),
                         )
 
@@ -378,67 +407,11 @@ def get_increment(
     return tendencies, diagnostics
 
 
-def restore_tendency_units(tendencies: taz_types.mutable_dataarray_dict_t) -> None:
+def restore_tendency_units(
+    tendencies: taz_types.mutable_dataarray_dict_t,
+) -> None:
     for name in tendencies:
         if name != "time":
             tendencies[name].attrs["units"] = clean_units(
                 tendencies[name].attrs["units"] + " s^-1"
             )
-
-
-def register(
-    name: str,
-    registry_class: Optional[Type[T]] = None,
-    registry_name: Optional[str] = None,
-) -> Callable:
-    def core(cls):
-        rcls = registry_class or cls
-        rname = registry_name or "registry"
-
-        if not hasattr(rcls, rname):
-            raise RuntimeError(
-                f"Class {rcls.__name__} does not have the attribute '{rname}'."
-            )
-        registry = getattr(rcls, rname)
-
-        if name in registry and registry[name] != cls:
-            import warnings
-
-            warnings.warn(
-                f"Cannot register {cls.__name__} as '{name}' since this name "
-                f"has already been used to register {registry[name]}."
-            )
-        else:
-            registry[name] = cls
-
-        return cls
-
-    return core
-
-
-def factorize(
-    name: str,
-    registry_class: Type[T],
-    args,
-    kwargs=None,
-    registry_name: Optional[str] = None,
-) -> T:
-    rcls = registry_class
-    rname = registry_name or "registry"
-
-    if not hasattr(rcls, rname):
-        raise RuntimeError(
-            f"Class {rcls.__name__} does not have the attribute '{rname}'."
-        )
-    registry = getattr(rcls, rname)
-
-    if name in registry:
-        kwargs = kwargs or {}
-        obj = registry[name](*args, **kwargs)
-        return obj
-    else:
-        raise RuntimeError(
-            f"No entity has been registered as '{name}'. "
-            f"Available options are: "
-            f"{', '.join(key for key in registry.keys())}."
-        )

@@ -22,9 +22,8 @@
 #
 import abc
 import inspect
-from typing import Callable, Optional, Sequence, Type, Union
+from typing import Any, Callable, Optional, Sequence, Type, Union
 
-from nptyping import NDArray
 from tasmania.python.framework import protocol as prt
 from tasmania.python.framework.allocators import Allocator
 from tasmania.python.framework.asarray import AsArray
@@ -301,7 +300,7 @@ class StencilFactory(abc.ABC):
         *,
         shape: Sequence[int],
         storage_options: Optional[StorageOptions]
-    ) -> NDArray:
+    ) -> Any:
         return self._allocate(
             "empty", backend, stencil, shape, storage_options
         )
@@ -313,7 +312,7 @@ class StencilFactory(abc.ABC):
         *,
         shape: Sequence[int],
         storage_options: Optional[StorageOptions] = None
-    ) -> NDArray:
+    ) -> Any:
         return self._allocate("ones", backend, stencil, shape, storage_options)
 
     def stencil_definition(
@@ -381,7 +380,7 @@ class StencilFactory(abc.ABC):
         *,
         shape: Sequence[int],
         storage_options: Optional[StorageOptions] = None
-    ) -> NDArray:
+    ) -> Any:
         return self._allocate(
             "zeros", backend, stencil, shape, storage_options
         )
@@ -393,7 +392,7 @@ class StencilFactory(abc.ABC):
         stencil: str,
         shape: Sequence[int],
         storage_options: StorageOptions,
-    ) -> NDArray:
+    ) -> Any:
         backend = backend or self.backend
         key = (function, backend, stencil)
         try:

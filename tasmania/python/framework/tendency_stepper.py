@@ -38,12 +38,10 @@ from sympl._core.units import clean_units
 from typing import Optional, Tuple
 
 from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
+from tasmania.python.framework.register import factorize
 from tasmania.python.utils import taz_types
 from tasmania.python.utils.dict_utils import DataArrayDictOperator
-from tasmania.python.utils.framework_utils import (
-    check_property_compatibility,
-    factorize,
-)
+from tasmania.python.utils.framework_utils import check_property_compatibility
 from tasmania.python.utils.storage_utils import deepcopy_dataarray
 from tasmania.python.utils.utils import assert_sequence
 
