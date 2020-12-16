@@ -20,9 +20,8 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-import numpy as np
 from sympl import DataArray
-from typing import Mapping, Optional, TYPE_CHECKING
+from typing import Mapping, Optional, Sequence, TYPE_CHECKING
 
 from tasmania.python.dwarfs.diagnostics import HorizontalVelocity
 from tasmania.python.framework.base_components import DiagnosticComponent
@@ -30,15 +29,18 @@ from tasmania.python.isentropic.dynamics.diagnostics import (
     IsentropicDiagnostics as Core,
 )
 from tasmania.python.utils import taz_types
-from tasmania.python.utils.storage_utils import zeros
 
 if TYPE_CHECKING:
     from tasmania.python.domain.domain import Domain
+    from tasmania.python.framework.options import (
+        BackendOptions,
+        StorageOptions,
+    )
 
 
 class IsentropicDiagnostics(DiagnosticComponent):
     """
-    With the help of the isentropic density, this class diagnosed
+    With the help of the isentropic density, this class diagnoses
 
         * the pressure,
         * the Exner function,
@@ -54,7 +56,7 @@ class IsentropicDiagnostics(DiagnosticComponent):
     """
 
     # default values for the physical constants used in the class
-    _d_physical_constants = {
+    default_physical_constants = {
         "air_pressure_at_sea_level": DataArray(1e5, attrs={"units": "Pa"}),
         "gas_constant_of_dry_air": DataArray(
             287.05, attrs={"units": "J K^-1 kg^-1"}
@@ -76,14 +78,9 @@ class IsentropicDiagnostics(DiagnosticComponent):
         physical_constants: Optional[Mapping[str, DataArray]] = None,
         *,
         backend: str = "numpy",
-        backend_opts: Optional[taz_types.options_dict_t] = None,
-        dtype: taz_types.dtype_t = np.float64,
-        build_info: Optional[taz_types.options_dict_t] = None,
-        exec_info: Optional[taz_types.mutable_options_dict_t] = None,
-        default_origin: Optional[taz_types.triplet_int_t] = None,
-        rebuild: bool = False,
-        storage_shape: Optional[taz_types.triplet_int_t] = None,
-        managed_memory: bool = False
+        backend_options: Optional["BackendOptions"] = None,
+        storage_shape: Optional[Sequence[int]] = None,
+        storage_options: Optional["StorageOptions"] = None,
     ) -> None:
         """
         Parameters
@@ -119,98 +116,48 @@ class IsentropicDiagnostics(DiagnosticComponent):
             for the default values.
         backend : `str`, optional
             The backend.
-        backend_opts : `dict`, optional
-            Dictionary of backend-specific options.
-        dtype : `data-type`, optional
-            Data type of the storages.
-        build_info : `dict`, optional
-            Dictionary of building options.
-        exec_info : `dict`, optional
-            Dictionary which will store statistics and diagnostics gathered at
-            run time.
-        default_origin : `tuple[int]`, optional
-            Storage default origin.
-        rebuild : `bool`, optional
-            ``True`` to trigger the stencils compilation at any class
-            instantiation, ``False`` to rely on the caching mechanism
-            implemented by the backend.
-        storage_shape : `tuple[int]`, optional
-            Shape of the storages.
-        managed_memory : `bool`, optional
-            ``True`` to allocate the storages as managed memory,
-            ``False`` otherwise.
+        backend_options : `BackendOptions`, optional
+            Backend-specific options.
+        storage_shape : `Sequence[int]`, optional
+            The shape of the storages allocated within the class.
+        storage_options : `StorageOptions`, optional
+            Storage-related options.
         """
         # store input parameters needed at run-time
         self._moist = moist
         self._pt = pt.to_units("Pa").data.item()
 
-        # call parent's constructor
-        super().__init__(domain, grid_type)
+        # initialize the parent class
+        super().__init__(
+            domain,
+            grid_type,
+            physical_constants=physical_constants,
+            backend=backend,
+            backend_options=backend_options,
+            storage_options=storage_options,
+        )
 
         # instantiate the class computing the diagnostic variables
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
-        storage_shape = (
-            (nx, ny, nz + 1) if storage_shape is None else storage_shape
-        )
+        storage_shape = self.get_storage_shape(storage_shape, (nx, ny, nz + 1))
         self._core = Core(
             self.grid,
             physical_constants=physical_constants,
             backend=backend,
-            backend_opts=backend_opts,
-            dtype=dtype,
-            build_info=build_info,
-            exec_info=exec_info,
-            default_origin=default_origin,
-            rebuild=rebuild,
+            backend_options=backend_options,
             storage_shape=storage_shape,
-            managed_memory=managed_memory,
+            storage_options=storage_options,
         )
 
-        # allocate the gt4py storages collecting the output fields calculated
+        # allocate the storages collecting the output fields calculated
         # by the stencils
-        self._out_p = zeros(
-            storage_shape,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-            managed_memory=managed_memory,
-        )
-        self._out_exn = zeros(
-            storage_shape,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-            managed_memory=managed_memory,
-        )
-        self._out_mtg = zeros(
-            storage_shape,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-            managed_memory=managed_memory,
-        )
-        self._out_h = zeros(
-            storage_shape,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-            managed_memory=managed_memory,
-        )
+        self._out_p = self.zeros(shape=storage_shape)
+        self._out_exn = self.zeros(shape=storage_shape)
+        self._out_mtg = self.zeros(shape=storage_shape)
+        self._out_h = self.zeros(shape=storage_shape)
         if moist:
-            self._out_r = zeros(
-                storage_shape,
-                backend=backend,
-                dtype=dtype,
-                default_origin=default_origin,
-                managed_memory=managed_memory,
-            )
-            self._out_t = zeros(
-                storage_shape,
-                backend=backend,
-                dtype=dtype,
-                default_origin=default_origin,
-                managed_memory=managed_memory,
-            )
+            self._out_r = self.zeros(shape=storage_shape)
+            self._out_t = self.zeros(shape=storage_shape)
 
     @property
     def input_properties(self) -> taz_types.properties_dict_t:
@@ -282,14 +229,9 @@ class IsentropicVelocityComponents(DiagnosticComponent):
         domain: "Domain",
         *,
         backend: str = "numpy",
-        backend_opts: Optional[taz_types.options_dict_t] = None,
-        dtype: taz_types.dtype_t = np.float64,
-        build_info: Optional[taz_types.options_dict_t] = None,
-        exec_info: Optional[taz_types.mutable_options_dict_t] = None,
-        default_origin: Optional[taz_types.triplet_int_t] = None,
-        rebuild: bool = False,
-        storage_shape: Optional[taz_types.triplet_int_t] = None,
-        managed_memory: bool = False
+        backend_options: Optional["BackendOptions"] = None,
+        storage_shape: Optional[Sequence[int]] = None,
+        storage_options: Optional["StorageOptions"] = None,
     ) -> None:
         """
         Parameters
@@ -298,68 +240,40 @@ class IsentropicVelocityComponents(DiagnosticComponent):
             The :class:`~tasmania.Domain` holding the grid underneath.
         backend : `str`, optional
             The backend.
-        backend_opts : `dict`, optional
-            Dictionary of backend-specific options.
-        dtype : `data-type`, optional
-            Data type of the storages.
-        build_info : `dict`, optional
-            Dictionary of building options.
-        exec_info : `dict`, optional
-            Dictionary which will store statistics and diagnostics gathered at
-            run time.
-        default_origin : `tuple[int]`, optional
-            Storage default origin.
-        rebuild : `bool`, optional
-            ``True`` to trigger the stencils compilation at any class
-            instantiation, ``False`` to rely on the caching mechanism
-            implemented by the backend.
-        storage_shape : `tuple[int]`, optional
-            Shape of the storages.
-        managed_memory : `bool`, optional
-            ``True`` to allocate the storages as managed memory,
-            ``False`` otherwise.
+        backend_options : `BackendOptions`, optional
+            Backend-specific options.
+        storage_shape : `Sequence[int]`, optional
+            The shape of the storages allocated within the class.
+        storage_options : `StorageOptions`, optional
+            Storage-related options.
         """
-        # call the parent's constructor
-        super().__init__(domain, "numerical")
+        # initialize the parent class
+        super().__init__(
+            domain,
+            "numerical",
+            backend=backend,
+            backend_options=backend_options,
+            storage_options=storage_options,
+        )
 
         # instantiate the class retrieving the velocity components
         self._core = HorizontalVelocity(
             self.grid,
             staggering=True,
             backend=backend,
-            backend_opts=backend_opts,
-            build_info=build_info,
-            exec_info=exec_info,
-            rebuild=rebuild,
+            backend_options=backend_options,
+            storage_options=storage_options,
         )
 
-        # set the shape of the gt4py storages
+        # set the shape of the storages
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
-        storage_shape = (
-            (nx + 1, ny + 1, nz) if storage_shape is None else storage_shape
+        storage_shape = self.get_storage_shape(
+            storage_shape, (nx + 1, ny + 1, nz)
         )
-        error_msg = "storage_shape must be larger or equal than {}.".format(
-            (nx + 1, ny + 1, nz)
-        )
-        assert storage_shape[0] >= nx, error_msg
-        assert storage_shape[1] >= ny, error_msg
-        assert storage_shape[2] >= nz + 1, error_msg
 
         # allocate the storages gathering the output fields
-        self._out_u = zeros(
-            storage_shape,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-            managed_memory=managed_memory,
-        )
-        self._out_v = zeros(
-            storage_shape,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-            managed_memory=managed_memory,
-        )
+        self._out_u = self.zeros(shape=storage_shape)
+        self._out_v = self.zeros(shape=storage_shape)
 
     @property
     def input_properties(self) -> taz_types.properties_dict_t:

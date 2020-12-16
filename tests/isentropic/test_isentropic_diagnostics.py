@@ -29,6 +29,8 @@ import numpy as np
 from pint import UnitRegistry
 import pytest
 
+from tasmania.python.framework.allocators import zeros
+from tasmania.python.framework.options import BackendOptions, StorageOptions
 from tasmania.python.isentropic.dynamics.diagnostics import (
     IsentropicDiagnostics as DynamicsIsentropicDiagnostics,
 )
@@ -36,7 +38,7 @@ from tasmania.python.isentropic.physics.diagnostics import (
     IsentropicDiagnostics,
     IsentropicVelocityComponents,
 )
-from tasmania.python.utils.storage_utils import get_dataarray_3d, zeros
+from tasmania.python.utils.storage_utils import get_dataarray_3d
 
 from tests.conf import (
     backend as conf_backend,
@@ -90,45 +92,27 @@ def test_diagnostic_variables(data, backend, dtype):
     # ========================================
     # test bed
     # ========================================
-    p = zeros(
-        storage_shape,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
-    exn = zeros(
-        storage_shape,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
-    mtg = zeros(
-        storage_shape,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
-    h = zeros(
-        storage_shape,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, default_origin=default_origin)
+
+    p = zeros(backend, shape=storage_shape, storage_options=so)
+    exn = zeros(backend, shape=storage_shape, storage_options=so)
+    mtg = zeros(backend, shape=storage_shape, storage_options=so)
+    h = zeros(backend, shape=storage_shape, storage_options=so)
 
     did = DynamicsIsentropicDiagnostics(
         grid,
         backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-        rebuild=False,
+        backend_options=bo,
         storage_shape=storage_shape,
+        storage_options=so,
     )
     did.get_diagnostic_variables(s, pt, p, exn, mtg, h)
 
-    cp = did._pcs["specific_heat_of_dry_air_at_constant_pressure"]
-    p_ref = did._pcs["air_pressure_at_sea_level"]
-    rd = did._pcs["gas_constant_of_dry_air"]
-    g = did._pcs["gravitational_acceleration"]
+    cp = did.rpc["specific_heat_of_dry_air_at_constant_pressure"]
+    p_ref = did.rpc["air_pressure_at_sea_level"]
+    rd = did.rpc["gas_constant_of_dry_air"]
+    g = did.rpc["gravitational_acceleration"]
 
     dz = grid.dz.to_units("K").data.item()
     topo = grid.topography.profile.to_units("m").data
@@ -202,27 +186,24 @@ def test_montgomery(data, backend, dtype):
     # ========================================
     # test bed
     # ========================================
-    mtg = zeros(
-        storage_shape,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, default_origin=default_origin)
+
+    mtg = zeros(backend, shape=storage_shape, storage_options=so)
 
     did = DynamicsIsentropicDiagnostics(
         grid,
         backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-        rebuild=False,
+        backend_options=bo,
         storage_shape=storage_shape,
+        storage_options=so,
     )
     did.get_montgomery_potential(s, pt, mtg)
 
-    cp = did._pcs["specific_heat_of_dry_air_at_constant_pressure"]
-    p_ref = did._pcs["air_pressure_at_sea_level"]
-    rd = did._pcs["gas_constant_of_dry_air"]
-    g = did._pcs["gravitational_acceleration"]
+    cp = did.rpc["specific_heat_of_dry_air_at_constant_pressure"]
+    p_ref = did.rpc["air_pressure_at_sea_level"]
+    rd = did.rpc["gas_constant_of_dry_air"]
+    g = did.rpc["gravitational_acceleration"]
 
     dz = grid.dz.to_units("K").data.item()
     topo = grid.topography.profile.to_units("m").data
@@ -282,27 +263,24 @@ def test_height(data, backend, dtype):
     # ========================================
     # test bed
     # ========================================
-    h = zeros(
-        storage_shape,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, default_origin=default_origin)
+
+    h = zeros(backend, shape=storage_shape, storage_options=so)
 
     did = DynamicsIsentropicDiagnostics(
         grid,
         backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-        rebuild=False,
+        backend_options=bo,
         storage_shape=storage_shape,
+        storage_options=so,
     )
     did.get_height(s, pt, h)
 
-    cp = did._pcs["specific_heat_of_dry_air_at_constant_pressure"]
-    p_ref = did._pcs["air_pressure_at_sea_level"]
-    rd = did._pcs["gas_constant_of_dry_air"]
-    g = did._pcs["gravitational_acceleration"]
+    cp = did.rpc["specific_heat_of_dry_air_at_constant_pressure"]
+    p_ref = did.rpc["air_pressure_at_sea_level"]
+    rd = did.rpc["gas_constant_of_dry_air"]
+    g = did.rpc["gravitational_acceleration"]
 
     dz = grid.dz.to_units("K").data.item()
     topo = grid.topography.profile.to_units("m").data
@@ -364,58 +342,30 @@ def test_density_and_temperature(data, backend, dtype):
     # ========================================
     # test bed
     # ========================================
-    p = zeros(
-        storage_shape,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
-    exn = zeros(
-        storage_shape,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
-    mtg = zeros(
-        storage_shape,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
-    h = zeros(
-        storage_shape,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
-    rho = zeros(
-        storage_shape,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
-    t = zeros(
-        storage_shape,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, default_origin=default_origin)
+
+    p = zeros(backend, shape=storage_shape, storage_options=so)
+    exn = zeros(backend, shape=storage_shape, storage_options=so)
+    mtg = zeros(backend, shape=storage_shape, storage_options=so)
+    h = zeros(backend, shape=storage_shape, storage_options=so)
+    rho = zeros(backend, shape=storage_shape, storage_options=so)
+    t = zeros(backend, shape=storage_shape, storage_options=so)
 
     did = DynamicsIsentropicDiagnostics(
         grid,
         backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-        rebuild=False,
+        backend_options=bo,
         storage_shape=storage_shape,
+        storage_options=so,
     )
     did.get_diagnostic_variables(s, pt, p, exn, mtg, h)
     did.get_density_and_temperature(s, exn, h, rho, t)
 
-    cp = did._pcs["specific_heat_of_dry_air_at_constant_pressure"]
-    p_ref = did._pcs["air_pressure_at_sea_level"]
-    rd = did._pcs["gas_constant_of_dry_air"]
-    g = did._pcs["gravitational_acceleration"]
+    cp = did.rpc["specific_heat_of_dry_air_at_constant_pressure"]
+    p_ref = did.rpc["air_pressure_at_sea_level"]
+    rd = did.rpc["gas_constant_of_dry_air"]
+    g = did.rpc["gravitational_acceleration"]
 
     dz = grid.dz.to_units("K").data.item()
     topo = grid.topography.profile.to_units("m").data
@@ -506,53 +456,22 @@ def test_isentropic_diagnostics(data, backend, dtype):
     # ========================================
     # test bed
     # ========================================
-    #
-    # validation data
-    #
-    p = zeros(
-        storage_shape,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
-    exn = zeros(
-        storage_shape,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
-    mtg = zeros(
-        storage_shape,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
-    h = zeros(
-        storage_shape,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
-    rho = zeros(
-        storage_shape,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
-    t = zeros(
-        storage_shape,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, default_origin=default_origin)
+
+    p = zeros(backend, shape=storage_shape, storage_options=so)
+    exn = zeros(backend, shape=storage_shape, storage_options=so)
+    mtg = zeros(backend, shape=storage_shape, storage_options=so)
+    h = zeros(backend, shape=storage_shape, storage_options=so)
+    rho = zeros(backend, shape=storage_shape, storage_options=so)
+    t = zeros(backend, shape=storage_shape, storage_options=so)
 
     did = DynamicsIsentropicDiagnostics(
         grid,
         backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-        rebuild=False,
+        backend_options=bo,
         storage_shape=storage_shape,
+        storage_options=so,
     )
 
     s = state["air_isentropic_density"].to_units("kg m^-2 K^-1").data
@@ -570,10 +489,9 @@ def test_isentropic_diagnostics(data, backend, dtype):
         moist=False,
         pt=state["air_pressure_on_interface_levels"][0, 0, 0],
         backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-        rebuild=False,
+        backend_options=bo,
         storage_shape=storage_shape,
+        storage_options=so,
     )
 
     diags = pid(state)
@@ -625,10 +543,9 @@ def test_isentropic_diagnostics(data, backend, dtype):
         moist=True,
         pt=state["air_pressure_on_interface_levels"][0, 0, 0],
         backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-        rebuild=False,
+        backend_options=bo,
         storage_shape=storage_shape,
+        storage_options=so,
     )
 
     diags = pid(state)
@@ -696,13 +613,15 @@ def test_horizontal_velocity(data, backend, dtype):
     # ========================================
     # test bed
     # ========================================
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, default_origin=default_origin)
+
     ivc = IsentropicVelocityComponents(
         domain,
         backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-        rebuild=False,
+        backend_options=bo,
         storage_shape=storage_shape,
+        storage_options=so,
     )
 
     diags = ivc(state)
@@ -711,18 +630,8 @@ def test_horizontal_velocity(data, backend, dtype):
     su = state["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").data
     sv = state["y_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").data
 
-    u = zeros(
-        storage_shape,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
-    v = zeros(
-        storage_shape,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
+    u = zeros(backend, shape=storage_shape, storage_options=so)
+    v = zeros(backend, shape=storage_shape, storage_options=so)
 
     assert "x_velocity_at_u_locations" in diags
     u[1:-1, :] = (su[:-2, :] + su[1:-1, :]) / (s[:-2, :] + s[1:-1, :])
