@@ -57,7 +57,7 @@ from tasmania.python.dwarfs.horizontal_smoothing import HorizontalSmoothing
 from tasmania.python.dwarfs.vertical_damping import VerticalDamping
 
 # framework
-from tasmania.python.framework import register, tag
+from tasmania.python.framework import tag
 from tasmania.python.framework.allocators import empty, ones, zeros
 from tasmania.python.framework.base_components import (
     DiagnosticComponent,
@@ -73,11 +73,13 @@ from tasmania.python.framework.offline_diagnostics import (
     RMSD,
     RRMSD,
 )
+from tasmania.python.framework.options import BackendOptions, StorageOptions
 from tasmania.python.framework.parallel_splitting import ParallelSplitting
 from tasmania.python.framework.promoters import (
     Diagnostic2Tendency,
     Tendency2Diagnostic,
 )
+from tasmania.python.framework.register import factorize, register
 from tasmania.python.framework.sequential_tendency_splitting import (
     SequentialTendencySplitting,
 )
@@ -85,9 +87,10 @@ from tasmania.python.framework.sequential_update_splitting import (
     SequentialUpdateSplitting,
 )
 from tasmania.python.framework.stencil import (
-    stencil_compiler,
-    stencil_definition,
-    stencil_subroutine,
+    StencilCompiler,
+    StencilDefinition,
+    StencilFactory,
+    StencilSubroutine,
 )
 from tasmania.python.framework.sts_tendency_stepper import STSTendencyStepper
 from tasmania.python.framework.tendency_stepper import TendencyStepper
@@ -176,113 +179,7 @@ from tasmania.python.utils.storage_utils import (
 from tasmania.python.utils.utils import Timer, feed_module, get_time_string
 
 
-__all__ = (
-    RMSD,
-    RRMSD,
-    STSTendencyStepper,
-    AirPotentialTemperature2Diagnostic,
-    AirPotentialTemperature2Tendency,
-    Animation,
-    Annotation,
-    BurgersAdvection,
-    BurgersDynamicalCore,
-    BurgersHorizontalDiffusion,
-    BurgersStepper,
-    CDF,
-    Circle,
-    Clipping,
-    ConcurrentCoupling,
-    ConstantNotFoundError,
-    Contour,
-    Contourf,
-    DataArrayDictOperator,
-    Diagnostic2Tendency,
-    DiagnosticComponent,
-    DiagnosticComponentComposite,
-    Domain,
-    DynamicalCore,
-    Grid,
-    HorizontalBoundary,
-    HorizontalDiffusion,
-    HorizontalGrid,
-    HorizontalHyperDiffusion,
-    HorizontalSmoothing,
-    HorizontalVelocity,
-    HovmollerDiagram,
-    ImplicitTendencyComponent,
-    IsentropicConservativeCoriolis,
-    IsentropicDiagnostics,
-    IsentropicDynamicalCore,
-    IsentropicHorizontalDiffusion,
-    IsentropicHorizontalSmoothing,
-    IsentropicImplicitVerticalAdvectionDiagnostic,
-    IsentropicImplicitVerticalAdvectionPrognostic,
-    IsentropicSmagorinsky,
-    IsentropicVelocityComponents,
-    IsentropicVerticalAdvection,
-    KesslerFallVelocity,
-    KesslerMicrophysics,
-    KesslerSaturationAdjustmentDiagnostic,
-    KesslerSaturationAdjustmentPrognostic,
-    KesslerSedimentation,
-    Line,
-    LineProfile,
-    NetCDFMonitor,
-    NumericalGrid,
-    NumericalHorizontalGrid,
-    NumericalTopography,
-    OfflineDiagnosticComponent,
-    ParallelSplitting,
-    PhysicalGrid,
-    PhysicalHorizontalGrid,
-    PhysicalTopography,
-    Plot,
-    PlotComposite,
-    Precipitation,
-    PrescribedSurfaceHeating,
-    Quiver,
-    Rectangle,
-    Segment,
-    SequentialTendencySplitting,
-    SequentialUpdateSplitting,
-    Smagorinsky2d,
-    Stepper,
-    Tendency2Diagnostic,
-    TendencyComponent,
-    TendencyStepper,
-    TimeInconsistencyError,
-    TimeSeries,
-    Timer,
-    Topography,
-    VerticalDamping,
-    WaterConstituent,
-    ZhaoSolutionFactory,
-    ZhaoStateFactory,
-    deepcopy_array_dict,
-    deepcopy_dataarray,
-    deepcopy_dataarray_dict,
-    empty,
-    feed_module,
-    get_array_dict,
-    get_dataarray_2d,
-    get_dataarray_3d,
-    get_dataarray_dict,
-    get_figure_and_axes,
-    get_isentropic_state_from_brunt_vaisala_frequency,
-    get_isentropic_state_from_temperature,
-    get_isothermal_isentropic_analytical_solution,
-    get_time_string,
-    load_netcdf_dataset,
-    ones,
-    set_axes_properties,
-    set_figure_properties,
-    taz_types,
-    zeros,
-)
-
-
 from pkg_resources import get_distribution, DistributionNotFound
-
 
 try:
     __version__ = get_distribution(__name__).version
