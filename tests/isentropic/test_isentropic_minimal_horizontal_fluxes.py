@@ -27,8 +27,7 @@ from hypothesis import (
 )
 import pytest
 
-from gt4py import gtscript
-
+from tasmania.python.framework.options import BackendOptions, StorageOptions
 from tasmania.python.isentropic.dynamics.horizontal_fluxes import (
     IsentropicMinimalHorizontalFlux,
 )
@@ -38,8 +37,6 @@ from tasmania.python.isentropic.dynamics.subclasses.minimal_horizontal_fluxes im
     ThirdOrderUpwind,
     FifthOrderUpwind,
 )
-from tasmania.python.utils.storage_utils import zeros
-from tasmania.python.utils.utils import get_gt_backend
 
 from tests.conf import (
     backend as conf_backend,
@@ -76,304 +73,18 @@ def test_registry():
 
 
 def test_factory():
-    obj = IsentropicMinimalHorizontalFlux.factory("upwind", False, "numpy")
+    obj = IsentropicMinimalHorizontalFlux.factory("upwind", backend="numpy")
     assert isinstance(obj, Upwind)
-    obj = IsentropicMinimalHorizontalFlux.factory("centered", False, "numpy")
+    obj = IsentropicMinimalHorizontalFlux.factory("centered", backend="numpy")
     assert isinstance(obj, Centered)
     obj = IsentropicMinimalHorizontalFlux.factory(
-        "third_order_upwind", False, "numpy"
+        "third_order_upwind", backend="numpy"
     )
     assert isinstance(obj, ThirdOrderUpwind)
     obj = IsentropicMinimalHorizontalFlux.factory(
-        "fifth_order_upwind", False, "numpy"
+        "fifth_order_upwind", backend="numpy"
     )
     assert isinstance(obj, FifthOrderUpwind)
-
-
-class WrappingStencil:
-    def __init__(self, core, nb, backend, dtype, default_origin, rebuild):
-        self.core = core
-        self.nb = nb
-        self.backend = backend
-        self.dtype = dtype
-        self.default_origin = default_origin
-        self.rebuild = rebuild
-
-    def __call__(
-        self,
-        dt,
-        dx,
-        dy,
-        s,
-        u,
-        v,
-        su,
-        sv,
-        sqv=None,
-        sqc=None,
-        sqr=None,
-        s_tnd=None,
-        su_tnd=None,
-        sv_tnd=None,
-        qv_tnd=None,
-        qc_tnd=None,
-        qr_tnd=None,
-    ):
-        mi, mj, mk = s.shape
-
-        stencil_args = {
-            "s": s,
-            "u": u,
-            "v": v,
-            "su": su,
-            "sv": sv,
-            "flux_s_x": zeros(
-                (mi, mj, mk),
-                backend=self.backend,
-                dtype=s.dtype,
-                default_origin=self.default_origin,
-            ),
-            "flux_s_y": zeros(
-                (mi, mj, mk),
-                backend=self.backend,
-                dtype=s.dtype,
-                default_origin=self.default_origin,
-            ),
-            "flux_su_x": zeros(
-                (mi, mj, mk),
-                backend=self.backend,
-                dtype=s.dtype,
-                default_origin=self.default_origin,
-            ),
-            "flux_su_y": zeros(
-                (mi, mj, mk),
-                backend=self.backend,
-                dtype=s.dtype,
-                default_origin=self.default_origin,
-            ),
-            "flux_sv_x": zeros(
-                (mi, mj, mk),
-                backend=self.backend,
-                dtype=s.dtype,
-                default_origin=self.default_origin,
-            ),
-            "flux_sv_y": zeros(
-                (mi, mj, mk),
-                backend=self.backend,
-                dtype=s.dtype,
-                default_origin=self.default_origin,
-            ),
-        }
-
-        s_tnd_on = s_tnd is not None
-        if s_tnd_on:
-            stencil_args["s_tnd"] = s_tnd
-        su_tnd_on = su_tnd is not None
-        if su_tnd_on:
-            stencil_args["su_tnd"] = su_tnd
-        sv_tnd_on = sv_tnd is not None
-        if sv_tnd_on:
-            stencil_args["sv_tnd"] = sv_tnd
-
-        moist = self.core.moist
-        if moist:
-            stencil_args["sqv"] = sqv
-            stencil_args["flux_sqv_x"] = zeros(
-                (mi, mj, mk),
-                backend=self.backend,
-                dtype=s.dtype,
-                default_origin=self.default_origin,
-            )
-            stencil_args["flux_sqv_y"] = zeros(
-                (mi, mj, mk),
-                backend=self.backend,
-                dtype=s.dtype,
-                default_origin=self.default_origin,
-            )
-            stencil_args["sqc"] = sqc
-            stencil_args["flux_sqc_x"] = zeros(
-                (mi, mj, mk),
-                backend=self.backend,
-                dtype=s.dtype,
-                default_origin=self.default_origin,
-            )
-            stencil_args["flux_sqc_y"] = zeros(
-                (mi, mj, mk),
-                backend=self.backend,
-                dtype=s.dtype,
-                default_origin=self.default_origin,
-            )
-            stencil_args["sqr"] = sqr
-            stencil_args["flux_sqr_x"] = zeros(
-                (mi, mj, mk),
-                backend=self.backend,
-                dtype=s.dtype,
-                default_origin=self.default_origin,
-            )
-            stencil_args["flux_sqr_y"] = zeros(
-                (mi, mj, mk),
-                backend=self.backend,
-                dtype=s.dtype,
-                default_origin=self.default_origin,
-            )
-
-            if moist:
-                qv_tnd_on = qv_tnd is not None
-                if qv_tnd_on:
-                    stencil_args["qv_tnd"] = qv_tnd
-                qc_tnd_on = qc_tnd is not None
-                if qc_tnd_on:
-                    stencil_args["qc_tnd"] = qc_tnd
-                qr_tnd_on = qr_tnd is not None
-                if qv_tnd_on:
-                    stencil_args["qr_tnd"] = qr_tnd
-
-        # externals = self.core.externals.copy()
-        externals = {
-            "core": self.core.call,
-            "moist": moist,
-            "s_tnd_on": s_tnd_on,
-            "su_tnd_on": su_tnd_on,
-            "sv_tnd_on": sv_tnd_on,
-        }
-        if moist:
-            externals.update(
-                {
-                    "qv_tnd_on": qv_tnd_on,
-                    "qc_tnd_on": qc_tnd_on,
-                    "qr_tnd_on": qr_tnd_on,
-                }
-            )
-
-        decorator = gtscript.stencil(
-            get_gt_backend(self.backend),
-            dtypes={"dtype": self.dtype},
-            externals=externals,
-            rebuild=self.rebuild,
-        )
-        stencil = decorator(self.stencil_defs)
-
-        nb = self.nb
-        stencil(
-            **stencil_args,
-            dt=dt,
-            dx=dx,
-            dy=dy,
-            origin={"_all_": (nb, nb, 0)},
-            domain=(mi - 2 * nb, mj - 2 * nb, mk)
-        )
-
-        return_list_names = [
-            "flux_s_x",
-            "flux_s_y",
-            "flux_su_x",
-            "flux_su_y",
-            "flux_sv_x",
-            "flux_sv_y",
-        ]
-        if moist:
-            return_list_names += [
-                "flux_sqv_x",
-                "flux_sqv_y",
-                "flux_sqc_x",
-                "flux_sqc_y",
-                "flux_sqr_x",
-                "flux_sqr_y",
-            ]
-        return_list = tuple(stencil_args[name] for name in return_list_names)
-
-        return return_list
-
-    @staticmethod
-    def stencil_defs(
-        s: gtscript.Field["dtype"],
-        u: gtscript.Field["dtype"],
-        v: gtscript.Field["dtype"],
-        su: gtscript.Field["dtype"],
-        sv: gtscript.Field["dtype"],
-        flux_s_x: gtscript.Field["dtype"],
-        flux_s_y: gtscript.Field["dtype"],
-        flux_su_x: gtscript.Field["dtype"],
-        flux_su_y: gtscript.Field["dtype"],
-        flux_sv_x: gtscript.Field["dtype"],
-        flux_sv_y: gtscript.Field["dtype"],
-        sqv: gtscript.Field["dtype"] = None,
-        sqc: gtscript.Field["dtype"] = None,
-        sqr: gtscript.Field["dtype"] = None,
-        flux_sqv_x: gtscript.Field["dtype"] = None,
-        flux_sqv_y: gtscript.Field["dtype"] = None,
-        flux_sqc_x: gtscript.Field["dtype"] = None,
-        flux_sqc_y: gtscript.Field["dtype"] = None,
-        flux_sqr_x: gtscript.Field["dtype"] = None,
-        flux_sqr_y: gtscript.Field["dtype"] = None,
-        s_tnd: gtscript.Field["dtype"] = None,
-        su_tnd: gtscript.Field["dtype"] = None,
-        sv_tnd: gtscript.Field["dtype"] = None,
-        qv_tnd: gtscript.Field["dtype"] = None,
-        qc_tnd: gtscript.Field["dtype"] = None,
-        qr_tnd: gtscript.Field["dtype"] = None,
-        *,
-        dt: float = 0.0,
-        dx: float = 0.0,
-        dy: float = 0.0
-    ):
-        from __externals__ import core, moist
-
-        with computation(PARALLEL), interval(...):
-            if __INLINED(not moist):
-                (
-                    flux_s_x,
-                    flux_s_y,
-                    flux_su_x,
-                    flux_su_y,
-                    flux_sv_x,
-                    flux_sv_y,
-                ) = core(
-                    dt=dt,
-                    dx=dx,
-                    dy=dy,
-                    s=s,
-                    u=u,
-                    v=v,
-                    su=su,
-                    sv=sv,
-                    s_tnd=s_tnd,
-                    su_tnd=su_tnd,
-                    sv_tnd=sv_tnd,
-                )
-            else:
-                (
-                    flux_s_x,
-                    flux_s_y,
-                    flux_su_x,
-                    flux_su_y,
-                    flux_sv_x,
-                    flux_sv_y,
-                    flux_sqv_x,
-                    flux_sqv_y,
-                    flux_sqc_x,
-                    flux_sqc_y,
-                    flux_sqr_x,
-                    flux_sqr_y,
-                ) = core(
-                    dt=dt,
-                    dx=dx,
-                    dy=dy,
-                    s=s,
-                    u=u,
-                    v=v,
-                    su=su,
-                    sv=sv,
-                    sqv=sqv,
-                    sqc=sqc,
-                    sqr=sqr,
-                    s_tnd=s_tnd,
-                    su_tnd=su_tnd,
-                    sv_tnd=sv_tnd,
-                    qv_tnd=qv_tnd,
-                    qc_tnd=qc_tnd,
-                    qr_tnd=qr_tnd,
-                )
 
 
 flux_properties = {
@@ -436,15 +147,17 @@ def test_upwind(data, backend, dtype):
     # ========================================
     # test bed
     # ========================================
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, default_origin=default_origin)
     validation(
+        IsentropicMinimalHorizontalFlux,
         "upwind",
         domain,
         field,
         timestep,
         backend,
-        dtype,
-        default_origin,
-        rebuild=False,
+        bo,
+        so,
     )
 
 
@@ -494,15 +207,17 @@ def test_centered(data, backend, dtype):
     # ========================================
     # test bed
     # ========================================
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, default_origin=default_origin)
     validation(
+        IsentropicMinimalHorizontalFlux,
         "centered",
         domain,
         field,
         timestep,
         backend,
-        dtype,
-        default_origin,
-        rebuild=False,
+        bo,
+        so,
     )
 
 
@@ -552,15 +267,17 @@ def test_third_order_upwind(data, backend, dtype):
     # ========================================
     # test bed
     # ========================================
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, default_origin=default_origin)
     validation(
+        IsentropicMinimalHorizontalFlux,
         "third_order_upwind",
         domain,
         field,
         timestep,
         backend,
-        dtype,
-        default_origin,
-        rebuild=False,
+        bo,
+        so,
     )
 
 
@@ -610,15 +327,17 @@ def test_fifth_order_upwind(data, backend, dtype):
     # ========================================
     # test bed
     # ========================================
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, default_origin=default_origin)
     validation(
+        IsentropicMinimalHorizontalFlux,
         "fifth_order_upwind",
         domain,
         field,
         timestep,
         backend,
-        dtype,
-        default_origin,
-        rebuild=False,
+        bo,
+        so,
     )
 
 

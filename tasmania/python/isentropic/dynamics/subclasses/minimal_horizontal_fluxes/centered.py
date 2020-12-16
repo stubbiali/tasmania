@@ -22,34 +22,33 @@
 #
 from gt4py import gtscript
 
+from tasmania.python.framework.register import register
+from tasmania.python.framework.tag import stencil_subroutine
 from tasmania.python.isentropic.dynamics.horizontal_fluxes import (
     IsentropicMinimalHorizontalFlux,
 )
 from tasmania.python.isentropic.dynamics.subclasses.horizontal_fluxes.centered import (
-    get_centered_flux_x,
+    get_centered_flux_x_gt4py,
     get_centered_flux_x_numpy,
-    get_centered_flux_y,
+    get_centered_flux_y_gt4py,
     get_centered_flux_y_numpy,
 )
-from tasmania.python.utils.framework_utils import register
 
 
 @register(name="centered")
 class Centered(IsentropicMinimalHorizontalFlux):
-    """ Centered scheme. """
+    """Centered scheme."""
 
     extent = 1
     order = 2
     externals = {
-        "get_centered_flux_x": get_centered_flux_x,
-        "get_centered_flux_y": get_centered_flux_y,
+        "get_centered_flux_x_gt4py": get_centered_flux_x_gt4py,
+        "get_centered_flux_y_gt4py": get_centered_flux_y_gt4py,
     }
 
-    def __init__(self, moist, backend):
-        super().__init__(moist, backend)
-
-    def call_numpy(
-        self,
+    @staticmethod
+    @stencil_subroutine(backend=("numpy", "cupy"), stencil="flux_dry")
+    def flux_dry_numpy(
         dt,
         dx,
         dy,
@@ -59,19 +58,12 @@ class Centered(IsentropicMinimalHorizontalFlux):
         su,
         sv,
         mtg=None,
-        sqv=None,
-        sqc=None,
-        sqr=None,
         s_tnd=None,
         su_tnd=None,
         sv_tnd=None,
-        qv_tnd=None,
-        qc_tnd=None,
-        qr_tnd=None,
         *,
         compute_density_fluxes=True,
         compute_momentum_fluxes=True,
-        compute_water_species_fluxes=True
     ):
         return_list = []
 
@@ -89,28 +81,46 @@ class Centered(IsentropicMinimalHorizontalFlux):
 
             return_list += [flux_su_x, flux_su_y, flux_sv_x, flux_sv_y]
 
-        if self.moist and compute_water_species_fluxes:
-            flux_sqv_x = get_centered_flux_x_numpy(u, sqv)
-            flux_sqv_y = get_centered_flux_y_numpy(v, sqv)
-            flux_sqc_x = get_centered_flux_x_numpy(u, sqc)
-            flux_sqc_y = get_centered_flux_y_numpy(v, sqc)
-            flux_sqr_x = get_centered_flux_x_numpy(u, sqr)
-            flux_sqr_y = get_centered_flux_y_numpy(v, sqr)
+        return return_list
 
-            return_list += [
-                flux_sqv_x,
-                flux_sqv_y,
-                flux_sqc_x,
-                flux_sqc_y,
-                flux_sqr_x,
-                flux_sqr_y,
-            ]
+    @staticmethod
+    @stencil_subroutine(backend=("numpy", "cupy"), stencil="flux_moist")
+    def flux_moist_numpy(
+        dt,
+        dx,
+        dy,
+        s,
+        u,
+        v,
+        sqv,
+        sqc,
+        sqr,
+        qv_tnd=None,
+        qc_tnd=None,
+        qr_tnd=None,
+    ):
+        flux_sqv_x = get_centered_flux_x_numpy(u, sqv)
+        flux_sqv_y = get_centered_flux_y_numpy(v, sqv)
+        flux_sqc_x = get_centered_flux_x_numpy(u, sqc)
+        flux_sqc_y = get_centered_flux_y_numpy(v, sqc)
+        flux_sqr_x = get_centered_flux_x_numpy(u, sqr)
+        flux_sqr_y = get_centered_flux_y_numpy(v, sqr)
+
+        return_list = [
+            flux_sqv_x,
+            flux_sqv_y,
+            flux_sqc_x,
+            flux_sqc_y,
+            flux_sqr_x,
+            flux_sqr_y,
+        ]
 
         return return_list
 
     @staticmethod
+    @stencil_subroutine(backend="gt4py*", stencil="flux_dry")
     @gtscript.function
-    def call_gt(
+    def flux_dry_gt4py(
         dt,
         dx,
         dy,
@@ -120,55 +130,55 @@ class Centered(IsentropicMinimalHorizontalFlux):
         su,
         sv,
         mtg=None,
-        sqv=None,
-        sqc=None,
-        sqr=None,
         s_tnd=None,
         su_tnd=None,
         sv_tnd=None,
+    ):
+        flux_s_x = get_centered_flux_x_gt4py(u=u, phi=s)
+        flux_s_y = get_centered_flux_y_gt4py(v=v, phi=s)
+        flux_su_x = get_centered_flux_x_gt4py(u=u, phi=su)
+        flux_su_y = get_centered_flux_y_gt4py(v=v, phi=su)
+        flux_sv_x = get_centered_flux_x_gt4py(u=u, phi=sv)
+        flux_sv_y = get_centered_flux_y_gt4py(v=v, phi=sv)
+
+        return (
+            flux_s_x,
+            flux_s_y,
+            flux_su_x,
+            flux_su_y,
+            flux_sv_x,
+            flux_sv_y,
+        )
+
+    @staticmethod
+    @stencil_subroutine(backend="gt4py*", stencil="flux_moist")
+    @gtscript.function
+    def flux_moist_gt4py(
+        dt,
+        dx,
+        dy,
+        s,
+        u,
+        v,
+        sqv,
+        sqc,
+        sqr,
         qv_tnd=None,
         qc_tnd=None,
         qr_tnd=None,
     ):
-        from __externals__ import moist
+        flux_sqv_x = get_centered_flux_x_gt4py(u=u, phi=sqv)
+        flux_sqv_y = get_centered_flux_y_gt4py(v=v, phi=sqv)
+        flux_sqc_x = get_centered_flux_x_gt4py(u=u, phi=sqc)
+        flux_sqc_y = get_centered_flux_y_gt4py(v=v, phi=sqc)
+        flux_sqr_x = get_centered_flux_x_gt4py(u=u, phi=sqr)
+        flux_sqr_y = get_centered_flux_y_gt4py(v=v, phi=sqr)
 
-        # compute fluxes for the isentropic density and the momenta
-        flux_s_x = get_centered_flux_x(u=u, phi=s)
-        flux_s_y = get_centered_flux_y(v=v, phi=s)
-        flux_su_x = get_centered_flux_x(u=u, phi=su)
-        flux_su_y = get_centered_flux_y(v=v, phi=su)
-        flux_sv_x = get_centered_flux_x(u=u, phi=sv)
-        flux_sv_y = get_centered_flux_y(v=v, phi=sv)
-
-        if __INLINED(not moist):  # compile-time if
-            return (
-                flux_s_x,
-                flux_s_y,
-                flux_su_x,
-                flux_su_y,
-                flux_sv_x,
-                flux_sv_y,
-            )
-        else:
-            # compute fluxes for the water constituents
-            flux_sqv_x = get_centered_flux_x(u=u, phi=sqv)
-            flux_sqv_y = get_centered_flux_y(v=v, phi=sqv)
-            flux_sqc_x = get_centered_flux_x(u=u, phi=sqc)
-            flux_sqc_y = get_centered_flux_y(v=v, phi=sqc)
-            flux_sqr_x = get_centered_flux_x(u=u, phi=sqr)
-            flux_sqr_y = get_centered_flux_y(v=v, phi=sqr)
-
-            return (
-                flux_s_x,
-                flux_s_y,
-                flux_su_x,
-                flux_su_y,
-                flux_sv_x,
-                flux_sv_y,
-                flux_sqv_x,
-                flux_sqv_y,
-                flux_sqc_x,
-                flux_sqc_y,
-                flux_sqr_x,
-                flux_sqr_y,
-            )
+        return (
+            flux_sqv_x,
+            flux_sqv_y,
+            flux_sqc_x,
+            flux_sqc_y,
+            flux_sqr_x,
+            flux_sqr_y,
+        )

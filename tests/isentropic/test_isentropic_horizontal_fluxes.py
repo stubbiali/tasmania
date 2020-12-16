@@ -31,6 +31,10 @@ import pytest
 
 from gt4py import gtscript
 
+from tasmania.python.framework.allocators import zeros
+from tasmania.python.framework.options import BackendOptions, StorageOptions
+from tasmania.python.framework.stencil import StencilFactory
+from tasmania.python.framework.tag import stencil_definition
 from tasmania.python.isentropic.dynamics.horizontal_fluxes import (
     IsentropicHorizontalFlux,
 )
@@ -40,7 +44,6 @@ from tasmania.python.isentropic.dynamics.subclasses.horizontal_fluxes import (
     ThirdOrderUpwind,
     FifthOrderUpwind,
 )
-from tasmania.python.utils.storage_utils import zeros
 from tasmania.python.utils.utils import get_gt_backend, is_gt
 
 from tests.conf import (
@@ -71,30 +74,43 @@ def test_registry():
 
 
 def test_factory():
-    obj = IsentropicHorizontalFlux.factory("upwind", False, "numpy")
+    obj = IsentropicHorizontalFlux.factory("upwind", backend="numpy")
     assert isinstance(obj, Upwind)
-    obj = IsentropicHorizontalFlux.factory("centered", False, "numpy")
+    obj = IsentropicHorizontalFlux.factory("centered", backend="numpy")
     assert isinstance(obj, Centered)
     obj = IsentropicHorizontalFlux.factory(
-        "third_order_upwind", False, "numpy"
+        "third_order_upwind", backend="numpy"
     )
     assert isinstance(obj, ThirdOrderUpwind)
     obj = IsentropicHorizontalFlux.factory(
-        "fifth_order_upwind", False, "numpy"
+        "fifth_order_upwind", backend="numpy"
     )
     assert isinstance(obj, FifthOrderUpwind)
 
 
-class WrappingStencil:
-    def __init__(self, core, nb, backend, dtype, default_origin, rebuild):
-        self.core = core
+class WrappingStencil(StencilFactory):
+    def __init__(
+        self, cls, scheme, nb, backend, backend_options, storage_options
+    ):
+        super().__init__(backend, backend_options, storage_options)
         self.nb = nb
-        self.backend = backend
-        self.dtype = dtype
-        self.default_origin = default_origin
-        self.rebuild = rebuild
+        self.core = cls.factory(scheme, backend=backend)
 
-    def __call__(
+        dtype = self.storage_options.dtype
+        self.backend_options.dtypes = {"dtype": dtype}
+
+        self.backend_options.externals = self.core.externals.copy()
+        self.backend_options.externals[
+            "get_flux_dry"
+        ] = self.core.stencil_subroutine("flux_dry")
+        self.backend_options.externals[
+            "get_flux_moist"
+        ] = self.core.stencil_subroutine("flux_moist")
+
+        self.stencil_dry = self.compile("stencil_dry")
+        self.stencil_moist = self.compile("stencil_moist")
+
+    def call_dry(
         self,
         dt,
         dx,
@@ -105,17 +121,12 @@ class WrappingStencil:
         su,
         sv,
         mtg=None,
-        sqv=None,
-        sqc=None,
-        sqr=None,
         s_tnd=None,
         su_tnd=None,
         sv_tnd=None,
-        qv_tnd=None,
-        qc_tnd=None,
-        qr_tnd=None,
     ):
         mi, mj, mk = s.shape
+        nb = self.nb
 
         stencil_args = {
             "s": s,
@@ -123,143 +134,29 @@ class WrappingStencil:
             "v": v,
             "su": su,
             "sv": sv,
-            "flux_s_x": zeros(
-                (mi, mj, mk),
-                backend=self.backend,
-                dtype=s.dtype,
-                default_origin=self.default_origin,
-            ),
-            "flux_s_y": zeros(
-                (mi, mj, mk),
-                backend=self.backend,
-                dtype=s.dtype,
-                default_origin=self.default_origin,
-            ),
-            "flux_su_x": zeros(
-                (mi, mj, mk),
-                backend=self.backend,
-                dtype=s.dtype,
-                default_origin=self.default_origin,
-            ),
-            "flux_su_y": zeros(
-                (mi, mj, mk),
-                backend=self.backend,
-                dtype=s.dtype,
-                default_origin=self.default_origin,
-            ),
-            "flux_sv_x": zeros(
-                (mi, mj, mk),
-                backend=self.backend,
-                dtype=s.dtype,
-                default_origin=self.default_origin,
-            ),
-            "flux_sv_y": zeros(
-                (mi, mj, mk),
-                backend=self.backend,
-                dtype=s.dtype,
-                default_origin=self.default_origin,
-            ),
+            "flux_s_x": self.zeros(shape=(mi, mj, mk)),
+            "flux_s_y": self.zeros(shape=(mi, mj, mk)),
+            "flux_su_x": self.zeros(shape=(mi, mj, mk)),
+            "flux_su_y": self.zeros(shape=(mi, mj, mk)),
+            "flux_sv_x": self.zeros(shape=(mi, mj, mk)),
+            "flux_sv_y": self.zeros(shape=(mi, mj, mk)),
         }
         if mtg is not None:
             stencil_args["mtg"] = mtg
 
-        s_tnd_on = s_tnd is not None
-        if s_tnd_on:
+        if s_tnd is not None:
             stencil_args["s_tnd"] = s_tnd
-        su_tnd_on = su_tnd is not None
-        if su_tnd_on:
+        if su_tnd is not None:
             stencil_args["su_tnd"] = su_tnd
-        sv_tnd_on = sv_tnd is not None
-        if sv_tnd_on:
+        if sv_tnd is not None:
             stencil_args["sv_tnd"] = sv_tnd
 
-        moist = self.core.moist
-        if moist:
-            stencil_args["sqv"] = sqv
-            stencil_args["flux_sqv_x"] = zeros(
-                (mi, mj, mk),
-                backend=self.backend,
-                dtype=s.dtype,
-                default_origin=self.default_origin,
-            )
-            stencil_args["flux_sqv_y"] = zeros(
-                (mi, mj, mk),
-                backend=self.backend,
-                dtype=s.dtype,
-                default_origin=self.default_origin,
-            )
-            stencil_args["sqc"] = sqc
-            stencil_args["flux_sqc_x"] = zeros(
-                (mi, mj, mk),
-                backend=self.backend,
-                dtype=s.dtype,
-                default_origin=self.default_origin,
-            )
-            stencil_args["flux_sqc_y"] = zeros(
-                (mi, mj, mk),
-                backend=self.backend,
-                dtype=s.dtype,
-                default_origin=self.default_origin,
-            )
-            stencil_args["sqr"] = sqr
-            stencil_args["flux_sqr_x"] = zeros(
-                (mi, mj, mk),
-                backend=self.backend,
-                dtype=s.dtype,
-                default_origin=self.default_origin,
-            )
-            stencil_args["flux_sqr_y"] = zeros(
-                (mi, mj, mk),
-                backend=self.backend,
-                dtype=s.dtype,
-                default_origin=self.default_origin,
-            )
-
-            if moist:
-                qv_tnd_on = qv_tnd is not None
-                if qv_tnd_on:
-                    stencil_args["qv_tnd"] = qv_tnd
-                qc_tnd_on = qc_tnd is not None
-                if qc_tnd_on:
-                    stencil_args["qc_tnd"] = qc_tnd
-                qr_tnd_on = qr_tnd is not None
-                if qv_tnd_on:
-                    stencil_args["qr_tnd"] = qr_tnd
-
-        externals = self.core.externals.copy()
-        externals.update(
-            {
-                "core": self.core.call,
-                "moist": moist,
-                "s_tnd_on": s_tnd_on,
-                "su_tnd_on": su_tnd_on,
-                "sv_tnd_on": sv_tnd_on,
-            }
-        )
-        if moist:
-            externals.update(
-                {
-                    "qv_tnd_on": qv_tnd_on,
-                    "qc_tnd_on": qc_tnd_on,
-                    "qr_tnd_on": qr_tnd_on,
-                }
-            )
-
-        decorator = gtscript.stencil(
-            get_gt_backend(self.backend),
-            dtypes={"dtype": self.dtype},
-            externals=externals,
-            rebuild=self.rebuild,
-        )
-        stencil = decorator(self.stencil_defs)
-
-        nb = self.nb
-        stencil(
+        self.stencil_dry(
             **stencil_args,
             dt=dt,
             dx=dx,
             dy=dy,
-            origin={"_all_": (nb, nb, 0)},
+            origin=(nb, nb, 0),
             domain=(mi - 2 * nb, mj - 2 * nb, mk)
         )
 
@@ -271,21 +168,188 @@ class WrappingStencil:
             "flux_sv_x",
             "flux_sv_y",
         ]
-        if moist:
-            return_list_names += [
-                "flux_sqv_x",
-                "flux_sqv_y",
-                "flux_sqc_x",
-                "flux_sqc_y",
-                "flux_sqr_x",
-                "flux_sqr_y",
-            ]
         return_list = tuple(stencil_args[name] for name in return_list_names)
 
         return return_list
 
+    def call_moist(
+        self,
+        dt,
+        dx,
+        dy,
+        s,
+        u,
+        v,
+        sqv,
+        sqc,
+        sqr,
+        qv_tnd=None,
+        qc_tnd=None,
+        qr_tnd=None,
+    ):
+        mi, mj, mk = sqv.shape
+        nb = self.nb
+
+        stencil_args = {
+            "s": s,
+            "u": u,
+            "v": v,
+            "sqv": sqv,
+            "sqc": sqc,
+            "sqr": sqr,
+            "flux_sqv_x": self.zeros(shape=(mi, mj, mk)),
+            "flux_sqv_y": self.zeros(shape=(mi, mj, mk)),
+            "flux_sqc_x": self.zeros(shape=(mi, mj, mk)),
+            "flux_sqc_y": self.zeros(shape=(mi, mj, mk)),
+            "flux_sqr_x": self.zeros(shape=(mi, mj, mk)),
+            "flux_sqr_y": self.zeros(shape=(mi, mj, mk)),
+        }
+
+        if qv_tnd is not None:
+            stencil_args["qv_tnd"] = qv_tnd
+        if qc_tnd is not None:
+            stencil_args["qc_tnd"] = qc_tnd
+        if qr_tnd is not None:
+            stencil_args["qr_tnd"] = qr_tnd
+
+        self.stencil_moist(
+            **stencil_args,
+            dt=dt,
+            dx=dx,
+            dy=dy,
+            origin=(nb, nb, 0),
+            domain=(mi - 2 * nb, mj - 2 * nb, mk)
+        )
+
+        return_list_names = [
+            "flux_sqv_x",
+            "flux_sqv_y",
+            "flux_sqc_x",
+            "flux_sqc_y",
+            "flux_sqr_x",
+            "flux_sqr_y",
+        ]
+        return_list = tuple(stencil_args[name] for name in return_list_names)
+
+        return return_list
+
+    @stencil_definition(backend=("numpy", "cupy"), stencil="stencil_dry")
+    def stencil_dry_numpy(
+        self,
+        s,
+        u,
+        v,
+        su,
+        sv,
+        flux_s_x,
+        flux_s_y,
+        flux_su_x,
+        flux_su_y,
+        flux_sv_x,
+        flux_sv_y,
+        mtg=None,
+        s_tnd=None,
+        su_tnd=None,
+        sv_tnd=None,
+        *,
+        dt=0.0,
+        dx=0.0,
+        dy=0.0,
+        origin,
+        domain,
+        **kwargs
+    ):
+        ijk = tuple(slice(o, o + d) for o, d in zip(origin, domain))
+        ij_ext = tuple(
+            slice(o - self.core.extent, o + d + self.core.extent)
+            for o, d in zip(origin[:2], domain[:2])
+        )
+        ijk_x = (ijk[0], ij_ext[1], ijk[2])
+        ijk_y = (ij_ext[0], ijk[1], ijk[2])
+        ijk_ext = (ij_ext[0], ij_ext[1], ijk[2])
+
+        (
+            flux_s_x[ijk_x],
+            flux_s_y[ijk_y],
+            flux_su_x[ijk_x],
+            flux_su_y[ijk_y],
+            flux_sv_x[ijk_x],
+            flux_sv_y[ijk_y],
+        ) = self.core.stencil_subroutine("flux_dry")(
+            dt,
+            dx,
+            dy,
+            s[ijk_ext],
+            u[ijk_ext],
+            v[ijk_ext],
+            su[ijk_ext],
+            sv[ijk_ext],
+            mtg[ijk_ext] if mtg else None,
+            s_tnd[ijk_ext] if s_tnd else None,
+            su_tnd[ijk_ext] if su_tnd else None,
+            sv_tnd[ijk_ext] if sv_tnd else None,
+        )
+
+    @stencil_definition(backend=("numpy", "cupy"), stencil="stencil_moist")
+    def stencil_moist_numpy(
+        self,
+        s,
+        u,
+        v,
+        sqv,
+        sqc,
+        sqr,
+        flux_sqv_x,
+        flux_sqv_y,
+        flux_sqc_x,
+        flux_sqc_y,
+        flux_sqr_x,
+        flux_sqr_y,
+        qv_tnd=None,
+        qc_tnd=None,
+        qr_tnd=None,
+        *,
+        dt=0.0,
+        dx=0.0,
+        dy=0.0,
+        origin,
+        domain,
+        **kwargs
+    ):
+        ijk = tuple(slice(o, o + d) for o, d in zip(origin, domain))
+        ij_ext = tuple(
+            slice(o - self.core.extent, o + d + self.core.extent)
+            for o, d in zip(origin[:2], domain[:2])
+        )
+        ijk_x = (ijk[0], ij_ext[1], ijk[2])
+        ijk_y = (ij_ext[0], ijk[1], ijk[2])
+        ijk_ext = (ij_ext[0], ij_ext[1], ijk[2])
+
+        (
+            flux_sqv_x[ijk_x],
+            flux_sqv_y[ijk_y],
+            flux_sqc_x[ijk_x],
+            flux_sqc_y[ijk_y],
+            flux_sqr_x[ijk_x],
+            flux_sqr_y[ijk_y],
+        ) = self.core.stencil_subroutine("flux_moist")(
+            dt,
+            dx,
+            dy,
+            s[ijk_ext],
+            u[ijk_ext],
+            v[ijk_ext],
+            sqv[ijk_ext],
+            sqc[ijk_ext],
+            sqr[ijk_ext],
+            qv_tnd[ijk_ext] if qv_tnd else None,
+            qc_tnd[ijk_ext] if qc_tnd else None,
+            qr_tnd[ijk_ext] if qr_tnd else None,
+        )
+
     @staticmethod
-    def stencil_defs(
+    @stencil_definition(backend="gt4py*", stencil="stencil_dry")
+    def stencil_dry_gt4py(
         s: gtscript.Field["dtype"],
         u: gtscript.Field["dtype"],
         v: gtscript.Field["dtype"],
@@ -298,18 +362,54 @@ class WrappingStencil:
         flux_sv_x: gtscript.Field["dtype"],
         flux_sv_y: gtscript.Field["dtype"],
         mtg: gtscript.Field["dtype"] = None,
-        sqv: gtscript.Field["dtype"] = None,
-        sqc: gtscript.Field["dtype"] = None,
-        sqr: gtscript.Field["dtype"] = None,
-        flux_sqv_x: gtscript.Field["dtype"] = None,
-        flux_sqv_y: gtscript.Field["dtype"] = None,
-        flux_sqc_x: gtscript.Field["dtype"] = None,
-        flux_sqc_y: gtscript.Field["dtype"] = None,
-        flux_sqr_x: gtscript.Field["dtype"] = None,
-        flux_sqr_y: gtscript.Field["dtype"] = None,
         s_tnd: gtscript.Field["dtype"] = None,
         su_tnd: gtscript.Field["dtype"] = None,
         sv_tnd: gtscript.Field["dtype"] = None,
+        *,
+        dt: float = 0.0,
+        dx: float = 0.0,
+        dy: float = 0.0
+    ):
+        from __externals__ import get_flux_dry
+
+        with computation(PARALLEL), interval(...):
+            (
+                flux_s_x,
+                flux_s_y,
+                flux_su_x,
+                flux_su_y,
+                flux_sv_x,
+                flux_sv_y,
+            ) = get_flux_dry(
+                dt=dt,
+                dx=dx,
+                dy=dy,
+                s=s,
+                u=u,
+                v=v,
+                mtg=mtg,
+                su=su,
+                sv=sv,
+                s_tnd=s_tnd,
+                su_tnd=su_tnd,
+                sv_tnd=sv_tnd,
+            )
+
+    @staticmethod
+    @stencil_definition(backend="gt4py*", stencil="stencil_moist")
+    def stencil_moist_gt4py(
+        s: gtscript.Field["dtype"],
+        u: gtscript.Field["dtype"],
+        v: gtscript.Field["dtype"],
+        sqv: gtscript.Field["dtype"],
+        sqc: gtscript.Field["dtype"],
+        sqr: gtscript.Field["dtype"],
+        flux_sqv_x: gtscript.Field["dtype"],
+        flux_sqv_y: gtscript.Field["dtype"],
+        flux_sqc_x: gtscript.Field["dtype"],
+        flux_sqc_y: gtscript.Field["dtype"],
+        flux_sqr_x: gtscript.Field["dtype"],
+        flux_sqr_y: gtscript.Field["dtype"],
         qv_tnd: gtscript.Field["dtype"] = None,
         qc_tnd: gtscript.Field["dtype"] = None,
         qr_tnd: gtscript.Field["dtype"] = None,
@@ -318,65 +418,30 @@ class WrappingStencil:
         dx: float = 0.0,
         dy: float = 0.0
     ):
-        from __externals__ import core, moist
+        from __externals__ import get_flux_moist
 
         with computation(PARALLEL), interval(...):
-            if __INLINED(not moist):
-                (
-                    flux_s_x,
-                    flux_s_y,
-                    flux_su_x,
-                    flux_su_y,
-                    flux_sv_x,
-                    flux_sv_y,
-                ) = core(
-                    dt=dt,
-                    dx=dx,
-                    dy=dy,
-                    s=s,
-                    u=u,
-                    v=v,
-                    mtg=mtg,
-                    su=su,
-                    sv=sv,
-                    s_tnd=s_tnd,
-                    su_tnd=su_tnd,
-                    sv_tnd=sv_tnd,
-                )
-            else:
-                (
-                    flux_s_x,
-                    flux_s_y,
-                    flux_su_x,
-                    flux_su_y,
-                    flux_sv_x,
-                    flux_sv_y,
-                    flux_sqv_x,
-                    flux_sqv_y,
-                    flux_sqc_x,
-                    flux_sqc_y,
-                    flux_sqr_x,
-                    flux_sqr_y,
-                ) = core(
-                    dt=dt,
-                    dx=dx,
-                    dy=dy,
-                    s=s,
-                    u=u,
-                    v=v,
-                    mtg=mtg,
-                    su=su,
-                    sv=sv,
-                    sqv=sqv,
-                    sqc=sqc,
-                    sqr=sqr,
-                    s_tnd=s_tnd,
-                    su_tnd=su_tnd,
-                    sv_tnd=sv_tnd,
-                    qv_tnd=qv_tnd,
-                    qc_tnd=qc_tnd,
-                    qr_tnd=qr_tnd,
-                )
+            (
+                flux_sqv_x,
+                flux_sqv_y,
+                flux_sqc_x,
+                flux_sqc_y,
+                flux_sqr_x,
+                flux_sqr_y,
+            ) = get_flux_moist(
+                dt=dt,
+                dx=dx,
+                dy=dy,
+                s=s,
+                u=u,
+                v=v,
+                sqv=sqv,
+                sqc=sqc,
+                sqr=sqr,
+                qv_tnd=qv_tnd,
+                qc_tnd=qc_tnd,
+                qr_tnd=qr_tnd,
+            )
 
 
 def get_upwind_fluxes(u, v, phi):
@@ -508,14 +573,14 @@ flux_properties = {
 
 
 def validation(
+    cls,
     flux_scheme,
     domain,
     field,
-    timestep,
+    dt,
     backend,
-    dtype,
-    default_origin,
-    rebuild,
+    backend_options,
+    storage_options,
 ):
     grid = domain.numerical_grid
     nx, ny, nz = grid.nx, grid.ny, grid.nz
@@ -526,168 +591,64 @@ def validation(
     dx = grid.dx.to_units("m").values.item()
     dy = grid.dy.to_units("m").values.item()
 
-    s = zeros(
-        (nx + 1, ny + 1, nz),
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
+    ws = WrappingStencil(
+        cls, flux_scheme, nb, backend, backend_options, storage_options
     )
+
+    s = ws.zeros(shape=(nx + 1, ny + 1, nz))
     s[...] = field[: nx + 1, : ny + 1, :nz]
-    u = zeros(
-        (nx + 1, ny + 1, nz),
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
+    u = ws.zeros(shape=(nx + 1, ny + 1, nz))
     u[...] = field[1 : nx + 2, : ny + 1, :nz]
-    v = zeros(
-        (nx + 1, ny + 1, nz),
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
+    v = ws.zeros(shape=(nx + 1, ny + 1, nz))
     v[...] = field[: nx + 1, 1 : ny + 2, :nz]
-    su = zeros(
-        (nx + 1, ny + 1, nz),
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
+    su = ws.zeros(shape=(nx + 1, ny + 1, nz))
     su[...] = field[1 : nx + 2, : ny + 1, :nz]
-    sv = zeros(
-        (nx + 1, ny + 1, nz),
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
+    sv = ws.zeros(shape=(nx + 1, ny + 1, nz))
     sv[...] = field[1 : nx + 2, 1 : ny + 2, :nz]
-    sqv = zeros(
-        (nx + 1, ny + 1, nz),
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
+    sqv = ws.zeros(shape=(nx + 1, ny + 1, nz))
     sqv[...] = field[: nx + 1, : ny + 1, 1 : nz + 1]
-    sqc = zeros(
-        (nx + 1, ny + 1, nz),
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
+    sqc = ws.zeros(shape=(nx + 1, ny + 1, nz))
     sqc[...] = field[1 : nx + 2, : ny + 1, 1 : nz + 1]
-    sqr = zeros(
-        (nx + 1, ny + 1, nz),
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
+    sqr = ws.zeros(shape=(nx + 1, ny + 1, nz))
     sqr[...] = field[1 : nx + 2, 1 : ny + 2, 1 : nz + 1]
 
     #
     # dry
     #
-    core = IsentropicHorizontalFlux.factory(flux_scheme, False, backend)
-    assert isinstance(core, flux_type)
-
-    if is_gt(backend):
-        ws = WrappingStencil(core, nb, backend, dtype, default_origin, rebuild)
-        fsx, fsy, fsux, fsuy, fsvx, fsvy = ws(
-            timestep, dx, dy, s, u, v, su, sv
-        )
-    else:
-        (
-            fsx,
-            fsy,
-            fsux,
-            fsuy,
-            fsvx,
-            fsvy,
-        ) = core.call(timestep, dx, dy, s, u, v, su, sv)
+    fsx, fsy, fsux, fsuy, fsvx, fsvy = ws.call_dry(dt, dx, dy, s, u, v, su, sv)
 
     flux_s_x, flux_s_y = get_fluxes(u, v, s)
     x = slice(nb, grid.nx + 1 - nb)
     y = slice(nb, grid.ny + 1 - nb)
-    xl = (
-        x
-        if is_gt(backend)
-        else slice(nb - core.extent, grid.nx - 2 * nb + 1 + nb - core.extent)
-    )
-    yl = (
-        y
-        if is_gt(backend)
-        else slice(nb - core.extent, grid.ny - 2 * nb + 1 + nb - core.extent)
-    )
-    compare_arrays(fsx[xl, y], flux_s_x[x, y])
-    compare_arrays(fsy[x, yl], flux_s_y[x, y])
+    compare_arrays(fsx[x, y], flux_s_x[x, y])
+    compare_arrays(fsy[x, y], flux_s_y[x, y])
 
     flux_su_x, flux_su_y = get_fluxes(u, v, su)
-    compare_arrays(fsux[xl, y], flux_su_x[x, y])
-    compare_arrays(fsuy[x, yl], flux_su_y[x, y])
+    compare_arrays(fsux[x, y], flux_su_x[x, y])
+    compare_arrays(fsuy[x, y], flux_su_y[x, y])
 
     flux_sv_x, flux_sv_y = get_fluxes(u, v, sv)
-    compare_arrays(fsvx[xl, y], flux_sv_x[x, y])
-    compare_arrays(fsvy[x, yl], flux_sv_y[x, y])
+    compare_arrays(fsvx[x, y], flux_sv_x[x, y])
+    compare_arrays(fsvy[x, y], flux_sv_y[x, y])
 
     #
     # moist
     #
-    core = IsentropicHorizontalFlux.factory(flux_scheme, True, backend)
-    assert isinstance(core, flux_type)
-
-    if is_gt(backend):
-        ws = WrappingStencil(core, nb, backend, dtype, default_origin, rebuild)
-        (
-            fsx,
-            fsy,
-            fsux,
-            fsuy,
-            fsvx,
-            fsvy,
-            fsqvx,
-            fsqvy,
-            fsqcx,
-            fsqcy,
-            fsqrx,
-            fsqry,
-        ) = ws(timestep, dx, dy, s, u, v, su, sv, sqv=sqv, sqc=sqc, sqr=sqr)
-    else:
-        (
-            fsx,
-            fsy,
-            fsux,
-            fsuy,
-            fsvx,
-            fsvy,
-            fsqvx,
-            fsqvy,
-            fsqcx,
-            fsqcy,
-            fsqrx,
-            fsqry,
-        ) = core.call(
-            timestep, dx, dy, s, u, v, su, sv, sqv=sqv, sqc=sqc, sqr=sqr
-        )
-
-    compare_arrays(fsx[xl, y], flux_s_x[x, y])
-    compare_arrays(fsy[x, yl], flux_s_y[x, y])
-
-    compare_arrays(fsux[xl, y], flux_su_x[x, y])
-    compare_arrays(fsuy[x, yl], flux_su_y[x, y])
-
-    compare_arrays(fsvx[xl, y], flux_sv_x[x, y])
-    compare_arrays(fsvy[x, yl], flux_sv_y[x, y])
+    fsqvx, fsqvy, fsqcx, fsqcy, fsqrx, fsqry = ws.call_moist(
+        dt, dx, dy, s, u, v, sqv, sqc, sqr
+    )
 
     flux_sqv_x, flux_sqv_y = get_fluxes(u, v, sqv)
-    compare_arrays(fsqvx[xl, y], flux_sqv_x[x, y])
-    compare_arrays(fsqvy[x, yl], flux_sqv_y[x, y])
+    compare_arrays(fsqvx[x, y], flux_sqv_x[x, y])
+    compare_arrays(fsqvy[x, y], flux_sqv_y[x, y])
 
     flux_sqc_x, flux_sqc_y = get_fluxes(u, v, sqc)
-    compare_arrays(fsqcx[xl, y], flux_sqc_x[x, y])
-    compare_arrays(fsqcy[x, yl], flux_sqc_y[x, y])
+    compare_arrays(fsqcx[x, y], flux_sqc_x[x, y])
+    compare_arrays(fsqcy[x, y], flux_sqc_y[x, y])
 
     flux_sqr_x, flux_sqr_y = get_fluxes(u, v, sqr)
-    compare_arrays(fsqrx[xl, y], flux_sqr_x[x, y])
-    compare_arrays(fsqry[x, yl], flux_sqr_y[x, y])
+    compare_arrays(fsqrx[x, y], flux_sqr_x[x, y])
+    compare_arrays(fsqry[x, y], flux_sqr_y[x, y])
 
 
 @hyp_settings
@@ -729,22 +690,15 @@ def test_upwind(data, backend, dtype):
         label="field",
     )
 
-    timestep = data.draw(
-        st_floats(min_value=0, max_value=3600), label="timestep"
-    )
+    dt = data.draw(st_floats(min_value=0, max_value=3600), label="dt")
 
     # ========================================
     # test bed
     # ========================================
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, default_origin=default_origin)
     validation(
-        "upwind",
-        domain,
-        field,
-        timestep,
-        backend,
-        dtype,
-        default_origin,
-        rebuild=False,
+        IsentropicHorizontalFlux, "upwind", domain, field, dt, backend, bo, so
     )
 
 
@@ -787,22 +741,22 @@ def test_centered(data, backend, dtype):
         label="field",
     )
 
-    timestep = data.draw(
-        st_floats(min_value=0, max_value=3600), label="timestep"
-    )
+    dt = data.draw(st_floats(min_value=0, max_value=3600), label="dt")
 
     # ========================================
     # test bed
     # ========================================
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, default_origin=default_origin)
     validation(
+        IsentropicHorizontalFlux,
         "centered",
         domain,
         field,
-        timestep,
+        dt,
         backend,
-        dtype,
-        default_origin,
-        rebuild=False,
+        bo,
+        so,
     )
 
 
@@ -845,22 +799,22 @@ def test_third_order_upwind(data, backend, dtype):
         label="field",
     )
 
-    timestep = data.draw(
-        st_floats(min_value=0, max_value=3600), label="timestep"
-    )
+    dt = data.draw(st_floats(min_value=0, max_value=3600), label="dt")
 
     # ========================================
     # test bed
     # ========================================
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, default_origin=default_origin)
     validation(
+        IsentropicHorizontalFlux,
         "third_order_upwind",
         domain,
         field,
-        timestep,
+        dt,
         backend,
-        dtype,
-        default_origin,
-        rebuild=False,
+        bo,
+        so,
     )
 
 
@@ -903,22 +857,22 @@ def test_fifth_order_upwind(data, backend, dtype):
         label="field",
     )
 
-    timestep = data.draw(
-        st_floats(min_value=0, max_value=3600), label="timestep"
-    )
+    dt = data.draw(st_floats(min_value=0, max_value=3600), label="dt")
 
     # ========================================
     # test bed
     # ========================================
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, default_origin=default_origin)
     validation(
+        IsentropicHorizontalFlux,
         "fifth_order_upwind",
         domain,
         field,
-        timestep,
+        dt,
         backend,
-        dtype,
-        default_origin,
-        rebuild=False,
+        bo,
+        so,
     )
 
 
