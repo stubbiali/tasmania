@@ -26,8 +26,10 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from gt4py import gtscript
 
+from tasmania.python.framework.register import factorize
+from tasmania.python.framework.stencil import StencilFactory
+from tasmania.python.framework.tag import stencil_subroutine
 from tasmania.python.utils import taz_types
-from tasmania.python.utils.framework_utils import factorize
 from tasmania.python.utils.utils import is_gt
 
 
@@ -275,7 +277,7 @@ class IsentropicNonconservativeVerticalFlux(abc.ABC):
         return factorize(scheme, IsentropicNonconservativeVerticalFlux, ())
 
 
-class IsentropicMinimalVerticalFlux(abc.ABC):
+class IsentropicMinimalVerticalFlux(StencilFactory, abc.ABC):
     """
     Abstract base class whose derived classes implement different schemes
     to compute the vertical numerical fluxes for the three-dimensional
@@ -289,87 +291,66 @@ class IsentropicMinimalVerticalFlux(abc.ABC):
     externals: Dict[str, Any] = None
     registry: Dict[str, "IsentropicMinimalVerticalFlux"] = {}
 
-    def __init__(self, moist, backend):
-        self.moist = moist
-        self.call = self.call_gt if is_gt(backend) else self.call_numpy
+    def __init__(self, backend):
+        super().__init__(backend)
 
+    @staticmethod
+    @stencil_subroutine(backend=("numpy", "cupy"), stencil="flux_dry")
     @abc.abstractmethod
-    def call_numpy(
-        self,
+    def flux_dry_numpy(
         dt: float,
         dz: float,
         w: np.ndarray,
         s: np.ndarray,
         su: np.ndarray,
         sv: np.ndarray,
-        sqv: Optional[np.ndarray] = None,
-        sqc: Optional[np.ndarray] = None,
-        sqr: Optional[np.ndarray] = None,
-    ) -> List[np.ndarray]:
+    ) -> Tuple[np.ndarray]:
         pass
 
     @staticmethod
+    @stencil_subroutine(backend=("numpy", "cupy"), stencil="flux_moist")
+    @abc.abstractmethod
+    def flux_moist_numpy(
+        dt: float,
+        dz: float,
+        w: np.ndarray,
+        sqv: np.ndarray,
+        sqc: np.ndarray,
+        sqr: np.ndarray,
+    ) -> Tuple[np.ndarray]:
+        pass
+
+    @staticmethod
+    @stencil_subroutine(backend="gt4py*", stencil="flux_dry")
     @gtscript.function
     @abc.abstractmethod
-    def call_gt(
+    def flux_dry_gt4py(
         dt: float,
         dz: float,
         w: taz_types.gtfield_t,
         s: taz_types.gtfield_t,
         su: taz_types.gtfield_t,
         sv: taz_types.gtfield_t,
-        sqv: "Optional[taz_types.gtfield_t]" = None,
-        sqc: "Optional[taz_types.gtfield_t]" = None,
-        sqr: "Optional[taz_types.gtfield_t]" = None,
     ) -> "Tuple[taz_types.gtfield_t, ...]":
-        """
-        This method returns the :class:`gt4py.gtscript.Field`\s representing
-        the vertical flux for all the conservative model variables.
-        As this method is marked as abstract, its implementation is delegated
-        to the derived classes.
+        pass
 
-        Parameters
-        ----------
-        dt : float
-            The time step, in seconds.
-        dz : float
-            The grid spacing in the vertical direction, in units of [K].
-        w : gt4py.gtscript.Field
-            The vertical velocity, i.e., the change over time in potential temperature,
-            defined at the vertical interface levels, in units of [K s^-1].
-        s : gt4py.gtscript.Field
-            The isentropic density, in units of [kg m^-2 K^-1].
-        su : gt4py.gtscript.Field
-            The x-momentum, in units of [kg m^-1 K^-1 s^-1].
-        sv : gt4py.gtscript.Field
-            The y-momentum, in units of [kg m^-1 K^-1 s^-1].
-        sqv : `gt4py.gtscript.Field`, optional
-            The isentropic density of water vapor, in units of [kg m^-2 K^-1].
-        sqc : `gt4py.gtscript.Field`, optional
-            The isentropic density of cloud liquid water, in units of [kg m^-2 K^-1].
-        sqr : `gt4py.gtscript.Field`, optional
-            The isentropic density of precipitation water, in units of [kg m^-2 K^-1].
-
-        Returns
-        -------
-        flux_s_z : gt4py.gtscript.Field
-            The vertical flux for the isentropic density.
-        flux_su_z : gt4py.gtscript.Field
-            The vertical flux for the x-momentum.
-        flux_sv_z : gt4py.gtscript.Field
-            The vertical flux for the y-momentum.
-        flux_sqv_z : `gt4py.gtscript.Field`, optional
-            The vertical flux for the isentropic density of water vapor.
-        flux_sqc_z : `gt4py.gtscript.Field`, optional
-            The vertical flux for the isentropic density of cloud liquid water.
-        flux_sqr_z : `gt4py.gtscript.Field`, optional
-            The vertical flux for the isentropic density of precipitation water.
-        """
+    @staticmethod
+    @stencil_subroutine(backend="gt4py*", stencil="flux_moist")
+    @gtscript.function
+    @abc.abstractmethod
+    def flux_moist_gt4py(
+        dt: float,
+        dz: float,
+        w: taz_types.gtfield_t,
+        sqv: taz_types.gtfield_t,
+        sqc: taz_types.gtfield_t,
+        sqr: taz_types.gtfield_t,
+    ) -> "Tuple[taz_types.gtfield_t, ...]":
         pass
 
     @staticmethod
     def factory(
-        scheme: str, moist: bool, backend: str
+        scheme: str, *, backend: str = "numpy"
     ) -> "IsentropicMinimalVerticalFlux":
         """
         Static method which returns an instance of the derived class
@@ -378,18 +359,8 @@ class IsentropicMinimalVerticalFlux(abc.ABC):
         Parameters
         ----------
         scheme : str
-            String specifying the numerical scheme to implement. Either:
-
-                * 'upwind', for the upwind scheme;
-                * 'centered', for a second-order centered scheme;
-                * 'third_order_upwind', for the third-order upwind scheme;
-                * 'fifth_order_upwind', for the fifth-order upwind scheme.
-
-        moist : bool
-            ``True`` to calculate the fluxes for the water species too,
-            ``False`` to restrict the computations to the dry dynamics
-            variables.
-        backend : str
+            String specifying the numerical scheme to implement.
+        backend : `str`, optional
             The backend.
 
         Return
@@ -406,9 +377,7 @@ class IsentropicMinimalVerticalFlux(abc.ABC):
         Zeman, C. (2016). An isentropic mountain flow model with iterative \
             synchronous flux correction. *Master thesis, ETH Zurich*.
         """
-        return factorize(
-            scheme, IsentropicMinimalVerticalFlux, (moist, backend)
-        )
+        return factorize(scheme, IsentropicMinimalVerticalFlux, (backend,))
 
 
 class IsentropicBoussinesqMinimalVerticalFlux(abc.ABC):

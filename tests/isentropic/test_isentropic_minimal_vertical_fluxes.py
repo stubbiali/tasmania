@@ -31,6 +31,9 @@ import pytest
 
 from gt4py import gtscript
 
+from tasmania.python.framework.options import BackendOptions, StorageOptions
+from tasmania.python.framework.stencil import StencilFactory
+from tasmania.python.framework.tag import stencil_definition
 from tasmania.python.isentropic.dynamics.vertical_fluxes import (
     IsentropicMinimalVerticalFlux,
 )
@@ -40,7 +43,6 @@ from tasmania.python.isentropic.dynamics.subclasses.minimal_vertical_fluxes impo
     ThirdOrderUpwind,
     FifthOrderUpwind,
 )
-from tasmania.python.utils.storage_utils import zeros
 from tasmania.python.utils.utils import get_gt_backend, is_gt
 
 from tests.conf import (
@@ -70,115 +72,168 @@ def test_registry():
 
 
 def test_factory():
-    obj = IsentropicMinimalVerticalFlux.factory("upwind", False, "numpy")
+    obj = IsentropicMinimalVerticalFlux.factory("upwind", backend="numpy")
     assert isinstance(obj, Upwind)
-    obj = IsentropicMinimalVerticalFlux.factory("centered", False, "numpy")
+    obj = IsentropicMinimalVerticalFlux.factory("centered", backend="numpy")
     assert isinstance(obj, Centered)
     obj = IsentropicMinimalVerticalFlux.factory(
-        "third_order_upwind", False, "numpy"
+        "third_order_upwind", backend="numpy"
     )
     assert isinstance(obj, ThirdOrderUpwind)
     obj = IsentropicMinimalVerticalFlux.factory(
-        "fifth_order_upwind", False, "numpy"
+        "fifth_order_upwind", backend="numpy"
     )
     assert isinstance(obj, FifthOrderUpwind)
 
 
-class WrappingStencil:
-    def __init__(self, core, backend, dtype, default_origin, rebuild):
-        self.core = core
-        self.backend = backend
-        self.dtype = dtype
-        self.default_origin = default_origin
-        self.rebuild = rebuild
+class WrappingStencil(StencilFactory):
+    def __init__(self, cls, scheme, backend, backend_options, storage_options):
+        super().__init__(backend, backend_options, storage_options)
+        self.core = cls.factory(scheme, backend=backend)
 
-    def __call__(self, dt, dz, w, s, su, sv, sqv=None, sqc=None, sqr=None):
+        dtype = self.storage_options.dtype
+        self.backend_options.dtypes = {"dtype": dtype}
+
+        self.backend_options.externals = self.core.externals.copy()
+        self.backend_options.externals[
+            "get_flux_dry"
+        ] = self.core.stencil_subroutine("flux_dry")
+        self.backend_options.externals[
+            "get_flux_moist"
+        ] = self.core.stencil_subroutine("flux_moist")
+
+        self.stencil_dry = self.compile("stencil_dry")
+        self.stencil_moist = self.compile("stencil_moist")
+
+    def call_dry(self, dt, dz, w, s, su, sv):
         mi, mj, mk = s.shape
-        storage_shape = (mi, mj, mk)
+        nb = self.core.extent
 
         stencil_args = {
             "w": w,
             "s": s,
             "su": su,
             "sv": sv,
-            "flux_s": zeros(
-                storage_shape,
-                backend=self.backend,
-                dtype=s.dtype,
-                default_origin=self.default_origin,
-            ),
-            "flux_su": zeros(
-                storage_shape,
-                backend=self.backend,
-                dtype=s.dtype,
-                default_origin=self.default_origin,
-            ),
-            "flux_sv": zeros(
-                storage_shape,
-                backend=self.backend,
-                dtype=s.dtype,
-                default_origin=self.default_origin,
-            ),
-        }
-        moist = sqv is not None
-        if moist:
-            stencil_args.update(
-                {
-                    "sqv": sqv,
-                    "sqc": sqc,
-                    "sqr": sqr,
-                    "flux_sqv": zeros(
-                        storage_shape,
-                        backend=self.backend,
-                        dtype=s.dtype,
-                        default_origin=self.default_origin,
-                    ),
-                    "flux_sqc": zeros(
-                        storage_shape,
-                        backend=self.backend,
-                        dtype=s.dtype,
-                        default_origin=self.default_origin,
-                    ),
-                    "flux_sqr": zeros(
-                        storage_shape,
-                        backend=self.backend,
-                        dtype=s.dtype,
-                        default_origin=self.default_origin,
-                    ),
-                }
-            )
-
-        externals = {
-            "core": self.core.call_gt,
-            "extent": self.core.extent,
-            "moist": moist,
+            "flux_s": self.zeros(shape=(mi, mj, mk)),
+            "flux_su": self.zeros(shape=(mi, mj, mk)),
+            "flux_sv": self.zeros(shape=(mi, mj, mk)),
         }
 
-        decorator = gtscript.stencil(
-            get_gt_backend(self.backend),
-            dtypes={"dtype": self.dtype},
-            externals=externals,
-            rebuild=self.rebuild,
-        )
-        stencil = decorator(self.stencil_defs)
-
-        stencil(
+        self.stencil_dry(
             **stencil_args,
             dt=dt,
             dz=dz,
-            origin={"_all_": (0, 0, 0)},
-            domain=(mi, mj, mk)
+            origin=(0, 0, nb),
+            domain=(mi, mj, mk - 2 * nb)
         )
 
-        names = ["flux_s", "flux_su", "flux_sv"]
-        if moist:
-            names += ["flux_sqv", "flux_sqc", "flux_sqr"]
-        return_list = tuple(stencil_args[name] for name in names)
+        return_list_names = ["flux_s", "flux_su", "flux_sv"]
+        return_list = tuple(stencil_args[name] for name in return_list_names)
 
         return return_list
 
+    def call_moist(
+        self, dt, dz, w, sqv, sqc, sqr,
+    ):
+        mi, mj, mk = sqv.shape
+        nb = self.core.extent
+
+        stencil_args = {
+            "w": w,
+            "sqv": sqv,
+            "sqc": sqc,
+            "sqr": sqr,
+            "flux_sqv": self.zeros(shape=(mi, mj, mk)),
+            "flux_sqc": self.zeros(shape=(mi, mj, mk)),
+            "flux_sqr": self.zeros(shape=(mi, mj, mk)),
+        }
+
+        self.stencil_moist(
+            **stencil_args,
+            dt=dt,
+            dz=dz,
+            origin=(0, 0, nb),
+            domain=(mi, mj, mk - 2 * nb)
+        )
+
+        return_list_names = ["flux_sqv", "flux_sqc", "flux_sqr"]
+        return_list = tuple(stencil_args[name] for name in return_list_names)
+
+        return return_list
+
+    @stencil_definition(backend=("numpy", "cupy"), stencil="stencil_dry")
+    def stencil_dry_numpy(
+        self,
+        w,
+        s,
+        su,
+        sv,
+        flux_s,
+        flux_su,
+        flux_sv,
+        *,
+        dt=0.0,
+        dz=0.0,
+        origin,
+        domain,
+        **kwargs
+    ):
+        ijk = tuple(slice(o, o + d) for o, d in zip(origin, domain))
+        ijk_ext = (
+            ijk[0],
+            ijk[1],
+            slice(
+                origin[2] - self.core.extent,
+                origin[2] + domain[2] + self.core.extent,
+            ),
+        )
+
+        (
+            flux_s[ijk],
+            flux_su[ijk],
+            flux_sv[ijk],
+        ) = self.core.stencil_subroutine("flux_dry")(
+            dt, dz, w[ijk_ext], s[ijk_ext], su[ijk_ext], sv[ijk_ext],
+        )
+
+    @stencil_definition(backend=("numpy", "cupy"), stencil="stencil_moist")
+    def stencil_moist_numpy(
+        self,
+        w,
+        sqv,
+        sqc,
+        sqr,
+        flux_sqv,
+        flux_sqc,
+        flux_sqr,
+        *,
+        dt=0.0,
+        dz=0.0,
+        origin,
+        domain,
+        **kwargs
+    ):
+        ijk = tuple(slice(o, o + d) for o, d in zip(origin, domain))
+        ijk_ext = (
+            ijk[0],
+            ijk[1],
+            slice(
+                origin[2] - self.core.extent,
+                origin[2] + domain[2] + self.core.extent,
+            ),
+        )
+
+        (
+            flux_sqv[ijk],
+            flux_sqc[ijk],
+            flux_sqr[ijk],
+        ) = self.core.stencil_subroutine("flux_moist")(
+            dt, dz, w[ijk_ext], sqv[ijk_ext], sqc[ijk_ext], sqr[ijk_ext],
+        )
+
     @staticmethod
-    def stencil_defs(
+    @stencil_definition(backend="gt4py*", stencil="stencil_dry")
+    def stencil_dry_gt4py(
         w: gtscript.Field["dtype"],
         s: gtscript.Field["dtype"],
         su: gtscript.Field["dtype"],
@@ -186,53 +241,37 @@ class WrappingStencil:
         flux_s: gtscript.Field["dtype"],
         flux_su: gtscript.Field["dtype"],
         flux_sv: gtscript.Field["dtype"],
-        sqv: gtscript.Field["dtype"] = None,
-        sqc: gtscript.Field["dtype"] = None,
-        sqr: gtscript.Field["dtype"] = None,
-        flux_sqv: gtscript.Field["dtype"] = None,
-        flux_sqc: gtscript.Field["dtype"] = None,
-        flux_sqr: gtscript.Field["dtype"] = None,
         *,
         dt: float = 0.0,
         dz: float = 0.0
     ):
-        from __externals__ import core, extent, moist
+        from __externals__ import get_flux_dry
 
-        with computation(PARALLEL), interval(0, extent):
-            flux_s = 0.0
-            flux_su = 0.0
-            flux_sv = 0.0
-            if __INLINED(moist):
-                flux_sqv = 0.0
-                flux_sqc = 0.0
-                flux_sqr = 0.0
+        with computation(PARALLEL), interval(...):
+            flux_s, flux_su, flux_sv = get_flux_dry(
+                dt=dt, dz=dz, w=w, s=s, su=su, sv=sv
+            )
 
-        with computation(PARALLEL), interval(extent, -extent):
-            if __INLINED(not moist):
-                flux_s, flux_su, flux_sv = core(
-                    dt=dt, dz=dz, w=w, s=s, su=su, sv=sv
-                )
-            else:
-                flux_s, flux_su, flux_sv, flux_sqv, flux_sqc, flux_sqr = core(
-                    dt=dt,
-                    dz=dz,
-                    w=w,
-                    s=s,
-                    su=su,
-                    sv=sv,
-                    sqv=sqv,
-                    sqc=sqc,
-                    sqr=sqr,
-                )
+    @staticmethod
+    @stencil_definition(backend="gt4py*", stencil="stencil_moist")
+    def stencil_moist_gt4py(
+        w: gtscript.Field["dtype"],
+        sqv: gtscript.Field["dtype"],
+        sqc: gtscript.Field["dtype"],
+        sqr: gtscript.Field["dtype"],
+        flux_sqv: gtscript.Field["dtype"],
+        flux_sqc: gtscript.Field["dtype"],
+        flux_sqr: gtscript.Field["dtype"],
+        *,
+        dt: float = 0.0,
+        dz: float = 0.0
+    ):
+        from __externals__ import get_flux_moist
 
-        with computation(PARALLEL), interval(-extent, None):
-            flux_s = 0.0
-            flux_su = 0.0
-            flux_sv = 0.0
-            if __INLINED(moist):
-                flux_sqv = 0.0
-                flux_sqc = 0.0
-                flux_sqr = 0.0
+        with computation(PARALLEL), interval(...):
+            flux_sqv, flux_sqc, flux_sqr = get_flux_moist(
+                dt=dt, dz=dz, w=w, sqv=sqv, sqc=sqc, sqr=sqr
+            )
 
 
 def get_upwind_flux(w, phi):
@@ -327,14 +366,14 @@ flux_properties = {
 
 
 def validation(
+    cls,
     flux_scheme,
     domain,
     field,
-    timestep,
+    dt,
     backend,
-    dtype,
-    default_origin,
-    rebuild,
+    backend_options,
+    storage_options,
 ):
     grid = domain.numerical_grid
     nx, ny, nz = grid.nx, grid.ny, grid.nz
@@ -343,114 +382,49 @@ def validation(
     nb = flux_type.extent
     get_fluxes = flux_properties[flux_scheme]["get_fluxes"]
 
-    w = zeros(
-        storage_shape,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
+    dz = grid.dz.to_units("K").values.item()
+
+    ws = WrappingStencil(
+        cls, flux_scheme, backend, backend_options, storage_options
     )
+
+    w = ws.zeros(shape=storage_shape)
     w[...] = field[1:, 1:, :-1]
-    s = zeros(
-        storage_shape,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
+    s = ws.zeros(shape=storage_shape)
     s[...] = field[:-1, :-1, :-1]
-    su = zeros(
-        storage_shape,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
+    su = ws.zeros(shape=storage_shape)
     su[...] = field[1:, :-1, :-1]
-    sv = zeros(
-        storage_shape,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
+    sv = ws.zeros(shape=storage_shape)
     sv[...] = field[:-1, :-1, :-1]
-    sqv = zeros(
-        storage_shape,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
+    sqv = ws.zeros(shape=storage_shape)
     sqv[...] = field[:-1, :-1, 1:]
-    sqc = zeros(
-        storage_shape,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
+    sqc = ws.zeros(shape=storage_shape)
     sqc[...] = field[1:, :-1, 1:]
-    sqr = zeros(
-        storage_shape,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
+    sqr = ws.zeros(shape=storage_shape)
     sqr[...] = field[:-1, :-1, 1:]
 
     #
     # dry
     #
-    core = IsentropicMinimalVerticalFlux.factory(flux_scheme, False, backend)
-    assert isinstance(core, flux_type)
-
-    zl = slice(nb, grid.nz - nb + 1) if is_gt(backend) else slice(0, None)
-    zr = slice(nb, grid.nz - nb + 1)
-    dz = grid.dz.to_units("K").values.item()
-
-    if is_gt(backend):
-        ws = WrappingStencil(core, backend, dtype, default_origin, rebuild)
-        fs, fsu, fsv = ws(timestep, dz, w, s, su, sv)
-    else:
-        fs, fsu, fsv = core.call_numpy(timestep, dz, w, s, su, sv)
-
+    fs, fsu, fsv = ws.call_dry(dt, dz, w, s, su, sv)
+    z = slice(nb, grid.nz - nb + 1)
     flux_s = get_fluxes(w, s)
-    compare_arrays(fs[:, :, zl], flux_s[:, :, zr])
-
+    compare_arrays(fs[:, :, z], flux_s[:, :, z])
     flux_su = get_fluxes(w, su)
-    compare_arrays(fsu[:, :, zl], flux_su[:, :, zr])
-
+    compare_arrays(fsu[:, :, z], flux_su[:, :, z])
     flux_sv = get_fluxes(w, sv)
-    compare_arrays(fsv[:, :, zl], flux_sv[:, :, zr])
+    compare_arrays(fsv[:, :, z], flux_sv[:, :, z])
 
     #
     # moist
     #
-    core = IsentropicMinimalVerticalFlux.factory(flux_scheme, True, backend)
-    assert isinstance(core, flux_type)
-
-    if is_gt(backend):
-        ws = WrappingStencil(core, backend, dtype, default_origin, rebuild)
-        fs, fsu, fsv, fsqv, fsqc, fsqr = ws(
-            timestep, dz, w, s, su, sv, sqv=sqv, sqc=sqc, sqr=sqr
-        )
-    else:
-        fs, fsu, fsv, fsqv, fsqc, fsqr = core.call_numpy(
-            timestep, dz, w, s, su, sv, sqv=sqv, sqc=sqc, sqr=sqr
-        )
-
-    flux_s = get_fluxes(w, s)
-    compare_arrays(fs[:, :, zl], flux_s[:, :, zr])
-
-    flux_su = get_fluxes(w, su)
-    compare_arrays(fsu[:, :, zl], flux_su[:, :, zr])
-
-    flux_sv = get_fluxes(w, sv)
-    compare_arrays(fsv[:, :, zl], flux_sv[:, :, zr])
-
+    fsqv, fsqc, fsqr = ws.call_moist(dt, dz, w, sqv, sqc, sqr)
     flux_sqv = get_fluxes(w, sqv)
-    compare_arrays(fsqv[:, :, zl], flux_sqv[:, :, zr])
-
+    compare_arrays(fsqv[:, :, z], flux_sqv[:, :, z])
     flux_sqc = get_fluxes(w, sqc)
-    compare_arrays(fsqc[:, :, zl], flux_sqc[:, :, zr])
-
+    compare_arrays(fsqc[:, :, z], flux_sqc[:, :, z])
     flux_sqr = get_fluxes(w, sqr)
-    compare_arrays(fsqr[:, :, zl], flux_sqr[:, :, zr])
+    compare_arrays(fsqr[:, :, z], flux_sqr[:, :, z])
 
 
 @hyp_settings
@@ -472,7 +446,7 @@ def test_numerics(data, scheme, backend, dtype):
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
     domain = data.draw(
-        st_domain(zaxis_length=(3, 40), backend=backend, dtype=dtype),
+        st_domain(zaxis_length=(4, 40), backend=backend, dtype=dtype),
         label="domain",
     )
     grid = domain.numerical_grid
@@ -489,24 +463,25 @@ def test_numerics(data, scheme, backend, dtype):
         )
     )
 
-    timestep = data.draw(
-        st_floats(min_value=0, max_value=3600), label="timestep"
-    )
+    dt = data.draw(st_floats(min_value=0, max_value=3600), label="dt")
 
     # ========================================
     # test bed
     # ========================================
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, default_origin=default_origin)
     validation(
+        IsentropicMinimalVerticalFlux,
         scheme,
         domain,
         field,
-        timestep,
+        dt,
         backend,
-        dtype,
-        default_origin,
-        rebuild=False,
+        bo,
+        so,
     )
 
 
 if __name__ == "__main__":
     pytest.main([__file__])
+    # test_numerics("third_order_upwind", "gt4py:numpy", float)

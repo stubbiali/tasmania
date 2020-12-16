@@ -21,18 +21,17 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 import numpy as np
-from typing import List, Optional, Tuple
 
 from gt4py import gtscript
 
+from tasmania.python.framework.register import register
+from tasmania.python.framework.tag import stencil_subroutine
 from tasmania.python.isentropic.dynamics.vertical_fluxes import (
     IsentropicMinimalVerticalFlux,
 )
-from tasmania.python.utils import taz_types
-from tasmania.python.utils.framework_utils import register
 
 
-def get_upwind_flux_numpy(w: np.ndarray, phi: np.ndarray) -> np.ndarray:
+def get_upwind_flux_numpy(w, phi):
     flux = w[:, :, 1:-1] * np.where(
         w[:, :, 1:-1] > 0.0, phi[:, :, 1:-1], phi[:, :, :-2]
     )
@@ -40,76 +39,49 @@ def get_upwind_flux_numpy(w: np.ndarray, phi: np.ndarray) -> np.ndarray:
 
 
 @gtscript.function
-def get_upwind_flux(
-    w: taz_types.gtfield_t, phi: taz_types.gtfield_t
-) -> taz_types.gtfield_t:
+def get_upwind_flux_gt4py(w, phi):
     flux = w[0, 0, 0] * (phi[0, 0, 0] if w[0, 0, 0] > 0 else phi[0, 0, -1])
     return flux
 
 
 @register(name="upwind")
 class Upwind(IsentropicMinimalVerticalFlux):
-    """ Upwind scheme. """
+    """Upwind scheme."""
 
     extent = 1
     order = 1
-    externals = {"get_upwind_flux": get_upwind_flux}
+    externals = {"get_upwind_flux_gt4py": get_upwind_flux_gt4py}
 
-    def __init__(self, moist, backend):
-        super().__init__(moist, backend)
-
-    def call_numpy(
-        self,
-        dt: float,
-        dz: float,
-        w: np.ndarray,
-        s: np.ndarray,
-        su: np.ndarray,
-        sv: np.ndarray,
-        sqv: Optional[np.ndarray] = None,
-        sqc: Optional[np.ndarray] = None,
-        sqr: Optional[np.ndarray] = None,
-    ) -> List[np.ndarray]:
+    @staticmethod
+    @stencil_subroutine(backend=("numpy", "cupy"), stencil="flux_dry")
+    def flux_dry_numpy(dt, dz, w, s, su, sv):
         flux_s = get_upwind_flux_numpy(w, s)
         flux_su = get_upwind_flux_numpy(w, su)
         flux_sv = get_upwind_flux_numpy(w, sv)
-
-        return_list = [flux_s, flux_su, flux_sv]
-
-        if self.moist:
-            flux_sqv = get_upwind_flux_numpy(w, sqv)
-            flux_sqc = get_upwind_flux_numpy(w, sqc)
-            flux_sqr = get_upwind_flux_numpy(w, sqr)
-
-            return_list += [flux_sqv, flux_sqc, flux_sqr]
-
-        return return_list
+        return flux_s, flux_su, flux_sv
 
     @staticmethod
+    @stencil_subroutine(backend=("numpy", "cupy"), stencil="flux_moist")
+    def flux_moist_numpy(dt, dz, w, sqv, sqc, sqr):
+        flux_sqv = get_upwind_flux_numpy(w, sqv)
+        flux_sqc = get_upwind_flux_numpy(w, sqc)
+        flux_sqr = get_upwind_flux_numpy(w, sqr)
+        return flux_sqv, flux_sqc, flux_sqr
+
+    @staticmethod
+    @stencil_subroutine(backend="gt4py*", stencil="flux_dry")
     @gtscript.function
-    def call_gt(
-        dt: float,
-        dz: float,
-        w: taz_types.gtfield_t,
-        s: taz_types.gtfield_t,
-        su: taz_types.gtfield_t,
-        sv: taz_types.gtfield_t,
-        sqv: "Optional[taz_types.gtfield_t]" = None,
-        sqc: "Optional[taz_types.gtfield_t]" = None,
-        sqr: "Optional[taz_types.gtfield_t]" = None,
-    ) -> "Tuple[taz_types.gtfield_t, ...]":
+    def flux_dry_gt4py(dt, dz, w, s, su, sv):
+        flux_s = get_upwind_flux_gt4py(w=w, phi=s)
+        flux_su = get_upwind_flux_gt4py(w=w, phi=su)
+        flux_sv = get_upwind_flux_gt4py(w=w, phi=sv)
+        return flux_s, flux_su, flux_sv
 
-        from __externals__ import moist
-
-        flux_s = get_upwind_flux(w=w, phi=s)
-        flux_su = get_upwind_flux(w=w, phi=su)
-        flux_sv = get_upwind_flux(w=w, phi=sv)
-
-        if __INLINED(not moist):  # compile-time if
-            return flux_s, flux_su, flux_sv
-        else:
-            flux_sqv = get_upwind_flux(w=w, phi=sqv)
-            flux_sqc = get_upwind_flux(w=w, phi=sqc)
-            flux_sqr = get_upwind_flux(w=w, phi=sqr)
-
-            return flux_s, flux_su, flux_sv, flux_sqv, flux_sqc, flux_sqr
+    @staticmethod
+    @stencil_subroutine(backend="gt4py*", stencil="flux_moist")
+    @gtscript.function
+    def flux_moist_gt4py(dt, dz, w, sqv, sqc, sqr):
+        flux_sqv = get_upwind_flux_gt4py(w=w, phi=sqv)
+        flux_sqc = get_upwind_flux_gt4py(w=w, phi=sqc)
+        flux_sqr = get_upwind_flux_gt4py(w=w, phi=sqr)
+        return flux_sqv, flux_sqc, flux_sqr
