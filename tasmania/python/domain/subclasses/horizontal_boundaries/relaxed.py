@@ -286,7 +286,7 @@ class Relaxed(HorizontalBoundary):
             origin=(0, 0, 0),
             domain=(mi, mj, mk),
             exec_info=self.backend_options.exec_info,
-            validate_args=False,
+            validate_args=self.backend_options.validate_args,
         )
 
     def set_outermost_layers_x(
@@ -622,7 +622,7 @@ class Relaxed1DX(HorizontalBoundary):
             origin=(0, nb, 0),
             domain=(mi, mj - nb, mk),
             exec_info=self.backend_options.exec_info,
-            validate_args=False,
+            validate_args=self.backend_options.validate_args,
         )
 
         # repeat the innermost column(s) along the y-direction
@@ -943,7 +943,7 @@ class Relaxed1DY(HorizontalBoundary):
             origin=(nb, 0, 0),
             domain=(mi - nb, mj, mk),
             exec_info=self.backend_options.exec_info,
-            validate_args=False,
+            validate_args=self.backend_options.validate_args,
         )
 
         # repeat the innermost row(s) along the x-direction

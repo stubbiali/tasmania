@@ -67,7 +67,7 @@ class FirstOrder(HorizontalSmoothing):
             origin=(nb, nb, 0),
             domain=(nx - 2 * nb, ny - 2 * nb, nz),
             exec_info=self.backend_options.exec_info,
-            validate_args=False,
+            validate_args=self.backend_options.validate_args,
         )
 
         # set the outermost lateral layers of the output field,
@@ -78,7 +78,7 @@ class FirstOrder(HorizontalSmoothing):
             origin=(0, 0, 0),
             domain=(nb, ny, nz),
             exec_info=self.backend_options.exec_info,
-            validate_args=False,
+            validate_args=self.backend_options.validate_args,
         )
         self._stencil_copy(
             src=phi,
@@ -86,7 +86,7 @@ class FirstOrder(HorizontalSmoothing):
             origin=(nx - nb, 0, 0),
             domain=(nb, ny, nz),
             exec_info=self.backend_options.exec_info,
-            validate_args=False,
+            validate_args=self.backend_options.validate_args,
         )
         self._stencil_copy(
             src=phi,
@@ -94,7 +94,7 @@ class FirstOrder(HorizontalSmoothing):
             origin=(nb, 0, 0),
             domain=(nx - 2 * nb, nb, nz),
             exec_info=self.backend_options.exec_info,
-            validate_args=False,
+            validate_args=self.backend_options.validate_args,
         )
         self._stencil_copy(
             src=phi,
@@ -102,7 +102,7 @@ class FirstOrder(HorizontalSmoothing):
             origin=(nb, ny - nb, 0),
             domain=(nx - 2 * nb, nb, nz),
             exec_info=self.backend_options.exec_info,
-            validate_args=False,
+            validate_args=self.backend_options.validate_args,
         )
 
     @staticmethod
@@ -185,7 +185,7 @@ class FirstOrder1DX(HorizontalSmoothing):
             origin=(nb, 0, 0),
             domain=(nx - 2 * nb, ny, nz),
             exec_info=self.backend_options.exec_info,
-            validate_args=False,
+            validate_args=self.backend_options.validate_args,
         )
 
         # set the outermost lateral layers of the output field,
@@ -196,7 +196,7 @@ class FirstOrder1DX(HorizontalSmoothing):
             origin=(0, 0, 0),
             domain=(nb, ny, nz),
             exec_info=self.backend_options.exec_info,
-            validate_args=False,
+            validate_args=self.backend_options.validate_args,
         )
         self._stencil_copy(
             src=phi,
@@ -204,7 +204,7 @@ class FirstOrder1DX(HorizontalSmoothing):
             origin=(nx - nb, 0, 0),
             domain=(nb, ny, nz),
             exec_info=self.backend_options.exec_info,
-            validate_args=False,
+            validate_args=self.backend_options.validate_args,
         )
 
     @staticmethod
@@ -275,7 +275,7 @@ class FirstOrder1DY(HorizontalSmoothing):
             origin=(0, nb, 0),
             domain=(nx, ny - 2 * nb, nz),
             exec_info=self.backend_options.exec_info,
-            validate_args=False,
+            validate_args=self.backend_options.validate_args,
         )
 
         # set the outermost lateral layers of the output field,
@@ -286,7 +286,7 @@ class FirstOrder1DY(HorizontalSmoothing):
             origin=(0, 0, 0),
             domain=(nx, nb, nz),
             exec_info=self.backend_options.exec_info,
-            validate_args=False,
+            validate_args=self.backend_options.validate_args,
         )
         self._stencil_copy(
             src=phi,
@@ -294,7 +294,7 @@ class FirstOrder1DY(HorizontalSmoothing):
             origin=(0, ny - nb, 0),
             domain=(nx, nb, nz),
             exec_info=self.backend_options.exec_info,
-            validate_args=False,
+            validate_args=self.backend_options.validate_args,
         )
 
     @staticmethod

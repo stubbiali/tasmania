@@ -124,7 +124,7 @@ class HorizontalVelocity(GridComponent, StencilFactory):
             origin=(0, 0, 0),
             domain=(nx, ny, nz),
             exec_info=self.backend_options.exec_info,
-            validate_args=False,
+            validate_args=self.backend_options.validate_args,
         )
 
     def get_velocity_components(
@@ -168,7 +168,7 @@ class HorizontalVelocity(GridComponent, StencilFactory):
             origin=(dn, 0, 0),
             domain=(nx - dn, ny, nz),
             exec_info=self.backend_options.exec_info,
-            validate_args=False,
+            validate_args=self.backend_options.validate_args,
         )
         self._stencil_diagnosing_velocity_y(
             in_d=d,
@@ -177,7 +177,7 @@ class HorizontalVelocity(GridComponent, StencilFactory):
             origin=(0, dn, 0),
             domain=(nx, ny - dn, nz),
             exec_info=self.backend_options.exec_info,
-            validate_args=False,
+            validate_args=self.backend_options.validate_args,
         )
 
     @stencil_definition(backend=("numpy", "cupy"), stencil="momenta")
@@ -389,7 +389,7 @@ class WaterConstituent(GridComponent, StencilFactory):
             origin=(0, 0, 0),
             domain=(nx, ny, nz),
             exec_info=self.backend_options.exec_info,
-            validate_args=False,
+            validate_args=self.backend_options.validate_args,
         )
 
     def get_mass_fraction_of_water_constituent_in_air(
@@ -423,7 +423,7 @@ class WaterConstituent(GridComponent, StencilFactory):
             origin=(0, 0, 0),
             domain=(nx, ny, nz),
             exec_info=self.backend_options.exec_info,
-            validate_args=False,
+            validate_args=self.backend_options.validate_args,
         )
 
     @stencil_definition(backend=("numpy", "cupy"), stencil="density")

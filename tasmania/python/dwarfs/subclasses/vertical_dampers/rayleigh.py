@@ -75,7 +75,7 @@ class Rayleigh(VerticalDamping):
             origin=(0, 0, 0),
             domain=(ni, nj, nk),
             exec_info=self.backend_options.exec_info,
-            validate_args=False,
+            validate_args=self.backend_options.validate_args,
         )
 
         # if nk > dnk:
