@@ -49,6 +49,8 @@ def compiler_gt4py(definition, *, backend_options=None):
     backend = compiler_gt4py.__tasmania_runtime__["backend"]
     gt_backend = get_gt_backend(backend)
     backend_opts = bo.backend_opts or {}
+    if gt_backend not in ("debug", "numpy"):
+        backend_opts.setdefault("verbose", bo.verbose)
     return gt.gtscript.stencil(
         gt_backend,
         definition,

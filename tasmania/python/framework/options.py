@@ -35,6 +35,7 @@ class BackendOptions:
     externals: Mapping[str, Any] = None
     rebuild: bool = False
     validate_args: bool = False
+    verbose: bool = True
 
     # numba
     parallel: bool = True
