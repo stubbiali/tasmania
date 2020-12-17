@@ -40,7 +40,6 @@ from tasmania.python.framework.stencil import (
 )
 from tasmania.python.framework.subclasses.stencil_compilers import (
     compiler_gt4py,
-    compiler_numba,
     compiler_numpy,
 )
 
@@ -478,7 +477,7 @@ class TestStencilCompiler:
     @staticmethod
     def check_registry_keys(r):
         f = "stencil_compiler"
-        backends = ("numpy", "cupy", "numba:cpu", "gt4py*")
+        backends = ("numpy", "cupy", "gt4py*")
 
         assert f in r
         assert all(backend in r[f] for backend in backends)
@@ -493,7 +492,6 @@ class TestStencilCompiler:
 
         assert r[f]["numpy"]["ABCDE"] == compiler_numpy
         assert r[f]["cupy"][prt.wildcard] == compiler_numpy
-        assert r[f]["numba:cpu"]["01234566789"] == compiler_numba
         assert r[f]["gt4py*"]["abcde"] == compiler_gt4py
 
     def test_registry_values(self):

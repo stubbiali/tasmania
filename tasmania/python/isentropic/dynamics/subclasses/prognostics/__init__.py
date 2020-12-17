@@ -20,6 +20,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from .centered_si import CenteredSI
-from .forward_euler_si import ForwardEulerSI
-from .rk3ws_si import RK3WSSI
+from .centered_si import *
+from .forward_euler_si import *
+from .rk3ws_si import *
+from .utils import *

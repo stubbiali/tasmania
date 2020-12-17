@@ -20,8 +20,8 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+from tasmania.python.framework.register import register
 from tasmania.python.isentropic.dynamics.prognostic import IsentropicPrognostic
-from tasmania.python.utils.framework_utils import register
 
 
 @register(name="centered_si")

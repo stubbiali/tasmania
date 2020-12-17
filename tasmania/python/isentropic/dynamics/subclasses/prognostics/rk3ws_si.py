@@ -20,8 +20,6 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from gt4py import gtscript
-
 from tasmania.python.isentropic.dynamics.diagnostics import (
     IsentropicDiagnostics,
 )
@@ -29,15 +27,7 @@ from tasmania.python.isentropic.dynamics.horizontal_fluxes import (
     IsentropicMinimalHorizontalFlux,
 )
 from tasmania.python.isentropic.dynamics.prognostic import IsentropicPrognostic
-from tasmania.python.isentropic.dynamics.subclasses.prognostics.utils import (
-    step_forward_euler_gt,
-    step_forward_euler_momentum_gt,
-    step_forward_euler_momentum_numpy,
-    step_forward_euler_numpy,
-)
-from tasmania.python.utils.framework_utils import register
-from tasmania.python.utils.storage_utils import zeros
-from tasmania.python.utils.utils import get_gt_backend, is_gt
+from tasmania.python.framework.register import register
 
 
 # convenient aliases
@@ -48,41 +38,29 @@ mfpw = "mass_fraction_of_precipitation_water_in_air"
 
 @register(name="rk3ws_si")
 class RK3WSSI(IsentropicPrognostic):
-    """ The semi-implicit three-stages Runge-Kutta scheme. """
+    """The semi-implicit three-stages Runge-Kutta scheme."""
 
     def __init__(
         self,
         horizontal_flux_scheme,
-        grid,
-        hb,
+        domain,
         moist,
         backend,
-        backend_opts,
-        dtype,
-        build_info,
-        exec_info,
-        default_origin,
-        rebuild,
+        backend_options,
         storage_shape,
-        managed_memory,
+        storage_options,
         **kwargs
     ):
         # call parent's constructor
         super().__init__(
             IsentropicMinimalHorizontalFlux,
             horizontal_flux_scheme,
-            grid,
-            hb,
+            domain,
             moist,
             backend,
-            backend_opts,
-            dtype,
-            build_info,
-            exec_info,
-            default_origin,
-            rebuild,
+            backend_options,
             storage_shape,
-            managed_memory,
+            storage_options,
         )
 
         # extract the upper boundary conditions on the pressure field and
@@ -97,16 +75,11 @@ class RK3WSSI(IsentropicPrognostic):
 
         # instantiate the component retrieving the diagnostic variables
         self._diagnostics = IsentropicDiagnostics(
-            grid,
+            self.grid,
             backend=backend,
-            backend_opts=backend_opts,
-            dtype=dtype,
-            build_info=build_info,
-            exec_info=exec_info,
-            default_origin=default_origin,
-            rebuild=False,
-            storage_shape=storage_shape,
-            managed_memory=managed_memory,
+            backend_options=self.backend_options,
+            storage_shape=self._storage_shape,
+            storage_options=self.storage_options,
         )
 
         # initialize the pointers to the stencils
@@ -132,9 +105,9 @@ class RK3WSSI(IsentropicPrognostic):
         return 1.0 / 3.0, 0.5, 1.0
 
     def stage_call(self, stage, timestep, state, tendencies=None):
-        nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
-        nb = self._hb.nb
-        tendencies = {} if tendencies is None else tendencies
+        nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
+        nb = self.horizontal_boundary.nb
+        tendencies = tendencies or {}
 
         if self._stencil is None:
             # initialize the stencils
@@ -216,8 +189,6 @@ class RK3WSSI(IsentropicPrognostic):
                     "sqr_new": self._sqr_new,
                 }
             )
-        if not is_gt(self._backend):
-            stencil_args["fluxer"] = self._hflux
 
         # step the isentropic density and the water species
         self._stencil(
@@ -227,20 +198,20 @@ class RK3WSSI(IsentropicPrognostic):
             dy=dy,
             origin=(nb, nb, 0),
             domain=(nx - 2 * nb, ny - 2 * nb, nz),
-            exec_info=self._exec_info,
-            validate_args=False
+            exec_info=self.backend_options.exec_info,
+            validate_args=self.backend_options.validate_args
         )
 
         # apply the boundary conditions on the stepped isentropic density
         try:
-            self._hb.dmn_enforce_field(
+            self.horizontal_boundary.dmn_enforce_field(
                 self._s_new,
                 "air_isentropic_density",
                 "kg m^-2 K^-1",
                 time=state["time"] + dtr,
             )
         except AttributeError:
-            self._hb.enforce_field(
+            self.horizontal_boundary.enforce_field(
                 self._s_new,
                 "air_isentropic_density",
                 "kg m^-2 K^-1",
@@ -270,8 +241,6 @@ class RK3WSSI(IsentropicPrognostic):
             "sv_tnd": self._sv_tnd,
             "sv_new": self._sv_new,
         }
-        if not is_gt(self._backend):
-            stencil_args["fluxer"] = self._hflux
 
         # step the momenta
         self._stencil_momentum(
@@ -282,8 +251,8 @@ class RK3WSSI(IsentropicPrognostic):
             eps=self._eps,
             origin=(nb, nb, 0),
             domain=(nx - 2 * nb, ny - 2 * nb, nz),
-            exec_info=self._exec_info,
-            validate_args=False
+            exec_info=self.backend_options.exec_info,
+            validate_args=self.backend_options.validate_args
         )
 
         # collect the outputs
@@ -309,68 +278,31 @@ class RK3WSSI(IsentropicPrognostic):
 
         # allocate the storage which will collect the Montgomery potential
         # retrieved from the updated isentropic density
-        storage_shape = self._storage_shape
-        backend = self._backend
-        dtype = self._dtype
-        default_origin = self._default_origin
-        managed_memory = self._managed_memory
-        self._mtg_new = zeros(
-            storage_shape,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-            managed_memory=managed_memory,
-        )
+        self._mtg_new = self.zeros(shape=self._storage_shape)
 
     def _stencils_initialize(self, tendencies):
-        if is_gt(self._backend):
-            # set external symbols for the first stencil
-            externals = {
-                "fluxer": self._hflux.call,
+        # set dtypes dictionary
+        dtype = self.storage_options.dtype
+        self.backend_options.dtypes = {"dtype": dtype}
+
+        # set external symbols
+        externals = self._hflux.externals.copy()
+        externals.update(
+            {
+                "extent": self._hflux.extent,
+                "flux_dry": self._hflux.stencil_subroutine("flux_dry"),
+                "flux_moist": self._hflux.stencil_subroutine("flux_moist"),
                 "moist": self._moist,
                 "s_tnd_on": "air_isentropic_density" in tendencies,
-                "su_tnd_on": False,
-                "sv_tnd_on": False,
+                "su_tnd_on": "x_momentum_isentropic" in tendencies,
+                "sv_tnd_on": "y_momentum_isentropic" in tendencies,
                 "qv_tnd_on": self._moist and mfwv in tendencies,
                 "qc_tnd_on": self._moist and mfcw in tendencies,
                 "qr_tnd_on": self._moist and mfpw in tendencies,
             }
+        )
+        self.backend_options.externals = externals
 
-            # compile the first stencil
-            self._stencil = gtscript.stencil(
-                definition=step_forward_euler_gt,
-                # name=self.__class__.__name__ + "_stencil",
-                backend=get_gt_backend(self._backend),
-                build_info=self._build_info,
-                dtypes={"dtype": self._dtype},
-                externals=externals,
-                rebuild=self._rebuild,
-                **self._backend_opts
-            )
-
-            # set external symbols for the second stencil
-            externals = {
-                "fluxer": self._hflux.call,
-                "moist": False,
-                "s_tnd_on": False,
-                "su_tnd_on": "x_momentum_isentropic" in tendencies,
-                "sv_tnd_on": "y_momentum_isentropic" in tendencies,
-                "qv_tnd_on": False,
-                "qc_tnd_on": False,
-                "qr_tnd_on": False,
-            }
-
-            # compile the second stencil
-            self._stencil_momentum = gtscript.stencil(
-                definition=step_forward_euler_momentum_gt,
-                # name=self.__class__.__name__ + "_stencil_momentum",
-                backend=get_gt_backend(self._backend),
-                build_info=self._build_info,
-                dtypes={"dtype": self._dtype},
-                externals=externals,
-                rebuild=self._rebuild,
-                **self._backend_opts
-            )
-        else:
-            self._stencil = step_forward_euler_numpy
-            self._stencil_momentum = step_forward_euler_momentum_numpy
+        # compile the stencils
+        self._stencil = self.compile("step_forward_euler")
+        self._stencil_momentum = self.compile("step_forward_euler_momentum")

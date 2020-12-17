@@ -30,7 +30,6 @@ from tasmania.python.framework.register import factorize
 from tasmania.python.framework.stencil import StencilFactory
 from tasmania.python.framework.tag import stencil_subroutine
 from tasmania.python.utils import taz_types
-from tasmania.python.utils.utils import is_gt
 
 
 class IsentropicHorizontalFlux(StencilFactory, abc.ABC):
@@ -83,8 +82,6 @@ class IsentropicHorizontalFlux(StencilFactory, abc.ABC):
         s: np.ndarray,
         u: np.ndarray,
         v: np.ndarray,
-        su: np.ndarray,
-        sv: np.ndarray,
         sqv: np.ndarray,
         sqc: np.ndarray,
         sqr: np.ndarray,

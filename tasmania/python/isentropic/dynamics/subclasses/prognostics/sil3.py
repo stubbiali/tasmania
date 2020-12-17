@@ -33,7 +33,7 @@ from tasmania.python.isentropic.dynamics.horizontal_fluxes import (
     IsentropicMinimalHorizontalFlux,
 )
 from tasmania.python.isentropic.dynamics.prognostic import IsentropicPrognostic
-from tasmania.python.utils.framework_utils import register
+from tasmania.python.framework.register import register
 from tasmania.python.utils.utils import get_gt_backend, is_gt
 
 
