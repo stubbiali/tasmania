@@ -31,6 +31,15 @@ from tasmania.python.utils.utils import get_gt_backend
 
 @stencil_compiler.register(backend=("numpy", "cupy"))
 def compiler_numpy(definition, *, backend_options=None):
+    if backend_options is not None:
+        # inject dtypes and externals
+        try:
+            setattr(definition, "__dtypes__", backend_options.dtypes)
+            setattr(definition, "__externals__", backend_options.externals)
+        except AttributeError:
+            # bound attributes do not define the __dict__ attribute
+            definition.__dict__["__dtypes__"] = backend_options.dtypes
+            definition.__dict__["__externals__"] = backend_options.externals
     return definition
 
 
