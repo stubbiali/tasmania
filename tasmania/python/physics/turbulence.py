@@ -98,6 +98,7 @@ class Smagorinsky2d(TendencyComponent):
         self._nb = max(2, self.horizontal_boundary.nb)
 
         storage_shape = self.get_storage_shape(storage_shape)
+        self._storage_shape = storage_shape
 
         self._out_u_tnd = self.zeros(shape=storage_shape)
         self._out_v_tnd = self.zeros(shape=storage_shape)

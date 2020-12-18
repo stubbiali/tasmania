@@ -22,15 +22,18 @@
 #
 import numpy as np
 from sympl import DataArray
-from typing import Optional, TYPE_CHECKING, Tuple
+from typing import Optional, Sequence, TYPE_CHECKING, Tuple
 
 from tasmania.python.dwarfs.horizontal_diffusion import HorizontalDiffusion
 from tasmania.python.framework.base_components import TendencyComponent
 from tasmania.python.utils import taz_types
-from tasmania.python.utils.storage_utils import get_storage_shape, zeros
 
 if TYPE_CHECKING:
     from tasmania.python.domain.domain import Domain
+    from tasmania.python.framework.options import (
+        BackendOptions,
+        StorageOptions,
+    )
 
 
 mfwv = "mass_fraction_of_water_vapor_in_air"
@@ -59,14 +62,9 @@ class IsentropicHorizontalDiffusion(TendencyComponent):
         diffusion_moist_damp_depth: Optional[int] = None,
         *,
         backend: str = "numpy",
-        backend_opts: Optional[taz_types.options_dict_t] = None,
-        dtype: taz_types.dtype_t = np.float64,
-        build_info: Optional[taz_types.options_dict_t] = None,
-        exec_info: Optional[taz_types.mutable_options_dict_t] = None,
-        default_origin: Optional[taz_types.triplet_int_t] = None,
-        rebuild: bool = False,
-        storage_shape: Optional[taz_types.triplet_int_t] = None,
-        managed_memory: bool = False,
+        backend_options: Optional["BackendOptions"] = None,
+        storage_shape: Optional[Sequence[int]] = None,
+        storage_options: Optional["StorageOptions"] = None,
         **kwargs
     ) -> None:
         """
@@ -100,33 +98,26 @@ class IsentropicHorizontalDiffusion(TendencyComponent):
             Depth of the damping region for the water species.
         backend : `str`, optional
             The backend.
-        backend_opts : `dict`, optional
-            Dictionary of backend-specific options.
-        dtype : `data-type`, optional
-            Data type of the storages.
-        build_info : `dict`, optional
-            Dictionary of building options.
-        exec_info : `dict`, optional
-            Dictionary which will store statistics and diagnostics gathered at
-            run time.
-        default_origin : `tuple[int]`, optional
-            Storage default origin.
-        rebuild : `bool`, optional
-            ``True`` to trigger the stencils compilation at any class
-            instantiation, ``False`` to rely on the caching mechanism
-            implemented by the backend.
-        storage_shape : `tuple[int]`, optional
-            Shape of the storages.
-        managed_memory : `bool`, optional
-            ``True`` to allocate the storages as managed memory,
-            ``False`` otherwise.
+        backend_options : `BackendOptions`, optional
+            Backend-specific options.
+        storage_shape : `Sequence[int]`, optional
+            The shape of the storages allocated within the class.
+        storage_options : `StorageOptions`, optional
+            Storage-related options.
         **kwargs :
             Keyword arguments to be directly forwarded to the parent's
             constructor.
         """
         self._moist = moist and diffusion_moist_coeff is not None
 
-        super().__init__(domain, "numerical", **kwargs)
+        super().__init__(
+            domain,
+            "numerical",
+            backend=backend,
+            backend_options=backend_options,
+            storage_options=storage_options,
+            **kwargs
+        )
 
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
         dx = self.grid.dx.to_units("m").values.item()
@@ -136,8 +127,7 @@ class IsentropicHorizontalDiffusion(TendencyComponent):
         diff_coeff = diffusion_coeff.to_units("s^-1").values.item()
         diff_coeff_max = diffusion_coeff_max.to_units("s^-1").values.item()
 
-        shape = storage_shape or (nx + 1, ny + 1, nz + 1)
-        shape = get_storage_shape(shape, min_shape=(nx + 1, ny + 1, nz + 1))
+        shape = self.get_storage_shape(storage_shape, (nx + 1, ny + 1, nz + 1))
 
         self._core = HorizontalDiffusion.factory(
             diffusion_type,
@@ -148,14 +138,9 @@ class IsentropicHorizontalDiffusion(TendencyComponent):
             diff_coeff_max,
             diffusion_damp_depth,
             nb,
-            backend=backend,
-            backend_opts=backend_opts,
-            dtype=dtype,
-            build_info=build_info,
-            exec_info=exec_info,
-            default_origin=default_origin,
-            rebuild=rebuild,
-            managed_memory=managed_memory,
+            backend=self.backend,
+            backend_options=self.backend_options,
+            storage_options=self.storage_options,
         )
 
         if self._moist:
@@ -183,60 +168,19 @@ class IsentropicHorizontalDiffusion(TendencyComponent):
                 diff_moist_damp_depth,
                 nb,
                 backend=backend,
-                backend_opts=backend_opts,
-                dtype=dtype,
-                build_info=build_info,
-                exec_info=exec_info,
-                default_origin=default_origin,
-                rebuild=rebuild,
-                managed_memory=managed_memory,
+                backend_options=self.backend_options,
+                storage_options=self.storage_options,
             )
         else:
             self._core_moist = None
 
-        self._s_tnd = zeros(
-            shape,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-            managed_memory=managed_memory,
-        )
-        self._su_tnd = zeros(
-            shape,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-            managed_memory=managed_memory,
-        )
-        self._sv_tnd = zeros(
-            shape,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-            managed_memory=managed_memory,
-        )
+        self._s_tnd = self.zeros(shape=shape)
+        self._su_tnd = self.zeros(shape=shape)
+        self._sv_tnd = self.zeros(shape=shape)
         if self._moist:
-            self._qv_tnd = zeros(
-                shape,
-                backend=backend,
-                dtype=dtype,
-                default_origin=default_origin,
-                managed_memory=managed_memory,
-            )
-            self._qc_tnd = zeros(
-                shape,
-                backend=backend,
-                dtype=dtype,
-                default_origin=default_origin,
-                managed_memory=managed_memory,
-            )
-            self._qr_tnd = zeros(
-                shape,
-                backend=backend,
-                dtype=dtype,
-                default_origin=default_origin,
-                managed_memory=managed_memory,
-            )
+            self._qv_tnd = self.zeros(shape=shape)
+            self._qc_tnd = self.zeros(shape=shape)
+            self._qr_tnd = self.zeros(shape=shape)
 
     @property
     def input_properties(self) -> taz_types.properties_dict_t:

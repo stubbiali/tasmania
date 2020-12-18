@@ -22,17 +22,20 @@
 #
 import numpy as np
 from sympl import DataArray
-from typing import Optional, TYPE_CHECKING, Tuple
+from typing import Optional, Sequence, TYPE_CHECKING, Tuple
 
 from gt4py import gtscript
 
 from tasmania.python.framework.base_components import TendencyComponent
+from tasmania.python.framework.tag import stencil_definition
 from tasmania.python.utils import taz_types
-from tasmania.python.utils.storage_utils import zeros
-from tasmania.python.utils.utils import get_gt_backend, is_gt
 
 if TYPE_CHECKING:
     from tasmania.python.domain.domain import Domain
+    from tasmania.python.framework.options import (
+        BackendOptions,
+        StorageOptions,
+    )
 
 
 class IsentropicConservativeCoriolis(TendencyComponent):
@@ -47,14 +50,9 @@ class IsentropicConservativeCoriolis(TendencyComponent):
         coriolis_parameter: Optional[DataArray] = None,
         *,
         backend: str = "numpy",
-        backend_opts: Optional[taz_types.options_dict_t] = None,
-        dtype: taz_types.dtype_t = np.float64,
-        build_info: Optional[taz_types.options_dict_t] = None,
-        exec_info: Optional[taz_types.mutable_options_dict_t] = None,
-        default_origin: Optional[taz_types.triplet_int_t] = None,
-        rebuild: bool = False,
-        storage_shape: Optional[taz_types.triplet_int_t] = None,
-        managed_memory: bool = False,
+        backend_options: Optional["BackendOptions"] = None,
+        storage_shape: Optional[Sequence[int]] = None,
+        storage_options: Optional["StorageOptions"] = None,
         **kwargs
     ) -> None:
         """
@@ -70,80 +68,41 @@ class IsentropicConservativeCoriolis(TendencyComponent):
             parameter, in units compatible with [rad s^-1].
         backend : `str`, optional
             The backend.
-        backend_opts : `dict`, optional
-            Dictionary of backend-specific options.
-        dtype : `data-type`, optional
-            Data type of the storages.
-        build_info : `dict`, optional
-            Dictionary of building options.
-        exec_info : `dict`, optional
-            Dictionary which will store statistics and diagnostics gathered at
-            run time.
-        default_origin : `tuple[int]`, optional
-            Storage default origin.
-        rebuild : `bool`, optional
-            ``True`` to trigger the stencils compilation at any class
-            instantiation, ``False`` to rely on the caching mechanism
-            implemented by the backend.
-        storage_shape : `tuple[int]`, optional
-            Shape of the storages.
-        managed_memory : `bool`, optional
-            ``True`` to allocate the storages as managed memory,
-            ``False`` otherwise.
+        backend_options : `BackendOptions`, optional
+            Backend-specific options.
+        storage_shape : `Sequence[int]`, optional
+            The shape of the storages allocated within the class.
+        storage_options : `StorageOptions`, optional
+            Storage-related options.
         **kwargs :
             Keyword arguments to be directly forwarded to the parent's
             constructor.
         """
-        super().__init__(domain, grid_type, **kwargs)
+        super().__init__(
+            domain,
+            grid_type,
+            backend=backend,
+            backend_options=backend_options,
+            storage_options=storage_options,
+            **kwargs
+        )
 
         self._nb = (
             self.horizontal_boundary.nb if grid_type == "numerical" else 0
         )
-        self._exec_info = exec_info
-
         self._f = (
             coriolis_parameter.to_units("rad s^-1").values.item()
             if coriolis_parameter is not None
             else 1e-4
         )
 
-        nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
-        storage_shape = (
-            (nx, ny, nz) if storage_shape is None else storage_shape
-        )
-        error_msg = "storage_shape must be larger or equal than {}.".format(
-            (nx, ny, nz)
-        )
-        assert storage_shape[0] >= nx, error_msg
-        assert storage_shape[1] >= ny, error_msg
-        assert storage_shape[2] >= nz, error_msg
+        storage_shape = self.get_storage_shape(storage_shape)
+        self._tnd_su = self.zeros(shape=storage_shape)
+        self._tnd_sv = self.zeros(shape=storage_shape)
 
-        self._tnd_su = zeros(
-            storage_shape,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-            managed_memory=managed_memory,
-        )
-        self._tnd_sv = zeros(
-            storage_shape,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-            managed_memory=managed_memory,
-        )
-
-        if is_gt(backend):
-            self._stencil = gtscript.stencil(
-                definition=self._stencil_gt_defs,
-                backend=get_gt_backend(backend),
-                build_info=build_info,
-                dtypes={"dtype": dtype},
-                rebuild=rebuild,
-                **(backend_opts or {})
-            )
-        else:
-            self._stencil = self._stencil_numpy
+        dtype = self.storage_options.dtype
+        self.backend_options.dtypes = {"dtype": dtype}
+        self._stencil = self.compile("coriolis")
 
     @property
     def input_properties(self) -> taz_types.properties_dict_t:
@@ -199,20 +158,20 @@ class IsentropicConservativeCoriolis(TendencyComponent):
             f=self._f,
             origin=(nb, nb, 0),
             domain=(nx - 2 * nb, ny - 2 * nb, nz),
-            exec_info=self._exec_info,
-            validate_args=False,
+            exec_info=self.backend_options.exec_info,
+            validate_args=self.backend_options.validate_args,
         )
 
         tendencies = {
             "x_momentum_isentropic": self._tnd_su,
             "y_momentum_isentropic": self._tnd_sv,
         }
-
         diagnostics = {}
 
         return tendencies, diagnostics
 
     @staticmethod
+    @stencil_definition(backend=("numpy", "cupy"), stencil="coriolis")
     def _stencil_numpy(
         in_su: np.ndarray,
         in_sv: np.ndarray,
@@ -232,13 +191,14 @@ class IsentropicConservativeCoriolis(TendencyComponent):
         tnd_sv[i, j, k] = -f * in_su[i, j, k]
 
     @staticmethod
-    def _stencil_gt_defs(
+    @stencil_definition(backend="gt4py*", stencil="coriolis")
+    def _stencil_gt4py(
         in_su: gtscript.Field["dtype"],
         in_sv: gtscript.Field["dtype"],
         tnd_su: gtscript.Field["dtype"],
         tnd_sv: gtscript.Field["dtype"],
         *,
-        f: float
+        f: "dtype"
     ) -> None:
         with computation(PARALLEL), interval(...):
             tnd_su = f * in_sv

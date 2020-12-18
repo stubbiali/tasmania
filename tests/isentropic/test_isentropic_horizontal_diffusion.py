@@ -29,13 +29,13 @@ from hypothesis import (
 import pytest
 from sympl import DataArray
 
-import gt4py as gt
-
+from tasmania.python.framework.allocators import zeros
+from tasmania.python.framework.options import BackendOptions, StorageOptions
 from tasmania.python.isentropic.physics.horizontal_diffusion import (
     IsentropicHorizontalDiffusion,
 )
 from tasmania.python.dwarfs.horizontal_diffusion import HorizontalDiffusion
-from tasmania.python.utils.storage_utils import get_dataarray_3d, zeros
+from tasmania.python.utils.storage_utils import get_dataarray_3d
 
 from tests.conf import (
     backend as conf_backend,
@@ -43,7 +43,12 @@ from tests.conf import (
     default_origin as conf_default_origin,
     nb as conf_nb,
 )
-from tests.strategies import st_domain, st_floats, st_one_of, st_isentropic_state_f
+from tests.strategies import (
+    st_domain,
+    st_floats,
+    st_one_of,
+    st_isentropic_state_f,
+)
 from tests.utilities import compare_dataarrays, hyp_settings
 
 
@@ -61,9 +66,13 @@ def test(data, diff_type, backend, dtype, subtests):
     # ========================================
     # random data generation
     # ========================================
-    default_origin = data.draw(st_one_of(conf_default_origin), label="default_origin")
+    default_origin = data.draw(
+        st_one_of(conf_default_origin), label="default_origin"
+    )
 
-    nb = data.draw(hyp_st.integers(min_value=2, max_value=max(2, conf_nb)), label="nb")
+    nb = data.draw(
+        hyp_st.integers(min_value=2, max_value=max(2, conf_nb)), label="nb"
+    )
     domain = data.draw(
         st_domain(
             xaxis_length=(1, 30),
@@ -92,10 +101,16 @@ def test(data, diff_type, backend, dtype, subtests):
 
     diff_coeff = data.draw(st_floats(min_value=0, max_value=1))
     diff_coeff_max = data.draw(st_floats(min_value=diff_coeff, max_value=1))
-    diff_damp_depth = data.draw(hyp_st.integers(min_value=0, max_value=grid.nz))
+    diff_damp_depth = data.draw(
+        hyp_st.integers(min_value=0, max_value=grid.nz)
+    )
     diff_moist_coeff = data.draw(st_floats(min_value=0, max_value=1))
-    diff_moist_coeff_max = data.draw(st_floats(min_value=diff_moist_coeff, max_value=1))
-    diff_moist_damp_depth = data.draw(hyp_st.integers(min_value=0, max_value=grid.nz))
+    diff_moist_coeff_max = data.draw(
+        st_floats(min_value=diff_moist_coeff, max_value=1)
+    )
+    diff_moist_damp_depth = data.draw(
+        hyp_st.integers(min_value=0, max_value=grid.nz)
+    )
 
     # ========================================
     # test bed
@@ -104,18 +119,11 @@ def test(data, diff_type, backend, dtype, subtests):
     dx = grid.dx.to_units("m").values.item()
     dy = grid.dy.to_units("m").values.item()
 
-    in_st = zeros(
-        storage_shape,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
-    out_st = zeros(
-        storage_shape,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, default_origin=default_origin)
+
+    in_st = zeros(backend, shape=storage_shape, storage_options=so)
+    out_st = zeros(backend, shape=storage_shape, storage_options=so)
 
     #
     # validation data
@@ -130,9 +138,8 @@ def test(data, diff_type, backend, dtype, subtests):
         diff_damp_depth,
         nb,
         backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-        rebuild=False,
+        backend_options=bo,
+        storage_options=so,
     )
     hd_moist = HorizontalDiffusion.factory(
         diff_type,
@@ -144,9 +151,8 @@ def test(data, diff_type, backend, dtype, subtests):
         diff_moist_damp_depth,
         nb,
         backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-        rebuild=False,
+        backend_options=bo,
+        storage_options=so,
     )
 
     val = {}
@@ -179,8 +185,9 @@ def test(data, diff_type, backend, dtype, subtests):
         diffusion_coeff_max=DataArray(diff_coeff_max, attrs={"units": "s^-1"}),
         diffusion_damp_depth=diff_damp_depth,
         backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
+        backend_options=bo,
+        storage_shape=storage_shape,
+        storage_options=so,
     )
 
     tendencies, diagnostics = ihd(state)
@@ -218,14 +225,17 @@ def test(data, diff_type, backend, dtype, subtests):
         diffusion_coeff_max=DataArray(diff_coeff_max, attrs={"units": "s^-1"}),
         diffusion_damp_depth=diff_damp_depth,
         moist=True,
-        diffusion_moist_coeff=DataArray(diff_moist_coeff, attrs={"units": "s^-1"}),
+        diffusion_moist_coeff=DataArray(
+            diff_moist_coeff, attrs={"units": "s^-1"}
+        ),
         diffusion_moist_coeff_max=DataArray(
             diff_moist_coeff_max, attrs={"units": "s^-1"}
         ),
         diffusion_moist_damp_depth=diff_moist_damp_depth,
         backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
+        backend_options=bo,
+        storage_shape=storage_shape,
+        storage_options=so,
     )
 
     tendencies, diagnostics = ihd(state)

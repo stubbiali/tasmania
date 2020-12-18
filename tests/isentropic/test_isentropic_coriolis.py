@@ -28,12 +28,11 @@ from hypothesis import (
 import pytest
 from sympl import DataArray
 
-import gt4py as gt
-
+from tasmania.python.framework.options import BackendOptions, StorageOptions
 from tasmania.python.isentropic.physics.coriolis import (
     IsentropicConservativeCoriolis,
 )
-from tasmania import get_dataarray_3d
+from tasmania.python.utils.storage_utils import get_dataarray_3d
 
 from tests.conf import (
     backend as conf_backend,
@@ -66,8 +65,7 @@ def test_conservative(data, backend, dtype):
         hyp_st.integers(min_value=1, max_value=max(1, conf_nb)), label="nb"
     )
     domain = data.draw(
-        st_domain(nb=nb, backend=backend, dtype=dtype),
-        label="domain",
+        st_domain(nb=nb, backend=backend, dtype=dtype), label="domain",
     )
     grid_type = data.draw(
         st_one_of(("physical", "numerical")), label="grid_type"
@@ -101,14 +99,17 @@ def test_conservative(data, backend, dtype):
     x, y = slice(nb, grid.nx - nb), slice(nb, grid.ny - nb)
     coriolis_parameter = DataArray(f, attrs={"units": "rad s^-1"})
 
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, default_origin=default_origin)
+
     icc = IsentropicConservativeCoriolis(
         domain,
         grid_type,
         coriolis_parameter,
         backend=backend,
-        dtype=grid.x.dtype,
-        default_origin=default_origin,
+        backend_options=bo,
         storage_shape=storage_shape,
+        storage_options=so,
     )
 
     assert "x_momentum_isentropic" in icc.input_properties

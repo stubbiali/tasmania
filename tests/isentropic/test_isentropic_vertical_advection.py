@@ -21,24 +21,20 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 from copy import deepcopy
-from datetime import datetime
 from hypothesis import (
     given,
     reproduce_failure,
     strategies as hyp_st,
 )
-from hypothesis.extra.numpy import arrays as st_arrays
-import numpy as np
 import pytest
-from sympl import DataArray
 
-import gt4py as gt
-
+from tasmania.python.framework.allocators import zeros
+from tasmania.python.framework.options import BackendOptions, StorageOptions
 from tasmania.python.isentropic.physics.vertical_advection import (
     IsentropicVerticalAdvection,
     PrescribedSurfaceHeating,
 )
-from tasmania.python.utils.storage_utils import get_dataarray_3d, zeros
+from tasmania.python.utils.storage_utils import get_dataarray_3d
 
 from tests.conf import (
     backend as conf_backend,
@@ -116,11 +112,11 @@ flux_properties = {
         "get_flux": get_third_order_upwind_flux,
         "set_lower_layers": set_lower_layers_second_order,
     },
-    "fifth_order_upwind": {
-        "nb": 3,
-        "get_flux": get_fifth_order_upwind_flux,
-        "set_lower_layers": set_lower_layers_second_order,
-    },
+    # "fifth_order_upwind": {
+    #     "nb": 3,
+    #     "get_flux": get_fifth_order_upwind_flux,
+    #     "set_lower_layers": set_lower_layers_second_order,
+    # },
 }
 
 
@@ -129,10 +125,10 @@ def validation(
     flux_scheme,
     moist,
     toaptoil,
-    backend,
-    default_origin,
-    rebuild,
     state,
+    backend,
+    backend_options,
+    storage_options,
     cls=IsentropicVerticalAdvection,
     *,
     subtests
@@ -154,10 +150,9 @@ def validation(
         moist,
         tendency_of_air_potential_temperature_on_interface_levels=toaptoil,
         backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-        rebuild=rebuild,
+        backend_options=backend_options,
         storage_shape=storage_shape,
+        storage_options=storage_options,
     )
 
     input_names = [
@@ -200,37 +195,35 @@ def validation(
 
     if toaptoil:
         name = "tendency_of_air_potential_temperature_on_interface_levels"
-        w = state[name].to_units("K s^-1").values
+        w = state[name].to_units("K s^-1").data
         w_hl = w
     else:
         name = "tendency_of_air_potential_temperature"
-        w = state[name].to_units("K s^-1").values
+        w = state[name].to_units("K s^-1").data
         w_hl = zeros(
-            (nx + 1, ny + 1, nz + 1),
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
+            backend,
+            shape=(nx + 1, ny + 1, nz + 1),
+            storage_options=storage_options,
         )
         w_hl[:, :, 1:-1] = 0.5 * (w[:, :, :-2] + w[:, :, 1:-1])
 
-    s = state["air_isentropic_density"].to_units("kg m^-2 K^-1").values
-    su = state["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").values
-    sv = state["y_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").values
+    s = state["air_isentropic_density"].to_units("kg m^-2 K^-1").data
+    su = state["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").data
+    sv = state["y_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").data
     if moist:
-        qv = state[mfwv].to_units("g g^-1").values
+        qv = state[mfwv].to_units("g g^-1").data
         sqv = s * qv
-        qc = state[mfcw].to_units("g g^-1").values
+        qc = state[mfcw].to_units("g g^-1").data
         sqc = s * qc
-        qr = state[mfpw].to_units("g g^-1").values
+        qr = state[mfpw].to_units("g g^-1").data
         sqr = s * qr
 
     tendencies, diagnostics = fluxer(state)
 
     out = zeros(
-        (nx + 1, ny + 1, nz + 1),
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
+        backend,
+        shape=(nx + 1, ny + 1, nz + 1),
+        storage_options=storage_options,
     )
     up = slice(nb, nz - nb)
     down = slice(nb + 1, nz - nb + 1)
@@ -297,16 +290,18 @@ def validation(
 
 @hyp_settings
 @given(data=hyp_st.data())
+@pytest.mark.parametrize("flux_scheme", flux_properties.keys())
 @pytest.mark.parametrize("backend", conf_backend)
 @pytest.mark.parametrize("dtype", conf_dtype)
-def test_upwind(data, backend, dtype, subtests):
+def test(data, flux_scheme, backend, dtype, subtests):
     # ========================================
     # random data generation
     # ========================================
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
+    nb = flux_properties[flux_scheme]["nb"]
     domain = data.draw(
-        st_domain(zaxis_length=(3, 20), backend=backend, dtype=dtype),
+        st_domain(zaxis_length=(2 * nb + 1, 20), backend=backend, dtype=dtype),
         label="domain",
     )
     grid = domain.numerical_grid
@@ -351,352 +346,54 @@ def test_upwind(data, backend, dtype, subtests):
     # ========================================
     # test bed
     # ========================================
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, default_origin=default_origin)
     validation(
         domain,
-        "upwind",
+        flux_scheme,
         False,
-        False,
-        backend,
-        default_origin,
         False,
         state,
+        backend,
+        bo,
+        so,
         subtests=subtests,
     )
     validation(
         domain,
-        "upwind",
+        flux_scheme,
         False,
         True,
-        backend,
-        default_origin,
-        False,
         state,
+        backend,
+        bo,
+        so,
         subtests=subtests,
     )
     validation(
         domain,
-        "upwind",
+        flux_scheme,
         True,
         False,
-        backend,
-        default_origin,
-        False,
         state,
+        backend,
+        bo,
+        so,
         subtests=subtests,
     )
     validation(
         domain,
-        "upwind",
+        flux_scheme,
         True,
         True,
-        backend,
-        default_origin,
-        False,
         state,
+        backend,
+        bo,
+        so,
         subtests=subtests,
     )
 
 
-@hyp_settings
-@given(data=hyp_st.data())
-@pytest.mark.parametrize("backend", conf_backend)
-@pytest.mark.parametrize("dtype", conf_dtype)
-def test_centered(data, backend, dtype, subtests):
-    # ========================================
-    # random data generation
-    # ========================================
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-
-    domain = data.draw(
-        st_domain(zaxis_length=(3, 20), backend=backend, dtype=dtype),
-        label="domain",
-    )
-    grid = domain.numerical_grid
-
-    nx, ny, nz = grid.nx, grid.ny, grid.nz
-    storage_shape = (nx + 1, ny + 1, nz + 1)
-
-    state = data.draw(
-        st_isentropic_state_f(
-            grid,
-            moist=True,
-            backend=backend,
-            default_origin=default_origin,
-            storage_shape=storage_shape,
-        ),
-        label="state",
-    )
-    field = data.draw(
-        st_raw_field(
-            storage_shape,
-            -1e4,
-            1e4,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-        ),
-        label="field",
-    )
-    state["tendency_of_air_potential_temperature"] = get_dataarray_3d(
-        field, grid, "K s^-1", grid_shape=(nx, ny, nz), set_coordinates=False
-    )
-    state[
-        "tendency_of_air_potential_temperature_on_interface_levels"
-    ] = get_dataarray_3d(
-        field,
-        grid,
-        "K s^-1",
-        grid_shape=(nx, ny, nz + 1),
-        set_coordinates=False,
-    )
-
-    # ========================================
-    # test bed
-    # ========================================
-    validation(
-        domain,
-        "centered",
-        False,
-        False,
-        backend,
-        default_origin,
-        False,
-        state,
-        subtests=subtests,
-    )
-    validation(
-        domain,
-        "centered",
-        False,
-        True,
-        backend,
-        default_origin,
-        False,
-        state,
-        subtests=subtests,
-    )
-    validation(
-        domain,
-        "centered",
-        True,
-        False,
-        backend,
-        default_origin,
-        False,
-        state,
-        subtests=subtests,
-    )
-    validation(
-        domain,
-        "centered",
-        True,
-        True,
-        backend,
-        default_origin,
-        False,
-        state,
-        subtests=subtests,
-    )
-
-
-@hyp_settings
-@given(data=hyp_st.data())
-@pytest.mark.parametrize("backend", conf_backend)
-@pytest.mark.parametrize("dtype", conf_dtype)
-def test_third_order_upwind(data, backend, dtype, subtests):
-    # ========================================
-    # random data generation
-    # ========================================
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-
-    domain = data.draw(
-        st_domain(zaxis_length=(5, 20), backend=backend, dtype=dtype),
-        label="domain",
-    )
-    grid = domain.numerical_grid
-
-    nx, ny, nz = grid.nx, grid.ny, grid.nz
-    storage_shape = (nx + 1, ny + 1, nz + 1)
-
-    state = data.draw(
-        st_isentropic_state_f(
-            grid,
-            moist=True,
-            backend=backend,
-            default_origin=default_origin,
-            storage_shape=storage_shape,
-        ),
-        label="state",
-    )
-    field = data.draw(
-        st_raw_field(
-            storage_shape,
-            -1e4,
-            1e4,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-        ),
-        label="field",
-    )
-    state["tendency_of_air_potential_temperature"] = get_dataarray_3d(
-        field, grid, "K s^-1", grid_shape=(nx, ny, nz), set_coordinates=False
-    )
-    state[
-        "tendency_of_air_potential_temperature_on_interface_levels"
-    ] = get_dataarray_3d(
-        field,
-        grid,
-        "K s^-1",
-        grid_shape=(nx, ny, nz + 1),
-        set_coordinates=False,
-    )
-
-    # ========================================
-    # test bed
-    # ========================================
-    validation(
-        domain,
-        "third_order_upwind",
-        False,
-        False,
-        backend,
-        default_origin,
-        False,
-        state,
-        subtests=subtests,
-    )
-    validation(
-        domain,
-        "third_order_upwind",
-        False,
-        True,
-        backend,
-        default_origin,
-        False,
-        state,
-        subtests=subtests,
-    )
-    validation(
-        domain,
-        "third_order_upwind",
-        True,
-        False,
-        backend,
-        default_origin,
-        False,
-        state,
-        subtests=subtests,
-    )
-    validation(
-        domain,
-        "third_order_upwind",
-        True,
-        True,
-        backend,
-        default_origin,
-        False,
-        state,
-        subtests=subtests,
-    )
-
-
-# @hyp_settings
-# @given(data=hyp_st.data())
-# @pytest.mark.parametrize("backend", conf_backend)
-# @pytest.mark.parametrize("dtype", conf_dtype)
-# def _test_fifth_order_upwind(data, backend, dtype, subtests):
-#     # ========================================
-#     # random data generation
-#     # ========================================
-#     domain = data.draw(st_domain(zaxis_length=(7, 20)), label="domain")
-#     grid = domain.numerical_grid
-#
-#     backend = data.draw(st_one_of(conf_backend), label="backend")
-#     dtype = grid.x.dtype
-#     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-#     nx, ny, nz = grid.nx, grid.ny, grid.nz
-#     storage_shape = (nx + 1, ny + 1, nz + 1)
-#
-#     state = data.draw(
-#         st_isentropic_state_f(
-#             grid,
-#             moist=True,
-#             backend=backend,
-#             default_origin=default_origin,
-#             storage_shape=storage_shape,
-#         ),
-#         label="state",
-#     )
-#     field = data.draw(
-#         st_raw_field(
-#             storage_shape,
-#             -1e4,
-#             1e4,
-#             backend=backend,
-#             dtype=dtype,
-#             default_origin=default_origin,
-#         ),
-#         label="field",
-#     )
-#     state["tendency_of_air_potential_temperature"] = get_dataarray_3d(
-#         field, grid, "K s^-1", grid_shape=(nx, ny, nz), set_coordinates=False
-#     )
-#     state[
-#         "tendency_of_air_potential_temperature_on_interface_levels"
-#     ] = get_dataarray_3d(
-#         field, grid, "K s^-1", grid_shape=(nx, ny, nz + 1), set_coordinates=False
-#     )
-#
-#     # ========================================
-#     # test bed
-#     # ========================================
-#     validation(
-#         domain,
-#         "fifth_order_upwind",
-#         False,
-#         False,
-#         backend,
-#         default_origin,
-#         False,
-#         state,
-#         subtests=subtests,
-#     )
-#     validation(
-#         domain,
-#         "fifth_order_upwind",
-#         False,
-#         True,
-#         backend,
-#         default_origin,
-#         False,
-#         state,
-#         subtests=subtests,
-#     )
-#     validation(
-#         domain,
-#         "fifth_order_upwind",
-#         True,
-#         False,
-#         backend,
-#         default_origin,
-#         False,
-#         state,
-#         subtests=subtests,
-#     )
-#     validation(
-#         domain,
-#         "fifth_order_upwind",
-#         True,
-#         True,
-#         backend,
-#         default_origin,
-#         False,
-#         state,
-#         subtests=subtests,
-#     )
-#
-#
 # @hyp_settings
 # @given(data=hyp_st.data())
 # @pytest.mark.parametrize("backend", conf_backend)

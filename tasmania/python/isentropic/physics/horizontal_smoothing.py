@@ -20,16 +20,18 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-import numpy as np
-from typing import Optional, TYPE_CHECKING
+from typing import Optional, Sequence, TYPE_CHECKING
 
 from tasmania.python.dwarfs.horizontal_smoothing import HorizontalSmoothing
 from tasmania.python.framework.base_components import DiagnosticComponent
 from tasmania.python.utils import taz_types
-from tasmania.python.utils.storage_utils import get_storage_shape, zeros
 
 if TYPE_CHECKING:
     from tasmania.python.domain.domain import Domain
+    from tasmania.python.framework.options import (
+        BackendOptions,
+        StorageOptions,
+    )
 
 
 mfwv = "mass_fraction_of_water_vapor_in_air"
@@ -57,14 +59,9 @@ class IsentropicHorizontalSmoothing(DiagnosticComponent):
         smooth_moist_damp_depth: Optional[int] = None,
         *,
         backend: str = "numpy",
-        backend_opts: Optional[taz_types.options_dict_t] = None,
-        dtype: taz_types.dtype_t = np.float64,
-        build_info: Optional[taz_types.options_dict_t] = None,
-        exec_info: Optional[taz_types.mutable_options_dict_t] = None,
-        default_origin: Optional[taz_types.triplet_int_t] = None,
-        rebuild: bool = False,
-        storage_shape: Optional[taz_types.triplet_int_t] = None,
-        managed_memory: bool = False
+        backend_options: Optional["BackendOptions"] = None,
+        storage_shape: Optional[Sequence[int]] = None,
+        storage_options: Optional["StorageOptions"] = None,
     ) -> None:
         """
         Parameters
@@ -73,7 +70,8 @@ class IsentropicHorizontalSmoothing(DiagnosticComponent):
             The :class:`~tasmania.Domain` holding the grid underneath.
         smooth_type : str
             The type of numerical smoothing to implement.
-            See :class:`~tasmania.HorizontalSmoothing` for all available options.
+            See :class:`~tasmania.HorizontalSmoothing` for all available
+            options.
         smooth_coeff : float
             The smoothing coefficient.
         smooth_coeff_max : float
@@ -92,38 +90,27 @@ class IsentropicHorizontalSmoothing(DiagnosticComponent):
         smooth_damp_depth : int
             Depth of the damping region for the water species.
         backend : `str`, optional
-            The GT4Py backend.
-        backend_opts : `dict`, optional
-            Dictionary of backend-specific options.
-        dtype : `data-type`, optional
-            Data type of the storages.
-        build_info : `dict`, optional
-            Dictionary of building options.
-        exec_info : `dict`, optional
-            Dictionary which will store statistics and diagnostics gathered at
-            run time.
-        default_origin : `tuple[int]`, optional
-            Storage default origin.
-        rebuild : `bool`, optional
-            ``True`` to trigger the stencils compilation at any class
-            instantiation, ``False`` to rely on the caching mechanism
-            implemented by the backend.
-        managed_memory : `bool`, optional
-            ``True`` to allocate the storages as managed memory,
-            ``False`` otherwise.
-        storage_shape : `tuple[int]`, optional
-            Shape of the storages.
+            The backend.
+        backend_options : `BackendOptions`, optional
+            Backend-specific options.
+        storage_shape : `Sequence[int]`, optional
+            The shape of the storages allocated within the class.
+        storage_options : `StorageOptions`, optional
+            Storage-related options.
         """
         self._moist = moist and smooth_moist_coeff is not None
 
-        super().__init__(domain, "numerical")
+        super().__init__(
+            domain,
+            "numerical",
+            backend=backend,
+            backend_options=backend_options,
+            storage_options=storage_options,
+        )
 
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
         nb = self.horizontal_boundary.nb
-
-        shape = get_storage_shape(
-            storage_shape, min_shape=(nx + 1, ny + 1, nz + 1)
-        )
+        shape = self.get_storage_shape(storage_shape, (nx + 1, ny + 1, nz + 1))
 
         self._core = HorizontalSmoothing.factory(
             smooth_type,
@@ -132,14 +119,9 @@ class IsentropicHorizontalSmoothing(DiagnosticComponent):
             smooth_coeff_max,
             smooth_damp_depth,
             nb,
-            backend=backend,
-            backend_opts=backend_opts,
-            dtype=dtype,
-            build_info=build_info,
-            exec_info=exec_info,
-            default_origin=default_origin,
-            rebuild=rebuild,
-            managed_memory=managed_memory,
+            backend=self.backend,
+            backend_options=self.backend_options,
+            storage_options=self.storage_options,
         )
 
         if self._moist:
@@ -153,7 +135,6 @@ class IsentropicHorizontalSmoothing(DiagnosticComponent):
                 if smooth_moist_damp_depth is None
                 else smooth_moist_damp_depth
             )
-
             self._core_moist = HorizontalSmoothing.factory(
                 smooth_type,
                 shape,
@@ -161,61 +142,20 @@ class IsentropicHorizontalSmoothing(DiagnosticComponent):
                 smooth_moist_coeff_max,
                 smooth_moist_damp_depth,
                 nb,
-                backend=backend,
-                backend_opts=backend_opts,
-                dtype=dtype,
-                build_info=build_info,
-                exec_info=exec_info,
-                default_origin=default_origin,
-                rebuild=rebuild,
-                managed_memory=managed_memory,
+                backend=self.backend,
+                backend_options=self.backend_options,
+                storage_options=self.storage_options,
             )
         else:
             self._core_moist = None
 
-        self._out_s = zeros(
-            shape,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-            managed_memory=managed_memory,
-        )
-        self._out_su = zeros(
-            shape,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-            managed_memory=managed_memory,
-        )
-        self._out_sv = zeros(
-            shape,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-            managed_memory=managed_memory,
-        )
+        self._out_s = self.zeros(shape=shape)
+        self._out_su = self.zeros(shape=shape)
+        self._out_sv = self.zeros(shape=shape)
         if self._moist:
-            self._out_qv = zeros(
-                shape,
-                backend=backend,
-                dtype=dtype,
-                default_origin=default_origin,
-                managed_memory=managed_memory,
-            )
-            self._out_qc = zeros(
-                shape,
-                backend=backend,
-                dtype=dtype,
-                default_origin=default_origin,
-                managed_memory=managed_memory,
-            )
-            self._out_qr = zeros(
-                shape,
-                backend=backend,
-                dtype=dtype,
-                default_origin=default_origin,
-                managed_memory=managed_memory,
-            )
+            self._out_qv = self.zeros(shape=shape)
+            self._out_qc = self.zeros(shape=shape)
+            self._out_qr = self.zeros(shape=shape)
 
     @property
     def input_properties(self) -> taz_types.properties_dict_t:

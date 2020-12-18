@@ -29,13 +29,13 @@ from hypothesis import (
 )
 import pytest
 
-import gt4py as gt
-
+from tasmania.python.framework.allocators import zeros
+from tasmania.python.framework.options import BackendOptions, StorageOptions
 from tasmania.python.isentropic.physics.implicit_vertical_advection import (
     IsentropicImplicitVerticalAdvectionDiagnostic,
     IsentropicImplicitVerticalAdvectionPrognostic,
 )
-from tasmania.python.utils.storage_utils import get_dataarray_3d, zeros
+from tasmania.python.utils.storage_utils import get_dataarray_3d
 
 from tests.conf import (
     backend as conf_backend,
@@ -94,11 +94,11 @@ def validation_diagnostic(
     domain,
     moist,
     toaptoil,
-    backend,
-    default_origin,
-    rebuild,
     state,
     timestep,
+    backend,
+    backend_options,
+    storage_options,
     *,
     subtests
 ):
@@ -113,10 +113,9 @@ def validation_diagnostic(
         moist,
         tendency_of_air_potential_temperature_on_interface_levels=toaptoil,
         backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-        rebuild=rebuild,
+        backend_options=backend_options,
         storage_shape=storage_shape,
+        storage_options=storage_options,
     )
 
     input_names = [
@@ -160,12 +159,7 @@ def validation_diagnostic(
     if toaptoil:
         name = "tendency_of_air_potential_temperature_on_interface_levels"
         w_hl = state[name].to_units("K s^-1").data
-        w = zeros(
-            (nx, ny, nz),
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-        )
+        w = zeros(backend, shape=(nx, ny, nz), storage_options=storage_options)
         w[...] = 0.5 * (w_hl[:nx, :ny, :nz] + w_hl[:nx, :ny, 1 : nz + 1])
     else:
         name = "tendency_of_air_potential_temperature"
@@ -202,36 +196,11 @@ def validation_diagnostic(
     dt = timestep.total_seconds()
     gamma = dt / (4.0 * dz)
 
-    a = zeros(
-        (nx, ny, nz),
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
-    b = zeros(
-        (nx, ny, nz),
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
-    c = zeros(
-        (nx, ny, nz),
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
-    d = zeros(
-        (nx, ny, nz),
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
-    out = zeros(
-        (nx, ny, nz),
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
+    a = zeros(backend, shape=(nx, ny, nz), storage_options=storage_options)
+    b = zeros(backend, shape=(nx, ny, nz), storage_options=storage_options)
+    c = zeros(backend, shape=(nx, ny, nz), storage_options=storage_options)
+    d = zeros(backend, shape=(nx, ny, nz), storage_options=storage_options)
+    out = zeros(backend, shape=(nx, ny, nz), storage_options=storage_options)
 
     setup_tridiagonal_system(gamma, w, s, a=a, b=b, c=c, d=d)
     thomas_validation(a, b, c, d, x=out)
@@ -340,26 +309,28 @@ def test_diagnostic_dry(data, backend, dtype, subtests):
     # ========================================
     # test bed
     # ========================================
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, default_origin=default_origin)
     validation_diagnostic(
         domain,
         False,
         False,
-        backend,
-        default_origin,
-        False,
         state,
         timestep,
+        backend,
+        bo,
+        so,
         subtests=subtests,
     )
     validation_diagnostic(
         domain,
         False,
         True,
-        backend,
-        default_origin,
-        False,
         state,
         timestep,
+        backend,
+        bo,
+        so,
         subtests=subtests,
     )
 
@@ -427,32 +398,34 @@ def test_diagnostic_moist(data, backend, dtype, subtests):
     # ========================================
     # test bed
     # ========================================
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, default_origin=default_origin)
     validation_diagnostic(
         domain,
         True,
         False,
-        backend,
-        default_origin,
-        False,
         state,
         timestep,
+        backend,
+        bo,
+        so,
         subtests=subtests,
     )
     validation_diagnostic(
         domain,
         True,
         True,
-        backend,
-        default_origin,
-        False,
         state,
         timestep,
+        backend,
+        bo,
+        so,
         subtests=subtests,
     )
 
 
 def check_consistency(
-    domain, moist, backend, default_origin, rebuild, state, timestep
+    domain, moist, state, timestep, backend, backend_options, storage_options
 ):
     grid = domain.numerical_grid
     nx, ny, nz = grid.nx, grid.ny, grid.nz
@@ -465,10 +438,9 @@ def check_consistency(
         moist,
         tendency_of_air_potential_temperature_on_interface_levels=False,
         backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-        rebuild=rebuild,
+        backend_options=backend_options,
         storage_shape=storage_shape,
+        storage_options=storage_options,
     )
 
     input_names = [
@@ -493,12 +465,7 @@ def check_consistency(
         output_names.append(mfpw)
 
     state["tendency_of_air_potential_temperature"] = get_dataarray_3d(
-        zeros(
-            storage_shape,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-        ),
+        zeros(backend, shape=storage_shape, storage_options=storage_options),
         grid,
         units="K s^-1",
         grid_shape=(nx, ny, nz),
@@ -586,20 +553,20 @@ def test_diagnostic_consistency(data, backend, dtype):
     # ========================================
     # test bed
     # ========================================
-    check_consistency(
-        domain, True, backend, default_origin, False, state, timestep
-    )
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, default_origin=default_origin)
+    check_consistency(domain, True, state, timestep, backend, bo, so)
 
 
 def validation_prognostic(
     domain,
     moist,
     toaptoil,
-    backend,
-    default_origin,
-    rebuild,
     state,
     timestep,
+    backend,
+    backend_options,
+    storage_options,
     *,
     subtests
 ):
@@ -614,10 +581,9 @@ def validation_prognostic(
         moist,
         tendency_of_air_potential_temperature_on_interface_levels=toaptoil,
         backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-        rebuild=rebuild,
+        backend_options=backend_options,
         storage_shape=storage_shape,
+        storage_options=storage_options,
     )
 
     input_names = [
@@ -661,12 +627,7 @@ def validation_prognostic(
     if toaptoil:
         name = "tendency_of_air_potential_temperature_on_interface_levels"
         w_hl = state[name].to_units("K s^-1").data
-        w = zeros(
-            (nx, ny, nz),
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-        )
+        w = zeros(backend, shape=(nx, ny, nz), storage_options=storage_options)
         w[...] = 0.5 * (w_hl[:nx, :ny, :nz] + w_hl[:nx, :ny, 1 : nz + 1])
     else:
         name = "tendency_of_air_potential_temperature"
@@ -703,36 +664,11 @@ def validation_prognostic(
     dt = timestep.total_seconds()
     gamma = dt / (4.0 * dz)
 
-    a = zeros(
-        (nx, ny, nz),
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
-    b = zeros(
-        (nx, ny, nz),
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
-    c = zeros(
-        (nx, ny, nz),
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
-    d = zeros(
-        (nx, ny, nz),
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
-    out = zeros(
-        (nx, ny, nz),
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
+    a = zeros(backend, shape=(nx, ny, nz), storage_options=storage_options)
+    b = zeros(backend, shape=(nx, ny, nz), storage_options=storage_options)
+    c = zeros(backend, shape=(nx, ny, nz), storage_options=storage_options)
+    d = zeros(backend, shape=(nx, ny, nz), storage_options=storage_options)
+    out = zeros(backend, shape=(nx, ny, nz), storage_options=storage_options)
 
     setup_tridiagonal_system(gamma, w, s, a=a, b=b, c=c, d=d)
     thomas_validation(a, b, c, d, x=out)
@@ -844,26 +780,28 @@ def test_prognostic_dry(data, backend, dtype, subtests):
     # ========================================
     # test bed
     # ========================================
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, default_origin=default_origin)
     validation_prognostic(
         domain,
         False,
         False,
-        backend,
-        default_origin,
-        False,
         state,
         timestep,
+        backend,
+        bo,
+        so,
         subtests=subtests,
     )
     validation_prognostic(
         domain,
         False,
         True,
-        backend,
-        default_origin,
-        False,
         state,
         timestep,
+        backend,
+        bo,
+        so,
         subtests=subtests,
     )
 
@@ -931,29 +869,32 @@ def test_prognostic_moist(data, backend, dtype, subtests):
     # ========================================
     # test bed
     # ========================================
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, default_origin=default_origin)
     validation_prognostic(
         domain,
         True,
         False,
-        backend,
-        default_origin,
-        False,
         state,
         timestep,
+        backend,
+        bo,
+        so,
         subtests=subtests,
     )
     validation_prognostic(
         domain,
         True,
         True,
-        backend,
-        default_origin,
-        False,
         state,
         timestep,
+        backend,
+        bo,
+        so,
         subtests=subtests,
     )
 
 
 if __name__ == "__main__":
     pytest.main([__file__])
+    # test_diagnostic_dry("numpy", float, None)

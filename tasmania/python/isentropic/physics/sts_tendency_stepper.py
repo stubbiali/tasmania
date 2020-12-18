@@ -30,7 +30,7 @@ from tasmania.python.isentropic.physics.implicit_vertical_advection import (
     IsentropicImplicitVerticalAdvectionDiagnostic,
 )
 from tasmania.python.utils import taz_types
-from tasmania.python.utils.framework_utils import register
+from tasmania.python.framework.register import register
 from tasmania.python.utils.utils import get_gt_backend, is_gt, thomas_numpy
 
 

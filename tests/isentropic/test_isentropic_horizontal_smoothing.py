@@ -28,13 +28,13 @@ from hypothesis import (
 )
 import pytest
 
-import gt4py as gt
-
+from tasmania.python.framework.allocators import zeros
+from tasmania.python.framework.options import BackendOptions, StorageOptions
 from tasmania.python.isentropic.physics.horizontal_smoothing import (
     IsentropicHorizontalSmoothing,
 )
 from tasmania.python.dwarfs.horizontal_smoothing import HorizontalSmoothing
-from tasmania.python.utils.storage_utils import get_dataarray_3d, zeros
+from tasmania.python.utils.storage_utils import get_dataarray_3d
 
 from tests.conf import (
     backend as conf_backend,
@@ -114,18 +114,11 @@ def test(data, smooth_type, backend, dtype, subtests):
     # ========================================
     # test bed
     # ========================================
-    in_st = zeros(
-        storage_shape,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
-    out_st = zeros(
-        storage_shape,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, default_origin=default_origin)
+
+    in_st = zeros(backend, shape=storage_shape, storage_options=so)
+    out_st = zeros(backend, shape=storage_shape, storage_options=so)
 
     #
     # validation data
@@ -138,9 +131,8 @@ def test(data, smooth_type, backend, dtype, subtests):
         smooth_damp_depth,
         nb,
         backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-        rebuild=False,
+        backend_options=bo,
+        storage_options=so,
     )
     hs_moist = HorizontalSmoothing.factory(
         smooth_type,
@@ -150,9 +142,8 @@ def test(data, smooth_type, backend, dtype, subtests):
         smooth_moist_damp_depth,
         nb,
         backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-        rebuild=False,
+        backend_options=bo,
+        storage_options=so,
     )
 
     val = {}
@@ -185,8 +176,8 @@ def test(data, smooth_type, backend, dtype, subtests):
         smooth_coeff_max=smooth_coeff_max,
         smooth_damp_depth=smooth_damp_depth,
         backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
+        backend_options=bo,
+        storage_options=so,
     )
 
     diagnostics = ihs(state)
@@ -226,8 +217,8 @@ def test(data, smooth_type, backend, dtype, subtests):
         smooth_moist_coeff_max=smooth_moist_coeff_max,
         smooth_moist_damp_depth=smooth_moist_damp_depth,
         backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
+        backend_options=bo,
+        storage_options=so,
     )
 
     diagnostics = ihs(state)
