@@ -29,6 +29,7 @@ from hypothesis import (
 import pytest
 from sympl import DataArray
 
+from tasmania.python.framework.options import StorageOptions
 from tasmania.python.isentropic.state import (
     get_isentropic_state_from_brunt_vaisala_frequency,
 )
@@ -74,6 +75,7 @@ def test_brunt_vaisala(data, backend, dtype):
     # ========================================
     # test bed
     # ========================================
+    so = StorageOptions(dtype=dtype, default_origin=default_origin)
     state = get_isentropic_state_from_brunt_vaisala_frequency(
         grid=grid,
         time=datetime(year=1992, month=2, day=20, hour=12),
@@ -84,10 +86,8 @@ def test_brunt_vaisala(data, backend, dtype):
         precipitation=False,
         relative_humidity=0.5,
         backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
         storage_shape=storage_shape,
-        managed_memory=False,
+        storage_options=so,
     )
 
 
