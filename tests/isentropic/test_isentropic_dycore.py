@@ -23,7 +23,6 @@
 from copy import deepcopy
 from datetime import timedelta
 from hypothesis import (
-    assume,
     given,
     reproduce_failure,
     strategies as hyp_st,
@@ -32,12 +31,12 @@ import numpy as np
 import pytest
 from sympl import DataArray
 
-import gt4py as gt
-
 from tasmania.python.dwarfs.horizontal_smoothing import HorizontalSmoothing
 from tasmania.python.dwarfs.vertical_damping import VerticalDamping
 from tasmania.python.domain.domain import Domain
+from tasmania.python.framework.allocators import zeros
 from tasmania.python.framework.base_components import TendencyComponent
+from tasmania.python.framework.options import BackendOptions, StorageOptions
 from tasmania.python.isentropic.dynamics.diagnostics import (
     IsentropicDiagnostics as RawIsentropicDiagnostics,
 )
@@ -53,7 +52,6 @@ from tasmania.python.utils.storage_utils import (
     deepcopy_array_dict,
     deepcopy_dataarray,
     deepcopy_dataarray_dict,
-    zeros,
 )
 
 from tests.conf import (
@@ -116,10 +114,10 @@ def get_montgomery_potential(grid, s, pt, mtg):
     theta_s = grid.z_on_interface_levels.to_units("K").values[-1]
     topo = grid.topography.profile.to_units("m").data
 
-    pref = rid._pcs["air_pressure_at_sea_level"]
-    rd = rid._pcs["gas_constant_of_dry_air"]
-    g = rid._pcs["gravitational_acceleration"]
-    cp = rid._pcs["specific_heat_of_dry_air_at_constant_pressure"]
+    pref = rid.rpc["air_pressure_at_sea_level"]
+    rd = rid.rpc["gas_constant_of_dry_air"]
+    g = rid.rpc["gravitational_acceleration"]
+    cp = rid.rpc["specific_heat_of_dry_air_at_constant_pressure"]
 
     p = deepcopy(s)
     p[:nx, :ny, 0] = pt
@@ -688,6 +686,9 @@ def test1(data, backend, dtype, subtests):
     # ========================================
     # test bed
     # ========================================
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, default_origin=default_origin)
+
     domain.horizontal_boundary.reference_state = state
 
     vd = VerticalDamping.factory(
@@ -697,9 +698,9 @@ def test1(data, backend, dtype, subtests):
         0.0002,
         "s",
         backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
+        backend_options=bo,
         storage_shape=storage_shape,
+        storage_options=so,
     )
     hs = HorizontalSmoothing.factory(
         "second_order",
@@ -709,8 +710,8 @@ def test1(data, backend, dtype, subtests):
         smooth_damp_depth,
         hb.nb,
         backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
+        backend_options=bo,
+        storage_options=so,
     )
 
     dycore = IsentropicDynamicalCore(
@@ -744,10 +745,9 @@ def test1(data, backend, dtype, subtests):
         smooth_moist_damp_depth=smooth_damp_depth,
         smooth_moist_at_every_stage=smooth_at_every_stage,
         backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-        rebuild=False,
+        backend_options=bo,
         storage_shape=storage_shape,
+        storage_options=so,
     )
 
     #
@@ -962,6 +962,9 @@ def test2(data, backend, dtype, subtests):
     # ========================================
     # test bed
     # ========================================
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, default_origin=default_origin)
+
     domain.horizontal_boundary.reference_state = state
 
     vd = VerticalDamping.factory(
@@ -971,9 +974,9 @@ def test2(data, backend, dtype, subtests):
         0.0002,
         "s",
         backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
+        backend_options=bo,
         storage_shape=storage_shape,
+        storage_options=so,
     )
     hs = HorizontalSmoothing.factory(
         "second_order",
@@ -983,8 +986,8 @@ def test2(data, backend, dtype, subtests):
         smooth_damp_depth,
         hb.nb,
         backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
+        backend_options=bo,
+        storage_options=so,
     )
 
     dycore = IsentropicDynamicalCore(
@@ -1018,10 +1021,9 @@ def test2(data, backend, dtype, subtests):
         smooth_moist_damp_depth=smooth_damp_depth,
         smooth_moist_at_every_stage=smooth_at_every_stage,
         backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-        rebuild=False,
+        backend_options=bo,
         storage_shape=storage_shape,
+        storage_options=so,
     )
 
     #
@@ -1243,6 +1245,9 @@ def test3(data, backend, dtype, subtests):
     # ========================================
     # test bed
     # ========================================
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, default_origin=default_origin)
+
     domain.horizontal_boundary.reference_state = state
 
     vd = VerticalDamping.factory(
@@ -1252,9 +1257,9 @@ def test3(data, backend, dtype, subtests):
         0.0002,
         "s",
         backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
+        backend_options=bo,
         storage_shape=storage_shape,
+        storage_options=so,
     )
     hs = HorizontalSmoothing.factory(
         "second_order",
@@ -1264,17 +1269,17 @@ def test3(data, backend, dtype, subtests):
         smooth_damp_depth,
         hb.nb,
         backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
+        backend_options=bo,
+        storage_options=so,
     )
 
     cf = IsentropicConservativeCoriolis(
         domain,
         grid_type="numerical",
         backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
+        backend_options=bo,
         storage_shape=storage_shape,
+        storage_options=so,
     )
     cfv = cf._f
 
@@ -1309,10 +1314,9 @@ def test3(data, backend, dtype, subtests):
         smooth_moist_damp_depth=smooth_damp_depth,
         smooth_moist_at_every_stage=smooth_at_every_stage,
         backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-        rebuild=False,
+        backend_options=bo,
         storage_shape=storage_shape,
+        storage_options=so,
     )
 
     #
@@ -1397,22 +1401,13 @@ def test3(data, backend, dtype, subtests):
             raw_state_0[name] = state[name].to_units(props["units"]).data
     if moist:
         raw_state_0["isentropic_density_of_water_vapor"] = zeros(
-            storage_shape,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
+            backend, shape=storage_shape, storage_options=so
         )
         raw_state_0["isentropic_density_of_cloud_liquid_water"] = zeros(
-            storage_shape,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
+            backend, shape=storage_shape, storage_options=so
         )
         raw_state_0["isentropic_density_of_precipitation_water"] = zeros(
-            storage_shape,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
+            backend, shape=storage_shape, storage_options=so
         )
 
     raw_tendencies = {}
@@ -1424,17 +1419,11 @@ def test3(data, backend, dtype, subtests):
 
     if "x_momentum_isentropic" not in raw_tendencies:
         raw_tendencies["x_momentum_isentropic"] = zeros(
-            storage_shape,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
+            backend, shape=storage_shape, storage_options=so
         )
     if "y_momentum_isentropic" not in raw_tendencies:
         raw_tendencies["y_momentum_isentropic"] = zeros(
-            storage_shape,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
+            backend, shape=storage_shape, storage_options=so
         )
 
     raw_tendencies_dc = deepcopy_array_dict(raw_tendencies)
@@ -1690,6 +1679,9 @@ def test4(data, backend, dtype, subtests):
     # ========================================
     # test bed
     # ========================================
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, default_origin=default_origin)
+
     domain.horizontal_boundary.reference_state = state
 
     vd = VerticalDamping.factory(
@@ -1699,9 +1691,9 @@ def test4(data, backend, dtype, subtests):
         0.0002,
         "s",
         backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
+        backend_options=bo,
         storage_shape=storage_shape,
+        storage_options=so,
     )
     hs = HorizontalSmoothing.factory(
         "second_order",
@@ -1711,17 +1703,17 @@ def test4(data, backend, dtype, subtests):
         smooth_damp_depth,
         hb.nb,
         backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
+        backend_options=bo,
+        storage_options=so,
     )
 
     cf = IsentropicConservativeCoriolis(
         domain,
         grid_type="numerical",
         backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
+        backend_options=bo,
         storage_shape=storage_shape,
+        storage_options=so,
     )
     cfv = cf._f
 
@@ -1731,16 +1723,16 @@ def test4(data, backend, dtype, subtests):
         moist,
         state["air_pressure_on_interface_levels"][0, 0, 0],
         backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
+        backend_options=bo,
         storage_shape=storage_shape,
+        storage_options=so,
     )
     rdv = RawIsentropicDiagnostics(
         grid,
         backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
+        backend_options=bo,
         storage_shape=storage_shape,
+        storage_options=so,
     )
 
     dycore = IsentropicDynamicalCore(
@@ -1774,10 +1766,9 @@ def test4(data, backend, dtype, subtests):
         smooth_moist_damp_depth=smooth_damp_depth,
         smooth_moist_at_every_stage=smooth_at_every_stage,
         backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-        rebuild=False,
+        backend_options=bo,
         storage_shape=storage_shape,
+        storage_options=so,
     )
 
     #
@@ -1871,22 +1862,13 @@ def test4(data, backend, dtype, subtests):
             raw_state_0[name] = state[name].to_units(props["units"]).data
     if moist:
         raw_state_0["isentropic_density_of_water_vapor"] = zeros(
-            storage_shape,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
+            backend, shape=storage_shape, storage_options=so
         )
         raw_state_0["isentropic_density_of_cloud_liquid_water"] = zeros(
-            storage_shape,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
+            backend, shape=storage_shape, storage_options=so
         )
         raw_state_0["isentropic_density_of_precipitation_water"] = zeros(
-            storage_shape,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
+            backend, shape=storage_shape, storage_options=so
         )
 
     raw_tendencies = {}
@@ -1898,17 +1880,11 @@ def test4(data, backend, dtype, subtests):
 
     if "x_momentum_isentropic" not in raw_tendencies:
         raw_tendencies["x_momentum_isentropic"] = zeros(
-            storage_shape,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
+            backend, shape=storage_shape, storage_options=so
         )
     if "y_momentum_isentropic" not in raw_tendencies:
         raw_tendencies["y_momentum_isentropic"] = zeros(
-            storage_shape,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
+            backend, shape=storage_shape, storage_options=so
         )
 
     raw_tendencies_dc = deepcopy_array_dict(raw_tendencies)

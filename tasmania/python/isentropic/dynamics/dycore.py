@@ -20,8 +20,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-import numpy as np
-from typing import Optional, TYPE_CHECKING, Tuple, Union
+from typing import Optional, Sequence, TYPE_CHECKING, Tuple, Union
 
 from tasmania.python.dwarfs.diagnostics import (
     HorizontalVelocity,
@@ -32,7 +31,10 @@ from tasmania.python.dwarfs.vertical_damping import VerticalDamping
 from tasmania.python.framework.dycore import DynamicalCore
 from tasmania.python.isentropic.dynamics.prognostic import IsentropicPrognostic
 from tasmania.python.utils import taz_types
-from tasmania.python.utils.storage_utils import get_dataarray_3d, zeros
+from tasmania.python.utils.storage_utils import (
+    get_dataarray_3d,
+    get_storage_shape,
+)
 from tasmania.python.utils.utils import Timer
 
 if TYPE_CHECKING:
@@ -96,14 +98,9 @@ class IsentropicDynamicalCore(DynamicalCore):
         smooth_moist_damp_depth: int = 10,
         *,
         backend: str = "numpy",
-        backend_opts: Optional[taz_types.options_dict_t] = None,
-        dtype: taz_types.dtype_t = np.float64,
-        build_info: Optional[taz_types.options_dict_t] = None,
-        exec_info: Optional[taz_types.mutable_options_dict_t] = None,
-        default_origin: Optional[taz_types.triplet_int_t] = None,
-        rebuild: bool = False,
-        storage_shape: Optional[taz_types.triplet_int_t] = None,
-        managed_memory: bool = False
+        backend_options: Optional["BackendOptions"] = None,
+        storage_shape: Optional[Sequence[int]] = None,
+        storage_options: Optional["StorageOptions"] = None,
     ) -> None:
         """
         Parameters
@@ -235,43 +232,21 @@ class IsentropicDynamicalCore(DynamicalCore):
             water constituents. Defaults to 10.
         backend : `str`, optional
             The backend.
-        backend_opts : `dict`, optional
-            Dictionary of backend-specific options.
-        dtype : `data-type`, optional
-            Data type of the storages.
-        build_info : `dict`, optional
-            Dictionary of building options.
-        exec_info : `dict`, optional
-            Dictionary which will store statistics and diagnostics gathered at
-            run time.
-        default_origin : `tuple[int]`, optional
-            Default origin of the storages.
-        rebuild : `bool`, optional
-            ``True`` to trigger the stencils compilation at any class
-            instantiation, ``False`` to rely on the caching mechanism
-            implemented by the backend.
-        storage_shape : `tuple[int]`, optional
-            Shape of the storages.
-        managed_memory : `bool`, optional
-            ``True`` to allocate the storages as managed memory,
-            ``False`` otherwise.
+        backend_options : `BackendOptions`, optional
+            Backend-specific options.
+        storage_shape : `Sequence[int]`, optional
+            The shape of the storages allocated within the class.
+        storage_options : `StorageOptions`, optional
+            Storage-related options.
         """
         #
         # set storage shape
         #
-        grid = domain.numerical_grid
-        nx, ny, nz = grid.nx, grid.ny, grid.nz
-        storage_shape = (
-            (nx + 1, ny + 1, nz + 1)
-            if storage_shape is None
-            else storage_shape
+        g = domain.numerical_grid
+        storage_shape = get_storage_shape(
+            storage_shape, (g.nx + 1, g.ny + 1, g.nz + 1)
         )
-        error_msg = "storage_shape must be larger or equal than {}.".format(
-            (nx + 1, ny + 1, nz + 1)
-        )
-        assert storage_shape[0] >= nx + 1, error_msg
-        assert storage_shape[1] >= ny + 1, error_msg
-        assert storage_shape[2] >= nz + 1, error_msg
+        self._storage_shape = storage_shape
 
         #
         # input parameters
@@ -283,30 +258,21 @@ class IsentropicDynamicalCore(DynamicalCore):
         self._smooth_at_every_stage = smooth_at_every_stage
         self._smooth_moist = smooth_moist
         self._smooth_moist_at_every_stage = smooth_moist_at_every_stage
-        self._backend = backend
-        self._dtype = dtype
-        self._default_origin = default_origin
-        self._storage_shape = storage_shape
-        self._managed_memory = managed_memory
 
         #
         # parent constructor
         #
         super().__init__(
             domain,
-            "numerical",
             intermediate_tendency_component,
             intermediate_diagnostic_component,
             substeps,
             fast_tendency_component,
             fast_diagnostic_component,
             backend=backend,
-            backend_opts=backend_opts,
-            dtype=dtype,
-            build_info=build_info,
-            rebuild=rebuild,
+            backend_options=backend_options,
+            storage_options=storage_options,
         )
-        hb = self.horizontal_boundary
 
         #
         # prognostic
@@ -315,19 +281,13 @@ class IsentropicDynamicalCore(DynamicalCore):
         self._prognostic = IsentropicPrognostic.factory(
             time_integration_scheme,
             horizontal_flux_scheme,
-            self.grid,
-            self.horizontal_boundary,
+            domain,
             moist,
-            backend=backend,
-            backend_opts=backend_opts,
-            dtype=dtype,
-            build_info=build_info,
-            exec_info=exec_info,
-            default_origin=default_origin,
-            rebuild=rebuild,
+            backend=self.backend,
+            backend_options=self.backend_options,
             storage_shape=storage_shape,
-            managed_memory=managed_memory,
-            **kwargs
+            storage_options=self.storage_options,
+            **kwargs,
         )
 
         #
@@ -339,14 +299,10 @@ class IsentropicDynamicalCore(DynamicalCore):
                 self.grid,
                 damp_depth,
                 damp_max,
-                backend=backend,
-                backend_opts=backend_opts,
-                dtype=dtype,
-                build_info=build_info,
-                exec_info=exec_info,
-                default_origin=default_origin,
-                rebuild=rebuild,
+                backend=self.backend,
+                backend_options=self.backend_options,
                 storage_shape=storage_shape,
+                storage_options=self.storage_options,
             )
 
         #
@@ -359,15 +315,10 @@ class IsentropicDynamicalCore(DynamicalCore):
                 smooth_coeff,
                 smooth_coeff_max,
                 smooth_damp_depth,
-                hb.nb,
-                backend=backend,
-                backend_opts=backend_opts,
-                dtype=dtype,
-                build_info=build_info,
-                exec_info=exec_info,
-                default_origin=default_origin,
-                rebuild=rebuild,
-                managed_memory=managed_memory,
+                self.horizontal_boundary.nb,
+                backend=self.backend,
+                backend_options=self.backend_options,
+                storage_options=self.storage_options,
             )
             if moist and smooth_moist:
                 self._smoother_moist = HorizontalSmoothing.factory(
@@ -376,15 +327,10 @@ class IsentropicDynamicalCore(DynamicalCore):
                     smooth_moist_coeff,
                     smooth_moist_coeff_max,
                     smooth_moist_damp_depth,
-                    hb.nb,
-                    backend=backend,
-                    backend_opts=backend_opts,
-                    dtype=dtype,
-                    build_info=build_info,
-                    exec_info=exec_info,
-                    default_origin=default_origin,
-                    rebuild=rebuild,
-                    managed_memory=managed_memory,
+                    self.horizontal_boundary.nb,
+                    backend=self.backend,
+                    backend_options=self.backend_options,
+                    storage_options=self.storage_options,
                 )
 
         #
@@ -393,23 +339,17 @@ class IsentropicDynamicalCore(DynamicalCore):
         self._velocity_components = HorizontalVelocity(
             self.grid,
             staggering=True,
-            backend=backend,
-            backend_opts=backend_opts,
-            dtype=dtype,
-            build_info=build_info,
-            exec_info=exec_info,
-            rebuild=rebuild,
+            backend=self.backend,
+            backend_options=self.backend_options,
+            storage_options=self.storage_options,
         )
         if moist:
             self._water_constituent = WaterConstituent(
                 self.grid,
                 clipping=True,
-                backend=backend,
-                backend_opts=backend_opts,
-                dtype=dtype,
-                build_info=build_info,
-                exec_info=exec_info,
-                rebuild=rebuild,
+                backend=self.backend,
+                backend_options=self.backend_options,
+                storage_options=self.storage_options,
             )
 
         #
@@ -424,53 +364,44 @@ class IsentropicDynamicalCore(DynamicalCore):
         #
         # temporary and output arrays
         #
-        def allocate():
-            return zeros(
-                storage_shape,
-                backend=backend,
-                dtype=dtype,
-                default_origin=default_origin,
-                managed_memory=managed_memory,
-            )
-
         if moist:
-            self._sqv_now = allocate()
-            self._sqc_now = allocate()
-            self._sqr_now = allocate()
-            self._sqv_int = allocate()
-            self._sqc_int = allocate()
-            self._sqr_int = allocate()
-            self._qv_new = allocate()
-            self._qc_new = allocate()
-            self._qr_new = allocate()
+            self._sqv_now = self.zeros(shape=storage_shape)
+            self._sqc_now = self.zeros(shape=storage_shape)
+            self._sqr_now = self.zeros(shape=storage_shape)
+            self._sqv_int = self.zeros(shape=storage_shape)
+            self._sqc_int = self.zeros(shape=storage_shape)
+            self._sqr_int = self.zeros(shape=storage_shape)
+            self._qv_new = self.zeros(shape=storage_shape)
+            self._qc_new = self.zeros(shape=storage_shape)
+            self._qr_new = self.zeros(shape=storage_shape)
 
         if damp:
-            self._s_ref = allocate()
-            self._s_damped = allocate()
-            self._su_ref = allocate()
-            self._su_damped = allocate()
-            self._sv_ref = allocate()
-            self._sv_damped = allocate()
+            self._s_ref = self.zeros(shape=storage_shape)
+            self._s_damped = self.zeros(shape=storage_shape)
+            self._su_ref = self.zeros(shape=storage_shape)
+            self._su_damped = self.zeros(shape=storage_shape)
+            self._sv_ref = self.zeros(shape=storage_shape)
+            self._sv_damped = self.zeros(shape=storage_shape)
             # if moist:
-            #     self._qv_ref = allocate()
-            #     self._qv_damped = allocate()
-            #     self._qc_ref = allocate()
-            #     self._qc_damped = allocate()
-            #     self._qr_ref = allocate()
-            #     self._qr_damped = allocate()
+            #     self._qv_ref = self.zeros(shape=storage_shape)
+            #     self._qv_damped = self.zeros(shape=storage_shape)
+            #     self._qc_ref = self.zeros(shape=storage_shape)
+            #     self._qc_damped = self.zeros(shape=storage_shape)
+            #     self._qr_ref = self.zeros(shape=storage_shape)
+            #     self._qr_damped = self.zeros(shape=storage_shape)
 
         if smooth:
-            self._s_smoothed = allocate()
-            self._su_smoothed = allocate()
-            self._sv_smoothed = allocate()
+            self._s_smoothed = self.zeros(shape=storage_shape)
+            self._su_smoothed = self.zeros(shape=storage_shape)
+            self._sv_smoothed = self.zeros(shape=storage_shape)
 
         if smooth_moist:
-            self._qv_smoothed = allocate()
-            self._qc_smoothed = allocate()
-            self._qr_smoothed = allocate()
+            self._qv_smoothed = self.zeros(shape=storage_shape)
+            self._qc_smoothed = self.zeros(shape=storage_shape)
+            self._qr_smoothed = self.zeros(shape=storage_shape)
 
-        self._u_out = allocate()
-        self._v_out = allocate()
+        self._u_out = self.zeros(shape=storage_shape)
+        self._v_out = self.zeros(shape=storage_shape)
 
     @property
     def stage_input_properties(self) -> taz_types.properties_dict_t:
@@ -767,12 +698,6 @@ class IsentropicDynamicalCore(DynamicalCore):
     def allocate_output_state(self) -> taz_types.gtstorage_dict_t:
         """ Allocate memory only for the prognostic fields. """
         g = self.grid
-        nx, ny, nz = g.nx, g.ny, g.nz
-        backend = self._backend
-        dtype = self._dtype
-        default_origin = self._default_origin
-        storage_shape = self._storage_shape
-        managed_memory = self._managed_memory
 
         out_state = {}
 
@@ -793,19 +718,13 @@ class IsentropicDynamicalCore(DynamicalCore):
             units = self.output_properties[name]["units"]
 
             grid_shape = (
-                nx + 1 if "at_u_locations" in dims[0] else nx,
-                ny + 1 if "at_v_locations" in dims[1] else ny,
-                nz + 1 if "on_interface_levels" in dims[2] else nz,
+                g.nx + 1 if "at_u_locations" in dims[0] else g.nx,
+                g.ny + 1 if "at_v_locations" in dims[1] else g.ny,
+                g.nz + 1 if "on_interface_levels" in dims[2] else g.nz,
             )
 
             out_state[name] = get_dataarray_3d(
-                zeros(
-                    storage_shape,
-                    backend=backend,
-                    dtype=dtype,
-                    default_origin=default_origin,
-                    managed_memory=managed_memory,
-                ),
+                self.zeros(shape=self._storage_shape),
                 g,
                 units,
                 name=name,
@@ -833,7 +752,7 @@ class IsentropicDynamicalCore(DynamicalCore):
         raw_tendencies: taz_types.array_dict_t,
         timestep: taz_types.timedelta_t,
     ) -> taz_types.array_dict_t:
-        """ Integrate the state over a stage of the dry dynamical core. """
+        """Integrate the state over a stage of the dry dynamical core."""
         # shortcuts
         hb = self.horizontal_boundary
         out_properties = self.output_properties
@@ -860,8 +779,9 @@ class IsentropicDynamicalCore(DynamicalCore):
                 )
             except KeyError:
                 raise RuntimeError(
-                    "Reference state not set in the object handling the horizontal "
-                    "boundary conditions, but needed by the wave absorber."
+                    "Reference state not set in the object handling the "
+                    "horizontal boundary conditions, but needed by the "
+                    "wave absorber."
                 )
             Timer.stop()
 
@@ -970,7 +890,7 @@ class IsentropicDynamicalCore(DynamicalCore):
         raw_tendencies: taz_types.array_dict_t,
         timestep: taz_types.timedelta_t,
     ) -> taz_types.array_dict_t:
-        """	Integrate the state over a stage of the moist dynamical core. """
+        """Integrate the state over a stage of the moist dynamical core."""
         # shortcuts
         hb = self.horizontal_boundary
         out_properties = self.output_properties
@@ -1007,8 +927,9 @@ class IsentropicDynamicalCore(DynamicalCore):
                 # )
             except KeyError:
                 raise RuntimeError(
-                    "Reference state not set in the object handling the horizontal "
-                    "boundary conditions, but needed by the wave absorber."
+                    "Reference state not set in the object handling the "
+                    "horizontal boundary conditions, but needed by the "
+                    "wave absorber."
                 )
 
             # save the current solution
@@ -1098,9 +1019,28 @@ class IsentropicDynamicalCore(DynamicalCore):
                 timestep, self._sv_now, sv_new, self._sv_ref, self._sv_damped
             )
             Timer.stop()
-            # self._damper(timestep, self._qv_now, self._qv_new, self._qv_ref, self._qv_damped)
-            # self._damper(timestep, self._qc_now, self._qc_new, self._qc_ref, self._qc_damped)
-            # self._damper(timestep, self._qr_now, self._qr_new, self._qr_ref, self._qr_damped)
+
+            # self._damper(
+            #     timestep,
+            #     self._qv_now,
+            #     self._qv_new,
+            #     self._qv_ref,
+            #     self._qv_damped,
+            # )
+            # self._damper(
+            #     timestep,
+            #     self._qc_now,
+            #     self._qc_new,
+            #     self._qc_ref,
+            #     self._qc_damped,
+            # )
+            # self._damper(
+            #     timestep,
+            #     self._qr_now,
+            #     self._qr_new,
+            #     self._qr_ref,
+            #     self._qr_damped,
+            # )
 
         # properly set pointers to current solution
         s_new = self._s_damped if damped else s_new
