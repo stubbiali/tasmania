@@ -82,7 +82,6 @@ class BurgersDynamicalCore(DynamicalCore):
         """
         super().__init__(
             domain,
-            grid_type="numerical",
             intermediate_tendency_component=intermediate_tendency_component,
             intermediate_diagnostic_component=None,
             substeps=0,
@@ -102,9 +101,9 @@ class BurgersDynamicalCore(DynamicalCore):
             self.grid.grid_xy,
             self.horizontal_boundary.nb,
             flux_scheme,
-            backend=backend,
-            backend_options=backend_options,
-            storage_options=storage_options,
+            backend=self.backend,
+            backend_options=self.backend_options,
+            storage_options=self.storage_options,
         )
 
     @property
@@ -156,11 +155,11 @@ class BurgersDynamicalCore(DynamicalCore):
     def allocate_output_state(self):
         grid = self.grid
 
-        u = self._dict_op.zeros(shape=(grid.nx, grid.ny, 1))
+        u = self.zeros(shape=(grid.nx, grid.ny, 1))
         u_da = get_dataarray_3d(
             u, grid, "m s^-1", name="x_velocity", set_coordinates=False
         )
-        v = self._dict_op.zeros(shape=(grid.nx, grid.ny, 1))
+        v = self.zeros(shape=(grid.nx, grid.ny, 1))
         v_da = get_dataarray_3d(
             v, grid, "m s^-1", name="y_velocity", set_coordinates=False
         )

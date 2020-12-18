@@ -32,11 +32,15 @@ from sympl import (
 from sympl._core.base_components import InputChecker, OutputChecker
 from typing import Optional, Sequence, TYPE_CHECKING, Union
 
-from tasmania.python.framework.base_components import DomainComponent
+from tasmania.python.framework.base_components import (
+    DomainComponent,
+    GridComponent,
+)
 from tasmania.python.framework.composite import (
     DiagnosticComponentComposite as TasmaniaDiagnosticComponentComposite,
 )
 from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
+from tasmania.python.framework.stencil import StencilFactory
 from tasmania.python.framework.tendency_checkers import SubsetTendencyChecker
 from tasmania.python.utils import taz_types
 from tasmania.python.utils.storage_utils import (
@@ -52,15 +56,13 @@ from tasmania.python.utils.utils import Timer
 
 if TYPE_CHECKING:
     from tasmania.python.domain.domain import Domain
-    from tasmania.python.domain.grid import Grid
-    from tasmania.python.domain.horizontal_boundary import HorizontalBoundary
     from tasmania.python.framework.options import (
         BackendOptions,
         StorageOptions,
     )
 
 
-class DynamicalCore(DomainComponent, abc.ABC):
+class DynamicalCore(DomainComponent, StencilFactory, abc.ABC):
     """A dynamical core which implements a multi-stage time-marching scheme
     coupled with some form of partial time-splitting (i.e. substepping)."""
 
@@ -80,7 +82,6 @@ class DynamicalCore(DomainComponent, abc.ABC):
     def __init__(
         self,
         domain: "Domain",
-        grid_type: str,
         intermediate_tendency_component: Optional[
             taz_types.tendency_component_t
         ] = None,
@@ -107,9 +108,6 @@ class DynamicalCore(DomainComponent, abc.ABC):
         ----------
         domain : tasmania.Domain
             The :class:`~tasmania.Domain` holding the grid underneath.
-        grid_type : str
-            The type of grid over which instantiating the class.
-            Either "physical" or "numerical".
         intermediate_tendency_component : `obj`, optional
             An instance of either
 
@@ -170,7 +168,10 @@ class DynamicalCore(DomainComponent, abc.ABC):
         storage_options : `StorageOptions`, optional
             Storage-related options.
         """
-        super().__init__(domain, grid_type)
+        super().__init__(domain, "numerical")
+        super(GridComponent, self).__init__(
+            backend, backend_options, storage_options
+        )
 
         self._inter_tc = intermediate_tendency_component
         if self._inter_tc is not None:
@@ -230,9 +231,9 @@ class DynamicalCore(DomainComponent, abc.ABC):
 
         # instantiate the dictionary operator
         self._dict_op = DataArrayDictOperator(
-            backend=backend,
-            backend_options=backend_options,
-            storage_options=storage_options,
+            backend=self.backend,
+            backend_options=self.backend_options,
+            storage_options=self.storage_options,
         )
 
         # allocate the output state
@@ -240,19 +241,6 @@ class DynamicalCore(DomainComponent, abc.ABC):
 
         # initialize the dictionary of intermediate tendencies
         self._inter_tendencies = {}
-
-    @property
-    def grid(self) -> "Grid":
-        """ The underlying :class:`~tasmania.Grid`. """
-        return self._grid
-
-    @property
-    def horizontal_boundary(self) -> "HorizontalBoundary":
-        """
-        The :class:`~tasmania.HorizontalBoundary` object handling the lateral
-        boundary conditions.
-        """
-        return self._hb
 
     def ensure_internal_consistency(self) -> None:
         """ Perform some controls aiming to ensure internal consistency.
@@ -990,7 +978,7 @@ class DynamicalCore(DomainComponent, abc.ABC):
             }
             Timer.start(label="get_stage_state")
             stage_state = get_dataarray_dict(
-                raw_stage_state, self._grid, stage_state_properties
+                raw_stage_state, self.grid, stage_state_properties
             )
             Timer.stop()
 
@@ -1227,4 +1215,4 @@ class DynamicalCore(DomainComponent, abc.ABC):
         time : datetime.timedelta
             The elapsed simulation time.
         """
-        self._grid.update_topography(time)
+        self.grid.update_topography(time)
