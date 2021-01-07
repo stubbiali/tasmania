@@ -29,6 +29,11 @@ from hypothesis import (
 )
 import pytest
 
+from tasmania.python.framework.options import (
+    BackendOptions,
+    StorageOptions,
+    TimeIntegrationOptions,
+)
 from tasmania.python.framework.parallel_splitting import ParallelSplitting
 from tasmania.python.utils.storage_utils import deepcopy_dataarray_dict
 from tasmania.python.utils.utils import is_gt
@@ -66,12 +71,8 @@ def test_properties(
     # test 1
     #
     ps = ParallelSplitting(
-        {
-            "component": tendency1,
-            "time_integrator": "forward_euler",
-            "substeps": 1,
-        },
-        {"component": tendency2, "time_integrator": "forward_euler"},
+        TimeIntegrationOptions(component=tendency1, scheme="forward_euler"),
+        TimeIntegrationOptions(component=tendency2, scheme="forward_euler"),
         execution_policy="as_parallel",
     )
 
@@ -107,12 +108,8 @@ def test_properties(
     # test 2
     #
     ps = ParallelSplitting(
-        {
-            "component": tendency1,
-            "time_integrator": "forward_euler",
-            "substeps": 1,
-        },
-        {"component": tendency2, "time_integrator": "forward_euler"},
+        TimeIntegrationOptions(component=tendency1, scheme="forward_euler"),
+        TimeIntegrationOptions(component=tendency2, scheme="forward_euler"),
         execution_policy="serial",
         retrieve_diagnostics_from_provisional_state=False,
     )
@@ -148,12 +145,8 @@ def test_properties(
     # test 3
     #
     ps = ParallelSplitting(
-        {
-            "component": tendency1,
-            "time_integrator": "forward_euler",
-            "substeps": 1,
-        },
-        {"component": tendency2, "time_integrator": "forward_euler"},
+        TimeIntegrationOptions(component=tendency1, scheme="forward_euler"),
+        TimeIntegrationOptions(component=tendency2, scheme="forward_euler"),
         execution_policy="serial",
         retrieve_diagnostics_from_provisional_state=True,
     )
@@ -204,13 +197,17 @@ def test_forward_euler(
 
     ts_kwargs = {
         "backend": backend,
-        "dtype": dtype,
-        "default_origin": default_origin,
+        "backend_options": BackendOptions(rebuild=False),
+        "storage_options": StorageOptions(
+            dtype=dtype, default_origin=default_origin
+        ),
     }
     ps_kwargs = {
         "backend": backend if data.draw(hyp_st.booleans()) else "numpy",
-        "dtype": dtype,
-        "default_origin": default_origin,
+        "backend_options": BackendOptions(rebuild=False),
+        "storage_options": StorageOptions(
+            dtype=dtype, default_origin=default_origin
+        ),
     }
 
     same_shape = data.draw(hyp_st.booleans(), label="same_shape")
@@ -270,16 +267,8 @@ def test_forward_euler(
     tendency2 = make_fake_tendency_component_2(domain, "numerical")
 
     ps = ParallelSplitting(
-        {
-            "component": tendency1,
-            "time_integrator": "forward_euler",
-            "time_integrator_kwargs": ts_kwargs,
-        },
-        {
-            "component": tendency2,
-            "time_integrator": "forward_euler",
-            "time_integrator_kwargs": ts_kwargs,
-        },
+        TimeIntegrationOptions(tendency1, scheme="forward_euler", **ts_kwargs),
+        TimeIntegrationOptions(tendency2, scheme="forward_euler", **ts_kwargs),
         execution_policy="serial",
         **ps_kwargs
     )
@@ -355,16 +344,22 @@ def test_rk2(
 
     ts_kwargs = {
         "backend": backend,
-        "dtype": dtype,
-        "default_origin": default_origin,
+        "backend_options": BackendOptions(rebuild=False),
+        "storage_options": StorageOptions(
+            dtype=dtype, default_origin=default_origin
+        ),
     }
     ps_kwargs = {
         "backend": backend if data.draw(hyp_st.booleans()) else "numpy",
-        "dtype": dtype,
-        "default_origin": default_origin,
+        "backend_options": BackendOptions(rebuild=False),
+        "storage_options": StorageOptions(
+            dtype=dtype, default_origin=default_origin
+        ),
     }
-    same_shape = data.draw(hyp_st.booleans(), label="same_shape")
 
+    same_shape = data.draw(hyp_st.booleans(), label="same_shape") or is_gt(
+        backend
+    )
     nb = data.draw(
         hyp_st.integers(min_value=1, max_value=max(1, conf_nb)), label="nb"
     )
@@ -421,16 +416,8 @@ def test_rk2(
     tendency2 = make_fake_tendency_component_2(domain, "numerical")
 
     ps = ParallelSplitting(
-        {
-            "component": tendency1,
-            "time_integrator": "rk2",
-            "time_integrator_kwargs": ts_kwargs,
-        },
-        {
-            "component": tendency2,
-            "time_integrator": "rk2",
-            "time_integrator_kwargs": ts_kwargs,
-        },
+        TimeIntegrationOptions(tendency1, scheme="rk2", **ts_kwargs),
+        TimeIntegrationOptions(tendency2, scheme="rk2", **ts_kwargs),
         execution_policy="serial",
         **ps_kwargs
     )
@@ -500,3 +487,4 @@ def test_rk2(
 
 if __name__ == "__main__":
     pytest.main([__file__])
+    # test_rk2("numpy", float)

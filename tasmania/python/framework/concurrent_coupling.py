@@ -32,7 +32,7 @@ from sympl import (
     combine_component_properties,
 )
 from sympl._core.units import clean_units
-from typing import Optional, Tuple, Union
+from typing import Optional, TYPE_CHECKING, Tuple, Union
 
 from tasmania.python.framework._base import (
     BaseConcurrentCoupling,
@@ -51,6 +51,12 @@ from tasmania.python.utils.framework_utils import (
     get_tendency_properties,
 )
 from tasmania.python.utils.utils import Timer, assert_sequence
+
+if TYPE_CHECKING:
+    from tasmania.python.framework.options import (
+        BackendOptions,
+        StorageOptions,
+    )
 
 
 class ConcurrentCoupling(BaseConcurrentCoupling):
@@ -108,11 +114,8 @@ class ConcurrentCoupling(BaseConcurrentCoupling):
         ],
         execution_policy: str = "serial",
         backend: str = "numpy",
-        backend_opts: Optional[taz_types.options_dict_t] = None,
-        dtype: taz_types.dtype_t = np.float64,
-        build_info: Optional[taz_types.options_dict_t] = None,
-        rebuild: bool = False,
-        **kwargs
+        backend_options: Optional["BackendOptions"] = None,
+        storage_options: Optional["StorageOptions"] = None
     ) -> None:
         """
         Parameters
@@ -147,20 +150,12 @@ class ConcurrentCoupling(BaseConcurrentCoupling):
 
         backend : `str`, optional
             The backend.
-        backend_opts : `dict`, optional
-            Dictionary of backend-specific options.
-        dtype : `data-type`, optional
-            Data type of the storages passed to the stencil.
-        build_info : `dict`, optional
-            Dictionary of building options.
-        rebuild : `bool`, optional
-            ``True`` to trigger the stencils compilation at any class
-            instantiation, ``False`` to rely on the caching mechanism
-            implemented by the backend.
-        **kwargs:
-            Catch-all for unused keyword arguments.
+        backend_options : `BackendOptions`, optional
+            Backend-specific options.
+        storage_options : `StorageOptions`, optional
+            Storage-related options.
         """
-        assert_sequence(args, reftype=self.__class__.allowed_component_type)
+        assert_sequence(args, reftype=self.allowed_component_type)
         self._component_list = args
 
         self._policy = execution_policy
@@ -196,10 +191,8 @@ class ConcurrentCoupling(BaseConcurrentCoupling):
 
         self._dict_op = DataArrayDictOperator(
             backend=backend,
-            backend_opts=backend_opts,
-            dtype=dtype,
-            build_info=build_info,
-            rebuild=rebuild,
+            backend_options=backend_options,
+            storage_options=storage_options,
         )
 
     def _init_input_properties(self) -> taz_types.properties_dict_t:

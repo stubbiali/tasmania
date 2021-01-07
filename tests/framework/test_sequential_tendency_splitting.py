@@ -29,6 +29,11 @@ from hypothesis import (
 )
 import pytest
 
+from tasmania.python.framework.options import (
+    BackendOptions,
+    StorageOptions,
+    TimeIntegrationOptions,
+)
 from tasmania.python.framework.sequential_tendency_splitting import (
     SequentialTendencySplitting,
 )
@@ -68,16 +73,8 @@ def test_properties(
     # test 1
     #
     sts = SequentialTendencySplitting(
-        {
-            "component": tendency2,
-            "time_integrator": "forward_euler",
-            "substeps": 1,
-        },
-        {
-            "component": tendency1,
-            "time_integrator": "forward_euler",
-            "substeps": 1,
-        },
+        TimeIntegrationOptions(tendency2, scheme="forward_euler"),
+        TimeIntegrationOptions(tendency1, scheme="forward_euler"),
     )
 
     assert "air_isentropic_density" in sts.input_properties
@@ -112,16 +109,8 @@ def test_properties(
     # test 2
     #
     sts = SequentialTendencySplitting(
-        {
-            "component": tendency1,
-            "time_integrator": "forward_euler",
-            "substeps": 1,
-        },
-        {
-            "component": tendency2,
-            "time_integrator": "forward_euler",
-            "substeps": 1,
-        },
+        TimeIntegrationOptions(tendency1, scheme="forward_euler"),
+        TimeIntegrationOptions(tendency2, scheme="forward_euler"),
     )
 
     assert "air_isentropic_density" in sts.input_properties
@@ -155,16 +144,8 @@ def test_properties(
     # test 3
     #
     sts = SequentialTendencySplitting(
-        {
-            "component": tendency1,
-            "time_integrator": "forward_euler",
-            "substeps": 3,
-        },
-        {
-            "component": tendency2,
-            "time_integrator": "forward_euler",
-            "substeps": 2,
-        },
+        TimeIntegrationOptions(tendency1, scheme="forward_euler", substeps=3),
+        TimeIntegrationOptions(tendency2, scheme="forward_euler", substeps=2),
     )
 
     assert "air_isentropic_density" in sts.input_properties
@@ -237,7 +218,6 @@ def test_forward_euler(
         label="domain",
     )
     grid = domain.numerical_grid
-    hb = domain.horizontal_boundary
 
     dnx = data.draw(hyp_st.integers(min_value=0, max_value=3), label="dnx")
     dny = data.draw(hyp_st.integers(min_value=0, max_value=3), label="dny")
@@ -275,6 +255,9 @@ def test_forward_euler(
     # ========================================
     # test bed
     # ========================================
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, default_origin=default_origin)
+
     tendency1 = make_fake_tendency_component_1(domain, "numerical")
     tendency2 = make_fake_tendency_component_2(domain, "numerical")
 
@@ -282,24 +265,20 @@ def test_forward_euler(
     state_prv_dc = deepcopy_dataarray_dict(state_prv)
 
     sts = SequentialTendencySplitting(
-        {
-            "component": tendency1,
-            "time_integrator": "forward_euler",
-            "time_integrator_kwargs": {
-                "backend": backend_ts1,
-                "dtype": dtype,
-                "default_origin": default_origin,
-            },
-        },
-        {
-            "component": tendency2,
-            "time_integrator": "forward_euler",
-            "time_integrator_kwargs": {
-                "backend": backend_ts2,
-                "dtype": dtype,
-                "default_origin": default_origin,
-            },
-        },
+        TimeIntegrationOptions(
+            tendency1,
+            scheme="forward_euler",
+            backend=backend_ts1,
+            backend_options=bo,
+            storage_options=so,
+        ),
+        TimeIntegrationOptions(
+            tendency2,
+            scheme="forward_euler",
+            backend=backend_ts2,
+            backend_options=bo,
+            storage_options=so,
+        ),
     )
     sts(state, state_prv, timestep)
 
@@ -433,6 +412,9 @@ def test_rk2(
     # ========================================
     # test bed
     # ========================================
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, default_origin=default_origin)
+
     tendency1 = make_fake_tendency_component_1(domain, "numerical")
     tendency2 = make_fake_tendency_component_2(domain, "numerical")
 
@@ -440,24 +422,20 @@ def test_rk2(
     state_prv_dc = deepcopy_dataarray_dict(state_prv)
 
     sts = SequentialTendencySplitting(
-        {
-            "component": tendency1,
-            "time_integrator": "rk2",
-            "time_integrator_kwargs": {
-                "backend": backend_ts1,
-                "dtype": dtype,
-                "default_origin": default_origin,
-            },
-        },
-        {
-            "component": tendency2,
-            "time_integrator": "rk2",
-            "time_integrator_kwargs": {
-                "backend": backend_ts2,
-                "dtype": dtype,
-                "default_origin": default_origin,
-            },
-        },
+        TimeIntegrationOptions(
+            tendency1,
+            scheme="rk2",
+            backend=backend_ts1,
+            backend_options=bo,
+            storage_options=so,
+        ),
+        TimeIntegrationOptions(
+            tendency2,
+            scheme="rk2",
+            backend=backend_ts2,
+            backend_options=bo,
+            storage_options=so,
+        ),
     )
 
     sts(state, state_prv, timestep)

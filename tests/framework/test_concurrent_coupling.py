@@ -31,6 +31,7 @@ import pytest
 from sympl._core.exceptions import InvalidStateError
 
 from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
+from tasmania.python.framework.options import BackendOptions, StorageOptions
 from tasmania.python.framework.promoters import Tendency2Diagnostic
 from tasmania.python.utils.storage_utils import deepcopy_dataarray_dict
 from tasmania.python.utils.utils import is_gt
@@ -173,6 +174,9 @@ def test_serial(
     # ========================================
     # test bed
     # ========================================
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, default_origin=default_origin)
+
     tc1 = make_fake_tendency_component_1(domain, "numerical")
     tc2 = make_fake_tendency_component_2(domain, "numerical")
 
@@ -181,8 +185,8 @@ def test_serial(
         tc2,
         execution_policy="serial",
         backend=backend,
-        dtype=dtype,
-        rebuild=False,
+        backend_options=bo,
+        storage_options=so,
     )
     tendencies, diagnostics = cc(state, dt)
 
@@ -316,6 +320,9 @@ def test_tendency_to_diagnostic(
     # ========================================
     # test bed
     # ========================================
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, default_origin=default_origin)
+
     tc1 = make_fake_tendency_component_1(domain, "numerical")
     tc2 = make_fake_tendency_component_2(domain, "numerical")
     t2d = FakeTendency2Diagnostic(domain)
@@ -326,8 +333,8 @@ def test_tendency_to_diagnostic(
         t2d,
         execution_policy="serial",
         backend=backend,
-        dtype=dtype,
-        rebuild=False,
+        backend_options=bo,
+        storage_options=so,
     )
     tendencies, diagnostics = cc(state, dt)
 

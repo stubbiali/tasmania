@@ -20,7 +20,6 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-import numpy as np
 from sympl import (
     DiagnosticComponent,
     DiagnosticComponentComposite as SymplDiagnosticComponentComposite,
@@ -29,7 +28,7 @@ from sympl import (
     ImplicitTendencyComponent,
     ImplicitTendencyComponentComposite,
 )
-from typing import Any, Mapping, Optional, Tuple, Union
+from typing import Optional, TYPE_CHECKING, Tuple, Union
 
 from tasmania.python.framework.composite import (
     DiagnosticComponentComposite as TasmaniaDiagnosticComponentComposite,
@@ -43,6 +42,13 @@ from tasmania.python.utils.framework_utils import (
     get_input_properties,
     get_output_properties,
 )
+
+if TYPE_CHECKING:
+    from tasmania.python.framework.options import (
+        BackendOptions,
+        StorageOptions,
+        TimeIntegrationOptions,
+    )
 
 
 class ParallelSplitting:
@@ -98,115 +104,18 @@ class ParallelSplitting:
 
     def __init__(
         self,
-        *args: Mapping[str, Any],
+        *args: "TimeIntegrationOptions",
         execution_policy: str = "serial",
         retrieve_diagnostics_from_provisional_state: bool = False,
         backend: str = "numpy",
-        backend_opts: Optional[taz_types.options_dict_t] = None,
-        dtype: taz_types.dtype_t = np.float64,
-        build_info: Optional[taz_types.options_dict_t] = None,
-        rebuild: bool = False,
-        **kwargs
+        backend_options: Optional["BackendOptions"] = None,
+        storage_options: Optional["StorageOptions"] = None
     ) -> None:
         """
         Parameters
         ----------
-        *args : dict
-            Dictionaries containing the components to wrap and specifying
-            fundamental properties (time_integrator, substeps) of those
-            components. Particularly:
-
-                * 'component' is an instance of
-
-                        - :class:`sympl.DiagnosticComponent`
-                        - :class:`sympl.DiagnosticComponentComposite`
-                        - :class:`sympl.TendencyComponent`,
-                        - :class:`sympl.TendencyComponentComposite`,
-                        - :class:`sympl.ImplicitTendencyComponent`,
-                        - :class:`sympl.ImplicitTendencyComponentComposite`, or
-                        - :class:`tasmania.ConcurrentCoupling`
-
-                    representing the model component to wrap;
-
-                * if 'component' is an instance of
-
-                        - :class:`sympl.TendencyComponent`,
-                        - :class:`sympl.TendencyComponentComposite`,
-                        - :class:`sympl.ImplicitTendencyComponent`,
-                        - :class:`sympl.ImplicitTendencyComponentComposite`, or
-                        - :class:`tasmania.ConcurrentCoupling`,
-
-                    'time_integrator' is a string specifying the scheme to
-                    integrate the process forward in time. Available options:
-
-                        - 'forward_euler', for the forward Euler scheme;
-                        - 'rk2', for the two-stage second-order Runge-Kutta
-                            (RK) scheme;
-                        - 'rk3ws', for the three-stage RK scheme as used in the
-                            `COSMO model <http://www.cosmo-model.org>`_; this
-                            method is nominally second-order, and third-order
-                            for linear problems.
-
-                * if 'component' is a
-
-                        - :class:`sympl.TendencyComponent`,
-                        - :class:`sympl.TendencyComponentComposite`,
-                        - :class:`sympl.ImplicitTendencyComponent`,
-                        - :class:`sympl.ImplicitTendencyComponentComposite`, or
-                        - :class:`tasmania.ConcurrentCoupling`,
-
-                    'time_integrator_kwargs' is a dictionary of configuration
-                    options for 'time_integrator'. The dictionary may include
-                    the following keys:
-
-                        - backend (str): The backend;
-                        - backend_opts (dict): Dictionary of backend-specific
-                            options;
-                        - dtype (data-type): Data type of the storages;
-                        - build_info (dict): Dictionary of building options;
-                        - exec_info (dict): Dictionary which will store
-                            statistics and diagnostics gathered at run time;
-                        - default_origin (tuple): Storage default origin;
-                        - rebuild (bool): ``True`` to trigger the stencils
-                            compilation at any class instantiation,
-                            ``False`` to rely on the caching mechanism
-                            implemented by the backend.
-
-                * if 'component' is either an instance of or wraps objects of
-                    class
-
-                        - :class:`tasmania.TendencyComponent`,
-                        - :class:`tasmania.ImplicitTendencyComponent`, or
-                        - :class:`tasmania.ConcurrentCoupling`,
-
-                    'enforce_horizontal_boundary' is either ``True`` if the
-                    boundary conditions should be enforced after each stage of
-                    the time integrator, or ``False`` not to apply the boundary
-                    constraints at all. Defaults to ``False``;
-
-                * if 'component' is a
-
-                        - :class:`sympl.TendencyComponent`,
-                        - :class:`sympl.TendencyComponentComposite`,
-                        - :class:`sympl.ImplicitTendencyComponent`,
-                        - :class:`sympl.ImplicitTendencyComponentComposite`, or
-                        - :class:`tasmania.ConcurrentCoupling`,
-
-                    'substeps' represents the number of substeps to carry out
-                    to integrate the process. Defaults to 1.
-
-                * if 'component' is a
-
-                        - :class:`sympl.TendencyComponent`,
-                        - :class:`sympl.TendencyComponentComposite`,
-                        - :class:`sympl.ImplicitTendencyComponent`,
-                        - :class:`sympl.ImplicitTendencyComponentComposite`, or
-                        - :class:`tasmania.ConcurrentCoupling`,
-
-                    'add_diagnostics_to_provisional_input' says whether the
-                    computed diagnostics should be added to the input or
-                    provisional state.
-
+        *args : TimeIntegrationOptions
+            TODO
         execution_policy : `str`, optional
             String specifying the runtime mode in which parameterizations
             should be invoked. Either:
@@ -228,72 +137,39 @@ class ParallelSplitting:
             Defaults to ``False``.
         backend : `str`, optional
             The backend.
-        backend_opts : `dict`, optional
-            Dictionary of backend-specific options.
-        dtype : `data-type`, optional
-            Data type of the storages passed to the stencil.
-        build_info : `dict`, optional
-            Dictionary of building options.
-        exec_info : `dict`, optional
-            Dictionary which will store statistics and diagnostics gathered at
-            run time.
-        rebuild : `bool`, optional
-            ``True`` to trigger the stencils compilation at any class
-            instantiation, ``False`` to rely on the caching mechanism
-            implemented by the backend.
-        **kwargs:
-            Catch-all for unused keyword arguments.
+        backend_options : `BackendOptions`, optional
+            Backend-specific options.
+        storage_options : `StorageOptions`, optional
+            Storage-related options.
         """
         self._component_list = []
         self._substeps = []
 
-        for process in args:
-            try:
-                bare_component = process["component"]
-            except KeyError:
-                raise KeyError(
-                    "Missing mandatory key ''component'' in one item of "
-                    "''processes''."
-                )
+        for options in args:
+            component = options.component
 
-            assert isinstance(
-                bare_component, self.__class__.allowed_component_type
-            ), "''component'' value should be either a {}.".format(
-                ", ".join(
-                    str(ctype)
-                    for ctype in self.__class__.allowed_component_type
-                )
+            assert isinstance(component, self.allowed_component_type), (
+                f"""The component should be an instance of either """
+                f"""{', '.join(str(ctype) for ctype in self.allowed_component_type)}"""
             )
 
-            if isinstance(
-                bare_component, self.__class__.allowed_diagnostic_type
-            ):
-                self._component_list.append(bare_component)
+            if isinstance(component, self.allowed_diagnostic_type):
+                self._component_list.append(component)
                 self._substeps.append(1)
             else:
-                integrator = process.get("time_integrator", "forward_euler")
-                enforce_hb = process.get("enforce_horizontal_boundary", False)
-                integrator_kwargs = process.get(
-                    "time_integrator_kwargs",
-                    {
-                        "backend": "numpy",
-                        "dtype": np.float64,
-                        "rebuild": False,
-                    },
-                )
-
+                scheme = options.scheme or "forward_euler"
                 self._component_list.append(
                     TendencyStepper.factory(
-                        integrator,
-                        bare_component,
-                        enforce_horizontal_boundary=enforce_hb,
-                        **integrator_kwargs
+                        scheme,
+                        component,
+                        enforce_horizontal_boundary=options.enforce_horizontal_boundary,
+                        backend=options.backend,
+                        backend_options=options.backend_options,
+                        storage_options=options.storage_options,
+                        **options.kwargs
                     )
                 )
-
-                substeps_ = process.get("substeps", 1)
-                substeps = substeps_ if substeps_ > 0 else 1
-                self._substeps.append(substeps)
+                self._substeps.append(max(options.substeps, 1))
 
         self._policy = execution_policy
         self._call = (
@@ -350,10 +226,8 @@ class ParallelSplitting:
 
         self._dict_op = DataArrayDictOperator(
             backend=backend,
-            backend_opts=backend_opts,
-            dtype=dtype,
-            build_info=build_info,
-            rebuild=rebuild,
+            backend_options=backend_options,
+            storage_options=storage_options,
         )
 
     def _init_input_properties(self) -> taz_types.properties_dict_t:
@@ -528,9 +402,7 @@ class ParallelSplitting:
     ) -> None:
         """ Process the components in 'serial' runtime mode. """
         for component, substeps in zip(self._component_list, self._substeps):
-            if not isinstance(
-                component, self.__class__.allowed_diagnostic_type
-            ):
+            if not isinstance(component, self.allowed_diagnostic_type):
                 diagnostics, state_tmp = component(state, timestep / substeps)
 
                 if substeps > 1:
@@ -578,9 +450,7 @@ class ParallelSplitting:
         agg_diagnostics = {}
 
         for component, substeps in zip(self.component_list, self._substeps):
-            if not isinstance(
-                component, self.__class__.allowed_diagnostic_type
-            ):
+            if not isinstance(component, self.allowed_diagnostic_type):
                 diagnostics, state_tmp = component(state, timestep / substeps)
 
                 if substeps > 1:

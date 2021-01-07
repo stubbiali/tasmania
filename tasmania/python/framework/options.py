@@ -66,3 +66,26 @@ class StorageOptions:
     default_origin: Sequence[int] = None
     managed_memory: bool = False
     mask: Sequence[bool] = None
+
+
+@dataclass
+class TimeIntegrationOptions:
+    # mandatory
+    component: Union[
+        "sympl.DiagnosticComponent",
+        "sympl.DiagnosticComponentComposite",
+        "sympl.ImplicitTendencyComponent",
+        "sympl.ImplicitTendencyComponentComposite",
+        "sympl.TendencyComponent",
+        "sympl.TendencyComponentComposite",
+        "ConcurrentCoupling",
+    ] = None
+
+    # optional
+    scheme: str = None
+    enforce_horizontal_boundary: bool = False
+    substeps: int = 1
+    backend: str = "numpy"
+    backend_options: BackendOptions = field(default_factory=BackendOptions)
+    storage_options: StorageOptions = field(default_factory=StorageOptions)
+    kwargs: Mapping[str, Any] = field(default_factory=dict)
