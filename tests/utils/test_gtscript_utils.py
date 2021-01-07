@@ -31,8 +31,8 @@ import pytest
 
 from gt4py import gtscript
 
-from tasmania.python.isentropic.dynamics.subclasses.prognostics.forward_euler_si import (
-    step_forward_euler_gt,
+from tasmania.python.isentropic.dynamics.subclasses.prognostics.utils import (
+    step_forward_euler_gt4py,
 )
 from tasmania.python.utils.gtscript_utils import (
     set_annotations,
@@ -113,24 +113,24 @@ def assert_annotations(func_handle, dtype, *, subtests):
 
 def test_set_annotations(subtests):
     # int
-    set_annotations(step_forward_euler_gt, int)
-    assert_annotations(step_forward_euler_gt, int, subtests=subtests)
+    set_annotations(step_forward_euler_gt4py, int)
+    assert_annotations(step_forward_euler_gt4py, int, subtests=subtests)
 
     # float
-    set_annotations(step_forward_euler_gt, float)
-    assert_annotations(step_forward_euler_gt, float, subtests=subtests)
+    set_annotations(step_forward_euler_gt4py, float)
+    assert_annotations(step_forward_euler_gt4py, float, subtests=subtests)
 
     # # np.float16
-    # set_annotations(step_forward_euler_gt, np.float16)
-    # assert_annotations(step_forward_euler_gt, np.float16)
+    # set_annotations(step_forward_euler_gt4py, np.float16)
+    # assert_annotations(step_forward_euler_gt4py, np.float16)
 
     # np.float32
-    set_annotations(step_forward_euler_gt, np.float32)
-    assert_annotations(step_forward_euler_gt, np.float32, subtests=subtests)
+    set_annotations(step_forward_euler_gt4py, np.float32)
+    assert_annotations(step_forward_euler_gt4py, np.float32, subtests=subtests)
 
     # np.float64
-    set_annotations(step_forward_euler_gt, np.float64)
-    assert_annotations(step_forward_euler_gt, np.float64, subtests=subtests)
+    set_annotations(step_forward_euler_gt4py, np.float64)
+    assert_annotations(step_forward_euler_gt4py, np.float64, subtests=subtests)
 
 
 @hyp_settings
