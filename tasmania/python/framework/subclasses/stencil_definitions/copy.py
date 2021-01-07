@@ -25,10 +25,13 @@ from gt4py import gtscript
 from tasmania.python.framework.stencil import stencil_definition
 
 
-@stencil_definition.register(backend=("numpy", "cupy"), stencil="copy")
-def copy_numpy(src, dst, *, origin, domain, **kwargs):
-    idx = tuple(slice(o, o + d) for o, d in zip(origin, domain))
-    dst[idx] = src[idx]
+@stencil_definition.register(backend="numpy", stencil="copy")
+@stencil_definition.register(backend="cupy", stencil="copy")
+@stencil_definition.register(backend="numba:cpu", stencil="copy")
+def copy_numpy(src, dst, *, origin, domain):
+    ib, jb, kb = origin
+    ie, je, ke = ib + domain[0], jb + domain[1], kb + domain[2]
+    dst[ib:ie, jb:je, kb:ke] = src[ib:ie, jb:je, kb:ke]
 
 
 @stencil_definition.register(backend="gt4py*", stencil="copy")
@@ -39,10 +42,13 @@ def copy_gt4py(
         dst = src
 
 
-@stencil_definition.register(backend=("numpy", "cupy"), stencil="copychange")
-def copychange_numpy(src, dst, *, origin, domain, **kwargs):
-    idx = tuple(slice(o, o + d) for o, d in zip(origin, domain))
-    dst[idx] = -src[idx]
+@stencil_definition.register(backend="numpy", stencil="copychange")
+@stencil_definition.register(backend="cupy", stencil="copychange")
+@stencil_definition.register(backend="numba:cpu", stencil="copychange")
+def copychange_numpy(src, dst, *, origin, domain):
+    ib, jb, kb = origin
+    ie, je, ke = ib + domain[0], jb + domain[1], kb + domain[2]
+    dst[ib:ie, jb:je, kb:ke] = -src[ib:ie, jb:je, kb:ke]
 
 
 @stencil_definition.register(backend="gt4py*", stencil="copychange")

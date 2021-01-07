@@ -57,7 +57,7 @@ class ZhaoSolutionFactory:
             The starting time of the simulation.
         eps : sympl.DataArray
             1-item :class:`sympl.DataArray` representing the diffusivity.
-            The units should be compatible with 'm s^-2'.
+            The units should be compatible with 'm^2 s^-1'.
         """
         self._itime = initial_time
         self._eps = eps.to_units("m^2 s^-1").values.item()
@@ -178,7 +178,7 @@ class ZhaoStateFactory(StencilFactory):
             The initial time of the simulation.
         eps : sympl.DataArray
             1-item :class:`sympl.DataArray` representing the diffusivity.
-            The units should be compatible with 'm s^-2'.
+            The units should be compatible with 'm^2 s^-1'.
         backend : `str`, optional
             The backend.
         storage_options : `StorageOptions`, optional

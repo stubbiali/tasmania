@@ -20,6 +20,9 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+import numba
+import taichi as ti
+
 from gt4py import gtscript
 
 from tasmania.python.framework.register import register
@@ -118,6 +121,47 @@ class SecondOrder(HorizontalDiffusion):
                 / (dy * dy)
             )
 
+    @staticmethod
+    @stencil_definition(backend="numba:cpu", stencil="diffusion")
+    def _stencil_numba_cpu(
+        in_phi, in_gamma, out_phi, *, dx, dy, origin, domain
+    ):
+        def core_def(phi, gamma, dx, dy):
+            return gamma[0, 0, 0] * (
+                (phi[-1, 0, 0] - 2.0 * phi[0, 0, 0] + phi[1, 0, 0]) / (dx * dx)
+                + (phi[0, -1, 0] - 2.0 * phi[0, 0, 0] + phi[0, 1, 0])
+                / (dy * dy)
+            )
+
+        core = numba.stencil(core_def)
+
+        ib, jb, kb = origin[0] - 1, origin[1] - 1, origin[2]
+        ie, je, ke = ib + domain[0] + 2, jb + domain[1] + 2, kb + domain[2]
+        core(
+            in_phi[ib:ie, jb:je, kb:ke],
+            in_gamma[ib:ie, jb:je, kb:ke],
+            dx,
+            dy,
+            out=out_phi[ib:ie, jb:je, kb:ke],
+        )
+
+    @staticmethod
+    @stencil_definition(backend="taichi:*", stencil="diffusion")
+    def _stencil_taichi(
+        in_phi: ti.template(),
+        in_gamma: ti.template(),
+        out_phi: ti.template(),
+        dx: float,
+        dy: float,
+    ) -> None:
+        with computation(PARALLEL), interval(...):
+            out_phi = in_gamma[0, 0, 0] * (
+                (in_phi[-1, 0, 0] - 2.0 * in_phi[0, 0, 0] + in_phi[1, 0, 0])
+                / (dx * dx)
+                + (in_phi[0, -1, 0] - 2.0 * in_phi[0, 0, 0] + in_phi[0, 1, 0])
+                / (dy * dy)
+            )
+
 
 @register(name="second_order_1dx")
 class SecondOrder1DX(HorizontalDiffusion):
@@ -207,6 +251,27 @@ class SecondOrder1DX(HorizontalDiffusion):
                 / (dx * dx)
             )
 
+    @staticmethod
+    @stencil_definition(backend="numba:cpu", stencil="diffusion")
+    def _stencil_numba_cpu(
+        in_phi, in_gamma, out_phi, *, dx, dy=0.0, origin, domain
+    ):
+        def core_def(phi, gamma, dx):
+            return gamma[0, 0, 0] * (
+                (phi[-1, 0, 0] - 2.0 * phi[0, 0, 0] + phi[1, 0, 0]) / (dx * dx)
+            )
+
+        core = numba.stencil(core_def)
+
+        ib, jb, kb = origin[0] - 1, origin[1], origin[2]
+        ie, je, ke = ib + domain[0] + 2, jb + domain[1], kb + domain[2]
+        core(
+            in_phi[ib:ie, jb:je, kb:ke],
+            in_gamma[ib:ie, jb:je, kb:ke],
+            dx,
+            out=out_phi[ib:ie, jb:je, kb:ke],
+        )
+
 
 @register(name="second_order_1dy")
 class SecondOrder1DY(HorizontalDiffusion):
@@ -295,3 +360,24 @@ class SecondOrder1DY(HorizontalDiffusion):
                 * (in_phi[0, -1, 0] - 2.0 * in_phi[0, 0, 0] + in_phi[0, 1, 0])
                 / (dy * dy)
             )
+
+    @staticmethod
+    @stencil_definition(backend="numba:cpu", stencil="diffusion")
+    def _stencil_numba_cpu(
+        in_phi, in_gamma, out_phi, *, dx=0.0, dy, origin, domain
+    ):
+        def core_def(phi, gamma, dy):
+            return gamma[0, 0, 0] * (
+                (phi[0, -1, 0] - 2.0 * phi[0, 0, 0] + phi[0, 1, 0]) / (dy * dy)
+            )
+
+        core = numba.stencil(core_def)
+
+        ib, jb, kb = origin[0], origin[1] - 1, origin[2]
+        ie, je, ke = ib + domain[0], jb + domain[1] + 2, kb + domain[2]
+        core(
+            in_phi[ib:ie, jb:je, kb:ke],
+            in_gamma[ib:ie, jb:je, kb:ke],
+            dy,
+            out=out_phi[ib:ie, jb:je, kb:ke],
+        )

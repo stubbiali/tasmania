@@ -20,9 +20,16 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import numpy as np
-from typing import Any, Mapping, Sequence, Type
+from typing import Any, Mapping, Sequence, TYPE_CHECKING, Type, Union
+
+if TYPE_CHECKING:
+    import sympl
+
+    from tasmania.python.framework.concurrent_coupling import (
+        ConcurrentCoupling,
+    )
 
 
 @dataclass
@@ -30,15 +37,24 @@ class BackendOptions:
     # gt4py
     backend_opts: Mapping[str, Any] = None
     build_info: Mapping[str, Any] = None
-    dtypes: Mapping[str, Type] = None
+    dtypes: Mapping[str, Type] = field(default_factory=dict)
     exec_info: Mapping[str, Any] = None
-    externals: Mapping[str, Any] = None
+    externals: Mapping[str, Any] = field(default_factory=dict)
     rebuild: bool = False
     validate_args: bool = False
     verbose: bool = True
 
     # numba
+    cache: bool = True
+    check_rebuild: bool = True
+    fastmath: bool = False
+    inline: str = "always"
+    nopython: bool = True
     parallel: bool = True
+
+    # numba-gpu
+    blockspergrid: Sequence[int] = None
+    threadsperblock: Sequence[int] = None
 
 
 @dataclass

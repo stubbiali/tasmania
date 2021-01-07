@@ -20,6 +20,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+import numba
 import numpy as np
 
 from gt4py import gtscript
@@ -28,7 +29,7 @@ from tasmania.python.framework.stencil import stencil_definition
 
 
 @stencil_definition.register(backend=("numpy", "cupy"), stencil="irelax")
-def irelax_numpy(in_gamma, in_phi_ref, inout_phi, *, origin, domain, **kwargs):
+def irelax_numpy(in_gamma, in_phi_ref, inout_phi, *, origin, domain):
     idx = tuple(slice(o, o + d) for o, d in zip(origin, domain))
     inout_phi[idx] = np.where(
         in_gamma[idx] == 0.0,
@@ -57,10 +58,50 @@ def irelax_gt4py(
             inout_phi = inout_phi - in_gamma * (inout_phi - in_phi_ref)
 
 
+# @stencil_definition.register(backend="numba:cpu", stencil="irelax")
+# def irelax_numba_cpu(in_gamma, in_phi_ref, inout_phi, *, origin, domain):
+#     ib, jb, kb = origin
+#     ie, je, ke = ib + domain[0], jb + domain[1], kb + domain[2]
+#
+#     for i in numba.prange(ib, ie):
+#         for j in numba.prange(jb, je):
+#             for k in numba.prange(kb, ke):
+#                 if in_gamma[i, j, k] == 0.0:
+#                     inout_phi[i, j, k] = inout_phi[i, j, k]
+#                 elif in_gamma == 1.0:
+#                     inout_phi[i, j, k] = in_phi_ref[i, j, k]
+#                 else:
+#                     inout_phi[i, j, k] -= in_gamma[i, j, k] * (
+#                         inout_phi[i, j, k] - in_phi_ref[i, j, k]
+#                     )
+
+
+@stencil_definition.register(backend="numba:cpu", stencil="irelax")
+def irelax_numba_cpu(in_gamma, in_phi_ref, inout_phi, *, origin, domain):
+    def core_def(gamma, phi, phi_ref):
+        if gamma[0, 0, 0] == 0.0:
+            return phi[0, 0, 0]
+        elif gamma[0, 0, 0] == 1.0:
+            return phi_ref[0, 0, 0]
+        else:
+            return phi[0, 0, 0] - gamma[0, 0, 0] * (
+                phi[0, 0, 0] - phi_ref[0, 0, 0]
+            )
+
+    core = numba.stencil(core_def)
+
+    ib, jb, kb = origin
+    ie, je, ke = ib + domain[0], jb + domain[1], kb + domain[2]
+    core(
+        in_gamma[ib:ie, jb:je, kb:ke],
+        inout_phi[ib:ie, jb:je, kb:ke],
+        in_phi_ref[ib:ie, jb:je, kb:ke],
+        out=inout_phi[ib:ie, jb:je, kb:ke],
+    )
+
+
 @stencil_definition.register(backend=("numpy", "cupy"), stencil="relax")
-def relax_numpy(
-    in_gamma, in_phi, in_phi_ref, out_phi, *, origin, domain, **kwargs
-):
+def relax_numpy(in_gamma, in_phi, in_phi_ref, out_phi, *, origin, domain):
     idx = tuple(slice(o, o + d) for o, d in zip(origin, domain))
     out_phi[idx] = np.where(
         in_gamma[idx] == 0.0,
@@ -89,9 +130,33 @@ def relax_gt4py(
             out_phi = in_phi - in_gamma * (in_phi - in_phi_ref)
 
 
+@stencil_definition.register(backend="numba:cpu", stencil="relax")
+def relax_numba_cpu(in_gamma, in_phi, in_phi_ref, out_phi, *, origin, domain):
+    def core_def(gamma, phi, phi_ref):
+        if gamma[0, 0, 0] == 0.0:
+            return phi[0, 0, 0]
+        elif gamma[0, 0, 0] == 1.0:
+            return phi_ref[0, 0, 0]
+        else:
+            return phi[0, 0, 0] - gamma[0, 0, 0] * (
+                phi[0, 0, 0] - phi_ref[0, 0, 0]
+            )
+
+    core = numba.stencil(core_def)
+
+    ib, jb, kb = origin
+    ie, je, ke = ib + domain[0], jb + domain[1], kb + domain[2]
+    core(
+        in_gamma[ib:ie, jb:je, kb:ke],
+        in_phi[ib:ie, jb:je, kb:ke],
+        in_phi_ref[ib:ie, jb:je, kb:ke],
+        out=out_phi[ib:ie, jb:je, kb:ke],
+    )
+
+
 @stencil_definition.register(backend=("numpy", "cupy"), stencil="sts_rk2_0")
 def sts_rk2_0_numpy(
-    in_field, in_field_prv, in_tnd, out_field, *, dt, origin, domain, **kwargs
+    in_field, in_field_prv, in_tnd, out_field, *, dt, origin, domain
 ):
     idx = tuple(slice(o, o + d) for o, d in zip(origin, domain))
     out_field[idx] = 0.5 * (
@@ -110,6 +175,28 @@ def sts_rk2_0_gt4py(
 ) -> None:
     with computation(PARALLEL), interval(...):
         out_field = 0.5 * (in_field + in_field_prv + dt * in_tnd)
+
+
+@stencil_definition.register(backend="numba:cpu", stencil="sts_rk2_0")
+def sts_rk2_0_numba_cpu(
+    in_field, in_field_prv, in_tnd, out_field, *, dt, origin, domain
+):
+    def core_def(field, field_prv, field_tnd, dt):
+        return 0.5 * (
+            field[0, 0, 0] + field_prv[0, 0, 0] + dt * field_tnd[0, 0, 0]
+        )
+
+    core = numba.stencil(core_def)
+
+    ib, jb, kb = origin
+    ie, je, ke = ib + domain[0], jb + domain[1], kb + domain[2]
+    core(
+        in_field[ib:ie, jb:je, kb:ke],
+        in_field_prv[ib:ie, jb:je, kb:ke],
+        in_tnd[ib:ie, jb:je, kb:ke],
+        dt,
+        out=out_field[ib:ie, jb:je, kb:ke],
+    )
 
 
 @stencil_definition.register(backend=("numpy", "cupy"), stencil="sts_rk3ws_0")
@@ -133,3 +220,25 @@ def sts_rk3ws_0_gt4py(
 ) -> None:
     with computation(PARALLEL), interval(...):
         out_field = (2.0 * in_field + in_field_prv + dt * in_tnd) / 3.0
+
+
+@stencil_definition.register(backend="numba:cpu", stencil="sts_rk3ws_0")
+def sts_rk3ws_0_numba_cpu(
+    in_field, in_field_prv, in_tnd, out_field, *, dt, origin, domain
+):
+    def core_def(field, field_prv, field_tnd, dt):
+        return (
+            2.0 * field[0, 0, 0] + field_prv[0, 0, 0] + dt * field_tnd[0, 0, 0]
+        ) / 3.0
+
+    core = numba.stencil(core_def)
+
+    ib, jb, kb = origin
+    ie, je, ke = ib + domain[0], jb + domain[1], kb + domain[2]
+    core(
+        in_field[ib:ie, jb:je, kb:ke],
+        in_field_prv[ib:ie, jb:je, kb:ke],
+        in_tnd[ib:ie, jb:je, kb:ke],
+        dt,
+        out=out_field[ib:ie, jb:je, kb:ke],
+    )

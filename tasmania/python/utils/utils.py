@@ -332,6 +332,15 @@ def get_gt_backend(backend):
     return backend[6:]
 
 
+def is_ti(backend):
+    return len(backend) > 7 and backend[:7] == "taichi:"
+
+
+def get_ti_arch(backend):
+    assert is_ti(backend), f"{backend} is not a Taichi backend."
+    return backend[7:]
+
+
 class Timer:
     active: List[str] = []
     roots: List[str] = []

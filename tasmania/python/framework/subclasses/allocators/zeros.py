@@ -21,6 +21,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 import numpy as np
+import taichi as ti
 
 try:
     import cupy as cp
@@ -31,18 +32,18 @@ import gt4py as gt
 
 from tasmania.python.framework.allocators import zeros
 from tasmania.python.framework.options import StorageOptions
-from tasmania.python.utils.utils import get_gt_backend
+from tasmania.python.utils.utils import get_gt_backend, get_ti_arch
 
 
 @zeros.register(backend=("numpy", "numba:cpu"))
 def zeros_numpy(shape, *, storage_options=None):
-    so = storage_options or StorageOptions
+    so = storage_options or StorageOptions()
     return np.zeros(shape, dtype=so.dtype)
 
 
 @zeros.register(backend=("cupy", "numba:gpu"))
 def zeros_cupy(shape, *, storage_options=None):
-    so = storage_options or StorageOptions
+    so = storage_options or StorageOptions()
     return cp.zeros(shape, dtype=so.dtype)
 
 
@@ -50,7 +51,7 @@ def zeros_cupy(shape, *, storage_options=None):
 def zeros_gt4py(shape, *, storage_options=None):
     backend = zeros_gt4py.__tasmania_runtime__["backend"]
     gt_backend = get_gt_backend(backend)
-    so = storage_options or StorageOptions
+    so = storage_options or StorageOptions()
     default_origin = so.default_origin or (0,) * len(shape)
     return gt.storage.zeros(
         gt_backend,
@@ -60,3 +61,11 @@ def zeros_gt4py(shape, *, storage_options=None):
         mask=so.mask,
         managed_memory=so.managed_memory,
     )
+
+
+@zeros.register(backend="taichi:*")
+def zeros_taichi(shape, *, storage_options=None):
+    backend = zeros_taichi.__tasmania_runtime__["backend"]
+    # exec(f"ti.init(arch=ti.{get_ti_arch(backend)})")
+    so = storage_options or StorageOptions()
+    return ti.field(so.dtype, shape=shape)

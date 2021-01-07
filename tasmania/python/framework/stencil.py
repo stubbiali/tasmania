@@ -299,7 +299,7 @@ class StencilFactory(abc.ABC):
         stencil: str = prt.wildcard,
         *,
         shape: Sequence[int],
-        storage_options: Optional[StorageOptions]
+        storage_options: Optional[StorageOptions] = None
     ) -> Any:
         return self._allocate(
             "empty", backend, stencil, shape, storage_options

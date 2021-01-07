@@ -33,6 +33,8 @@ from tasmania.python.framework.stencil import StencilFactory
 from tasmania.python.utils import taz_types
 
 if TYPE_CHECKING:
+    import taichi as ti
+
     from tasmania.python.framework.options import (
         BackendOptions,
         StorageOptions,
@@ -207,8 +209,7 @@ class HorizontalDiffusion(StencilFactory, abc.ABC):
         dx: float,
         dy: float,
         origin: taz_types.triplet_int_t,
-        domain: taz_types.triplet_int_t,
-        **kwargs  # catch-all
+        domain: taz_types.triplet_int_t
     ) -> None:
         pass
 
@@ -222,5 +223,49 @@ class HorizontalDiffusion(StencilFactory, abc.ABC):
         *,
         dx: float,
         dy: float
+    ) -> None:
+        pass
+
+    @staticmethod
+    @stencil_definition(backend="numba:cpu", stencil="diffusion")
+    @abc.abstractmethod
+    def _stencil_numba_cpu(
+        in_phi: np.ndarray,
+        in_gamma: np.ndarray,
+        out_phi: np.ndarray,
+        *,
+        dx: float,
+        dy: float,
+        origin: taz_types.triplet_int_t,
+        domain: taz_types.triplet_int_t
+    ) -> None:
+        pass
+
+    @staticmethod
+    @stencil_definition(backend="numba:cpu", stencil="diffusion")
+    @abc.abstractmethod
+    def _stencil_numba_cpu(
+        in_phi: np.ndarray,
+        in_gamma: np.ndarray,
+        out_phi: np.ndarray,
+        *,
+        dx: float,
+        dy: float,
+        origin: taz_types.triplet_int_t,
+        domain: taz_types.triplet_int_t
+    ) -> None:
+        pass
+
+    @staticmethod
+    @stencil_definition(backend="taichi:*", stencil="diffusion")
+    @abc.abstractmethod
+    def _stencil_taichi(
+        in_phi: "ti.template()",
+        in_gamma: "ti.template()",
+        out_phi: "ti.template()",
+        dx: float,
+        dy: float,
+        origin: taz_types.triplet_int_t,
+        domain: taz_types.triplet_int_t,
     ) -> None:
         pass
