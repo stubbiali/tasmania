@@ -29,13 +29,15 @@ from hypothesis import (
 )
 import pytest
 
+from tasmania.python.framework.allocators import zeros
+from tasmania.python.framework.options import BackendOptions, StorageOptions
 from tasmania.python.isentropic.physics.implicit_vertical_advection import (
     IsentropicImplicitVerticalAdvectionDiagnostic,
 )
 from tasmania.python.isentropic.physics.sts_tendency_stepper import (
     IsentropicVerticalAdvection,
 )
-from tasmania.python.utils.storage_utils import get_dataarray_3d, zeros
+from tasmania.python.utils.storage_utils import get_dataarray_3d
 
 from tests.conf import (
     backend as conf_backend,
@@ -97,8 +99,8 @@ def validation(
     moist,
     toaptoil,
     backend,
-    default_origin,
-    rebuild,
+    backend_options,
+    storage_options,
     state,
     state_prv,
     timestep,
@@ -116,13 +118,15 @@ def validation(
         moist,
         tendency_of_air_potential_temperature_on_interface_levels=toaptoil,
         backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-        rebuild=rebuild,
+        backend_options=backend_options,
         storage_shape=storage_shape,
+        storage_options=storage_options,
     )
     stepper = IsentropicVerticalAdvection(
-        core, backend=backend, dtype=dtype, rebuild=rebuild
+        core,
+        backend=backend,
+        backend_options=backend_options,
+        storage_options=storage_options,
     )
 
     input_names = [
@@ -181,12 +185,7 @@ def validation(
     if toaptoil:
         name = "tendency_of_air_potential_temperature_on_interface_levels"
         w_hl = state[name].to_units("K s^-1").data
-        w = zeros(
-            (nx, ny, nz),
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-        )
+        w = zeros(backend, shape=(nx, ny, nz), storage_options=storage_options)
         w[...] = 0.5 * (w_hl[:nx, :ny, :nz] + w_hl[:nx, :ny, 1 : nz + 1])
     else:
         name = "tendency_of_air_potential_temperature"
@@ -248,36 +247,11 @@ def validation(
     dt = timestep.total_seconds()
     gamma = dt / (4.0 * dz)
 
-    a = zeros(
-        (nx, ny, nz),
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
-    b = zeros(
-        (nx, ny, nz),
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
-    c = zeros(
-        (nx, ny, nz),
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
-    d = zeros(
-        (nx, ny, nz),
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
-    out = zeros(
-        (nx, ny, nz),
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
+    a = zeros(backend, shape=(nx, ny, nz), storage_options=storage_options)
+    b = zeros(backend, shape=(nx, ny, nz), storage_options=storage_options)
+    c = zeros(backend, shape=(nx, ny, nz), storage_options=storage_options)
+    d = zeros(backend, shape=(nx, ny, nz), storage_options=storage_options)
+    out = zeros(backend, shape=(nx, ny, nz), storage_options=storage_options)
 
     setup_tridiagonal_system(gamma, w, s, s_prv, a=a, b=b, c=c, d=d)
     thomas_validation(a, b, c, d, x=out)
@@ -290,16 +264,12 @@ def validation(
     setup_tridiagonal_system(gamma, w, su, su_prv, a=a, b=b, c=c, d=d)
     thomas_validation(a, b, c, d, x=out)
     assert "x_momentum_isentropic" in state_out
-    compare_arrays(
-        out, state_out["x_momentum_isentropic"].data[:nx, :ny, :nz]
-    )
+    compare_arrays(out, state_out["x_momentum_isentropic"].data[:nx, :ny, :nz])
 
     setup_tridiagonal_system(gamma, w, sv, sv_prv, a=a, b=b, c=c, d=d)
     thomas_validation(a, b, c, d, x=out)
     assert "y_momentum_isentropic" in state_out
-    compare_arrays(
-        out, state_out["y_momentum_isentropic"].data[:nx, :ny, :nz]
-    )
+    compare_arrays(out, state_out["y_momentum_isentropic"].data[:nx, :ny, :nz])
 
     if moist:
         setup_tridiagonal_system(gamma, w, sqv, sqv_prv, a=a, b=b, c=c, d=d)
@@ -401,13 +371,16 @@ def test_isentropic_vertical_advection_dry(data, backend, dtype, subtests):
     # ========================================
     # test bed
     # ========================================
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype)
+
     validation(
         domain,
         False,
         False,
         backend,
-        default_origin,
-        False,
+        bo,
+        so,
         state,
         state_prv,
         timestep,
@@ -418,8 +391,8 @@ def test_isentropic_vertical_advection_dry(data, backend, dtype, subtests):
         False,
         True,
         backend,
-        default_origin,
-        False,
+        bo,
+        so,
         state,
         state_prv,
         timestep,
@@ -502,13 +475,16 @@ def test_isentropic_vertical_advection_moist(data, backend, dtype, subtests):
     # ========================================
     # test bed
     # ========================================
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype)
+
     validation(
         domain,
         True,
         False,
         backend,
-        default_origin,
-        False,
+        bo,
+        so,
         state,
         state_prv,
         timestep,
@@ -519,8 +495,8 @@ def test_isentropic_vertical_advection_moist(data, backend, dtype, subtests):
         True,
         True,
         backend,
-        default_origin,
-        False,
+        bo,
+        so,
         state,
         state_prv,
         timestep,

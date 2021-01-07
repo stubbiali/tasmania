@@ -29,8 +29,9 @@ from hypothesis import (
 import pytest
 from sympl import units_are_same
 
+from tasmania.python.framework.options import BackendOptions, StorageOptions
 from tasmania.python.framework.sts_tendency_stepper import STSTendencyStepper
-from tasmania import get_dataarray_dict
+from tasmania.python.utils.storage_utils import get_dataarray_dict
 
 from tests.conf import (
     backend as conf_backend,
@@ -103,6 +104,9 @@ def test(data, backend, dtype, make_fake_tendency_component_1):
     # ========================================
     # test bed
     # ========================================
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype)
+
     tc1 = make_fake_tendency_component_1(domain, "numerical")
 
     rk2 = STSTendencyStepper.factory(
@@ -110,7 +114,8 @@ def test(data, backend, dtype, make_fake_tendency_component_1):
         tc1,
         execution_policy="serial",
         backend=backend_ts,
-        dtype=dtype,
+        backend_options=bo,
+        storage_options=so,
     )
 
     assert "air_isentropic_density" in rk2.output_properties
@@ -267,6 +272,9 @@ def test_hb(data, backend, dtype, make_fake_tendency_component_1):
     # ========================================
     # test bed
     # ========================================
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype)
+
     tc1 = make_fake_tendency_component_1(domain, "numerical")
 
     rk2 = STSTendencyStepper.factory(
@@ -275,7 +283,8 @@ def test_hb(data, backend, dtype, make_fake_tendency_component_1):
         execution_policy="serial",
         enforce_horizontal_boundary=True,
         backend=backend_ts,
-        dtype=dtype,
+        backend_options=bo,
+        storage_options=so,
     )
 
     out_diagnostics, out_state = rk2(state, prv_state, dt)

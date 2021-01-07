@@ -20,8 +20,6 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-import numpy as np
-
 from tasmania.python.framework.register import register
 from tasmania.python.framework.tendency_stepper import TendencyStepper
 from tasmania.python.utils.framework_utils import get_increment
@@ -37,10 +35,8 @@ class ForwardEuler(TendencyStepper):
         execution_policy="serial",
         enforce_horizontal_boundary=False,
         backend="numpy",
-        backend_opts=None,
-        dtype=np.float64,
-        build_info=None,
-        rebuild=False,
+        backend_options=None,
+        storage_options=None,
         **kwargs
     ):
         super().__init__(
@@ -48,10 +44,8 @@ class ForwardEuler(TendencyStepper):
             execution_policy=execution_policy,
             enforce_horizontal_boundary=enforce_horizontal_boundary,
             backend=backend,
-            backend_opts=backend_opts,
-            dtype=dtype,
-            build_info=build_info,
-            rebuild=rebuild
+            backend_options=backend_options,
+            storage_options=storage_options
         )
 
     def _call(self, state, timestep):

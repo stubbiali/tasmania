@@ -29,6 +29,7 @@ from hypothesis import (
 import pytest
 from sympl import units_are_same
 
+from tasmania.python.framework.options import BackendOptions, StorageOptions
 from tasmania.python.framework.sts_tendency_stepper import STSTendencyStepper
 
 from tests.conf import (
@@ -101,6 +102,9 @@ def test(data, backend, dtype, make_fake_tendency_component_1):
     # ========================================
     # test bed
     # ========================================
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype)
+
     tc1 = make_fake_tendency_component_1(domain, "numerical")
 
     fe = STSTendencyStepper.factory(
@@ -108,7 +112,8 @@ def test(data, backend, dtype, make_fake_tendency_component_1):
         tc1,
         execution_policy="serial",
         backend=backend_ts,
-        dtype=dtype,
+        backend_options=bo,
+        storage_options=so,
     )
 
     assert "air_isentropic_density" in fe.provisional_input_properties
@@ -193,8 +198,7 @@ def test_hb(data, backend, dtype, make_fake_tendency_component_1):
     same_shape = data.draw(hyp_st.booleans(), label="same_shape")
 
     domain = data.draw(
-        st_domain(backend=backend, dtype=dtype),
-        label="domain",
+        st_domain(backend=backend, dtype=dtype), label="domain",
     )
     cgrid = domain.numerical_grid
     dnx = data.draw(hyp_st.integers(min_value=0, max_value=3), label="dnx")
@@ -237,6 +241,9 @@ def test_hb(data, backend, dtype, make_fake_tendency_component_1):
     # ========================================
     # test bed
     # ========================================
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype)
+
     tc1 = make_fake_tendency_component_1(domain, "numerical")
 
     fe = STSTendencyStepper.factory(
@@ -245,7 +252,8 @@ def test_hb(data, backend, dtype, make_fake_tendency_component_1):
         execution_policy="serial",
         enforce_horizontal_boundary=True,
         backend=backend_ts,
-        dtype=dtype,
+        backend_options=bo,
+        storage_options=so,
     )
 
     out_diagnostics, out_state = fe(state, prv_state, dt)

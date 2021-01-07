@@ -34,7 +34,7 @@ from sympl._core.base_components import (
     OutputChecker,
 )
 from sympl._core.units import clean_units
-from typing import Optional, Tuple
+from typing import Optional, TYPE_CHECKING, Tuple
 
 from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
 from tasmania.python.framework.fakes import FakeComponent
@@ -44,6 +44,12 @@ from tasmania.python.utils.dict_utils import DataArrayDictOperator
 from tasmania.python.utils.framework_utils import check_property_compatibility
 from tasmania.python.utils.storage_utils import deepcopy_dataarray
 from tasmania.python.utils.utils import assert_sequence
+
+if TYPE_CHECKING:
+    from tasmania.python.framework.options import (
+        BackendOptions,
+        StorageOptions,
+    )
 
 
 class STSTendencyStepper(abc.ABC):
@@ -69,10 +75,8 @@ class STSTendencyStepper(abc.ABC):
         execution_policy: str = "serial",
         enforce_horizontal_boundary: bool = False,
         backend: str = "numpy",
-        backend_opts: Optional[taz_types.options_dict_t] = None,
-        dtype: taz_types.dtype_t = np.float64,
-        build_info: Optional[taz_types.options_dict_t] = None,
-        rebuild: bool = False
+        backend_options: Optional["BackendOptions"] = None,
+        storage_options: Optional["StorageOptions"] = None
     ) -> None:
         """
         Parameters
@@ -102,16 +106,10 @@ class STSTendencyStepper(abc.ABC):
 
         backend : `str`, optional
             The backend.
-        backend_opts : `dict`, optional
-            Dictionary of backend-specific options.
-        build_info : `dict`, optional
-            Dictionary of building options.
-        dtype : `data-type`, optional
-            Data type of the storages.
-        rebuild : `bool`, optional
-            ``True`` to trigger the stencils compilation at any class
-            instantiation, ``False`` to rely on the caching mechanism
-            implemented by the backend.
+        backend_options : `BackendOptions`, optional
+            Backend-specific options.
+        storage_options : `StorageOptions`, optional
+            Storage-related options.
         """
         assert_sequence(args, reftype=self.__class__.allowed_component_type)
 
@@ -164,10 +162,8 @@ class STSTendencyStepper(abc.ABC):
 
         self._dict_op = DataArrayDictOperator(
             backend=backend,
-            backend_opts=backend_opts,
-            build_info=build_info,
-            dtype=dtype,
-            rebuild=rebuild,
+            backend_options=backend_options,
+            storage_options=storage_options,
         )
 
         self._out_state = None
@@ -310,10 +306,8 @@ class STSTendencyStepper(abc.ABC):
         execution_policy: str = "serial",
         enforce_horizontal_boundary: bool = False,
         backend: str = "numpy",
-        backend_opts: Optional[taz_types.options_dict_t] = None,
-        dtype: taz_types.dtype_t = np.float64,
-        build_info: Optional[taz_types.options_dict_t] = None,
-        rebuild: bool = False,
+        backend_options: Optional["BackendOptions"] = None,
+        storage_options: Optional["StorageOptions"] = None,
         **kwargs
     ) -> "STSTendencyStepper":
         """Get an instance of the desired derived class.
@@ -347,16 +341,10 @@ class STSTendencyStepper(abc.ABC):
 
         backend : `str`, optional
             The backend.
-        backend_opts : `dict`, optional
-            Dictionary of backend-specific options.
-        build_info : `dict`, optional
-            Dictionary of building options.
-        dtype : `data-type`, optional
-            Data type of the storages.
-        rebuild : `bool`, optional
-            ``True`` to trigger the stencils compilation at any class
-            instantiation, ``False`` to rely on the caching mechanism
-            implemented by the backend.
+        backend_options : `BackendOptions`, optional
+            Backend-specific options.
+        storage_options : `StorageOptions`, optional
+            Storage-related options.
         **kwargs :
             Scheme-specific arguments.
 
@@ -369,10 +357,8 @@ class STSTendencyStepper(abc.ABC):
             "execution_policy": execution_policy,
             "enforce_horizontal_boundary": enforce_horizontal_boundary,
             "backend": backend,
-            "backend_opts": backend_opts,
-            "dtype": dtype,
-            "build_info": build_info,
-            "rebuild": rebuild,
+            "backend_options": backend_options,
+            "storage_options": storage_options,
         }
         child_kwargs.update(kwargs)
         return factorize(scheme, STSTendencyStepper, args, child_kwargs)

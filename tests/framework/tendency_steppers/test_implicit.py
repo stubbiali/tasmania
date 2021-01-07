@@ -28,6 +28,7 @@ from hypothesis import (
 )
 import pytest
 
+from tasmania.python.framework.options import BackendOptions, StorageOptions
 from tasmania.python.framework.tendency_stepper import TendencyStepper
 from tasmania.python.isentropic.physics.implicit_vertical_advection import (
     IsentropicImplicitVerticalAdvectionDiagnostic,
@@ -107,14 +108,17 @@ def test(data, backend, dtype, subtests):
     # ========================================
     # test bed
     # ========================================
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype)
+
     iva = IsentropicImplicitVerticalAdvectionDiagnostic(
         domain,
         moist=True,
         tendency_of_air_potential_temperature_on_interface_levels=False,
         backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
+        backend_options=bo,
         storage_shape=storage_shape,
+        storage_options=so,
     )
 
     imp = TendencyStepper.factory(
@@ -122,7 +126,8 @@ def test(data, backend, dtype, subtests):
         iva,
         execution_policy="serial",
         backend=backend,
-        dtype=dtype,
+        backend_options=bo,
+        storage_options=so,
     )
 
     assert imp.input_properties == iva.input_properties
@@ -135,9 +140,9 @@ def test(data, backend, dtype, subtests):
         moist=True,
         tendency_of_air_potential_temperature_on_interface_levels=False,
         backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
+        backend_options=bo,
         storage_shape=storage_shape,
+        storage_options=so,
     )
     _, diagnostics_val = iva_val(state, dt)
 

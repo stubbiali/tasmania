@@ -30,6 +30,7 @@ from hypothesis import (
 import pytest
 from sympl import units_are_same
 
+from tasmania.python.framework.options import BackendOptions, StorageOptions
 from tasmania.python.framework.tendency_stepper import TendencyStepper
 from tasmania.python.utils.storage_utils import get_dataarray_dict
 
@@ -93,6 +94,9 @@ def test(data, backend, dtype, make_fake_tendency_component_1):
     # ========================================
     # test bed
     # ========================================
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype)
+
     tc1 = make_fake_tendency_component_1(domain, "numerical")
 
     rk3 = TendencyStepper.factory(
@@ -100,7 +104,8 @@ def test(data, backend, dtype, make_fake_tendency_component_1):
         tc1,
         execution_policy="serial",
         backend=backend_ts,
-        dtype=dtype,
+        backend_options=bo,
+        storage_options=so,
     )
 
     assert "air_isentropic_density" in rk3.output_properties
@@ -230,8 +235,7 @@ def test_hb(data, backend, dtype, make_fake_tendency_component_1):
     same_shape = data.draw(hyp_st.booleans(), label="same_shape")
 
     domain = data.draw(
-        st_domain(backend=backend, dtype=dtype),
-        label="domain",
+        st_domain(backend=backend, dtype=dtype), label="domain",
     )
     hb = domain.horizontal_boundary
 
@@ -265,6 +269,9 @@ def test_hb(data, backend, dtype, make_fake_tendency_component_1):
     # ========================================
     # test bed
     # ========================================
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype)
+
     tc1 = make_fake_tendency_component_1(domain, "numerical")
 
     rk3 = TendencyStepper.factory(
@@ -273,7 +280,8 @@ def test_hb(data, backend, dtype, make_fake_tendency_component_1):
         execution_policy="serial",
         enforce_horizontal_boundary=True,
         backend=backend_ts,
-        dtype=dtype,
+        backend_options=bo,
+        storage_options=so,
     )
 
     assert "air_isentropic_density" in rk3.output_properties

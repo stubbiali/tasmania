@@ -25,13 +25,15 @@ from typing import Optional, Tuple, Union
 
 from gt4py import gtscript
 
+from tasmania.python.framework.stencil import StencilFactory
 from tasmania.python.framework.sts_tendency_stepper import STSTendencyStepper
+from tasmania.python.framework.tag import stencil_definition
 from tasmania.python.isentropic.physics.implicit_vertical_advection import (
     IsentropicImplicitVerticalAdvectionDiagnostic,
 )
 from tasmania.python.utils import taz_types
 from tasmania.python.framework.register import register
-from tasmania.python.utils.utils import get_gt_backend, is_gt, thomas_numpy
+from tasmania.python.utils.utils import thomas_numpy
 
 
 mfwv = "mass_fraction_of_water_vapor_in_air"
@@ -95,7 +97,7 @@ def setup_tridiagonal_system_bc(
 
 
 @register(name="isentropic_vertical_advection")
-class IsentropicVerticalAdvection(STSTendencyStepper):
+class IsentropicVerticalAdvection(STSTendencyStepper, StencilFactory):
     """Couple the Crank-Nicholson integrator with centered finite differences
     in space to discretize the vertical advection in the isentropic model."""
 
@@ -105,10 +107,8 @@ class IsentropicVerticalAdvection(STSTendencyStepper):
         execution_policy="serial",
         enforce_horizontal_boundary=False,
         backend="numpy",
-        backend_opts=None,
-        dtype=np.float64,
-        build_info=None,
-        rebuild=False,
+        backend_options=None,
+        storage_options=None,
         **kwargs
     ):
         core = None
@@ -127,10 +127,11 @@ class IsentropicVerticalAdvection(STSTendencyStepper):
             execution_policy=execution_policy,
             enforce_horizontal_boundary=enforce_horizontal_boundary,
             backend=backend,
-            backend_opts=backend_opts,
-            dtype=dtype,
-            build_info=build_info,
-            rebuild=rebuild,
+            backend_options=backend_options,
+            storage_options=storage_options,
+        )
+        super(STSTendencyStepper, self).__init__(
+            backend, backend_options, storage_options
         )
 
         # overwrite properties
@@ -158,25 +159,16 @@ class IsentropicVerticalAdvection(STSTendencyStepper):
         self._nz = core.grid.nz
         self._dz = core.grid.dz.to_units("K").values.item()
 
-        if is_gt(backend):
-            # instantiate stencil object
-            externals = {
-                "moist": self._moist,
-                "vstaggering": self._stgz,
-                "setup_tridiagonal_system": setup_tridiagonal_system,
-                "setup_tridiagonal_system_bc": setup_tridiagonal_system_bc,
-            }
-            self._stencil = gtscript.stencil(
-                definition=self._stencil_gt_defs,
-                backend=get_gt_backend(backend),
-                build_info=build_info,
-                dtypes={"dtype": dtype},
-                externals=externals,
-                rebuild=rebuild,
-                **(backend_opts or {})
-            )
-        else:
-            self._stencil = self._stencil_numpy
+        # instantiate stencil object
+        dtype = self.storage_options.dtype
+        self.backend_options.dtypes = {"dtype": dtype}
+        self.backend_options.externals = {
+            "moist": self._moist,
+            "vstaggering": self._stgz,
+            "setup_tridiagonal_system": setup_tridiagonal_system,
+            "setup_tridiagonal_system_bc": setup_tridiagonal_system_bc,
+        }
+        self._stencil = self.compile("stencil")
 
     def _call(self, state, prv_state, timestep):
         # initialize the output state
@@ -274,6 +266,7 @@ class IsentropicVerticalAdvection(STSTendencyStepper):
 
         return {}, out_state
 
+    @stencil_definition(backend=("numpy", "cupy"), stencil="stencil")
     def _stencil_numpy(
         self,
         in_w: np.ndarray,
@@ -299,7 +292,6 @@ class IsentropicVerticalAdvection(STSTendencyStepper):
         gamma: float,
         origin: taz_types.triplet_int_t,
         domain: taz_types.triplet_int_t,
-        **kwargs  # catch-all
     ) -> None:
         i = slice(origin[0], origin[0] + domain[0])
         j = slice(origin[1], origin[1] + domain[1])
@@ -498,7 +490,8 @@ class IsentropicVerticalAdvection(STSTendencyStepper):
             )
 
     @staticmethod
-    def _stencil_gt_defs(
+    @stencil_definition(backend="gt4py:*", stencil="stencil")
+    def _stencil_gt4py(
         in_w: gtscript.Field["dtype"],
         in_s: gtscript.Field["dtype"],
         in_s_prv: gtscript.Field["dtype"],
