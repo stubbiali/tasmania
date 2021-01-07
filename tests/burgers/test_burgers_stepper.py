@@ -28,12 +28,12 @@ from hypothesis import (
 )
 import pytest
 
-from tasmania.python.burgers.dynamics.stepper import (
-    BurgersStepper,
+from tasmania.python.burgers.dynamics.stepper import BurgersStepper
+from tasmania.python.burgers.dynamics.subclasses.stepper.forward_euler import (
     ForwardEuler,
-    RK2,
-    RK3WS,
 )
+from tasmania.python.burgers.dynamics.subclasses.stepper.rk2 import RK2
+from tasmania.python.burgers.dynamics.subclasses.stepper.rk3ws import RK3WS
 from tasmania.python.framework.options import BackendOptions, StorageOptions
 from tasmania.python.utils.storage_utils import deepcopy_array_dict
 
@@ -234,7 +234,9 @@ def test_rk2(data, backend, dtype):
     # ========================================
     # test
     # ========================================
-    bo = BackendOptions(rebuild=False)
+    bo = BackendOptions(
+        cache=True, nopython=True, parallel=True, rebuild=False
+    )
     so = StorageOptions(dtype=dtype, default_origin=default_origin)
 
     bs = BurgersStepper.factory(

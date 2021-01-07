@@ -21,6 +21,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 from copy import deepcopy
+from datetime import datetime
 from hypothesis import (
     given,
     reproduce_failure,
@@ -28,14 +29,18 @@ from hypothesis import (
 )
 import numpy as np
 import pytest
+import sympl
 
 from gt4py import gtscript
 from gt4py.gtscript import PARALLEL, computation, interval
 
 from tasmania.python.burgers.dynamics.advection import BurgersAdvection
+from tasmania.python.burgers.state import ZhaoStateFactory
+from tasmania.python.domain.grid import PhysicalGrid
 from tasmania.python.framework.allocators import zeros
-from tasmania.python.framework.options import StorageOptions
-from tasmania.python.utils.utils import get_gt_backend, is_gt
+from tasmania.python.framework.options import BackendOptions, StorageOptions
+from tasmania.python.framework.stencil import StencilFactory
+from tasmania.python.framework.tag import stencil_definition
 
 from tests.conf import (
     backend as conf_backend,
@@ -46,20 +51,20 @@ from tests.strategies import st_burgers_state, st_one_of, st_physical_grid
 from tests.utilities import compare_arrays, hyp_settings
 
 
-class WrappingStencil:
-    def __init__(self, advection, backend, dtype):
-        self.nb = advection.extent
-        decorator = gtscript.stencil(
-            backend,
-            rebuild=False,
-            dtypes={"dtype": dtype},
-            externals={"call_func": advection.stencil_subroutine("advection")},
-        )
-        self.stencil = decorator(self.stencil_defs)
+class WrappingStencil(StencilFactory):
+    def __init__(self, advection, backend, backend_options, storage_options):
+        super().__init__(backend, backend_options, storage_options)
+        self.core = advection
+        dtype = self.storage_options.dtype
+        self.backend_options.dtypes = {"dtype": dtype}
+        self.backend_options.externals = {
+            "call_func": self.core.stencil_subroutine("advection")
+        }
+        self.stencil = self.compile("stencil")
 
     def __call__(self, dx, dy, u, v, adv_u_x, adv_u_y, adv_v_x, adv_v_y):
         mi, mj, mk = u.shape
-        nb = self.nb
+        nb = self.core.extent
         self.stencil(
             in_u=u,
             in_v=v,
@@ -71,10 +76,38 @@ class WrappingStencil:
             dy=dy,
             origin=(nb, nb, 0),
             domain=(mi - 2 * nb, mj - 2 * nb, mk),
+            validate_args=self.backend_options.validate_args,
         )
 
     @staticmethod
-    def stencil_defs(
+    @stencil_definition(backend="numpy", stencil="stencil")
+    def stencil_numpy(
+        in_u,
+        in_v,
+        out_adv_u_x,
+        out_adv_u_y,
+        out_adv_v_x,
+        out_adv_v_y,
+        *,
+        dx,
+        dy,
+        origin,
+        domain
+    ):
+        ib, jb, kb = origin
+        ie, je, ke = [ib + domain[0], jb + domain[1], kb + domain[2]]
+        idx = (slice(ib, ie), slice(jb, je), slice(kb, ke))
+
+        (
+            out_adv_u_x[idx],
+            out_adv_u_y[idx],
+            out_adv_v_x[idx],
+            out_adv_v_y[idx],
+        ) = call_func(dx=dx, dy=dy, u=in_u, v=in_v)
+
+    @staticmethod
+    @stencil_definition(backend="gt4py*", stencil="stencil")
+    def stencil_gt4py(
         in_u: gtscript.Field["dtype"],
         in_v: gtscript.Field["dtype"],
         out_adv_u_x: gtscript.Field["dtype"],
@@ -91,6 +124,26 @@ class WrappingStencil:
             out_adv_u_x, out_adv_u_y, out_adv_v_x, out_adv_v_y = call_func(
                 dx=dx, dy=dy, u=in_u, v=in_v
             )
+
+    @staticmethod
+    @stencil_definition(backend="numba:cpu", stencil="stencil")
+    def stencil_numba(
+        in_u,
+        in_v,
+        out_adv_u_x,
+        out_adv_u_y,
+        out_adv_v_x,
+        out_adv_v_y,
+        *,
+        dx,
+        dy
+    ):
+        (
+            out_adv_u_x[...],
+            out_adv_u_y[...],
+            out_adv_v_x[...],
+            out_adv_v_y[...],
+        ) = call_func(dx=dx, dy=dy, u=in_u, v=in_v)
 
 
 def first_order_advection(dx, dy, u, v, phi):
@@ -259,6 +312,7 @@ def test(data, order, backend, dtype):
     # ========================================
     # test bed
     # ========================================
+    bo = BackendOptions(cache=True, nopython=True, rebuild=False)
     so = StorageOptions(dtype=dtype, default_origin=default_origin)
 
     dx = grid.grid_xy.dx.to_units("m").values.item()
@@ -272,16 +326,8 @@ def test(data, order, backend, dtype):
     adv_v_x = zeros(backend, shape=grid_shape, storage_options=so)
     adv_v_y = zeros(backend, shape=grid_shape, storage_options=so)
 
-    if is_gt(backend):
-        ws = WrappingStencil(advection, get_gt_backend(backend), dtype)
-        ws(dx, dy, u, v, adv_u_x, adv_u_y, adv_v_x, adv_v_y)
-    else:
-        (
-            adv_u_x[nb:-nb, nb:-nb],
-            adv_u_y[nb:-nb, nb:-nb],
-            adv_v_x[nb:-nb, nb:-nb],
-            adv_v_y[nb:-nb, nb:-nb],
-        ) = advection.stencil_subroutine("advection")(dx, dy, u, v)
+    ws = WrappingStencil(advection, backend, bo, so)
+    ws(dx, dy, u, v, adv_u_x, adv_u_y, adv_v_x, adv_v_y)
 
     adv_u_x_val, adv_u_y_val = validation_functions[order](dx, dy, u, v, u)
     adv_v_x_val, adv_v_y_val = validation_functions[order](dx, dy, u, v, v)
@@ -292,5 +338,49 @@ def test(data, order, backend, dtype):
     compare_arrays(adv_v_y[nb:-nb, nb:-nb], adv_v_y_val[nb:-nb, nb:-nb])
 
 
+def _test_performance(order, backend, dtype):
+    # ========================================
+    # random data generation
+    # ========================================
+    nx = ny = 1024
+    nz = 1
+
+    domain_x = sympl.DataArray([-10, 10], dims="x", attrs={"units": "m"})
+    domain_y = sympl.DataArray([-10, 10], dims="y", attrs={"units": "m"})
+    domain_z = sympl.DataArray([-10, 10], dims="z", attrs={"units": "m"})
+    grid = PhysicalGrid(domain_x, nx, domain_y, ny, domain_z, nz, dtype=dtype)
+
+    so = StorageOptions(dtype=dtype)
+    zsf = ZhaoStateFactory(
+        datetime(year=1992, month=2, day=20),
+        sympl.DataArray(1.0, attrs={"units": "m^2 s^-1"}),
+        backend=backend,
+        storage_options=so,
+    )
+    state = zsf(datetime(year=1992, month=2, day=20), grid)
+
+    # ========================================
+    # test bed
+    # ========================================
+    bo = BackendOptions(check_rebuild=False, inline="always")
+
+    dx = grid.grid_xy.dx.to_units("m").values.item()
+    dy = grid.grid_xy.dy.to_units("m").values.item()
+    u = state["x_velocity"].to_units("m s^-1").data
+    v = state["y_velocity"].to_units("m s^-1").data
+
+    grid_shape = u.shape
+    adv_u_x = zeros(backend, shape=grid_shape, storage_options=so)
+    adv_u_y = zeros(backend, shape=grid_shape, storage_options=so)
+    adv_v_x = zeros(backend, shape=grid_shape, storage_options=so)
+    adv_v_y = zeros(backend, shape=grid_shape, storage_options=so)
+
+    advection = BurgersAdvection.factory(order, backend)
+    ws = WrappingStencil(advection, backend, bo, so)
+    for _ in range(100):
+        ws(dx, dy, u, v, adv_u_x, adv_u_y, adv_v_x, adv_v_y)
+
+
 if __name__ == "__main__":
     pytest.main([__file__])
+    # _test_performance("fifth_order", "numba:cpu", float)
