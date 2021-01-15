@@ -25,10 +25,10 @@ from typing import Callable
 from gt4py import gtscript
 from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval
 
-from tasmania.python.utils import taz_types
+from tasmania.python.utils import typing
 
 
-def set_annotations(func_handle: Callable, dtype: taz_types.dtype_t) -> Callable:
+def set_annotations(func_handle: Callable, dtype: typing.dtype_t) -> Callable:
     annotations = getattr(func_handle, "__annotations__", {})
     for arg in annotations:
         if isinstance(annotations[arg], gtscript._FieldDescriptor):
@@ -37,17 +37,17 @@ def set_annotations(func_handle: Callable, dtype: taz_types.dtype_t) -> Callable
 
 
 @gtscript.function
-def absolute(phi: taz_types.gtfield_t) -> taz_types.gtfield_t:
+def absolute(phi: typing.gtfield_t) -> typing.gtfield_t:
     return phi if phi > 0 else -phi
 
 
 @gtscript.function
-def positive(phi: taz_types.gtfield_t) -> taz_types.gtfield_t:
+def positive(phi: typing.gtfield_t) -> typing.gtfield_t:
     return phi if phi > 0 else 0
 
 
 @gtscript.function
-def negative(phi: taz_types.gtfield_t) -> taz_types.gtfield_t:
+def negative(phi: typing.gtfield_t) -> typing.gtfield_t:
     return -phi if phi < 0 else 0
 
 
@@ -216,7 +216,11 @@ def stencil_thomas_defs(
         beta = b[0, 0, 0]
         delta = d[0, 0, 0]
     with computation(FORWARD), interval(1, None):
-        w = a[0, 0, 0] / beta[0, 0, -1] if beta[0, 0, -1] != 0.0 else a[0, 0, 0]
+        w = (
+            a[0, 0, 0] / beta[0, 0, -1]
+            if beta[0, 0, -1] != 0.0
+            else a[0, 0, 0]
+        )
         beta = b[0, 0, 0] - w[0, 0, 0] * c[0, 0, -1]
         delta = d[0, 0, 0] - w[0, 0, 0] * delta[0, 0, -1]
 

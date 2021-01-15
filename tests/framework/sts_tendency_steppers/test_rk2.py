@@ -31,7 +31,7 @@ from sympl import units_are_same
 
 from tasmania.python.framework.options import BackendOptions, StorageOptions
 from tasmania.python.framework.sts_tendency_stepper import STSTendencyStepper
-from tasmania.python.utils.storage_utils import get_dataarray_dict
+from tasmania.python.utils.storage import get_dataarray_dict
 
 from tests.conf import (
     backend as conf_backend,

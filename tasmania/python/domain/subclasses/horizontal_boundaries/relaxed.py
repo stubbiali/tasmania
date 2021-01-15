@@ -34,7 +34,7 @@ from tasmania.python.domain.subclasses.horizontal_boundaries.utils import (
     shrink_axis,
 )
 from tasmania.python.framework.register import register
-from tasmania.python.utils.utils import is_gt
+from tasmania.python.utils.backend import is_gt
 
 
 class Relaxed(HorizontalBoundary):

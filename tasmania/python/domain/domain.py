@@ -27,7 +27,7 @@ from typing import Any, Dict, Optional, Sequence
 from tasmania.python.domain.horizontal_boundary import HorizontalBoundary
 from tasmania.python.domain.grid import PhysicalGrid, NumericalGrid
 from tasmania.python.framework.options import BackendOptions, StorageOptions
-from tasmania.python.utils import taz_types
+from tasmania.python.utils import typing
 
 
 class Domain:
@@ -206,7 +206,7 @@ class Domain:
 
         return self._hb
 
-    def update_topography(self, time: taz_types.datetime_t) -> None:
+    def update_topography(self, time: typing.datetime_t) -> None:
         """Update the (time-dependent) :class:`~tasmania.Topography`.
 
         Parameters

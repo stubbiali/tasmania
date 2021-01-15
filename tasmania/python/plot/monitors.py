@@ -33,7 +33,7 @@ from tasmania.python.plot.plot_utils import (
     set_figure_properties,
 )
 from tasmania.python.plot.utils import assert_sequence
-from tasmania.python.utils import taz_types
+from tasmania.python.utils import typing
 
 
 SequenceType = (tuple, list)
@@ -41,10 +41,10 @@ SequenceType = (tuple, list)
 
 def get_time(
     states: Union[
-        Sequence[taz_types.dataarray_dict_t],
-        Sequence[Sequence[taz_types.dataarray_dict_t]],
+        Sequence[typing.dataarray_dict_t],
+        Sequence[Sequence[typing.dataarray_dict_t]],
     ]
-) -> taz_types.datetime_t:
+) -> typing.datetime_t:
     for level0 in states:
         if isinstance(level0, dict):  # level0 is a state dictionary
             if "time" in level0:
@@ -88,9 +88,9 @@ class Plot(Monitor):
         *drawers: Drawer,
         interactive: bool = True,
         print_time: Optional[str] = None,
-        init_time: Optional[taz_types.datetime_t] = None,
-        figure_properties: Optional[taz_types.options_dict_t] = None,
-        axes_properties: Optional[taz_types.options_dict_t] = None
+        init_time: Optional[typing.datetime_t] = None,
+        figure_properties: Optional[typing.options_dict_t] = None,
+        axes_properties: Optional[typing.options_dict_t] = None
     ) -> None:
         """
         Parameters
@@ -132,8 +132,12 @@ class Plot(Monitor):
         self._ptime = print_time
         self._itime = init_time
 
-        self.figure_properties = {} if figure_properties is None else figure_properties
-        self.axes_properties = {} if axes_properties is None else axes_properties
+        self.figure_properties = (
+            {} if figure_properties is None else figure_properties
+        )
+        self.axes_properties = (
+            {} if axes_properties is None else axes_properties
+        )
 
         self._figure = None
 
@@ -160,7 +164,7 @@ class Plot(Monitor):
 
     def store(
         self,
-        *states: taz_types.dataarray_dict_t,
+        *states: typing.dataarray_dict_t,
         fig: Optional[plt.Figure] = None,
         ax: Optional[plt.Axes] = None,
         save_dest: Optional[str] = None,
@@ -283,7 +287,9 @@ class Plot(Monitor):
             plt.ioff()
             rcParams["font.size"] = fontsize
             self._figure = (
-                plt.figure(figsize=figsize) if self._figure is None else self._figure
+                plt.figure(figsize=figsize)
+                if self._figure is None
+                else self._figure
             )
 
 
@@ -308,8 +314,8 @@ class PlotComposite:
         ncols: int = 1,
         interactive: bool = True,
         print_time: Optional[str] = None,
-        init_time: Optional[taz_types.datetime_t] = None,
-        figure_properties: Optional[taz_types.options_dict_t] = None
+        init_time: Optional[typing.datetime_t] = None,
+        figure_properties: Optional[typing.options_dict_t] = None
     ) -> None:
         """
         Parameters
@@ -355,7 +361,9 @@ class PlotComposite:
         self._itime = init_time
 
         # store input arguments as public attributes
-        self.figure_properties = {} if figure_properties is None else figure_properties
+        self.figure_properties = (
+            {} if figure_properties is None else figure_properties
+        )
 
         # initialize the figure attribute
         self._figure = None
@@ -407,7 +415,9 @@ class PlotComposite:
 
     def store(
         self,
-        *states: Union[taz_types.dataarray_dict_t, Sequence[taz_types.dataarray_dict_t]],
+        *states: Union[
+            typing.dataarray_dict_t, Sequence[typing.dataarray_dict_t]
+        ],
         fig: Optional[plt.Figure] = None,
         save_dest: Optional[str] = None,
         show: bool = False
@@ -440,7 +450,9 @@ class PlotComposite:
             The figure encapsulating all the subplots.
         """
         # assert the list of states
-        assert_sequence(states, reflen=len(self.artists), reftype=SequenceType + (dict,))
+        assert_sequence(
+            states, reflen=len(self.artists), reftype=SequenceType + (dict,)
+        )
 
         # set the figure attribute, if needed
         self._set_figure(fig)
@@ -479,9 +491,13 @@ class PlotComposite:
             ax = axes[i]
 
             if isinstance(state, dict):
-                out_fig, _ = artist.store(state, fig=out_fig, ax=ax, show=False)
+                out_fig, _ = artist.store(
+                    state, fig=out_fig, ax=ax, show=False
+                )
             else:
-                out_fig, _ = artist.store(*state, fig=out_fig, ax=ax, show=False)
+                out_fig, _ = artist.store(
+                    *state, fig=out_fig, ax=ax, show=False
+                )
 
         time = get_time(states)
 

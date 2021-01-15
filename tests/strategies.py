@@ -29,14 +29,15 @@ from sympl._core.units import clean_units
 
 import tasmania as taz
 from tasmania.python.framework.options import BackendOptions, StorageOptions
-from tasmania.python.utils.data_utils import get_physical_constants
-from tasmania.python.utils.storage_utils import (
+from tasmania.python.utils.data import get_physical_constants
+from tasmania.python.utils.storage import (
     get_dataarray_2d,
     get_dataarray_3d,
     get_default_origin,
     zeros,
 )
-from tasmania.python.utils.utils import equal_to, is_gt
+from tasmania.python.utils.utils import equal_to
+from tasmania.python.utils.backend import is_gt
 
 from tests import conf
 from tests.utilities import get_interval, get_nanoseconds, pi_function

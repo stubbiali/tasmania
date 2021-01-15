@@ -35,7 +35,7 @@ from tasmania.python.burgers.dynamics.subclasses.stepper.forward_euler import (
 from tasmania.python.burgers.dynamics.subclasses.stepper.rk2 import RK2
 from tasmania.python.burgers.dynamics.subclasses.stepper.rk3ws import RK3WS
 from tasmania.python.framework.options import BackendOptions, StorageOptions
-from tasmania.python.utils.storage_utils import deepcopy_array_dict
+from tasmania.python.utils.storage import deepcopy_array_dict
 
 from tests.conf import (
     backend as conf_backend,

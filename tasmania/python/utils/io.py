@@ -30,13 +30,13 @@ import xarray as xr
 
 from tasmania.python.burgers.state import ZhaoSolutionFactory
 from tasmania.python.domain.domain import Domain
-from tasmania.python.utils import taz_types
-from tasmania.python.utils.storage_utils import (
+from tasmania.python.utils import typing
+from tasmania.python.utils.storage import (
     deepcopy_dataarray_dict,
     get_physical_state,
     get_numerical_state,
 )
-from tasmania.python.utils.utils import convert_datetime64_to_datetime
+from tasmania.python.utils.time import convert_datetime64_to_datetime
 
 
 class NetCDFMonitor(sympl.NetCDFMonitor):
@@ -80,11 +80,13 @@ class NetCDFMonitor(sympl.NetCDFMonitor):
             A dictionary of string replacements to apply to state variable
             names before saving them in netCDF files.
         """
-        super().__init__(filename, time_units, store_names, write_on_store, aliases)
+        super().__init__(
+            filename, time_units, store_names, write_on_store, aliases
+        )
         self._domain = domain
         self._gtype = grid_type
 
-    def store(self, state: taz_types.dataarray_dict_t) -> None:
+    def store(self, state: typing.dataarray_dict_t) -> None:
         """
         If the state is defined over the numerical (respectively physical)
         grid but should be saved over the physical (resp. numerical) grid:
@@ -104,17 +106,23 @@ class NetCDFMonitor(sympl.NetCDFMonitor):
         if self._gtype == "physical":
             names = tuple(key for key in state if key != "time")
             if not (
-                state[names[0]].dims[0] in dims_x and state[names[0]].dims[1] in dims_y
+                state[names[0]].dims[0] in dims_x
+                and state[names[0]].dims[1] in dims_y
             ):
-                to_save = get_physical_state(self._domain, state, self._store_names)
+                to_save = get_physical_state(
+                    self._domain, state, self._store_names
+                )
             else:
                 to_save = state
         else:
             names = tuple(key for key in state if key != "time")
             if not (
-                state[names[0]].dims[0] in dims_x and state[names[0]].dims[1] in dims_y
+                state[names[0]].dims[0] in dims_x
+                and state[names[0]].dims[1] in dims_y
             ):
-                to_save = get_numerical_state(self._domain, state, self._store_names)
+                to_save = get_numerical_state(
+                    self._domain, state, self._store_names
+                )
             else:
                 to_save = state
 
@@ -156,7 +164,9 @@ class NetCDFMonitor(sympl.NetCDFMonitor):
             # x-axis
             dim1_name = dataset.createVariable("dim1_name", str, ("str_dim",))
             dim1_name[:] = np.array([g.x.dims[0]], dtype="object")
-            dim1 = dataset.createVariable(g.x.dims[0], g.x.values.dtype, (g.x.dims[0],))
+            dim1 = dataset.createVariable(
+                g.x.dims[0], g.x.values.dtype, (g.x.dims[0],)
+            )
             dim1[:] = g.x.values[:]
             dim1.setncattr("units", g.x.attrs["units"])
             try:
@@ -173,7 +183,9 @@ class NetCDFMonitor(sympl.NetCDFMonitor):
             # y-axis
             dim2_name = dataset.createVariable("dim2_name", str, ("str_dim",))
             dim2_name[:] = np.array([g.y.dims[0]], dtype="object")
-            dim2 = dataset.createVariable(g.y.dims[0], g.y.values.dtype, (g.y.dims[0],))
+            dim2 = dataset.createVariable(
+                g.y.dims[0], g.y.values.dtype, (g.y.dims[0],)
+            )
             dim2[:] = g.y.values[:]
             dim2.setncattr("units", g.y.attrs["units"])
             try:
@@ -190,7 +202,9 @@ class NetCDFMonitor(sympl.NetCDFMonitor):
             # z-axis
             dim3_name = dataset.createVariable("dim3_name", str, ("str_dim",))
             dim3_name[:] = np.array([g.z.dims[0]], dtype="object")
-            dim3 = dataset.createVariable(g.z.dims[0], g.z.values.dtype, (g.z.dims[0],))
+            dim3 = dataset.createVariable(
+                g.z.dims[0], g.z.values.dtype, (g.z.dims[0],)
+            )
             dim3[:] = g.z.values[:]
             dim3.setncattr("units", g.z.attrs["units"])
             try:
@@ -200,7 +214,9 @@ class NetCDFMonitor(sympl.NetCDFMonitor):
                     (g.z_on_interface_levels.dims[0],),
                 )
                 dim3_hl[:] = g.z_on_interface_levels.values[:]
-                dim3_hl.setncattr("units", g.z_on_interface_levels.attrs["units"])
+                dim3_hl.setncattr(
+                    "units", g.z_on_interface_levels.attrs["units"]
+                )
             except ValueError:
                 pass
 
@@ -230,7 +246,9 @@ class NetCDFMonitor(sympl.NetCDFMonitor):
                 value = hb.kwargs[key]
 
                 if isinstance(value, (int, float)):
-                    var = dataset.createVariable(hb_key, type(value), ("scalar_dim",))
+                    var = dataset.createVariable(
+                        hb_key, type(value), ("scalar_dim",)
+                    )
                     var[:] = np.array([value], dtype=type(value))
                 elif isinstance(value, ZhaoSolutionFactory):
                     # TODO: this actually does not work, because only primitive types
@@ -251,7 +269,9 @@ class NetCDFMonitor(sympl.NetCDFMonitor):
 
             # topography type
             topo = g.topography
-            topo_type = dataset.createVariable("topography_type", str, ("str_dim",))
+            topo_type = dataset.createVariable(
+                "topography_type", str, ("str_dim",)
+            )
             topo_type[:] = np.array([topo.type], dtype="object")
 
             # keyword arguments used to instantiate the topography
@@ -272,8 +292,12 @@ class NetCDFMonitor(sympl.NetCDFMonitor):
                 elif isinstance(value, bool):
                     var = dataset.createVariable(topo_key, int, ("bool_dim",))
                     var[:] = np.array([1 if value else 0], dtype=bool)
-                elif isinstance(value, timedelta) or isinstance(value, Timedelta):
-                    var = dataset.createVariable(topo_key, float, ("timedelta_dim",))
+                elif isinstance(value, timedelta) or isinstance(
+                    value, Timedelta
+                ):
+                    var = dataset.createVariable(
+                        topo_key, float, ("timedelta_dim",)
+                    )
                     var[:] = np.array([value.total_seconds()], dtype=float)
                     var.setncattr("units", "s")
 
@@ -289,7 +313,7 @@ class NetCDFMonitor(sympl.NetCDFMonitor):
 
 def load_netcdf_dataset(
     filename: str,
-) -> Tuple[Domain, str, List[taz_types.dataarray_dict_t]]:
+) -> Tuple[Domain, str, List[typing.dataarray_dict_t]]:
     """
     Load the sequence of states stored in a NetCDF dataset,
     and build the underlying domain.
@@ -310,7 +334,11 @@ def load_netcdf_dataset(
         The list of state dictionaries stored in the NetCDF file.
     """
     with xr.open_dataset(filename) as dataset:
-        return load_domain(dataset), load_grid_type(dataset), load_states(dataset)
+        return (
+            load_domain(dataset),
+            load_grid_type(dataset),
+            load_states(dataset),
+        )
 
 
 def load_domain(dataset: xr.Dataset) -> Domain:
@@ -318,7 +346,9 @@ def load_domain(dataset: xr.Dataset) -> Domain:
     dims_x = dataset.data_vars["dim1_name"].values.item()
     x = dataset.coords[dims_x]
     domain_x = sympl.DataArray(
-        [x.values[0], x.values[-1]], dims=[dims_x], attrs={"units": x.attrs["units"]}
+        [x.values[0], x.values[-1]],
+        dims=[dims_x],
+        attrs={"units": x.attrs["units"]},
     )
     nx = x.shape[0]
 
@@ -326,7 +356,9 @@ def load_domain(dataset: xr.Dataset) -> Domain:
     dims_y = dataset.data_vars["dim2_name"].values.item()
     y = dataset.coords[dims_y]
     domain_y = sympl.DataArray(
-        [y.values[0], y.values[-1]], dims=[dims_y], attrs={"units": y.attrs["units"]}
+        [y.values[0], y.values[-1]],
+        dims=[dims_y],
+        attrs={"units": y.attrs["units"]},
     )
     ny = y.shape[0]
 
@@ -335,7 +367,9 @@ def load_domain(dataset: xr.Dataset) -> Domain:
     try:
         z_hl = dataset.coords[dims_z + "_on_interface_levels"]
     except KeyError:
-        z_hl = sympl.DataArray(np.array((0, 1)), dims=[dims_z], attrs={"units": "1"})
+        z_hl = sympl.DataArray(
+            np.array((0, 1)), dims=[dims_z], attrs={"units": "1"}
+        )
     domain_z = sympl.DataArray(
         [z_hl.values[0], z_hl.values[-1]],
         dims=[dims_z],
@@ -409,17 +443,21 @@ def load_grid_type(dataset: xr.Dataset) -> str:
     return dataset.data_vars["grid_type"].values.item()
 
 
-def load_states(dataset: xr.Dataset) -> List[taz_types.dataarray_dict_t]:
+def load_states(dataset: xr.Dataset) -> List[typing.dataarray_dict_t]:
     names = dataset.data_vars["state_variable_names"].values
     nt = dataset.data_vars[names[0]].shape[0]
 
     states = []
     for n in range(nt):
         try:
-            state = {"time": convert_datetime64_to_datetime(dataset["time"][n])}
+            state = {
+                "time": convert_datetime64_to_datetime(dataset["time"][n])
+            }
         except TypeError:
             state = {
-                "time": convert_datetime64_to_datetime(dataset["time"][n].values.item())
+                "time": convert_datetime64_to_datetime(
+                    dataset["time"][n].values.item()
+                )
             }
 
         for name in names:

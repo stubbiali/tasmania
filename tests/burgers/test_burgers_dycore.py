@@ -31,7 +31,7 @@ import pytest
 
 from tasmania.python.burgers.dynamics.dycore import BurgersDynamicalCore
 from tasmania.python.framework.options import BackendOptions, StorageOptions
-from tasmania.python.utils.utils import is_gt
+from tasmania.python.utils.backend import is_gt
 
 from tests.conf import (
     backend as conf_backend,

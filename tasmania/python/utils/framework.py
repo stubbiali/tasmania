@@ -38,7 +38,7 @@ from typing import (
     TypeVar,
 )
 
-from tasmania.python.utils import taz_types
+from tasmania.python.utils import typing
 
 if TYPE_CHECKING:
     from tasmania.python.framework._base import BaseTendency2Diagnostic
@@ -48,8 +48,8 @@ T = TypeVar("T")
 
 
 def check_properties_compatibility(
-    properties1: taz_types.properties_dict_t,
-    properties2: taz_types.properties_dict_t,
+    properties1: typing.properties_dict_t,
+    properties2: typing.properties_dict_t,
     to_append: Optional[str] = None,
     properties1_name: Optional[str] = None,
     properties2_name: Optional[str] = None,
@@ -120,8 +120,8 @@ def check_property_compatibility(
 
 
 def check_missing_properties(
-    properties1: taz_types.properties_dict_t,
-    properties2: taz_types.properties_dict_t,
+    properties1: typing.properties_dict_t,
+    properties2: typing.properties_dict_t,
     properties1_name: Optional[str] = None,
     properties2_name: Optional[str] = None,
 ) -> None:
@@ -142,16 +142,16 @@ def check_missing_properties(
 
 
 def resolve_aliases(
-    data_dict: taz_types.dataarray_dict_t,
-    properties_dict: taz_types.properties_dict_t,
-) -> taz_types.dataarray_dict_t:
+    data_dict: typing.dataarray_dict_t,
+    properties_dict: typing.properties_dict_t,
+) -> typing.dataarray_dict_t:
     name_to_alias = _get_name_to_alias_map(data_dict, properties_dict)
     return _replace_aliases(data_dict, name_to_alias)
 
 
 def _get_name_to_alias_map(
-    data_dict: taz_types.dataarray_dict_t,
-    properties_dict: taz_types.properties_dict_t,
+    data_dict: typing.dataarray_dict_t,
+    properties_dict: typing.properties_dict_t,
 ) -> Dict[str, str]:
     return_dict = {}
 
@@ -173,8 +173,8 @@ def _get_name_to_alias_map(
 
 
 def _replace_aliases(
-    data_dict: taz_types.dataarray_dict_t, name_to_alias: Mapping[str, str]
-) -> taz_types.dataarray_dict_t:
+    data_dict: typing.dataarray_dict_t, name_to_alias: Mapping[str, str]
+) -> typing.dataarray_dict_t:
     return_dict = {}
 
     for name in name_to_alias:
@@ -186,8 +186,8 @@ def _replace_aliases(
 
 def get_input_properties(
     components_list: Sequence[Dict[str, Any]],
-    return_dict: Optional[taz_types.properties_dict_t] = None,
-) -> taz_types.properties_dict_t:
+    return_dict: Optional[typing.properties_dict_t] = None,
+) -> typing.properties_dict_t:
     # Initialize the return dictionary, i.e., the list of requirements
     return_dict = return_dict or {}
 
@@ -264,9 +264,9 @@ def get_input_properties(
 
 
 def get_tendency_properties(
-    components_list: Sequence[taz_types.component_t],
+    components_list: Sequence[typing.component_t],
     t2d_type: "Type[BaseTendency2Diagnostic]",
-) -> taz_types.properties_dict_t:
+) -> typing.properties_dict_t:
     """ Combine the tendency_properties dictionaries from multiple components. """
     return_dict = {}
 
@@ -297,8 +297,8 @@ def get_tendency_properties(
 
 def get_output_properties(
     components_list: Sequence[Dict[str, Any]],
-    return_dict: Optional[taz_types.properties_dict_t] = None,
-) -> taz_types.properties_dict_t:
+    return_dict: Optional[typing.properties_dict_t] = None,
+) -> typing.properties_dict_t:
     """
     Ansatz: the output property dictionary of a :class:`sympl.TendencyStepper`
     component is a subset of its input property component.
@@ -372,7 +372,7 @@ def get_output_properties(
 
 
 def check_t2d(
-    components_list: Sequence[taz_types.component_t],
+    components_list: Sequence[typing.component_t],
     t2d_type: "Type[BaseTendency2Diagnostic]",
 ):
     """ Ensure that a tendency is actually computed before moving it around. """
@@ -392,10 +392,10 @@ def check_t2d(
 
 
 def get_increment(
-    state: taz_types.dataarray_dict_t,
-    timestep: taz_types.timedelta_t,
-    prognostic: taz_types.tendency_component_t,
-) -> Tuple[taz_types.dataarray_dict_t, taz_types.dataarray_dict_t]:
+    state: typing.dataarray_dict_t,
+    timestep: typing.timedelta_t,
+    prognostic: typing.tendency_component_t,
+) -> Tuple[typing.dataarray_dict_t, typing.dataarray_dict_t]:
     # calculate tendencies and retrieve diagnostics
     tendencies, diagnostics = prognostic(state, timestep)
 
@@ -408,7 +408,7 @@ def get_increment(
 
 
 def restore_tendency_units(
-    tendencies: taz_types.mutable_dataarray_dict_t,
+    tendencies: typing.mutable_dataarray_dict_t,
 ) -> None:
     for name in tendencies:
         if name != "time":

@@ -44,7 +44,7 @@ from tasmania.python.isentropic.dynamics.subclasses.prognostics import (
     CenteredSI,
     RK3WSSI,
 )
-from tasmania.python.utils.storage_utils import (
+from tasmania.python.utils.storage import (
     deepcopy_array_dict,
     get_array_dict,
 )

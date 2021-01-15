@@ -28,13 +28,12 @@ from hypothesis import (
 import numpy as np
 import pytest
 
-from tasmania.python.utils.storage_utils import zeros
+from tasmania.python.utils.storage import zeros
 from tasmania.python.utils.utils import (
     feed_module,
-    get_gt_backend,
-    is_gt,
     thomas_numpy,
 )
+from tasmania.python.utils.backend import is_gt, get_gt_backend
 
 from tests.conf import dtype as conf_dtype
 from tests.strategies import st_one_of, st_raw_field

@@ -38,7 +38,7 @@ from tasmania.python.framework.base_components import (
 )
 from tasmania.python.framework.tag import stencil_definition
 from tasmania.python.physics.microphysics.utils import SedimentationFlux
-from tasmania.python.utils import taz_types
+from tasmania.python.utils import typing
 
 if TYPE_CHECKING:
     from tasmania.python.domain.domain import Domain
@@ -206,7 +206,7 @@ class KesslerMicrophysics(TendencyComponent):
         self._stencil = self.compile("kessler")
 
     @property
-    def input_properties(self) -> taz_types.properties_dict_t:
+    def input_properties(self) -> typing.properties_dict_t:
         grid = self.grid
         dims = (grid.x.dims[0], grid.y.dims[0], grid.z.dims[0])
         dims_on_interface_levels = (
@@ -242,7 +242,7 @@ class KesslerMicrophysics(TendencyComponent):
         return return_dict
 
     @property
-    def tendency_properties(self) -> taz_types.properties_dict_t:
+    def tendency_properties(self) -> typing.properties_dict_t:
         grid = self._grid
         dims = (grid.x.dims[0], grid.y.dims[0], grid.z.dims[0])
 
@@ -263,7 +263,7 @@ class KesslerMicrophysics(TendencyComponent):
         return return_dict
 
     @property
-    def diagnostic_properties(self) -> taz_types.properties_dict_t:
+    def diagnostic_properties(self) -> typing.properties_dict_t:
         if self._rain_evaporation and self._pttd:
             grid = self._grid
             dims = (grid.x.dims[0], grid.y.dims[0], grid.z.dims[0])
@@ -277,8 +277,8 @@ class KesslerMicrophysics(TendencyComponent):
             return {}
 
     def array_call(
-        self, state: taz_types.array_dict_t
-    ) -> Tuple[taz_types.array_dict_t, taz_types.array_dict_t]:
+        self, state: typing.array_dict_t
+    ) -> Tuple[typing.array_dict_t, typing.array_dict_t]:
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
 
         # extract the required model variables
@@ -358,8 +358,8 @@ class KesslerMicrophysics(TendencyComponent):
         a: float,
         k1: float,
         k2: float,
-        origin: taz_types.triplet_int_t,
-        domain: taz_types.triplet_int_t,
+        origin: typing.triplet_int_t,
+        domain: typing.triplet_int_t,
         **kwargs  # catch-all
     ) -> None:
         i = slice(origin[0], origin[0] + domain[0])
@@ -613,7 +613,7 @@ class KesslerSaturationAdjustmentDiagnostic(ImplicitTendencyComponent):
         self._stencil = self.compile("saturation")
 
     @property
-    def input_properties(self) -> taz_types.properties_dict_t:
+    def input_properties(self) -> typing.properties_dict_t:
         grid = self.grid
         dims = (grid.x.dims[0], grid.y.dims[0], grid.z.dims[0])
         dims_on_interface_levels = (
@@ -647,7 +647,7 @@ class KesslerSaturationAdjustmentDiagnostic(ImplicitTendencyComponent):
         return return_dict
 
     @property
-    def tendency_properties(self) -> taz_types.properties_dict_t:
+    def tendency_properties(self) -> typing.properties_dict_t:
         grid = self.grid
         dims = (grid.x.dims[0], grid.y.dims[0], grid.z.dims[0])
 
@@ -658,7 +658,7 @@ class KesslerSaturationAdjustmentDiagnostic(ImplicitTendencyComponent):
         return return_dict
 
     @property
-    def diagnostic_properties(self) -> taz_types.properties_dict_t:
+    def diagnostic_properties(self) -> typing.properties_dict_t:
         grid = self.grid
         dims = (grid.x.dims[0], grid.y.dims[0], grid.z.dims[0])
 
@@ -671,8 +671,8 @@ class KesslerSaturationAdjustmentDiagnostic(ImplicitTendencyComponent):
         return return_dict
 
     def array_call(
-        self, state: taz_types.array_dict_t, timestep: taz_types.timedelta_t
-    ) -> Tuple[taz_types.array_dict_t, taz_types.array_dict_t]:
+        self, state: typing.array_dict_t, timestep: typing.timedelta_t
+    ) -> Tuple[typing.array_dict_t, typing.array_dict_t]:
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
 
         # extract the required model variables
@@ -728,8 +728,8 @@ class KesslerSaturationAdjustmentDiagnostic(ImplicitTendencyComponent):
         tnd_theta: np.ndarray,
         *,
         dt: float,
-        origin: taz_types.triplet_int_t,
-        domain: taz_types.triplet_int_t,
+        origin: typing.triplet_int_t,
+        domain: typing.triplet_int_t,
         **kwargs  # catch-all
     ) -> None:
         i = slice(origin[0], origin[0] + domain[0])
@@ -965,7 +965,7 @@ class KesslerSaturationAdjustmentPrognostic(TendencyComponent):
         self._stencil = self.compile("saturation")
 
     @property
-    def input_properties(self) -> taz_types.properties_dict_t:
+    def input_properties(self) -> typing.properties_dict_t:
         grid = self.grid
         dims = (grid.x.dims[0], grid.y.dims[0], grid.z.dims[0])
         dims_on_interface_levels = (
@@ -999,7 +999,7 @@ class KesslerSaturationAdjustmentPrognostic(TendencyComponent):
         return return_dict
 
     @property
-    def tendency_properties(self) -> taz_types.properties_dict_t:
+    def tendency_properties(self) -> typing.properties_dict_t:
         grid = self.grid
         dims = (grid.x.dims[0], grid.y.dims[0], grid.z.dims[0])
 
@@ -1012,12 +1012,12 @@ class KesslerSaturationAdjustmentPrognostic(TendencyComponent):
         return return_dict
 
     @property
-    def diagnostic_properties(self) -> taz_types.properties_dict_t:
+    def diagnostic_properties(self) -> typing.properties_dict_t:
         return {}
 
     def array_call(
-        self, state: taz_types.gtstorage_dict_t
-    ) -> Tuple[taz_types.gtstorage_dict_t, taz_types.gtstorage_dict_t]:
+        self, state: typing.gtstorage_dict_t
+    ) -> Tuple[typing.gtstorage_dict_t, typing.gtstorage_dict_t]:
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
 
         # extract the required model variables
@@ -1071,8 +1071,8 @@ class KesslerSaturationAdjustmentPrognostic(TendencyComponent):
         tnd_theta: np.ndarray,
         *,
         sr: float,
-        origin: taz_types.triplet_int_t,
-        domain: taz_types.triplet_int_t,
+        origin: typing.triplet_int_t,
+        domain: typing.triplet_int_t,
         **kwargs  # catch-all
     ) -> None:
         i = slice(origin[0], origin[0] + domain[0])
@@ -1226,7 +1226,7 @@ class KesslerFallVelocity(DiagnosticComponent):
         self._stencil = self.compile("fall_velocity")
 
     @property
-    def input_properties(self) -> taz_types.properties_dict_t:
+    def input_properties(self) -> typing.properties_dict_t:
         dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])
 
         return_dict = {
@@ -1237,7 +1237,7 @@ class KesslerFallVelocity(DiagnosticComponent):
         return return_dict
 
     @property
-    def diagnostic_properties(self) -> taz_types.properties_dict_t:
+    def diagnostic_properties(self) -> typing.properties_dict_t:
         dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])
 
         return_dict = {
@@ -1246,9 +1246,7 @@ class KesslerFallVelocity(DiagnosticComponent):
 
         return return_dict
 
-    def array_call(
-        self, state: taz_types.array_dict_t
-    ) -> taz_types.array_dict_t:
+    def array_call(self, state: typing.array_dict_t) -> typing.array_dict_t:
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
 
         in_rho = state["air_density"]
@@ -1279,8 +1277,8 @@ class KesslerFallVelocity(DiagnosticComponent):
         in_qr: np.ndarray,
         out_vt: np.ndarray,
         *,
-        origin: taz_types.triplet_int_t,
-        domain: taz_types.triplet_int_t,
+        origin: typing.triplet_int_t,
+        domain: typing.triplet_int_t,
         **kwargs  # catch-all
     ) -> None:
         i = slice(origin[0], origin[0] + domain[0])
@@ -1385,7 +1383,7 @@ class KesslerSedimentation(ImplicitTendencyComponent):
         self._stencil = self.compile("sedimentation")
 
     @property
-    def input_properties(self) -> taz_types.properties_dict_t:
+    def input_properties(self) -> typing.properties_dict_t:
         g = self.grid
         dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
         dims_z = (g.x.dims[0], g.y.dims[0], g.z_on_interface_levels.dims[0])
@@ -1398,19 +1396,19 @@ class KesslerSedimentation(ImplicitTendencyComponent):
         }
 
     @property
-    def tendency_properties(self) -> taz_types.properties_dict_t:
+    def tendency_properties(self) -> typing.properties_dict_t:
         g = self.grid
         dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
 
         return {mfpw: {"dims": dims, "units": "g g^-1 s^-1"}}
 
     @property
-    def diagnostic_properties(self) -> taz_types.properties_dict_t:
+    def diagnostic_properties(self) -> typing.properties_dict_t:
         return {}
 
     def array_call(
-        self, state: taz_types.array_dict_t, timestep: taz_types.timedelta_t
-    ) -> Tuple[taz_types.array_dict_t, taz_types.array_dict_t]:
+        self, state: typing.array_dict_t, timestep: typing.timedelta_t
+    ) -> Tuple[typing.array_dict_t, typing.array_dict_t]:
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
         nbh = 0  # self.horizontal_boundary.nb if self.grid_type == "numerical" else 0
 
@@ -1453,8 +1451,8 @@ class KesslerSedimentation(ImplicitTendencyComponent):
         in_vt: np.ndarray,
         out_qr: np.ndarray,
         *,
-        origin: taz_types.triplet_int_t,
-        domain: taz_types.triplet_int_t,
+        origin: typing.triplet_int_t,
+        domain: typing.triplet_int_t,
         **kwargs  # catch-all
     ) -> None:
         i = slice(origin[0], origin[0] + domain[0])

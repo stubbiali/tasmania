@@ -33,7 +33,7 @@ import pytest
 from gt4py import gtscript
 from gt4py.gtscript import PARALLEL, computation, interval
 
-from tasmania.python.utils.storage_utils import zeros
+from tasmania.python.utils.storage import zeros
 
 from tests.conf import default_origin as conf_dorigin
 from tests.strategies import st_one_of, st_raw_field
@@ -45,7 +45,9 @@ def absolute(phi):
     return phi if phi > 0 else -phi
 
 
-def stencil_defs(in_a: gtscript.Field["dtype"], out_a: gtscript.Field["dtype"]):
+def stencil_defs(
+    in_a: gtscript.Field["dtype"], out_a: gtscript.Field["dtype"]
+):
     from __externals__ import absolute
 
     with computation(PARALLEL), interval(...):
@@ -107,7 +109,9 @@ def test(data):
         externals={"absolute": absolute},
     )
 
-    stencil(in_a=in_a, out_a=out_a, origin=(1, 2, 0), domain=(nx - 1, ny - 2, nz))
+    stencil(
+        in_a=in_a, out_a=out_a, origin=(1, 2, 0), domain=(nx - 1, ny - 2, nz)
+    )
 
     val = zeros(
         storage_shape,

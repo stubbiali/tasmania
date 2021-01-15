@@ -22,13 +22,13 @@
 #
 import numpy as np
 
-from gt4py import gtscript
+from tasmania.third_party import cupy, gt4py
 
 from tasmania.python.framework.stencil import stencil_subroutine
 
 
-@stencil_subroutine.register(backend=("numpy", "cupy"), stencil="laplacian")
-def laplacian_numpy(in_field, out_field, *, origin, domain, **kwargs):
+@stencil_subroutine.register(backend="numpy", stencil="laplacian")
+def laplacian_numpy(in_field, out_field, *, origin, domain):
     ib, jb, kb = origin
     ie, je, ke = tuple(origin[i] + domain[i] for i in range(3))
     i, j, k = np.arange(ib, ie), np.arange(jb, je), np.arange(kb, ke)
@@ -42,16 +42,23 @@ def laplacian_numpy(in_field, out_field, *, origin, domain, **kwargs):
     )
 
 
-@stencil_subroutine.register(backend="gt4py*", stencil="laplacian")
-@gtscript.function
-def laplacian_gt4py(
-    in_field: gtscript.Field["dtype"],
-) -> gtscript.Field["dtype"]:
-    out_field = (
-        -4.0 * in_field[0, 0, 0]
-        + in_field[-1, 0, 0]
-        + in_field[+1, 0, 0]
-        + in_field[0, -1, 0]
-        + in_field[0, +1, 0]
-    )
-    return out_field
+if cupy:
+    stencil_subroutine.register(laplacian_numpy, "cupy", "laplacian")
+
+
+if gt4py:
+    from gt4py import gtscript
+
+    @stencil_subroutine.register(backend="gt4py*", stencil="laplacian")
+    @gtscript.function
+    def laplacian_gt4py(
+        in_field: gtscript.Field["dtype"],
+    ) -> gtscript.Field["dtype"]:
+        out_field = (
+            -4.0 * in_field[0, 0, 0]
+            + in_field[-1, 0, 0]
+            + in_field[+1, 0, 0]
+            + in_field[0, -1, 0]
+            + in_field[0, +1, 0]
+        )
+        return out_field

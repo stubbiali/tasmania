@@ -22,41 +22,47 @@
 #
 import numpy as np
 
-try:
-    import cupy as cp
-except ImportError:
-    cp = np
-
-import gt4py as gt
+from tasmania.third_party import cupy as cp, gt4py as gt, numba
 
 from tasmania.python.framework.allocators import ones
 from tasmania.python.framework.options import StorageOptions
-from tasmania.python.utils.utils import get_gt_backend
 
 
-@ones.register(backend=("numpy", "numba:cpu"))
+@ones.register(backend="numpy")
 def ones_numpy(shape, *, storage_options=None):
     so = storage_options or StorageOptions
     return np.ones(shape, dtype=so.dtype)
 
 
-@ones.register(backend=("cupy", "numba:gpu"))
-def ones_cupy(shape, *, storage_options=None):
-    so = storage_options or StorageOptions
-    return cp.ones(shape, dtype=so.dtype)
+if numba:
+    ones.register(ones_numpy, backend="numba:cpu")
 
 
-@ones.register(backend="gt4py*")
-def ones_gt4py(shape, *, storage_options=None):
-    backend = ones_gt4py.__tasmania_runtime__["backend"]
-    gt_backend = get_gt_backend(backend)
-    so = storage_options or StorageOptions
-    default_origin = so.default_origin or (0,) * len(shape)
-    return gt.storage.ones(
-        gt_backend,
-        default_origin,
-        shape,
-        so.dtype,
-        mask=so.mask,
-        managed_memory=so.managed_memory,
-    )
+if cp:
+
+    @ones.register(backend="cupy")
+    def ones_cupy(shape, *, storage_options=None):
+        so = storage_options or StorageOptions
+        return cp.ones(shape, dtype=so.dtype)
+
+    if numba:
+        ones.register(ones_cupy, backend="numba:gpu")
+
+
+if gt:
+    from tasmania.python.utils.backend import get_gt_backend
+
+    @ones.register(backend="gt4py*")
+    def ones_gt4py(shape, *, storage_options=None):
+        backend = ones_gt4py.__tasmania_runtime__["backend"]
+        gt_backend = get_gt_backend(backend)
+        so = storage_options or StorageOptions
+        default_origin = so.default_origin or (0,) * len(shape)
+        return gt.storage.ones(
+            gt_backend,
+            default_origin,
+            shape,
+            so.dtype,
+            mask=so.mask,
+            managed_memory=so.managed_memory,
+        )

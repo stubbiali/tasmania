@@ -54,11 +54,11 @@ from tasmania.python.domain.subclasses.horizontal_boundaries.relaxed import (
     dispatch as dispatch_relaxed,
 )
 from tasmania.python.domain.horizontal_boundary import HorizontalBoundary
-from tasmania.python.utils.storage_utils import (
+from tasmania.python.utils.storage import (
     deepcopy_array_dict,
     deepcopy_dataarray_dict,
 )
-from tasmania.python.utils.utils import is_gt
+from tasmania.python.utils.backend import is_gt
 
 from tests.conf import backend as conf_backend, dtype as conf_dtype
 from tests.strategies import (

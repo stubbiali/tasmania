@@ -33,7 +33,7 @@ from tasmania.python.domain.topography import (
     PhysicalTopography,
     NumericalTopography,
 )
-from tasmania.python.utils import taz_types
+from tasmania.python.utils import typing
 from tasmania.python.utils.utils import (
     smaller_than as lt,
     smaller_or_equal_than as le,
@@ -226,7 +226,7 @@ class Grid:
         """
         return self._topo
 
-    def update_topography(self, time: taz_types.datetime_t) -> None:
+    def update_topography(self, time: typing.datetime_t) -> None:
         """Update the underlying (time-dependent) :class:`~tasmania.Topography`.
 
         Parameters
@@ -251,7 +251,7 @@ class PhysicalGrid(Grid):
         z_interface: Optional[DataArray] = None,
         topography_type: str = "flat",
         topography_kwargs: Dict[str, Any] = None,
-        dtype: taz_types.dtype_t = np.float64,
+        dtype: typing.dtype_t = np.float64,
     ) -> None:
         """
         Parameters

@@ -34,7 +34,7 @@ from tasmania.python.domain.subclasses.horizontal_boundaries.utils import (
     shrink_axis,
 )
 from tasmania.python.framework.register import register
-from tasmania.python.utils.storage_utils import get_asarray_function
+from tasmania.python.utils.storage import get_asarray_function
 
 
 def placeholder(time, grid, slice_x, slice_y, field_name, field_units):

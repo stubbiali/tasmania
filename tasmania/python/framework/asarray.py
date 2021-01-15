@@ -25,7 +25,7 @@ from typing import Callable, Optional, Sequence, Type, Union
 
 from tasmania.python.framework import protocol as prt
 from tasmania.python.utils.exceptions import FactoryRegistryError
-from tasmania.python.utils.protocol_utils import (
+from tasmania.python.utils.protocol import (
     multiregister,
     Registry,
     set_runtime_attribute,

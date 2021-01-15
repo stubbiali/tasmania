@@ -44,8 +44,8 @@ from tasmania.python.physics.microphysics.utils import (
     SedimentationFlux,
     Precipitation,
 )
-from tasmania.python.utils.storage_utils import get_dataarray_3d
-from tasmania.python.utils.utils import get_gt_backend, is_gt
+from tasmania.python.utils.storage import get_dataarray_3d
+from tasmania.python.utils.backend import is_gt, get_gt_backend
 
 from tests.conf import (
     backend as conf_backend,

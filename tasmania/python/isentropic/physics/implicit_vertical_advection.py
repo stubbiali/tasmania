@@ -27,7 +27,7 @@ from gt4py import gtscript
 
 from tasmania.python.framework.base_components import ImplicitTendencyComponent
 from tasmania.python.framework.tag import stencil_definition
-from tasmania.python.utils import taz_types
+from tasmania.python.utils import typing
 
 if TYPE_CHECKING:
     from tasmania.python.domain.domain import Domain
@@ -123,7 +123,7 @@ class IsentropicImplicitVerticalAdvectionDiagnostic(ImplicitTendencyComponent):
         self._stencil = self.compile("stencil")
 
     @property
-    def input_properties(self) -> taz_types.properties_dict_t:
+    def input_properties(self) -> typing.properties_dict_t:
         grid = self.grid
         dims = (grid.x.dims[0], grid.y.dims[0], grid.z.dims[0])
 
@@ -165,11 +165,11 @@ class IsentropicImplicitVerticalAdvectionDiagnostic(ImplicitTendencyComponent):
         return return_dict
 
     @property
-    def tendency_properties(self) -> taz_types.properties_dict_t:
+    def tendency_properties(self) -> typing.properties_dict_t:
         return {}
 
     @property
-    def diagnostic_properties(self) -> taz_types.properties_dict_t:
+    def diagnostic_properties(self) -> typing.properties_dict_t:
         grid = self.grid
         dims = (grid.x.dims[0], grid.y.dims[0], grid.z.dims[0])
 
@@ -192,8 +192,8 @@ class IsentropicImplicitVerticalAdvectionDiagnostic(ImplicitTendencyComponent):
         return return_dict
 
     def array_call(
-        self, state: taz_types.array_dict_t, timestep: taz_types.timedelta_t
-    ) -> Tuple[taz_types.array_dict_t, taz_types.array_dict_t]:
+        self, state: typing.array_dict_t, timestep: typing.timedelta_t
+    ) -> Tuple[typing.array_dict_t, typing.array_dict_t]:
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
         dz = self.grid.dz.to_units("K").values.item()
 
@@ -274,8 +274,8 @@ class IsentropicImplicitVerticalAdvectionDiagnostic(ImplicitTendencyComponent):
         out_qr: np.ndarray = None,
         *,
         gamma: float,
-        origin: taz_types.triplet_int_t,
-        domain: taz_types.triplet_int_t,
+        origin: typing.triplet_int_t,
+        domain: typing.triplet_int_t,
         **kwargs  # catch-all
     ) -> None:
         i = slice(origin[0], origin[0] + domain[0])
@@ -755,7 +755,7 @@ class IsentropicImplicitVerticalAdvectionPrognostic(ImplicitTendencyComponent):
         self._stencil = self.compile("stencil")
 
     @property
-    def input_properties(self) -> taz_types.properties_dict_t:
+    def input_properties(self) -> typing.properties_dict_t:
         grid = self.grid
         dims = (grid.x.dims[0], grid.y.dims[0], grid.z.dims[0])
 
@@ -797,7 +797,7 @@ class IsentropicImplicitVerticalAdvectionPrognostic(ImplicitTendencyComponent):
         return return_dict
 
     @property
-    def tendency_properties(self) -> taz_types.properties_dict_t:
+    def tendency_properties(self) -> typing.properties_dict_t:
         grid = self.grid
         dims = (grid.x.dims[0], grid.y.dims[0], grid.z.dims[0])
 
@@ -823,12 +823,12 @@ class IsentropicImplicitVerticalAdvectionPrognostic(ImplicitTendencyComponent):
         return return_dict
 
     @property
-    def diagnostic_properties(self) -> taz_types.properties_dict_t:
+    def diagnostic_properties(self) -> typing.properties_dict_t:
         return {}
 
     def array_call(
-        self, state: taz_types.array_dict_t, timestep: taz_types.timedelta_t
-    ) -> Tuple[taz_types.array_dict_t, taz_types.array_dict_t]:
+        self, state: typing.array_dict_t, timestep: typing.timedelta_t
+    ) -> Tuple[typing.array_dict_t, typing.array_dict_t]:
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
         dz = self.grid.dz.to_units("K").values.item()
 
@@ -911,8 +911,8 @@ class IsentropicImplicitVerticalAdvectionPrognostic(ImplicitTendencyComponent):
         *,
         dt: float,
         gamma: float,
-        origin: taz_types.triplet_int_t,
-        domain: taz_types.triplet_int_t,
+        origin: typing.triplet_int_t,
+        domain: typing.triplet_int_t,
         **kwargs  # catch-all
     ) -> None:
         i = slice(origin[0], origin[0] + domain[0])

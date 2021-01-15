@@ -32,7 +32,7 @@ from tasmania.python.framework.promoters import (
     Tendency2Diagnostic,
     Diagnostic2Tendency,
 )
-from tasmania.python.utils.storage_utils import get_dataarray_3d
+from tasmania.python.utils.storage import get_dataarray_3d
 
 from tests.conf import backend as conf_backend, dtype as conf_dtype
 from tests.strategies import st_domain, st_one_of, st_raw_field

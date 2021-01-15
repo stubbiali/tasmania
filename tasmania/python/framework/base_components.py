@@ -25,10 +25,10 @@ import sympl
 from typing import Any, Dict, Mapping, Optional, Sequence, TYPE_CHECKING
 
 from tasmania.python.framework.stencil import StencilFactory
-from tasmania.python.utils import taz_types
-from tasmania.python.utils.data_utils import get_physical_constants
-from tasmania.python.utils.storage_utils import get_storage_shape
-from tasmania.python.utils.utils import Timer
+from tasmania.python.utils import typing
+from tasmania.python.utils.data import get_physical_constants
+from tasmania.python.utils.storage import get_storage_shape
+from tasmania.python.utils.time import Timer
 
 if TYPE_CHECKING:
     from xarray import DataArray
@@ -166,8 +166,8 @@ class DiagnosticComponent(
         super(StencilFactory, self).__init__()
 
     def __call__(
-        self: "DiagnosticComponent", state: taz_types.dataarray_dict_t
-    ) -> taz_types.dataarray_dict_t:
+        self: "DiagnosticComponent", state: typing.dataarray_dict_t
+    ) -> typing.dataarray_dict_t:
         Timer.start(label=self.__class__.__name__)
         out = super().__call__(state)
         Timer.stop()
@@ -232,9 +232,9 @@ class ImplicitTendencyComponent(
 
     def __call__(
         self: "ImplicitTendencyComponent",
-        state: taz_types.dataarray_dict_t,
-        timestep: taz_types.timedelta_t,
-    ) -> taz_types.dataarray_dict_t:
+        state: typing.dataarray_dict_t,
+        timestep: typing.timedelta_t,
+    ) -> typing.dataarray_dict_t:
         Timer.start(label=self.__class__.__name__)
         out = super().__call__(state, timestep)
         Timer.stop()
@@ -352,8 +352,8 @@ class TendencyComponent(
         super(StencilFactory, self).__init__(tendencies_in_diagnostics, name)
 
     def __call__(
-        self: "TendencyComponent", state: taz_types.dataarray_dict_t
-    ) -> taz_types.dataarray_dict_t:
+        self: "TendencyComponent", state: typing.dataarray_dict_t
+    ) -> typing.dataarray_dict_t:
         Timer.start(label=self.__class__.__name__)
         out = super().__call__(state)
         Timer.stop()

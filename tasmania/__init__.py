@@ -20,6 +20,9 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+# third-party
+from tasmania import third_party
+
 # burgers
 from tasmania.python.burgers.dynamics.advection import BurgersAdvection
 from tasmania.python.burgers.dynamics.dycore import BurgersDynamicalCore
@@ -73,7 +76,11 @@ from tasmania.python.framework.offline_diagnostics import (
     RMSD,
     RRMSD,
 )
-from tasmania.python.framework.options import BackendOptions, StorageOptions
+from tasmania.python.framework.options import (
+    BackendOptions,
+    StorageOptions,
+    TimeIntegrationOptions,
+)
 from tasmania.python.framework.parallel_splitting import ParallelSplitting
 from tasmania.python.framework.promoters import (
     Diagnostic2Tendency,
@@ -157,17 +164,17 @@ from tasmania.python.plot.spectrals import CDF
 from tasmania.python.plot.trackers import TimeSeries, HovmollerDiagram
 
 # utilities
-from tasmania.python.utils import taz_types
-from tasmania.python.utils.dict_utils import DataArrayDictOperator
+from tasmania.python.utils import typing
+from tasmania.python.utils.dict import DataArrayDictOperator
 from tasmania.python.utils.exceptions import (
     ConstantNotFoundError,
     TimeInconsistencyError,
 )
-from tasmania.python.utils.io_utils import load_netcdf_dataset, NetCDFMonitor
-from tasmania.python.utils.meteo_utils import (
+from tasmania.python.utils.io import load_netcdf_dataset, NetCDFMonitor
+from tasmania.python.utils.meteo import (
     get_isothermal_isentropic_analytical_solution,
 )
-from tasmania.python.utils.storage_utils import (
+from tasmania.python.utils.storage import (
     deepcopy_array_dict,
     deepcopy_dataarray,
     deepcopy_dataarray_dict,
@@ -176,8 +183,8 @@ from tasmania.python.utils.storage_utils import (
     get_array_dict,
     get_dataarray_2d,
 )
-from tasmania.python.utils.utils import Timer, feed_module, get_time_string
-
+from tasmania.python.utils.time import Timer, get_time_string
+from tasmania.python.utils.utils import feed_module
 
 from pkg_resources import get_distribution, DistributionNotFound
 
@@ -192,9 +199,3 @@ finally:
 __author__ = "ETH Zurich"
 __copyright__ = "ETH Zurich"
 __license__ = "GPLv3"
-
-
-# numpy monkey-patch
-import gt4py as gt
-
-gt.storage.prepare_numpy()

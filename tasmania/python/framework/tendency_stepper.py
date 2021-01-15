@@ -22,7 +22,6 @@
 #
 import abc
 from copy import deepcopy
-import numpy as np
 from sympl import (
     TendencyComponent,
     TendencyComponentComposite,
@@ -39,10 +38,10 @@ from typing import Optional, TYPE_CHECKING, Tuple
 
 from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
 from tasmania.python.framework.register import factorize
-from tasmania.python.utils import taz_types
-from tasmania.python.utils.dict_utils import DataArrayDictOperator
-from tasmania.python.utils.framework_utils import check_property_compatibility
-from tasmania.python.utils.storage_utils import deepcopy_dataarray
+from tasmania.python.utils import typing
+from tasmania.python.utils.dict import DataArrayDictOperator
+from tasmania.python.utils.framework import check_property_compatibility
+from tasmania.python.utils.storage import deepcopy_dataarray
 from tasmania.python.utils.utils import assert_sequence
 
 if TYPE_CHECKING:
@@ -70,7 +69,7 @@ class TendencyStepper(abc.ABC):
 
     def __init__(
         self,
-        *args: taz_types.tendency_component_t,
+        *args: typing.tendency_component_t,
         execution_policy: str = "serial",
         enforce_horizontal_boundary: bool = False,
         backend: str = "numpy",
@@ -174,7 +173,7 @@ class TendencyStepper(abc.ABC):
         """
         return self._prognostic
 
-    def _get_input_properties(self) -> taz_types.properties_dict_t:
+    def _get_input_properties(self) -> typing.properties_dict_t:
         """
         Return
         ------
@@ -208,7 +207,7 @@ class TendencyStepper(abc.ABC):
 
         return return_dict
 
-    def _get_output_properties(self) -> taz_types.properties_dict_t:
+    def _get_output_properties(self) -> typing.properties_dict_t:
         """
         Return
         ------
@@ -230,10 +229,8 @@ class TendencyStepper(abc.ABC):
         return return_dict
 
     def __call__(
-        self,
-        state: taz_types.dataarray_dict_t,
-        timestep: taz_types.timedelta_t,
-    ) -> Tuple[taz_types.dataarray_dict_t, taz_types.dataarray_dict_t]:
+        self, state: typing.dataarray_dict_t, timestep: typing.timedelta_t,
+    ) -> Tuple[typing.dataarray_dict_t, typing.dataarray_dict_t]:
         """
         Step the model state.
 
@@ -271,10 +268,8 @@ class TendencyStepper(abc.ABC):
 
     @abc.abstractmethod
     def _call(
-        self,
-        state: taz_types.dataarray_dict_t,
-        timestep: taz_types.timedelta_t,
-    ) -> Tuple[taz_types.dataarray_dict_t, taz_types.dataarray_dict_t]:
+        self, state: typing.dataarray_dict_t, timestep: typing.timedelta_t,
+    ) -> Tuple[typing.dataarray_dict_t, typing.dataarray_dict_t]:
         """
         Step the model state. As this method is marked as abstract,
         its implementation is delegated to the derived classes.
@@ -298,8 +293,8 @@ class TendencyStepper(abc.ABC):
         pass
 
     def _allocate_output_state(
-        self, state: taz_types.dataarray_dict_t
-    ) -> taz_types.dataarray_dict_t:
+        self, state: typing.dataarray_dict_t
+    ) -> typing.dataarray_dict_t:
         out_state = self._out_state or {}
 
         if not out_state:
@@ -315,7 +310,7 @@ class TendencyStepper(abc.ABC):
     @staticmethod
     def factory(
         scheme: str,
-        *args: taz_types.tendency_component_t,
+        *args: typing.tendency_component_t,
         execution_policy: str = "serial",
         enforce_horizontal_boundary: bool = False,
         backend: str = "numpy",

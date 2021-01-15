@@ -25,7 +25,7 @@ import numpy as np
 import sympl
 
 from tasmania.python.domain.grid import Grid
-from tasmania.python.utils.data_utils import get_physical_constants
+from tasmania.python.utils.data import get_physical_constants
 from tasmania.python.utils.utils import (
     equal_to as eq,
     smaller_than as lt,
@@ -36,10 +36,16 @@ from tasmania.python.utils.utils import (
 # Default values for the physical constants used in the module
 _d_physical_constants = {
     "air_pressure_at_sea_level": sympl.DataArray(1e5, attrs={"units": "Pa"}),
-    "air_temperature_at_sea_level": sympl.DataArray(288.15, attrs={"units": "K"}),
+    "air_temperature_at_sea_level": sympl.DataArray(
+        288.15, attrs={"units": "K"}
+    ),
     "beta": sympl.DataArray(42.0, attrs={"units": "K Pa^-1"}),
-    "gas_constant_of_dry_air": sympl.DataArray(287.05, attrs={"units": "J K^-1 kg^-1"}),
-    "gravitational_acceleration": sympl.DataArray(9.80665, attrs={"units": "m s^-2"}),
+    "gas_constant_of_dry_air": sympl.DataArray(
+        287.05, attrs={"units": "J K^-1 kg^-1"}
+    ),
+    "gravitational_acceleration": sympl.DataArray(
+        9.80665, attrs={"units": "m s^-2"}
+    ),
 }
 
 
@@ -248,7 +254,9 @@ class Sigma3d(Grid):
         beta = self._physical_constants["beta"]
         Rd = self._physical_constants["gas_constant_of_dry_air"]
         g = self._physical_constants["gravitational_acceleration"]
-        hs = np.repeat(self.topography_height[:, :, np.newaxis], self.nz + 1, axis=2)
+        hs = np.repeat(
+            self.topography_height[:, :, np.newaxis], self.nz + 1, axis=2
+        )
         zv = np.reshape(
             self.z_on_interface_levels.values[:, np.newaxis, np.newaxis],
             (1, 1, self.nz + 1),
@@ -263,21 +271,34 @@ class Sigma3d(Grid):
             p0_s = p_sl * np.exp(
                 -T_sl
                 / beta
-                * (1.0 - np.sqrt(1.0 - 2.0 * beta * g * hs / (Rd * T_sl * T_sl)))
+                * (
+                    1.0
+                    - np.sqrt(1.0 - 2.0 * beta * g * hs / (Rd * T_sl * T_sl))
+                )
             )
 
         # Reference pressure at the half levels
-        a = p_sl * zv * (np.logical_and(le(zt, zv), le(zv, zf))) + p_sl * zf * (
-            1.0 - zv
-        ) / (1.0 - zf) * (np.logical_and(lt(zf, zv), le(zv, 1.0)))
+        a = p_sl * zv * (
+            np.logical_and(le(zt, zv), le(zv, zf))
+        ) + p_sl * zf * (1.0 - zv) / (1.0 - zf) * (
+            np.logical_and(lt(zf, zv), le(zv, 1.0))
+        )
         a = np.tile(a, (self.nx, self.ny, 1))
         b = (zv - zf) / (1.0 - zf) * (np.logical_and(lt(zf, zv), le(zv, 1.0)))
         b = np.tile(b, (self.nx, self.ny, 1))
         p0_hl = a + b * p0_s
         self.reference_pressure_on_interface_levels = sympl.DataArray(
             p0_hl,
-            coords=[self.x.values, self.y.values, self.z_on_interface_levels.values],
-            dims=[self.x.dims[0], self.y.dims[0], self.z_on_interface_levels.dims[0]],
+            coords=[
+                self.x.values,
+                self.y.values,
+                self.z_on_interface_levels.values,
+            ],
+            dims=[
+                self.x.dims[0],
+                self.y.dims[0],
+                self.z_on_interface_levels.dims[0],
+            ],
             name="reference_pressure_on_interface_levels",
             attrs={"units": "Pa"},
         )
@@ -294,8 +315,16 @@ class Sigma3d(Grid):
             )
         self.height_on_interface_levels = sympl.DataArray(
             z_hl,
-            coords=[self.x.values, self.y.values, self.z_on_interface_levels.values],
-            dims=[self.x.dims[0], self.y.dims[0], self.z_on_interface_levels.dims[0]],
+            coords=[
+                self.x.values,
+                self.y.values,
+                self.z_on_interface_levels.values,
+            ],
+            dims=[
+                self.x.dims[0],
+                self.y.dims[0],
+                self.z_on_interface_levels.dims[0],
+            ],
             name="height_on_interface_levels",
             attrs={"units": "m"},
         )

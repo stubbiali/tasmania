@@ -28,8 +28,8 @@ from gt4py import gtscript
 from tasmania.python.framework.base_components import GridComponent
 from tasmania.python.framework.stencil import StencilFactory
 from tasmania.python.framework.tag import stencil_definition
-from tasmania.python.utils import taz_types
-from tasmania.python.utils.gtscript_utils import positive
+from tasmania.python.utils import typing
+from tasmania.python.utils.gtscript import positive
 
 if TYPE_CHECKING:
     from tasmania.python.domain.grid import Grid
@@ -89,11 +89,11 @@ class HorizontalVelocity(GridComponent, StencilFactory):
 
     def get_momenta(
         self: "HorizontalVelocity",
-        d: taz_types.array_t,
-        u: taz_types.array_t,
-        v: taz_types.array_t,
-        du: taz_types.array_t,
-        dv: taz_types.array_t,
+        d: typing.array_t,
+        u: typing.array_t,
+        v: typing.array_t,
+        du: typing.array_t,
+        dv: typing.array_t,
     ) -> None:
         """
         Diagnose the horizontal momenta.
@@ -129,11 +129,11 @@ class HorizontalVelocity(GridComponent, StencilFactory):
 
     def get_velocity_components(
         self: "HorizontalVelocity",
-        d: taz_types.array_t,
-        du: taz_types.array_t,
-        dv: taz_types.array_t,
-        u: taz_types.array_t,
-        v: taz_types.array_t,
+        d: typing.array_t,
+        du: typing.array_t,
+        dv: typing.array_t,
+        u: typing.array_t,
+        v: typing.array_t,
     ) -> None:
         """
         Diagnose the horizontal velocity components.
@@ -189,8 +189,8 @@ class HorizontalVelocity(GridComponent, StencilFactory):
         out_du: np.ndarray,
         out_dv: np.ndarray,
         *,
-        origin: taz_types.triplet_int_t,
-        domain: taz_types.triplet_int_t,
+        origin: typing.triplet_int_t,
+        domain: typing.triplet_int_t,
         **kwargs  # catch-all
     ) -> None:
         i = slice(origin[0], origin[0] + domain[0])
@@ -236,8 +236,8 @@ class HorizontalVelocity(GridComponent, StencilFactory):
         in_du: np.ndarray,
         out_u: np.ndarray,
         *,
-        origin: taz_types.triplet_int_t,
-        domain: taz_types.triplet_int_t,
+        origin: typing.triplet_int_t,
+        domain: typing.triplet_int_t,
         **kwargs  # catch-all
     ) -> None:
         i = slice(origin[0], origin[0] + domain[0])
@@ -276,8 +276,8 @@ class HorizontalVelocity(GridComponent, StencilFactory):
         in_dv: np.ndarray,
         out_v: np.ndarray,
         *,
-        origin: taz_types.triplet_int_t,
-        domain: taz_types.triplet_int_t,
+        origin: typing.triplet_int_t,
+        domain: typing.triplet_int_t,
         **kwargs  # catch-all
     ) -> None:
         i = slice(origin[0], origin[0] + domain[0])
@@ -361,9 +361,9 @@ class WaterConstituent(GridComponent, StencilFactory):
 
     def get_density_of_water_constituent(
         self: "WaterConstituent",
-        d: taz_types.array_t,
-        q: taz_types.array_t,
-        dq: taz_types.array_t,
+        d: typing.array_t,
+        q: typing.array_t,
+        dq: typing.array_t,
     ) -> None:
         """
         Diagnose the density of a water constituent.
@@ -394,9 +394,9 @@ class WaterConstituent(GridComponent, StencilFactory):
 
     def get_mass_fraction_of_water_constituent_in_air(
         self: "WaterConstituent",
-        d: taz_types.array_t,
-        dq: taz_types.array_t,
-        q: taz_types.array_t,
+        d: typing.array_t,
+        dq: typing.array_t,
+        q: typing.array_t,
     ) -> None:
         """
         Diagnose the mass fraction of a water constituent.
@@ -433,8 +433,8 @@ class WaterConstituent(GridComponent, StencilFactory):
         in_q: np.ndarray,
         out_dq: np.ndarray,
         *,
-        origin: taz_types.triplet_int_t,
-        domain: taz_types.triplet_int_t,
+        origin: typing.triplet_int_t,
+        domain: typing.triplet_int_t,
         **kwargs  # catch-all
     ) -> None:
         i = slice(origin[0], origin[0] + domain[0])
@@ -470,8 +470,8 @@ class WaterConstituent(GridComponent, StencilFactory):
         in_dq: np.ndarray,
         out_q: np.ndarray,
         *,
-        origin: taz_types.triplet_int_t,
-        domain: taz_types.triplet_int_t,
+        origin: typing.triplet_int_t,
+        domain: typing.triplet_int_t,
         **kwargs  # catch-all
     ) -> None:
         i = slice(origin[0], origin[0] + domain[0])

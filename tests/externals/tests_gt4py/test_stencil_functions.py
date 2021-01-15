@@ -25,7 +25,7 @@ import numpy as np
 from gt4py import gtscript
 from gt4py.gtscript import PARALLEL, computation, interval
 
-from tasmania.python.utils.storage_utils import zeros
+from tasmania.python.utils.storage import zeros
 
 
 @gtscript.function
@@ -58,7 +58,11 @@ def hyperdiffusion_defs(
     dx: float,
     dy: float
 ):
-    from __externals__ import stage_laplacian, stage_laplacian_x, stage_laplacian_y
+    from __externals__ import (
+        stage_laplacian,
+        stage_laplacian_x,
+        stage_laplacian_y,
+    )
 
     with computation(PARALLEL), interval(...):
         lap = stage_laplacian(dx=dx, dy=dy, phi=in_phi)
@@ -82,8 +86,12 @@ if __name__ == "__main__":
     hyperdiffusion = decorator(hyperdiffusion_defs)
 
     in_phi = zeros((30, 30, 10), gt_powered=True, backend="numpy", dtype=dtype)
-    in_gamma = zeros((30, 30, 10), gt_powered=True, backend="numpy", dtype=dtype)
-    out_phi = zeros((30, 30, 10), gt_powered=True, backend="numpy", dtype=dtype)
+    in_gamma = zeros(
+        (30, 30, 10), gt_powered=True, backend="numpy", dtype=dtype
+    )
+    out_phi = zeros(
+        (30, 30, 10), gt_powered=True, backend="numpy", dtype=dtype
+    )
 
     hyperdiffusion(
         in_phi=in_phi,

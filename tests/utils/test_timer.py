@@ -20,8 +20,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from tasmania.python.utils.utils import Timer
-
+from tasmania import Timer
 
 if __name__ == "__main__":
     for _ in range(10):

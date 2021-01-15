@@ -23,13 +23,13 @@
 import numpy as np
 from typing import Optional, Tuple, Union
 
-from gt4py import gtscript
+from tasmania.third_party import cupy, gt4py
 
 from tasmania.python.framework.stencil import stencil_subroutine
-from tasmania.python.utils import taz_types
+from tasmania.python.utils import typing
 
 
-@stencil_subroutine.register(backend=("numpy", "cupy"), stencil="thomas")
+@stencil_subroutine.register(backend="numpy", stencil="thomas")
 def thomas_numpy(
     a: np.ndarray,
     b: np.ndarray,
@@ -71,10 +71,8 @@ def thomas_numpy(
         )
 
 
-@stencil_subroutine.register(backend=("numpy", "cupy"), stencil="setup_thomas")
-@stencil_subroutine.register(
-    backend=("numpy", "cupy"), stencil="setup_thomas_bc"
-)
+@stencil_subroutine.register(backend="numpy", stencil="setup_thomas")
+@stencil_subroutine.register(backend="numpy", stencil="setup_thomas_bc")
 def setup_tridiagonal_system_numpy(
     gamma: float,
     w: np.ndarray,
@@ -104,25 +102,36 @@ def setup_tridiagonal_system_numpy(
     d[i, j, kstop - 1] = phi[i, j, kstop - 1]
 
 
-@stencil_subroutine.register(backend="gt4py*", stencil="setup_thomas")
-@gtscript.function
-def setup_tridiagonal_system_gt4py(
-    gamma: float, w: taz_types.gtfield_t, phi: taz_types.gtfield_t
-) -> "Tuple[taz_types.gtfield_t, taz_types.gtfield_t, taz_types.gtfield_t]":
-    a = gamma * w[0, 0, -1]
-    c = -gamma * w[0, 0, 1]
-    d = phi[0, 0, 0] - gamma * (
-        w[0, 0, -1] * phi[0, 0, -1] - w[0, 0, 1] * phi[0, 0, 1]
+if cupy:
+    stencil_subroutine.register(thomas_numpy, "cupy", "thomas")
+    stencil_subroutine.register(
+        setup_tridiagonal_system_numpy,
+        "cupy",
+        ("setup_thomas", "setup_thomas_bc"),
     )
-    return a, c, d
 
 
-@stencil_subroutine.register(backend="gt4py*", stencil="setup_thomas_bc")
-@gtscript.function
-def setup_tridiagonal_system_bc_gt4py(
-    phi: taz_types.gtfield_t,
-) -> "Tuple[taz_types.gtfield_t, taz_types.gtfield_t, taz_types.gtfield_t]":
-    a = 0.0
-    c = 0.0
-    d = phi[0, 0, 0]
-    return a, c, d
+if gt4py:
+    from gt4py import gtscript
+
+    @stencil_subroutine.register(backend="gt4py*", stencil="setup_thomas")
+    @gtscript.function
+    def setup_tridiagonal_system_gt4py(
+        gamma: float, w: typing.gtfield_t, phi: typing.gtfield_t
+    ) -> "Tuple[typing.gtfield_t, typing.gtfield_t, typing.gtfield_t]":
+        a = gamma * w[0, 0, -1]
+        c = -gamma * w[0, 0, 1]
+        d = phi[0, 0, 0] - gamma * (
+            w[0, 0, -1] * phi[0, 0, -1] - w[0, 0, 1] * phi[0, 0, 1]
+        )
+        return a, c, d
+
+    @stencil_subroutine.register(backend="gt4py*", stencil="setup_thomas_bc")
+    @gtscript.function
+    def setup_tridiagonal_system_bc_gt4py(
+        phi: typing.gtfield_t,
+    ) -> "Tuple[typing.gtfield_t, typing.gtfield_t, typing.gtfield_t]":
+        a = 0.0
+        c = 0.0
+        d = phi[0, 0, 0]
+        return a, c, d

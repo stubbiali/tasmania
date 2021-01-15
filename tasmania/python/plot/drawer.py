@@ -24,7 +24,7 @@ import abc
 from matplotlib import pyplot as plt
 from typing import Optional
 
-from tasmania.python.utils import taz_types
+from tasmania.python.utils import typing
 
 
 class Drawer(abc.ABC):
@@ -36,7 +36,9 @@ class Drawer(abc.ABC):
     the axes encapsulating the plot should be provided, as well.
     """
 
-    def __init__(self, properties: Optional[taz_types.options_dict_t] = None) -> None:
+    def __init__(
+        self, properties: Optional[typing.options_dict_t] = None
+    ) -> None:
         """
         Parameters
         ----------
@@ -48,7 +50,7 @@ class Drawer(abc.ABC):
 
     @abc.abstractmethod
     def __call__(
-        self, state: taz_types.dataarray_dict_t, fig: plt.Figure, ax: plt.Axes
+        self, state: typing.dataarray_dict_t, fig: plt.Figure, ax: plt.Axes
     ) -> None:
         """ Call operator generating the plot.
 

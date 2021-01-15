@@ -30,8 +30,8 @@ from hypothesis import (
 import pytest
 
 from tasmania.python.framework.options import BackendOptions, StorageOptions
-from tasmania.python.utils.dict_utils import DataArrayDictOperator
-from tasmania.python.utils.storage_utils import (
+from tasmania.python.utils.dict import DataArrayDictOperator
+from tasmania.python.utils.storage import (
     deepcopy_dataarray_dict,
     get_dataarray_3d,
 )

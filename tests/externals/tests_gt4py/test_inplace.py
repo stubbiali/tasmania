@@ -20,6 +20,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+from copy import deepcopy
 from hypothesis import (
     assume,
     given,
@@ -34,27 +35,18 @@ import pytest
 from gt4py import gtscript, storage as gt_storage
 from gt4py.gtscript import PARALLEL, computation, interval
 
-from tasmania.python.utils.storage_utils import zeros
+from tasmania.python.utils.storage import zeros
 
 from tests.conf import default_origin as conf_dorigin
 from tests.strategies import st_one_of, st_raw_field
 from tests.utilities import compare_arrays
 
 
-@gtscript.function
-def add(a: gtscript.Field["undefined_dtype"], b: gtscript.Field["dtype"]):
-    return a + b
-
-
-def stencil_defs(
-    in_a: gtscript.Field["dtype"],
-    in_b: gtscript.Field["dtype"],
-    out_c: gtscript.Field["dtype"],
+def stencil_sum_defs(
+    inout_a: gtscript.Field["dtype"], in_b: gtscript.Field["dtype"]
 ):
-    from __externals__ import add
-
     with computation(PARALLEL), interval(...):
-        out_c = add(in_a, in_b)
+        inout_a = inout_a[0, 0, 0] + in_b[0, 0, 0]
 
 
 @settings(
@@ -66,7 +58,7 @@ def stencil_defs(
     deadline=None,
 )
 @given(hyp_st.data())
-def test(data):
+def test_sum(data):
     gt_storage.prepare_numpy()
 
     # ========================================
@@ -77,14 +69,14 @@ def test(data):
     dtype = np.float64
     default_origin = data.draw(st_one_of(conf_dorigin))
 
-    nx = data.draw(hyp_st.integers(min_value=1, max_value=30))
-    ny = data.draw(hyp_st.integers(min_value=1, max_value=30))
-    nz = data.draw(hyp_st.integers(min_value=1, max_value=30))
-    storage_shape = (nx, ny, nz)
+    ni = data.draw(hyp_st.integers(min_value=1, max_value=30))
+    nj = data.draw(hyp_st.integers(min_value=1, max_value=30))
+    nk = data.draw(hyp_st.integers(min_value=1, max_value=30))
+    shape = (ni, nj, nk)
 
     a = data.draw(
         st_raw_field(
-            storage_shape,
+            shape,
             -1e5,
             1e5,
             gt_powered=gt_powered,
@@ -95,7 +87,7 @@ def test(data):
     )
     b = data.draw(
         st_raw_field(
-            storage_shape,
+            shape,
             -1e5,
             1e5,
             gt_powered=gt_powered,
@@ -104,37 +96,28 @@ def test(data):
             default_origin=default_origin,
         )
     )
-    c = zeros(
-        storage_shape,
-        gt_powered=gt_powered,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
 
     # ========================================
     # test bed
     # ========================================
-    stencil = gtscript.stencil(
-        definition=stencil_defs,
-        backend=backend,
-        rebuild=False,
-        dtypes={"dtype": dtype},
-        externals={"add": add},
+    decorator = gtscript.stencil(
+        backend, dtypes={"dtype": dtype}, rebuild=False
     )
+    stencil_sum = decorator(stencil_sum_defs)
 
-    stencil(in_a=a, in_b=b, out_c=c, origin=(0, 0, 0), domain=(nx, ny, nz))
+    a_dc = deepcopy(a)
+    stencil_sum(inout_a=a, in_b=b, origin=(0, 0, 0), domain=(ni, nj, nk))
 
-    c_val = zeros(
-        storage_shape,
+    c = zeros(
+        shape,
         gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
     )
-    c_val[...] = a + b
+    c[...] = a_dc + b
 
-    compare_arrays(c, c_val)
+    compare_arrays(c, a)
 
 
 if __name__ == "__main__":

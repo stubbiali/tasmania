@@ -29,7 +29,7 @@ from tasmania.python.framework._base import (
     BaseDiagnostic2Tendency,
     BaseTendency2Diagnostic,
 )
-from tasmania.python.utils import taz_types
+from tasmania.python.utils import typing
 
 if TYPE_CHECKING:
     from tasmania.python.domain.domain import Domain
@@ -80,7 +80,7 @@ class Diagnostic2Tendency(BaseDiagnostic2Tendency):
 
     @property
     @abc.abstractmethod
-    def input_properties(self) -> taz_types.properties_dict_t:
+    def input_properties(self) -> typing.properties_dict_t:
         """
         Dictionary whose keys are strings identifying the fields to promote,
         and whose values are dictionaries specifying the following properties
@@ -96,7 +96,7 @@ class Diagnostic2Tendency(BaseDiagnostic2Tendency):
         pass
 
     @property
-    def tendency_properties(self) -> taz_types.properties_dict_t:
+    def tendency_properties(self) -> typing.properties_dict_t:
         """
         Dictionary whose keys are strings identifying the quantities returned when
         the object is called, and whose values are dictionaries specifying the
@@ -114,7 +114,7 @@ class Diagnostic2Tendency(BaseDiagnostic2Tendency):
         return return_dict
 
     @property
-    def diagnostic_properties(self) -> taz_types.properties_dict_t:
+    def diagnostic_properties(self) -> typing.properties_dict_t:
         """
         An empty dictionary. This property is provided only for compliance with
         :class:`~sympl.DiagnosticComponent.`
@@ -122,8 +122,8 @@ class Diagnostic2Tendency(BaseDiagnostic2Tendency):
         return {}
 
     def __call__(
-        self, diagnostics: taz_types.mutable_dataarray_dict_t
-    ) -> taz_types.dataarray_dict_t:
+        self, diagnostics: typing.mutable_dataarray_dict_t
+    ) -> typing.dataarray_dict_t:
         """
         Parameters
         ----------
@@ -203,7 +203,7 @@ class Tendency2Diagnostic(BaseTendency2Diagnostic):
 
     @property
     @abc.abstractmethod
-    def input_properties(self) -> taz_types.properties_dict_t:
+    def input_properties(self) -> typing.properties_dict_t:
         """
         Dictionary whose keys are strings identifying the fields to promote,
         and whose values are dictionaries specifying the following properties
@@ -227,7 +227,7 @@ class Tendency2Diagnostic(BaseTendency2Diagnostic):
         return {}
 
     @property
-    def diagnostic_properties(self) -> taz_types.properties_dict_t:
+    def diagnostic_properties(self) -> typing.properties_dict_t:
         """
         Dictionary whose keys are strings identifying the quantities returned when
         the object is called, and whose values are dictionaries specifying the
@@ -243,8 +243,8 @@ class Tendency2Diagnostic(BaseTendency2Diagnostic):
         return return_dict
 
     def __call__(
-        self, tendencies: taz_types.mutable_dataarray_dict_t
-    ) -> taz_types.dataarray_dict_t:
+        self, tendencies: typing.mutable_dataarray_dict_t
+    ) -> typing.dataarray_dict_t:
         """
         Parameters
         ----------

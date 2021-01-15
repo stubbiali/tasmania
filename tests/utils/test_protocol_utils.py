@@ -26,7 +26,7 @@ import pytest
 
 from tasmania.python.framework import protocol as prt
 from tasmania.python.utils.exceptions import ProtocolError
-from tasmania.python.utils.protocol_utils import (
+from tasmania.python.utils.protocol import (
     Registry,
     filter_args_list,
     multiregister,

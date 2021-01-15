@@ -31,8 +31,8 @@ from tasmania.python.framework._base import (
     BaseConcurrentCoupling,
     BaseDiagnosticComponentComposite,
 )
-from tasmania.python.utils import taz_types
-from tasmania.python.utils.framework_utils import get_input_properties
+from tasmania.python.utils import typing
+from tasmania.python.utils.framework import get_input_properties
 from tasmania.python.utils.utils import assert_sequence
 
 
@@ -72,7 +72,7 @@ class DiagnosticComponentComposite(BaseDiagnosticComponentComposite):
 
     def __init__(
         self,
-        *args: taz_types.diagnostic_component_t,
+        *args: typing.diagnostic_component_t,
         execution_policy: str = "serial"
     ) -> None:
         """
@@ -128,9 +128,7 @@ class DiagnosticComponentComposite(BaseDiagnosticComponentComposite):
         )
 
     def __call__(
-        self,
-        state: taz_types.dataarray_dict_t,
-        timestep: taz_types.timedelta_t,
+        self, state: typing.dataarray_dict_t, timestep: typing.timedelta_t,
     ):
         """
         Retrieve diagnostics from the input state by sequentially calling
@@ -156,9 +154,7 @@ class DiagnosticComponentComposite(BaseDiagnosticComponentComposite):
         return self._call(state, timestep)
 
     def _call_serial(
-        self,
-        state: taz_types.dataarray_dict_t,
-        timestep: taz_types.timedelta_t,
+        self, state: typing.dataarray_dict_t, timestep: typing.timedelta_t,
     ):
         return_dict = {}
 

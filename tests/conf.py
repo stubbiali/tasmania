@@ -23,29 +23,28 @@
 from datetime import timedelta
 import numpy as np
 
-try:
-    import cupy as cp
-except ImportError:
-    cp = None
-
-try:
-    import dawn4py
-except ImportError:
-    dawn4py = None
+from tasmania.third_party import cupy, dawn4py, gt4py, numba
 
 
 # backend settings
-backend = ["numpy", "gt4py:numpy", "gt4py:gtx86"]  # , "gt4py:gtmc"]
-if cp is not None:
-    backend += ["cupy", "gt4py:gtcuda"]
-if dawn4py is not None:
-    # backend += [
-    #     "gt4py:dawn:naive",
-    #     "gt4py:dawn:cxxopt",
-    #     "gt4py:dawn:gtx86",
-    #     "gt4py:dawn:gtmc",
-    # ]
-    pass
+backend = ["numpy"]
+if gt4py:
+    backend += ["gt4py:numpy", "gt4py:gtx86"]  # gt4py:gtmc
+# if numba:
+#     backend += ["numba:cpu"]
+# if cupy:
+#     backend += ["cupy"]
+#     if gt4py:
+#         backend += "gt4py:gtcuda"
+#     if numba:
+#         backend += "numba:gpu"
+# if dawn4py:
+#     backend += [
+#         "gt4py:dawn:naive",
+#         "gt4py:dawn:cxxopt",
+#         "gt4py:dawn:gtx86",
+#         "gt4py:dawn:gtmc",
+#     ]
 dtype = (np.float64,)
 default_origin = ((0, 0, 0), (1, 1, 0), (3, 3, 0), (2, 0, 1))
 

@@ -36,8 +36,8 @@ from tasmania.python.framework.composite import (
 )
 from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
 from tasmania.python.framework.tendency_stepper import TendencyStepper
-from tasmania.python.utils import taz_types
-from tasmania.python.utils.framework_utils import (
+from tasmania.python.utils import typing
+from tasmania.python.utils.framework import (
     check_properties_compatibility,
     get_input_properties,
     get_output_properties,
@@ -136,7 +136,7 @@ class SequentialUpdateSplitting:
             properties2_name="output_properties",
         )
 
-    def _init_input_properties(self) -> taz_types.properties_dict_t:
+    def _init_input_properties(self) -> typing.properties_dict_t:
         return get_input_properties(
             tuple(
                 {
@@ -148,7 +148,7 @@ class SequentialUpdateSplitting:
             )
         )
 
-    def _init_output_properties(self) -> taz_types.properties_dict_t:
+    def _init_output_properties(self) -> typing.properties_dict_t:
         return get_output_properties(
             tuple(
                 {
@@ -162,8 +162,8 @@ class SequentialUpdateSplitting:
 
     def __call__(
         self,
-        state: taz_types.mutable_dataarray_dict_t,
-        timestep: taz_types.timedelta_t,
+        state: typing.mutable_dataarray_dict_t,
+        timestep: typing.timedelta_t,
     ) -> None:
         """
         Advance the model state one timestep forward in time by pursuing

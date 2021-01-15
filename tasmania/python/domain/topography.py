@@ -27,9 +27,9 @@ from pandas import Timedelta
 from sympl import DataArray
 from typing import Any, Dict, Optional, TYPE_CHECKING
 
-from tasmania.python.utils import taz_types
+from tasmania.python.utils import typing
 from tasmania.python.framework.register import factorize
-from tasmania.python.utils.storage_utils import get_dataarray_2d
+from tasmania.python.utils.storage import get_dataarray_2d
 from tasmania.python.utils.utils import smaller_than as lt
 
 if TYPE_CHECKING:
@@ -52,7 +52,7 @@ class Topography:
         self,
         steady_profile: DataArray,
         profile: Optional[DataArray] = None,
-        time: Optional[taz_types.timedelta_t] = None,
+        time: Optional[typing.timedelta_t] = None,
     ) -> None:
         """
         Parameters
@@ -93,13 +93,13 @@ class Topography:
         return self._steady_profile
 
     @property
-    def time(self) -> taz_types.datetime_t:
+    def time(self) -> typing.datetime_t:
         """
         The elapsed simulation time after which the topography stops increasing.
         """
         return self._time
 
-    def update(self, time: taz_types.datetime_t) -> None:
+    def update(self, time: typing.datetime_t) -> None:
         """ Update the topography at current simulation time.
 
         Parameters
@@ -122,7 +122,7 @@ class PhysicalTopography(abc.ABC, Topography):
     def __init__(
         self,
         grid: "PhysicalHorizontalGrid",
-        time: taz_types.timedelta_t,
+        time: typing.timedelta_t,
         smooth: bool,
         **kwargs
     ) -> None:
@@ -207,7 +207,7 @@ class PhysicalTopography(abc.ABC, Topography):
     def factory(
         topography_type: str,
         grid: "PhysicalHorizontalGrid",
-        time: Optional[taz_types.timedelta_t] = None,
+        time: Optional[typing.timedelta_t] = None,
         smooth: bool = False,
         **kwargs
     ):

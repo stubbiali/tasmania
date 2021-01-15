@@ -34,8 +34,8 @@ except ImportError:
 from tasmania.python.framework.allocators import zeros
 from tasmania.python.framework.options import StorageOptions
 from tasmania.python.framework.stencil import StencilFactory
-from tasmania.python.utils import taz_types
-from tasmania.python.utils.storage_utils import (
+from tasmania.python.utils import typing
+from tasmania.python.utils.storage import (
     get_asarray_function,
     get_dataarray_3d,
 )
@@ -48,7 +48,7 @@ class ZhaoSolutionFactory:
     """Factory of valid velocity fields for the Zhao test case."""
 
     def __init__(
-        self, initial_time: taz_types.datetime_t, eps: DataArray
+        self, initial_time: typing.datetime_t, eps: DataArray
     ) -> None:
         """
         Parameters
@@ -66,7 +66,7 @@ class ZhaoSolutionFactory:
 
     def __call__(
         self,
-        time: taz_types.datetime_t,
+        time: typing.datetime_t,
         grid: "Grid",
         slice_x: Optional[slice] = None,
         slice_y: Optional[slice] = None,
@@ -165,7 +165,7 @@ class ZhaoStateFactory(StencilFactory):
 
     def __init__(
         self,
-        initial_time: taz_types.datetime_t,
+        initial_time: typing.datetime_t,
         eps: DataArray,
         *,
         backend: str = "numpy",
@@ -188,8 +188,8 @@ class ZhaoStateFactory(StencilFactory):
         self._solution_factory = ZhaoSolutionFactory(initial_time, eps)
 
     def __call__(
-        self, time: taz_types.datetime_t, grid: "Grid"
-    ) -> taz_types.dataarray_dict_t:
+        self, time: typing.datetime_t, grid: "Grid"
+    ) -> typing.dataarray_dict_t:
         """
         Parameters
         ----------

@@ -31,12 +31,12 @@ except (ImportError, ModuleNotFoundError):
 
 from tasmania.python.framework.allocators import ones, zeros
 from tasmania.python.framework.asarray import AsArray
-from tasmania.python.utils import taz_types
-from tasmania.python.utils.data_utils import get_physical_constants
-from tasmania.python.utils.meteo_utils import (
+from tasmania.python.utils import typing
+from tasmania.python.utils.data import get_physical_constants
+from tasmania.python.utils.meteo import (
     convert_relative_humidity_to_water_vapor,
 )
-from tasmania.python.utils.storage_utils import (
+from tasmania.python.utils.storage import (
     get_asarray_function,
     get_dataarray_3d,
     get_storage_shape,
@@ -70,7 +70,7 @@ mfpw = "mass_fraction_of_precipitation_water_in_air"
 
 def get_isentropic_state_from_brunt_vaisala_frequency(
     grid: "Grid",
-    time: taz_types.datetime_t,
+    time: typing.datetime_t,
     x_velocity: DataArray,
     y_velocity: DataArray,
     brunt_vaisala: DataArray,
@@ -82,7 +82,7 @@ def get_isentropic_state_from_brunt_vaisala_frequency(
     backend: str = "numpy",
     storage_shape: Optional[Sequence[int]] = None,
     storage_options: Optional["StorageOptions"] = None,
-) -> taz_types.dataarray_dict_t:
+) -> typing.dataarray_dict_t:
     """
     Compute a valid state for the isentropic model given
     the Brunt-Vaisala frequency.
@@ -403,7 +403,7 @@ def get_isentropic_state_from_brunt_vaisala_frequency(
 
 def get_isentropic_state_from_temperature(
     grid: "Grid",
-    time: taz_types.datetime_t,
+    time: typing.datetime_t,
     x_velocity: DataArray,
     y_velocity: DataArray,
     background_temperature: DataArray,
@@ -419,7 +419,7 @@ def get_isentropic_state_from_temperature(
     backend: str = "numpy",
     storage_shape: Optional[Sequence[int]] = None,
     storage_options: Optional["StorageOptions"] = None,
-) -> taz_types.dataarray_dict_t:
+) -> typing.dataarray_dict_t:
     """
     Compute a valid state for the isentropic model given
     the air temperature.

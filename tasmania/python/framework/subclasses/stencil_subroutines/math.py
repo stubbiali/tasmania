@@ -20,15 +20,9 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-import numba
 import numpy as np
 
-try:
-    import cupy as cp
-except ImportError:
-    cp = np
-
-from gt4py import gtscript
+from tasmania.third_party import cupy as cp, gt4py, numba
 
 from tasmania.python.framework.stencil import stencil_subroutine
 
@@ -38,51 +32,9 @@ def absolute_numpy(phi):
     return np.abs(phi)
 
 
-@stencil_subroutine.register(backend="cupy", stencil="absolute")
-def absolute_cupy(phi):
-    return cp.abs(phi)
-
-
-@stencil_subroutine.register(backend="gt4py*", stencil="absolute")
-@gtscript.function
-def absolute_gt4py(phi):
-    return phi if phi > 0 else -phi
-
-
-@stencil_subroutine.register(backend="numba:cpu", stencil="absolute")
-def absolute_numba_cpu(phi):
-    def core_def(field):
-        return field[0, 0, 0] if field[0, 0, 0] > 0 else -field[0, 0, 0]
-
-    core = numba.stencil(core_def)
-
-    return core(phi)
-
-
 @stencil_subroutine.register(backend="numpy", stencil="positive")
 def positive_numpy(phi):
     return np.where(phi > 0, phi, 0)
-
-
-@stencil_subroutine.register(backend="cupy", stencil="positive")
-def positive_cupy(phi):
-    return cp.where(phi > 0, phi, 0)
-
-
-@stencil_subroutine.register(backend="gt4py*", stencil="positive")
-@gtscript.function
-def positive_gt4py(phi):
-    return phi if phi > 0 else 0
-
-
-@stencil_subroutine.register(backend="numba:cpu", stencil="positive")
-def positive_numba_cpu(phi):
-    def core_def(field):
-        return field[0, 0, 0] if field[0, 0, 0] > 0 else 0
-
-    core = numba.stencil(core_def)
-
-    return core(phi)
 
 
 @stencil_subroutine.register(backend="numpy", stencil="negative")
@@ -90,22 +42,65 @@ def negative_numpy(phi):
     return np.where(phi < 0, -phi, 0)
 
 
-@stencil_subroutine.register(backend="cupy", stencil="negative")
-def negative_cupy(phi):
-    return cp.where(phi < 0, -phi, 0)
+if cp:
+
+    @stencil_subroutine.register(backend="cupy", stencil="absolute")
+    def absolute_cupy(phi):
+        return cp.abs(phi)
+
+    @stencil_subroutine.register(backend="cupy", stencil="positive")
+    def positive_cupy(phi):
+        return cp.where(phi > 0, phi, 0)
+
+    @stencil_subroutine.register(backend="cupy", stencil="negative")
+    def negative_cupy(phi):
+        return cp.where(phi < 0, -phi, 0)
 
 
-@stencil_subroutine.register(backend="gt4py*", stencil="negative")
-@gtscript.function
-def negative_gt4py(phi):
-    return -phi if phi < 0 else 0
+if gt4py:
+    from gt4py import gtscript
+
+    @stencil_subroutine.register(backend="gt4py*", stencil="absolute")
+    @gtscript.function
+    def absolute_gt4py(phi):
+        return phi if phi > 0 else -phi
+
+    @stencil_subroutine.register(backend="gt4py*", stencil="positive")
+    @gtscript.function
+    def positive_gt4py(phi):
+        return phi if phi > 0 else 0
+
+    @stencil_subroutine.register(backend="gt4py*", stencil="negative")
+    @gtscript.function
+    def negative_gt4py(phi):
+        return -phi if phi < 0 else 0
 
 
-@stencil_subroutine.register(backend="numba:cpu", stencil="negative")
-def negative_numba_cpu(phi):
-    def core_def(field):
-        return -field[0, 0, 0] if field[0, 0, 0] < 0 else 0
+if numba:
 
-    core = numba.stencil(core_def)
+    @stencil_subroutine.register(backend="numba:cpu", stencil="absolute")
+    def absolute_numba_cpu(phi):
+        def core_def(field):
+            return field[0, 0, 0] if field[0, 0, 0] > 0 else -field[0, 0, 0]
 
-    return core(phi)
+        core = numba.stencil(core_def)
+
+        return core(phi)
+
+    @stencil_subroutine.register(backend="numba:cpu", stencil="positive")
+    def positive_numba_cpu(phi):
+        def core_def(field):
+            return field[0, 0, 0] if field[0, 0, 0] > 0 else 0
+
+        core = numba.stencil(core_def)
+
+        return core(phi)
+
+    @stencil_subroutine.register(backend="numba:cpu", stencil="negative")
+    def negative_numba_cpu(phi):
+        def core_def(field):
+            return -field[0, 0, 0] if field[0, 0, 0] < 0 else 0
+
+        core = numba.stencil(core_def)
+
+        return core(phi)

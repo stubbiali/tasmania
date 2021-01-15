@@ -41,7 +41,7 @@ from tasmania.python.physics.microphysics.kessler import (
     KesslerSedimentation,
 )
 from tasmania import get_dataarray_3d
-from tasmania.python.utils.meteo_utils import tetens_formula
+from tasmania.python.utils.meteo import tetens_formula
 
 from tests.conf import (
     backend as conf_backend,

@@ -31,7 +31,7 @@ import pytest
 
 from tasmania.python.domain.horizontal_boundary import HorizontalBoundary
 from tasmania.python.framework.options import StorageOptions
-from tasmania.python.utils.utils import is_gt
+from tasmania.python.utils.backend import is_gt
 
 from tests.conf import backend as conf_backend, dtype as conf_dtype
 from tests.strategies import (

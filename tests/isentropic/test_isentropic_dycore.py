@@ -48,7 +48,7 @@ from tasmania.python.isentropic.physics.coriolis import (
 from tasmania.python.isentropic.physics.diagnostics import (
     IsentropicDiagnostics,
 )
-from tasmania.python.utils.storage_utils import (
+from tasmania.python.utils.storage import (
     deepcopy_array_dict,
     deepcopy_dataarray,
     deepcopy_dataarray_dict,

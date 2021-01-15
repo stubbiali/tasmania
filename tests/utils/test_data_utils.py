@@ -28,7 +28,7 @@ from hypothesis import (
 import pytest
 from sympl import DataArray
 
-from tasmania.python.utils import data_utils as dutils, storage_utils as sutils
+from tasmania.python.utils import data as dutils, storage as sutils
 from tasmania.python.utils.exceptions import ConstantNotFoundError
 
 from tests.conf import dtype as conf_dtype

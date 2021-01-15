@@ -34,8 +34,7 @@ from tasmania.python.isentropic.dynamics.horizontal_fluxes import (
 )
 from tasmania.python.isentropic.dynamics.prognostic import IsentropicPrognostic
 from tasmania.python.framework.register import register
-from tasmania.python.utils.utils import get_gt_backend, is_gt
-
+from tasmania.python.utils.backend import is_gt, get_gt_backend
 
 # # convenient aliases
 # mfwv = "mass_fraction_of_water_vapor_in_air"

@@ -24,37 +24,44 @@ import abc
 import numpy as np
 import pytest
 
-try:
-    import cupy as cp
-except ImportError:
-    cp = np
-
-import gt4py as gt
+from tasmania.third_party import cupy, gt4py, numba
 
 from tasmania.python.framework import protocol as prt
 from tasmania.python.framework.allocators import empty, ones, zeros
 from tasmania.python.framework.options import StorageOptions
-from tasmania.python.framework.subclasses.allocators.empty import (
-    empty_cupy,
-    empty_gt4py,
-    empty_numpy,
-)
-from tasmania.python.framework.subclasses.allocators.ones import (
-    ones_cupy,
-    ones_gt4py,
-    ones_numpy,
-)
-from tasmania.python.framework.subclasses.allocators.zeros import (
-    zeros_cupy,
-    zeros_gt4py,
-    zeros_numpy,
-)
+from tasmania.python.framework.subclasses.allocators.empty import empty_numpy
+from tasmania.python.framework.subclasses.allocators.ones import ones_numpy
+from tasmania.python.framework.subclasses.allocators.zeros import zeros_numpy
+
+if cupy:
+    from tasmania.python.framework.subclasses.allocators.empty import (
+        empty_cupy,
+    )
+    from tasmania.python.framework.subclasses.allocators.ones import ones_cupy
+    from tasmania.python.framework.subclasses.allocators.zeros import (
+        zeros_cupy,
+    )
+
+if gt4py:
+    from tasmania.python.framework.subclasses.allocators.empty import (
+        empty_gt4py,
+    )
+    from tasmania.python.framework.subclasses.allocators.ones import ones_gt4py
+    from tasmania.python.framework.subclasses.allocators.zeros import (
+        zeros_gt4py,
+    )
 
 
 class _TestAllocator(abc.ABC):
     subclass = None
     function = None
-    backends = ("numpy", "numba:cpu", "cupy", "numba:gpu", "gt4py*")
+    backends = (
+        "numpy",
+        "numba:cpu" if numba else "numpy",
+        "cupy" if cupy else "numpy",
+        "numba:gpu" if cupy and numba else "numpy",
+        "gt4py*" if gt4py else "numpy",
+    )
     values = {}
 
     def check_registry_keys(self, r, f):
@@ -79,26 +86,30 @@ class _TestAllocator(abc.ABC):
         shape = (3, 4, 5)
         so = StorageOptions()
 
-        for backend in ("numpy", "numba:cpu"):
+        for backend in ("numpy", "numba:cpu" if numba else "numpy"):
             obj = s(backend=backend, shape=shape, storage_options=so)
             assert isinstance(obj, np.ndarray)
             assert all(it1 == it2 for it1, it2 in zip(obj.shape, shape))
             assert obj.dtype == so.dtype
 
-        for backend in ("cupy", "numba:gpu"):
-            obj = s(backend=backend, shape=shape, storage_options=so)
-            assert isinstance(obj, cp.ndarray)
-            assert all(it1 == it2 for it1, it2 in zip(obj.shape, shape))
-            assert obj.dtype == so.dtype
+        if cupy:
+            for backend in ("cupy", "numba:gpu" if numba else "cupy"):
+                obj = s(backend=backend, shape=shape, storage_options=so)
+                assert isinstance(obj, cupy.ndarray)
+                assert all(it1 == it2 for it1, it2 in zip(obj.shape, shape))
+                assert obj.dtype == so.dtype
 
-        for gt_backend in ("debug", "numpy", "gtx86", "gtmc"):
-            obj = s(
-                backend=f"gt4py:{gt_backend}", shape=shape, storage_options=so
-            )
-            assert isinstance(obj, gt.storage.storage.Storage)
-            assert all(it1 == it2 for it1, it2 in zip(obj.shape, shape))
-            assert obj.dtype == so.dtype
-            assert obj.backend == gt_backend
+        if gt4py:
+            for gt_backend in ("debug", "numpy", "gtx86", "gtmc"):
+                obj = s(
+                    backend=f"gt4py:{gt_backend}",
+                    shape=shape,
+                    storage_options=so,
+                )
+                assert isinstance(obj, gt4py.storage.storage.Storage)
+                assert all(it1 == it2 for it1, it2 in zip(obj.shape, shape))
+                assert obj.dtype == so.dtype
+                assert obj.backend == gt_backend
 
     def test_factory(self):
         self.check_factory(self.subclass)
@@ -107,37 +118,40 @@ class _TestAllocator(abc.ABC):
 class TestEmpty(_TestAllocator):
     subclass = empty
     function = "empty"
-    values = {
-        "numpy": empty_numpy,
-        "numba:cpu": empty_numpy,
-        "cupy": empty_cupy,
-        "numba:gpu": empty_cupy,
-        "gt4py*": empty_gt4py,
-    }
+    values = {"numpy": empty_numpy}
+    if cupy:
+        values["cupy"] = empty_cupy
+        values["numba:gpu"] = empty_cupy
+    if gt4py:
+        values["gt4py*"] = empty_gt4py
+    if numba:
+        values["numba:cpu"] = empty_numpy
 
 
 class TestOnes(_TestAllocator):
     subclass = ones
     function = "ones"
-    values = {
-        "numpy": ones_numpy,
-        "numba:cpu": ones_numpy,
-        "cupy": ones_cupy,
-        "numba:gpu": ones_cupy,
-        "gt4py*": ones_gt4py,
-    }
+    values = {"numpy": ones_numpy}
+    if cupy:
+        values["cupy"] = ones_cupy
+        values["numba:gpu"] = ones_cupy
+    if gt4py:
+        values["gt4py*"] = ones_gt4py
+    if numba:
+        values["numba:cpu"] = ones_numpy
 
 
 class TestZeros(_TestAllocator):
     subclass = zeros
     function = "zeros"
-    values = {
-        "numpy": zeros_numpy,
-        "numba:cpu": zeros_numpy,
-        "cupy": zeros_cupy,
-        "numba:gpu": zeros_cupy,
-        "gt4py*": zeros_gt4py,
-    }
+    values = {"numpy": zeros_numpy}
+    if cupy:
+        values["cupy"] = zeros_cupy
+        values["numba:gpu"] = zeros_cupy
+    if gt4py:
+        values["gt4py*"] = zeros_gt4py
+    if numba:
+        values["numba:cpu"] = zeros_numpy
 
 
 if __name__ == "__main__":

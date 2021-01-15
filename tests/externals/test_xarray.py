@@ -26,7 +26,7 @@ import xarray as xr
 
 from gt4py.storage.storage import CPUStorage
 
-from tasmania.python.utils.storage_utils import zeros
+from tasmania.python.utils.storage import zeros
 
 
 def test_xarray_gt4py_compatibility_gtmc():

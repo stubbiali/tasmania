@@ -26,10 +26,10 @@ import numpy as np
 from sympl import DataArray
 from typing import Any, Dict, Optional, Sequence, TYPE_CHECKING
 
-from tasmania.python.utils import taz_types
+from tasmania.python.utils import typing
 from tasmania.python.framework.register import factorize
 from tasmania.python.framework.stencil import StencilFactory
-from tasmania.python.utils.storage_utils import deepcopy_dataarray
+from tasmania.python.utils.storage import deepcopy_dataarray
 
 if TYPE_CHECKING:
     from tasmania.python.framework.options import (
@@ -146,7 +146,7 @@ class HorizontalBoundary(StencilFactory, abc.ABC):
         return self._kwargs
 
     @property
-    def reference_state(self) -> taz_types.dataarray_dict_t:
+    def reference_state(self) -> typing.dataarray_dict_t:
         """
         The reference model state dictionary, defined over the
         numerical grid.
@@ -154,7 +154,7 @@ class HorizontalBoundary(StencilFactory, abc.ABC):
         return self._ref_state if self._ref_state is not None else {}
 
     @reference_state.setter
-    def reference_state(self, ref_state: taz_types.dataarray_dict_t) -> None:
+    def reference_state(self, ref_state: typing.dataarray_dict_t) -> None:
         for name in ref_state:
             if name != "time":
                 assert (
@@ -218,7 +218,7 @@ class HorizontalBoundary(StencilFactory, abc.ABC):
 
     @abc.abstractmethod
     def get_numerical_field(
-        self, field: taz_types.array_t, field_name: Optional[str] = None
+        self, field: typing.array_t, field_name: Optional[str] = None
     ) -> np.ndarray:
         """
         Parameters
@@ -285,7 +285,7 @@ class HorizontalBoundary(StencilFactory, abc.ABC):
 
     @abc.abstractmethod
     def get_physical_field(
-        self, field: taz_types.array_t, field_name: Optional[str] = None
+        self, field: typing.array_t, field_name: Optional[str] = None
     ) -> np.ndarray:
         """
         Parameters
@@ -305,10 +305,10 @@ class HorizontalBoundary(StencilFactory, abc.ABC):
     @abc.abstractmethod
     def enforce_field(
         self,
-        field: taz_types.array_t,
+        field: typing.array_t,
         field_name: Optional[str] = None,
         field_units: Optional[str] = None,
-        time: Optional[taz_types.datetime_t] = None,
+        time: Optional[typing.datetime_t] = None,
         grid: Optional["NumericalGrid"] = None,
     ) -> None:
         """Enforce the boundary conditions on a raw field.
@@ -333,8 +333,8 @@ class HorizontalBoundary(StencilFactory, abc.ABC):
 
     def enforce_raw(
         self,
-        state: taz_types.array_dict_t,
-        field_properties: Optional[taz_types.properties_mapping_t] = None,
+        state: typing.array_dict_t,
+        field_properties: Optional[typing.properties_mapping_t] = None,
         grid: Optional["NumericalGrid"] = None,
     ) -> None:
         """Enforce the boundary conditions on a raw state.
@@ -390,7 +390,7 @@ class HorizontalBoundary(StencilFactory, abc.ABC):
 
     def enforce(
         self,
-        state: taz_types.dataarray_dict_t,
+        state: typing.dataarray_dict_t,
         field_names: Optional[Sequence[str]] = None,
         grid: Optional["NumericalGrid"] = None,
     ) -> None:
@@ -443,10 +443,10 @@ class HorizontalBoundary(StencilFactory, abc.ABC):
     @abc.abstractmethod
     def set_outermost_layers_x(
         self,
-        field: taz_types.array_t,
+        field: typing.array_t,
         field_name: Optional[str] = None,
         field_units: Optional[str] = None,
-        time: Optional[taz_types.datetime_t] = None,
+        time: Optional[typing.datetime_t] = None,
         grid: Optional["NumericalGrid"] = None,
     ) -> None:
         """Set the outermost layers along the first dimension.
@@ -472,10 +472,10 @@ class HorizontalBoundary(StencilFactory, abc.ABC):
     @abc.abstractmethod
     def set_outermost_layers_y(
         self,
-        field: taz_types.array_t,
+        field: typing.array_t,
         field_name: Optional[str] = None,
         field_units: Optional[str] = None,
-        time: Optional[taz_types.datetime_t] = None,
+        time: Optional[typing.datetime_t] = None,
         grid: Optional["NumericalGrid"] = None,
     ) -> None:
         """Set the outermost layers along the first dimension.

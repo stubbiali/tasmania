@@ -27,7 +27,7 @@ from typing import Optional, Sequence, TYPE_CHECKING, Union
 from tasmania.python.plot.drawer import Drawer
 from tasmania.python.plot.retrievers import DataRetriever
 from tasmania.python.plot.plot_utils import make_lineplot
-from tasmania.python.utils import taz_types
+from tasmania.python.utils import typing
 
 if TYPE_CHECKING:
     from tasmania.python.domain.grid import Grid
@@ -49,7 +49,7 @@ class Line(Drawer):
         z: Union[int, Sequence[int]],
         xdata: Optional[np.ndarray] = None,
         ydata: Optional[np.ndarray] = None,
-        properties: Optional[taz_types.options_dict_t] = None,
+        properties: Optional[typing.options_dict_t] = None,
     ) -> None:
         """
         Parameters
@@ -98,7 +98,12 @@ class Line(Drawer):
             slice_z = slice(z[k], z[k] + 1 if z[k] != -1 else None)
             self._retrievers.append(
                 DataRetriever(
-                    grids[k], field_name, field_units, slice_x, slice_y, slice_z
+                    grids[k],
+                    field_name,
+                    field_units,
+                    slice_x,
+                    slice_y,
+                    slice_z,
                 )
             )
 
@@ -123,7 +128,7 @@ class Line(Drawer):
 
     def __call__(
         self,
-        state: taz_types.dataarray_dict_t,
+        state: typing.dataarray_dict_t,
         fig: Optional[plt.Figure] = None,
         ax: Optional[plt.Axes] = None,
     ) -> None:

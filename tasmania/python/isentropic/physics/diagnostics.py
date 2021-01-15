@@ -28,7 +28,7 @@ from tasmania.python.framework.base_components import DiagnosticComponent
 from tasmania.python.isentropic.dynamics.diagnostics import (
     IsentropicDiagnostics as Core,
 )
-from tasmania.python.utils import taz_types
+from tasmania.python.utils import typing
 
 if TYPE_CHECKING:
     from tasmania.python.domain.domain import Domain
@@ -160,7 +160,7 @@ class IsentropicDiagnostics(DiagnosticComponent):
             self._out_t = self.zeros(shape=storage_shape)
 
     @property
-    def input_properties(self) -> taz_types.properties_dict_t:
+    def input_properties(self) -> typing.properties_dict_t:
         dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])
 
         return_dict = {
@@ -170,7 +170,7 @@ class IsentropicDiagnostics(DiagnosticComponent):
         return return_dict
 
     @property
-    def diagnostic_properties(self) -> taz_types.properties_dict_t:
+    def diagnostic_properties(self) -> typing.properties_dict_t:
         dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])
         dims_stgz = (dims[0], dims[1], self.grid.z_on_interface_levels.dims[0])
 
@@ -193,9 +193,7 @@ class IsentropicDiagnostics(DiagnosticComponent):
 
         return return_dict
 
-    def array_call(
-        self, state: taz_types.array_dict_t
-    ) -> taz_types.array_dict_t:
+    def array_call(self, state: typing.array_dict_t) -> typing.array_dict_t:
         s = state["air_isentropic_density"]
         self._core.get_diagnostic_variables(
             s, self._pt, self._out_p, self._out_exn, self._out_mtg, self._out_h
@@ -276,7 +274,7 @@ class IsentropicVelocityComponents(DiagnosticComponent):
         self._out_v = self.zeros(shape=storage_shape)
 
     @property
-    def input_properties(self) -> taz_types.properties_dict_t:
+    def input_properties(self) -> typing.properties_dict_t:
         g = self.grid
         dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
 
@@ -295,7 +293,7 @@ class IsentropicVelocityComponents(DiagnosticComponent):
         return return_dict
 
     @property
-    def diagnostic_properties(self) -> taz_types.properties_dict_t:
+    def diagnostic_properties(self) -> typing.properties_dict_t:
         g = self.grid
         dims_x = (g.x_at_u_locations.dims[0], g.y.dims[0], g.z.dims[0])
         dims_y = (g.x.dims[0], g.y_at_v_locations.dims[0], g.z.dims[0])
@@ -308,8 +306,8 @@ class IsentropicVelocityComponents(DiagnosticComponent):
         return return_dict
 
     def array_call(
-        self, state: taz_types.gtstorage_dict_t
-    ) -> taz_types.gtstorage_dict_t:
+        self, state: typing.gtstorage_dict_t
+    ) -> typing.gtstorage_dict_t:
         # extract the required model variables from the input state
         s = state["air_isentropic_density"]
         su = state["x_momentum_isentropic"]

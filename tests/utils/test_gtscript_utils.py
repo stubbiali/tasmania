@@ -34,7 +34,7 @@ from gt4py import gtscript
 from tasmania.python.isentropic.dynamics.subclasses.prognostics.utils import (
     step_forward_euler_gt4py,
 )
-from tasmania.python.utils.gtscript_utils import (
+from tasmania.python.utils.gtscript import (
     set_annotations,
     stencil_copy_defs,
     stencil_copychange_defs,
@@ -62,8 +62,8 @@ from tasmania.python.utils.gtscript_utils import (
     stencil_relax_defs,
     stencil_irelax_defs,
 )
-from tasmania.python.utils.storage_utils import zeros
-from tasmania.python.utils.utils import get_gt_backend, is_gt
+from tasmania.python.utils.storage import zeros
+from tasmania.python.utils.backend import is_gt, get_gt_backend
 
 from tests.conf import (
     backend as conf_backend,

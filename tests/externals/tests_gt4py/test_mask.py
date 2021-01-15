@@ -25,7 +25,7 @@ import numpy as np
 from gt4py import gtscript
 from gt4py.gtscript import PARALLEL, computation, interval
 
-from tasmania.python.utils.storage_utils import zeros
+from tasmania.python.utils.storage import zeros
 
 
 def stencil_defs(
@@ -58,7 +58,10 @@ if __name__ == "__main__":
     c = zeros((nx, ny, nz), gt_powered=True, backend=backend, dtype=dtype)
 
     stencil = gtscript.stencil(
-        definition=stencil_defs, backend=backend, dtypes={"dtype": dtype}, rebuild=False
+        definition=stencil_defs,
+        backend=backend,
+        dtypes={"dtype": dtype},
+        rebuild=False,
     )
 
     stencil(

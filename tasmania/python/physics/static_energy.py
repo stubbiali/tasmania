@@ -28,8 +28,8 @@ from gt4py import gtscript
 
 from tasmania.python.framework.base_components import DiagnosticComponent
 from tasmania.python.framework.tag import stencil_definition
-from tasmania.python.utils import taz_types
-from tasmania.python.utils.data_utils import get_physical_constants
+from tasmania.python.utils import typing
+from tasmania.python.utils.data import get_physical_constants
 
 if TYPE_CHECKING:
     from tasmania.python.domain.domain import Domain
@@ -100,7 +100,7 @@ class DryStaticEnergy(DiagnosticComponent):
         self._stencil = self.compile("static_energy")
 
     @property
-    def input_properties(self) -> taz_types.properties_dict_t:
+    def input_properties(self) -> typing.properties_dict_t:
         g = self.grid
         dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
         dims_stgz = (g.x.dims[0], g.y.dims[0], g.z_on_interface_levels.dims[0])
@@ -117,7 +117,7 @@ class DryStaticEnergy(DiagnosticComponent):
         return return_dict
 
     @property
-    def diagnostic_properties(self) -> taz_types.properties_dict_t:
+    def diagnostic_properties(self) -> typing.properties_dict_t:
         g = self.grid
         dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
 
@@ -127,9 +127,7 @@ class DryStaticEnergy(DiagnosticComponent):
 
         return return_dict
 
-    def array_call(
-        self, state: taz_types.array_dict_t
-    ) -> taz_types.array_dict_t:
+    def array_call(self, state: typing.array_dict_t) -> typing.array_dict_t:
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
 
         in_t = state["air_temperature"]
@@ -161,8 +159,8 @@ class DryStaticEnergy(DiagnosticComponent):
         in_h: np.ndarray,
         out_dse: np.ndarray,
         *,
-        origin: taz_types.triplet_int_t,
-        domain: taz_types.triplet_int_t,
+        origin: typing.triplet_int_t,
+        domain: typing.triplet_int_t,
         **kwargs  # catch-all
     ):
         i = slice(origin[0], origin[0] + domain[0])
@@ -246,7 +244,7 @@ class MoistStaticEnergy(DiagnosticComponent):
         self._stencil = self.compile("static_energy")
 
     @property
-    def input_properties(self) -> taz_types.properties_dict_t:
+    def input_properties(self) -> typing.properties_dict_t:
         g = self.grid
         dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
 
@@ -261,7 +259,7 @@ class MoistStaticEnergy(DiagnosticComponent):
         return return_dict
 
     @property
-    def diagnostic_properties(self) -> taz_types.properties_dict_t:
+    def diagnostic_properties(self) -> typing.properties_dict_t:
         g = self.grid
         dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
 
@@ -271,9 +269,7 @@ class MoistStaticEnergy(DiagnosticComponent):
 
         return return_dict
 
-    def array_call(
-        self, state: taz_types.array_dict_t
-    ) -> taz_types.array_dict_t:
+    def array_call(self, state: typing.array_dict_t) -> typing.array_dict_t:
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
 
         in_dse = state["montgomery_potential"]
@@ -301,8 +297,8 @@ class MoistStaticEnergy(DiagnosticComponent):
         in_qv: np.ndarray,
         out_mse: np.ndarray,
         *,
-        origin: taz_types.triplet_int_t,
-        domain: taz_types.triplet_int_t,
+        origin: typing.triplet_int_t,
+        domain: typing.triplet_int_t,
         **kwargs  # catch-all
     ):
         i = slice(origin[0], origin[0] + domain[0])

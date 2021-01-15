@@ -22,7 +22,7 @@
 #
 from tasmania.python.framework.register import register
 from tasmania.python.framework.sts_tendency_stepper import STSTendencyStepper
-from tasmania.python.utils.framework_utils import get_increment
+from tasmania.python.utils.framework import get_increment
 
 
 @register(name="rk3ws")

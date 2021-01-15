@@ -29,7 +29,7 @@ from tasmania.python.framework.allocators import Allocator
 from tasmania.python.framework.asarray import AsArray
 from tasmania.python.framework.options import BackendOptions, StorageOptions
 from tasmania.python.utils.exceptions import FactoryRegistryError
-from tasmania.python.utils.protocol_utils import (
+from tasmania.python.utils.protocol import (
     Registry,
     multiregister,
     set_runtime_attribute,

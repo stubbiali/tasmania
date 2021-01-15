@@ -32,8 +32,8 @@ from tasmania.python.framework.tag import stencil_definition
 from tasmania.python.isentropic.dynamics.vertical_fluxes import (
     IsentropicMinimalVerticalFlux,
 )
-from tasmania.python.utils import taz_types
-from tasmania.python.utils.data_utils import get_physical_constants
+from tasmania.python.utils import typing
+from tasmania.python.utils.data import get_physical_constants
 
 if TYPE_CHECKING:
     from tasmania.python.domain.domain import Domain
@@ -50,16 +50,16 @@ mfpw = "mass_fraction_of_precipitation_water_in_air"
 
 @gtscript.function
 def first_order_boundary(
-    dz: float, w: taz_types.gtfield_t, phi: taz_types.gtfield_t
-) -> taz_types.gtfield_t:
+    dz: float, w: typing.gtfield_t, phi: typing.gtfield_t
+) -> typing.gtfield_t:
     out = (w[0, 0, -1] * phi[0, 0, -1] - w[0, 0, 0] * phi[0, 0, 0]) / dz
     return out
 
 
 @gtscript.function
 def second_order_boundary(
-    dz: float, w: taz_types.gtfield_t, phi: taz_types.gtfield_t
-) -> taz_types.gtfield_t:
+    dz: float, w: typing.gtfield_t, phi: typing.gtfield_t
+) -> typing.gtfield_t:
     out = (
         0.5
         * (
@@ -173,7 +173,7 @@ class IsentropicVerticalAdvection(TendencyComponent):
         self._stencil = self.compile("stencil")
 
     @property
-    def input_properties(self) -> taz_types.properties_dict_t:
+    def input_properties(self) -> typing.properties_dict_t:
         grid = self.grid
         dims = (grid.x.dims[0], grid.y.dims[0], grid.z.dims[0])
 
@@ -215,7 +215,7 @@ class IsentropicVerticalAdvection(TendencyComponent):
         return return_dict
 
     @property
-    def tendency_properties(self) -> taz_types.properties_dict_t:
+    def tendency_properties(self) -> typing.properties_dict_t:
         grid = self.grid
         dims = (grid.x.dims[0], grid.y.dims[0], grid.z.dims[0])
 
@@ -241,12 +241,12 @@ class IsentropicVerticalAdvection(TendencyComponent):
         return return_dict
 
     @property
-    def diagnostic_properties(self) -> taz_types.properties_dict_t:
+    def diagnostic_properties(self) -> typing.properties_dict_t:
         return {}
 
     def array_call(
-        self, state: taz_types.array_dict_t
-    ) -> Tuple[taz_types.array_dict_t, taz_types.array_dict_t]:
+        self, state: typing.array_dict_t
+    ) -> Tuple[typing.array_dict_t, typing.array_dict_t]:
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
         dz = self.grid.dz.to_units("K").values.item()
 
@@ -328,8 +328,8 @@ class IsentropicVerticalAdvection(TendencyComponent):
         *,
         dt: float = 0.0,
         dz: float,
-        origin: taz_types.triplet_int_t,
-        domain: taz_types.triplet_int_t,
+        origin: typing.triplet_int_t,
+        domain: typing.triplet_int_t,
         **kwargs  # catch-all
     ) -> None:
         i = slice(origin[0], origin[0] + domain[0])

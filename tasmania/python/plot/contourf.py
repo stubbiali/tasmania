@@ -28,7 +28,7 @@ from tasmania.python.plot.drawer import Drawer
 from tasmania.python.plot.plot_utils import make_contourf
 from tasmania.python.plot.retrievers import DataRetriever
 from tasmania.python.plot.utils import to_units
-from tasmania.python.utils import taz_types
+from tasmania.python.utils import typing
 
 if TYPE_CHECKING:
     from tasmania.python.domain.grid import Grid
@@ -60,7 +60,7 @@ class Contourf(Drawer):
         zaxis_units: Optional[str] = None,
         zaxis_x: Optional[int] = None,
         zaxis_y: Optional[int] = None,
-        properties: Optional[taz_types.options_dict_t] = None,
+        properties: Optional[typing.options_dict_t] = None,
     ) -> None:
         """
         Parameters
@@ -158,9 +158,15 @@ class Contourf(Drawer):
                 )
             )
 
-        slice_x = slice(x, x + 1 if x != -1 else None, None) if flag_x else None
-        slice_y = slice(y, y + 1 if y != -1 else None, None) if flag_y else None
-        slice_z = slice(z, z + 1 if z != -1 else None, None) if flag_z else None
+        slice_x = (
+            slice(x, x + 1 if x != -1 else None, None) if flag_x else None
+        )
+        slice_y = (
+            slice(y, y + 1 if y != -1 else None, None) if flag_y else None
+        )
+        slice_z = (
+            slice(z, z + 1 if z != -1 else None, None) if flag_z else None
+        )
 
         retriever = DataRetriever(
             grid, field_name, field_units, slice_x, slice_y, slice_z
@@ -242,7 +248,7 @@ class Contourf(Drawer):
                     )
 
     def __call__(
-        self, state: taz_types.dataarray_dict_t, fig: plt.Figure, ax: plt.Axes
+        self, state: typing.dataarray_dict_t, fig: plt.Figure, ax: plt.Axes
     ) -> None:
         """
         Call operator generating the contourf plot.
@@ -255,7 +261,7 @@ def make_contourf_xy(
     xaxis_units: str,
     yaxis_units: str,
     field_retriever: DataRetriever,
-    state: taz_types.dataarray_dict_t,
+    state: typing.dataarray_dict_t,
     fig: plt.Figure,
     ax: plt.Axes,
     **kwargs
@@ -283,7 +289,7 @@ def make_contourf_xz(
     xaxis_units: str,
     zaxis_units: str,
     field_retriever: DataRetriever,
-    state: taz_types.dataarray_dict_t,
+    state: typing.dataarray_dict_t,
     fig: plt.Figure,
     ax: plt.Axes,
     **kwargs
@@ -311,7 +317,7 @@ def make_contourf_xh(
     xaxis_units: str,
     zaxis_retriever: DataRetriever,
     field_retriever: DataRetriever,
-    state: taz_types.dataarray_dict_t,
+    state: typing.dataarray_dict_t,
     fig: plt.Figure,
     ax: plt.Axes,
     **kwargs
@@ -320,11 +326,15 @@ def make_contourf_xh(
 
     zv = np.squeeze(zaxis_retriever(state))
     field = (
-        0.5 * (field[:-1, :] + field[1:, :]) if field.shape[0] > zv.shape[0] else field
+        0.5 * (field[:-1, :] + field[1:, :])
+        if field.shape[0] > zv.shape[0]
+        else field
     )
     zv = 0.5 * (zv[:-1, :] + zv[1:, :]) if zv.shape[0] > field.shape[0] else zv
     field = (
-        0.5 * (field[:, :-1] + field[:, 1:]) if field.shape[1] > zv.shape[1] else field
+        0.5 * (field[:, :-1] + field[:, 1:])
+        if field.shape[1] > zv.shape[1]
+        else field
     )
     z = 0.5 * (zv[:, :-1] + zv[:, 1:]) if zv.shape[1] > field.shape[1] else zv
 
@@ -343,7 +353,7 @@ def make_contourf_yz(
     yaxis_units: str,
     zaxis_units: str,
     field_retriever: DataRetriever,
-    state: taz_types.dataarray_dict_t,
+    state: typing.dataarray_dict_t,
     fig: plt.Figure,
     ax: plt.Axes,
     **kwargs
@@ -371,7 +381,7 @@ def make_contourf_yh(
     yaxis_units: str,
     zaxis_retriever: DataRetriever,
     field_retriever: DataRetriever,
-    state: taz_types.dataarray_dict_t,
+    state: typing.dataarray_dict_t,
     fig: plt.Figure,
     ax: plt.Axes,
     **kwargs
@@ -380,11 +390,15 @@ def make_contourf_yh(
 
     zv = np.squeeze(zaxis_retriever(state))
     field = (
-        0.5 * (field[:-1, :] + field[1:, :]) if field.shape[0] > zv.shape[0] else field
+        0.5 * (field[:-1, :] + field[1:, :])
+        if field.shape[0] > zv.shape[0]
+        else field
     )
     zv = 0.5 * (zv[:-1, :] + zv[1:, :]) if zv.shape[0] > field.shape[0] else zv
     field = (
-        0.5 * (field[:, :-1] + field[:, 1:]) if field.shape[1] > zv.shape[1] else field
+        0.5 * (field[:, :-1] + field[:, 1:])
+        if field.shape[1] > zv.shape[1]
+        else field
     )
     z = 0.5 * (zv[:, :-1] + zv[:, 1:]) if zv.shape[1] > field.shape[1] else zv
 

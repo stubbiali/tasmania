@@ -27,8 +27,8 @@ from sympl import DataArray
 from tasmania.python.framework.base_components import TendencyComponent
 from tasmania.python.plot.contour import Contour
 from tasmania.python.plot.profile import LineProfile
-from tasmania.python.utils.io_utils import load_netcdf_dataset
-from tasmania.python.utils.storage_utils import zeros
+from tasmania.python.utils.io import load_netcdf_dataset
+from tasmania.python.utils.storage import zeros
 
 
 @pytest.fixture(scope="module")
@@ -40,8 +40,12 @@ def isentropic_data():
 def physical_constants():
     return {
         "air_pressure_at_sea_level": DataArray(1e5, attrs={"units": "Pa"}),
-        "gas_constant_of_dry_air": DataArray(287.05, attrs={"units": "J K^-1 kg^-1"}),
-        "gravitational_acceleration": DataArray(9.81, attrs={"units": "m s^-2"}),
+        "gas_constant_of_dry_air": DataArray(
+            287.05, attrs={"units": "J K^-1 kg^-1"}
+        ),
+        "gravitational_acceleration": DataArray(
+            9.81, attrs={"units": "m s^-2"}
+        ),
         "specific_heat_of_dry_air_at_constant_pressure": DataArray(
             1004.0, attrs={"units": "J K^-1 kg^-1"}
         ),
@@ -51,7 +55,12 @@ def physical_constants():
 @pytest.fixture(scope="module")
 def drawer_topography_1d():
     def _drawer_topography_1d(
-        grid, topography_units="m", x=None, y=None, axis_name=None, axis_units=None
+        grid,
+        topography_units="m",
+        x=None,
+        y=None,
+        axis_name=None,
+        axis_units=None,
     ):
         properties = {"linecolor": "black", "linewidth": 1.3}
         return LineProfile(
@@ -107,7 +116,10 @@ class FakeTendencyComponent1(TendencyComponent):
 
         return_dict = {
             "air_isentropic_density": {"dims": dims, "units": "kg m^-2 K^-1"},
-            "x_momentum_isentropic": {"dims": dims, "units": "kg m^-1 K^-1 s^-1"},
+            "x_momentum_isentropic": {
+                "dims": dims,
+                "units": "kg m^-1 K^-1 s^-1",
+            },
             "x_velocity_at_u_locations": {"dims": dims_x, "units": "km hr^-1"},
         }
 
@@ -120,8 +132,14 @@ class FakeTendencyComponent1(TendencyComponent):
         dims_x = (g.x_at_u_locations.dims[0], g.y.dims[0], g.z.dims[0])
 
         return_dict = {
-            "air_isentropic_density": {"dims": dims, "units": "kg m^-2 K^-1 s^-1"},
-            "x_momentum_isentropic": {"dims": dims, "units": "kg m^-1 K^-1 s^-2"},
+            "air_isentropic_density": {
+                "dims": dims,
+                "units": "kg m^-2 K^-1 s^-1",
+            },
+            "x_momentum_isentropic": {
+                "dims": dims,
+                "units": "kg m^-1 K^-1 s^-2",
+            },
             "x_velocity_at_u_locations": {"dims": dims_x, "units": "m s^-2"},
         }
 
@@ -132,7 +150,9 @@ class FakeTendencyComponent1(TendencyComponent):
         g = self.grid
         dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
 
-        return_dict = {"fake_variable": {"dims": dims, "units": "kg m^-2 K^-1"}}
+        return_dict = {
+            "fake_variable": {"dims": dims, "units": "kg m^-2 K^-1"}
+        }
 
         return return_dict
 
@@ -184,8 +204,14 @@ class FakeTendencyComponent2(TendencyComponent):
         dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
 
         return_dict = {
-            "air_isentropic_density": {"dims": dims, "units": "kg m^-2 K^-1 s^-1"},
-            "y_momentum_isentropic": {"dims": dims, "units": "kg m^-1 K^-1 s^-2"},
+            "air_isentropic_density": {
+                "dims": dims,
+                "units": "kg m^-2 K^-1 s^-1",
+            },
+            "y_momentum_isentropic": {
+                "dims": dims,
+                "units": "kg m^-1 K^-1 s^-2",
+            },
         }
 
         return return_dict
@@ -217,9 +243,14 @@ class FakeTendencyComponent2(TendencyComponent):
             except AttributeError:
                 sv = np.zeros_like(s, dtype=s.dtype)
 
-            sv[:, :-1] = 0.5 * 1e-6 * s[:, :-1] * (v[:, :-1] / 3.6 + v[:, 1:] / 3.6)
+            sv[:, :-1] = (
+                0.5 * 1e-6 * s[:, :-1] * (v[:, :-1] / 3.6 + v[:, 1:] / 3.6)
+            )
 
-        tendencies = {"air_isentropic_density": f / 100, "y_momentum_isentropic": sv}
+        tendencies = {
+            "air_isentropic_density": f / 100,
+            "y_momentum_isentropic": sv,
+        }
 
         diagnostics = {}
 

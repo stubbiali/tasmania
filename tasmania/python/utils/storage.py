@@ -32,8 +32,8 @@ except ImportError:
 
 import gt4py as gt
 
-from tasmania.python.utils import taz_types
-from tasmania.python.utils.utils import get_gt_backend, is_gt
+from tasmania.python.utils import typing
+from tasmania.python.utils.backend import is_gt, get_gt_backend
 
 if TYPE_CHECKING:
     from tasmania.python.domain.grid import Grid
@@ -42,12 +42,12 @@ if TYPE_CHECKING:
 
 
 def get_dataarray_2d(
-    array: taz_types.array_t,
+    array: typing.array_t,
     grid: "Union[Grid, HorizontalGrid]",
     units: str,
     name: Optional[str] = None,
-    grid_origin: Optional[taz_types.pair_int_t] = None,
-    grid_shape: Optional[taz_types.pair_int_t] = None,
+    grid_origin: Optional[typing.pair_int_t] = None,
+    grid_shape: Optional[typing.pair_int_t] = None,
     set_coordinates: bool = True,
 ) -> DataArray:
     """
@@ -130,12 +130,12 @@ def get_dataarray_2d(
 
 
 def get_dataarray_3d(
-    array: taz_types.array_t,
+    array: typing.array_t,
     grid: "Grid",
     units: str,
     name: Optional[str] = None,
-    grid_origin: Optional[taz_types.triplet_int_t] = None,
-    grid_shape: Optional[taz_types.triplet_int_t] = None,
+    grid_origin: Optional[typing.triplet_int_t] = None,
+    grid_shape: Optional[typing.triplet_int_t] = None,
     set_coordinates: bool = True,
 ) -> DataArray:
     """
@@ -258,10 +258,10 @@ def get_dataarray_3d(
 
 
 def get_dataarray_dict(
-    array_dict: taz_types.array_dict_t,
+    array_dict: typing.array_dict_t,
     grid: "Grid",
-    properties: taz_types.properties_dict_t,
-) -> taz_types.dataarray_dict_t:
+    properties: typing.properties_dict_t,
+) -> typing.dataarray_dict_t:
     """
     Parameters
     ----------
@@ -319,9 +319,9 @@ def get_dataarray_dict(
 
 
 def get_array_dict(
-    dataarray_dict: taz_types.dataarray_dict_t,
-    properties: taz_types.properties_dict_t,
-) -> taz_types.array_dict_t:
+    dataarray_dict: typing.dataarray_dict_t,
+    properties: typing.properties_dict_t,
+) -> typing.array_dict_t:
     """
     Parameters
     ----------
@@ -357,7 +357,7 @@ def get_array_dict(
 
 def get_physical_state(
     domain: "Domain",
-    cstate: taz_types.dataarray_dict_t,
+    cstate: typing.dataarray_dict_t,
     store_names: Optional[Sequence[str]] = None,
 ) -> DataArray:
     """
@@ -410,9 +410,9 @@ def get_physical_state(
 
 def get_numerical_state(
     domain: "Domain",
-    pstate: taz_types.dataarray_dict_t,
+    pstate: typing.dataarray_dict_t,
     store_names: Optional[Sequence[str]] = None,
-) -> taz_types.dataarray_dict_t:
+) -> typing.dataarray_dict_t:
     """
     Given a state defined over the physical grid, transpose that state
     over the corresponding numerical grid.
@@ -491,11 +491,11 @@ def get_storage_shape(
 
 
 def get_default_origin(
-    default_origin: taz_types.triplet_int_t,
-    storage_shape: taz_types.triplet_int_t,
-    min_default_origin: Optional[taz_types.triplet_int_t] = None,
-    max_default_origin: Optional[taz_types.triplet_int_t] = None,
-) -> taz_types.triplet_int_t:
+    default_origin: typing.triplet_int_t,
+    storage_shape: typing.triplet_int_t,
+    min_default_origin: Optional[typing.triplet_int_t] = None,
+    max_default_origin: Optional[typing.triplet_int_t] = None,
+) -> typing.triplet_int_t:
     default_origin = default_origin or (0, 0, 0)
 
     max_default_origin = max_default_origin or default_origin
@@ -525,14 +525,14 @@ def get_default_origin(
 
 
 def empty(
-    storage_shape: taz_types.triplet_int_t,
+    storage_shape: typing.triplet_int_t,
     *,
     backend: str = "numpy",
-    dtype: taz_types.dtype_t = np.float64,
-    default_origin: Optional[taz_types.triplet_int_t] = None,
-    mask: Optional[taz_types.triplet_bool_t] = None,
+    dtype: typing.dtype_t = np.float64,
+    default_origin: Optional[typing.triplet_int_t] = None,
+    mask: Optional[typing.triplet_bool_t] = None,
     managed_memory: bool = False
-) -> Union[np.ndarray, taz_types.gtstorage_t]:
+) -> Union[np.ndarray, typing.gtstorage_t]:
     default_origin = default_origin or (0, 0, 0)
 
     if is_gt(backend):
@@ -552,14 +552,14 @@ def empty(
 
 
 def zeros(
-    storage_shape: taz_types.triplet_int_t,
+    storage_shape: typing.triplet_int_t,
     *,
     backend: str = "numpy",
-    dtype: taz_types.dtype_t = np.float64,
-    default_origin: Optional[taz_types.triplet_int_t] = None,
-    mask: Optional[taz_types.triplet_bool_t] = None,
+    dtype: typing.dtype_t = np.float64,
+    default_origin: Optional[typing.triplet_int_t] = None,
+    mask: Optional[typing.triplet_bool_t] = None,
     managed_memory: bool = False
-) -> Union[np.ndarray, taz_types.gtstorage_t]:
+) -> Union[np.ndarray, typing.gtstorage_t]:
     default_origin = default_origin or (0, 0, 0)
 
     if is_gt(backend):
@@ -579,14 +579,14 @@ def zeros(
 
 
 def ones(
-    storage_shape: taz_types.triplet_int_t,
+    storage_shape: typing.triplet_int_t,
     *,
     backend: str = "numpy",
-    dtype: taz_types.dtype_t = np.float64,
-    default_origin: Optional[taz_types.triplet_int_t] = None,
-    mask: Optional[taz_types.triplet_bool_t] = None,
+    dtype: typing.dtype_t = np.float64,
+    default_origin: Optional[typing.triplet_int_t] = None,
+    mask: Optional[typing.triplet_bool_t] = None,
     managed_memory: bool = False
-) -> Union[np.ndarray, taz_types.gtstorage_t]:
+) -> Union[np.ndarray, typing.gtstorage_t]:
     default_origin = default_origin or (0, 0, 0)
 
     if is_gt(backend):
@@ -605,7 +605,7 @@ def ones(
     return storage
 
 
-def deepcopy_array_dict(src: taz_types.array_dict_t) -> taz_types.array_dict_t:
+def deepcopy_array_dict(src: typing.array_dict_t) -> typing.array_dict_t:
     dst = {"time": src["time"]} if "time" in src else {}
     for name in src:
         if name != "time":
@@ -625,8 +625,8 @@ def deepcopy_dataarray(src: DataArray) -> DataArray:
 
 
 def deepcopy_dataarray_dict(
-    src: taz_types.dataarray_dict_t,
-) -> taz_types.dataarray_dict_t:
+    src: typing.dataarray_dict_t,
+) -> typing.dataarray_dict_t:
     dst = {"time": src["time"]} if "time" in src else {}
     for name in src:
         if name != "time":

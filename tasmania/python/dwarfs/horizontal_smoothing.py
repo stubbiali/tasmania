@@ -30,7 +30,7 @@ from gt4py import gtscript
 from tasmania.python.framework.register import factorize
 from tasmania.python.framework.stencil import StencilFactory
 from tasmania.python.framework.tag import stencil_definition
-from tasmania.python.utils import taz_types
+from tasmania.python.utils import typing
 
 if TYPE_CHECKING:
     from tasmania.python.framework.options import (
@@ -46,7 +46,7 @@ class HorizontalSmoothing(StencilFactory, abc.ABC):
 
     def __init__(
         self: "HorizontalSmoothing",
-        shape: taz_types.triplet_int_t,
+        shape: typing.triplet_int_t,
         smooth_coeff: float,
         smooth_coeff_max: float,
         smooth_damp_depth: int,
@@ -107,9 +107,7 @@ class HorizontalSmoothing(StencilFactory, abc.ABC):
         self._stencil_copy = self.compile("copy")
 
     @abc.abstractmethod
-    def __call__(
-        self, phi: taz_types.array_t, phi_out: taz_types.array_t
-    ) -> None:
+    def __call__(self, phi: typing.array_t, phi_out: typing.array_t) -> None:
         """Apply horizontal smoothing to a prognostic field.
 
         Parameters
@@ -124,7 +122,7 @@ class HorizontalSmoothing(StencilFactory, abc.ABC):
     @staticmethod
     def factory(
         smooth_type: str,
-        shape: taz_types.triplet_int_t,
+        shape: typing.triplet_int_t,
         smooth_coeff: float,
         smooth_coeff_max: float,
         smooth_damp_depth: int,
@@ -194,8 +192,8 @@ class HorizontalSmoothing(StencilFactory, abc.ABC):
         in_gamma: np.ndarray,
         out_phi: np.ndarray,
         *,
-        origin: taz_types.triplet_int_t,
-        domain: taz_types.triplet_int_t,
+        origin: typing.triplet_int_t,
+        domain: typing.triplet_int_t,
         **kwargs  # catch-all
     ) -> None:
         pass

@@ -38,7 +38,7 @@ from tasmania.python.isentropic.physics.diagnostics import (
     IsentropicDiagnostics,
     IsentropicVelocityComponents,
 )
-from tasmania.python.utils.storage_utils import get_dataarray_3d
+from tasmania.python.utils.storage import get_dataarray_3d
 
 from tests.conf import (
     backend as conf_backend,

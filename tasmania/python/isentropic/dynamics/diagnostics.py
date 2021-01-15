@@ -33,7 +33,7 @@ from tasmania.python.framework.base_components import (
 )
 from tasmania.python.framework.stencil import StencilFactory
 from tasmania.python.framework.tag import stencil_definition
-from tasmania.python.utils import taz_types
+from tasmania.python.utils import typing
 
 if TYPE_CHECKING:
     from tasmania.python.domain.grid import Grid
@@ -148,12 +148,12 @@ class IsentropicDiagnostics(
 
     def get_diagnostic_variables(
         self,
-        s: taz_types.array_t,
+        s: typing.array_t,
         pt: float,
-        p: taz_types.array_t,
-        exn: taz_types.array_t,
-        mtg: taz_types.array_t,
-        h: taz_types.array_t,
+        p: typing.array_t,
+        exn: typing.array_t,
+        mtg: typing.array_t,
+        h: typing.array_t,
     ) -> None:
         """
         With the help of the isentropic density and the upper boundary
@@ -206,7 +206,7 @@ class IsentropicDiagnostics(
         )
 
     def get_montgomery_potential(
-        self, s: taz_types.gtstorage_t, pt: float, mtg: taz_types.gtstorage_t
+        self, s: typing.gtstorage_t, pt: float, mtg: typing.gtstorage_t
     ) -> None:
         """
         With the help of the isentropic density and the upper boundary
@@ -248,7 +248,7 @@ class IsentropicDiagnostics(
         )
 
     def get_height(
-        self, s: taz_types.gtstorage_t, pt: float, h: taz_types.gtstorage_t
+        self, s: typing.gtstorage_t, pt: float, h: typing.gtstorage_t
     ) -> None:
         """
         With the help of the isentropic density and the upper boundary
@@ -291,11 +291,11 @@ class IsentropicDiagnostics(
 
     def get_density_and_temperature(
         self,
-        s: taz_types.gtstorage_t,
-        exn: taz_types.gtstorage_t,
-        h: taz_types.gtstorage_t,
-        rho: taz_types.gtstorage_t,
-        t: taz_types.gtstorage_t,
+        s: typing.gtstorage_t,
+        exn: typing.gtstorage_t,
+        h: typing.gtstorage_t,
+        rho: typing.gtstorage_t,
+        t: typing.gtstorage_t,
     ) -> None:
         """
         With the help of the isentropic density and the geometric height
@@ -347,8 +347,8 @@ class IsentropicDiagnostics(
         *,
         dz: float,
         pt: float,
-        origin: taz_types.triplet_int_t,
-        domain: taz_types.triplet_int_t,
+        origin: typing.triplet_int_t,
+        domain: typing.triplet_int_t,
         **kwargs  # catch-all
     ) -> None:
         pref = self.rpc["air_pressure_at_sea_level"]
@@ -454,8 +454,8 @@ class IsentropicDiagnostics(
         dz: float,
         pt: float,
         theta_s: float,
-        origin: taz_types.triplet_int_t,
-        domain: taz_types.triplet_int_t,
+        origin: typing.triplet_int_t,
+        domain: typing.triplet_int_t,
         **kwargs  # catch-all
     ) -> None:
         pref = self.rpc["air_pressure_at_sea_level"]
@@ -524,8 +524,8 @@ class IsentropicDiagnostics(
         *,
         dz: float,
         pt: float,
-        origin: taz_types.triplet_int_t,
-        domain: taz_types.triplet_int_t,
+        origin: typing.triplet_int_t,
+        domain: typing.triplet_int_t,
         **kwargs  # catch-all
     ) -> None:
         pref = self.rpc["air_pressure_at_sea_level"]
@@ -604,8 +604,8 @@ class IsentropicDiagnostics(
         out_rho: gtscript.Field["dtype"],
         out_t: gtscript.Field["dtype"],
         *,
-        origin: taz_types.triplet_int_t,
-        domain: taz_types.triplet_int_t,
+        origin: typing.triplet_int_t,
+        domain: typing.triplet_int_t,
         **kwargs  # catch-all
     ) -> None:
         cp = self.rpc["specific_heat_of_dry_air_at_constant_pressure"]

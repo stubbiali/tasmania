@@ -37,8 +37,8 @@ from tasmania.python.framework.options import (
 from tasmania.python.framework.sequential_tendency_splitting import (
     SequentialTendencySplitting,
 )
-from tasmania.python.utils.storage_utils import deepcopy_dataarray_dict
-from tasmania.python.utils.utils import is_gt
+from tasmania.python.utils.storage import deepcopy_dataarray_dict
+from tasmania.python.utils.backend import is_gt
 
 from tests.conf import (
     backend as conf_backend,

@@ -32,7 +32,7 @@ from tasmania.python.physics.static_energy import (
     DryStaticEnergy,
     MoistStaticEnergy,
 )
-from tasmania.python.utils.storage_utils import get_dataarray_3d
+from tasmania.python.utils.storage import get_dataarray_3d
 
 from tests.conf import (
     backend as conf_backend,

@@ -32,7 +32,7 @@ from tasmania.python.framework.options import BackendOptions, StorageOptions
 from tasmania.python.isentropic.physics.coriolis import (
     IsentropicConservativeCoriolis,
 )
-from tasmania.python.utils.storage_utils import get_dataarray_3d
+from tasmania.python.utils.storage import get_dataarray_3d
 
 from tests.conf import (
     backend as conf_backend,

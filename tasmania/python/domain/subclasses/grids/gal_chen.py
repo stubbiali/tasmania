@@ -25,7 +25,7 @@ import numpy as np
 import sympl
 
 from tasmania.python.domain.grid import Grid
-from tasmania.python.utils.data_utils import get_physical_constants
+from tasmania.python.utils.data import get_physical_constants
 from tasmania.python.utils.utils import (
     equal_to as eq,
     smaller_than as lt,
@@ -37,10 +37,16 @@ from tasmania.python.utils.utils import (
 # Default values for the physical constants used in the module
 _d_physical_constants = {
     "air_pressure_at_sea_level": sympl.DataArray(1e5, attrs={"units": "Pa"}),
-    "air_temperature_at_sea_level": sympl.DataArray(288.15, attrs={"units": "K"}),
+    "air_temperature_at_sea_level": sympl.DataArray(
+        288.15, attrs={"units": "K"}
+    ),
     "beta": sympl.DataArray(42.0, attrs={"units": "K Pa^-1"}),
-    "gas_constant_of_dry_air": sympl.DataArray(287.05, attrs={"units": "J K^-1 kg^-1"}),
-    "gravitational_acceleration": sympl.DataArray(9.80665, attrs={"units": "m s^-2"}),
+    "gas_constant_of_dry_air": sympl.DataArray(
+        287.05, attrs={"units": "J K^-1 kg^-1"}
+    ),
+    "gravitational_acceleration": sympl.DataArray(
+        9.80665, attrs={"units": "m s^-2"}
+    ),
 }
 
 
@@ -171,7 +177,10 @@ class GalChen3d(Grid):
         )
 
         # Preliminary checks
-        if not (eq(domain_z_conv.values[1], 0.0) and gt(domain_z_conv.values[0], 0.0)):
+        if not (
+            eq(domain_z_conv.values[1], 0.0)
+            and gt(domain_z_conv.values[0], 0.0)
+        ):
             raise ValueError(
                 "Gal-Chen vertical coordinate should be positive "
                 "and vanish at the terrain surface."
@@ -228,7 +237,9 @@ class GalChen3d(Grid):
         beta = self._physical_constants["beta"]
         Rd = self._physical_constants["gas_constant_of_dry_air"]
         g = self._physical_constants["gravitational_acceleration"]
-        hs = np.repeat(self.topography_height[:, :, np.newaxis], self.nz + 1, axis=2)
+        hs = np.repeat(
+            self.topography_height[:, :, np.newaxis], self.nz + 1, axis=2
+        )
         zv = np.reshape(
             self.z_on_interface_levels.values[:, np.newaxis, np.newaxis],
             (1, 1, self.nz + 1),
@@ -242,8 +253,16 @@ class GalChen3d(Grid):
         z_hl = a + b * hs
         self.height_on_interface_levels = sympl.DataArray(
             z_hl,
-            coords=[self.x.values, self.y.values, self.z_on_interface_levels.values],
-            dims=[self.x.dims[0], self.y.dims[0], self.z_on_interface_levels.dims[0]],
+            coords=[
+                self.x.values,
+                self.y.values,
+                self.z_on_interface_levels.values,
+            ],
+            dims=[
+                self.x.dims[0],
+                self.y.dims[0],
+                self.z_on_interface_levels.dims[0],
+            ],
             name="height_on_interface_levels",
             attrs={"units": "m"},
         )
@@ -255,12 +274,23 @@ class GalChen3d(Grid):
             p0_hl = p_sl * np.exp(
                 -T_sl
                 / beta
-                * (1.0 - np.sqrt(1.0 - 2.0 * beta * g * z_hl / (Rd * T_sl ** 2)))
+                * (
+                    1.0
+                    - np.sqrt(1.0 - 2.0 * beta * g * z_hl / (Rd * T_sl ** 2))
+                )
             )
         self.reference_pressure_on_interface_levels = sympl.DataArray(
             p0_hl,
-            coords=[self.x.values, self.y.values, self.z_on_interface_levels.values],
-            dims=[self.x.dims[0], self.y.dims[0], self.z_on_interface_levels.dims[0]],
+            coords=[
+                self.x.values,
+                self.y.values,
+                self.z_on_interface_levels.values,
+            ],
+            dims=[
+                self.x.dims[0],
+                self.y.dims[0],
+                self.z_on_interface_levels.dims[0],
+            ],
             name="reference_pressure_on_interface_levels",
             attrs={"units": "Pa"},
         )

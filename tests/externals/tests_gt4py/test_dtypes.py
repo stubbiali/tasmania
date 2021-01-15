@@ -31,23 +31,30 @@ from hypothesis import (
 import numpy as np
 import pytest
 
-from gt4py import gtscript
+from gt4py import gtscript, storage as gt_storage
 from gt4py.gtscript import PARALLEL, computation, interval
 
-from tasmania.python.utils.storage_utils import zeros
+from tasmania.python.utils.storage import zeros
 
 from tests.conf import default_origin as conf_dorigin
 from tests.strategies import st_one_of, st_raw_field
 from tests.utilities import compare_arrays
 
 
-def stencil_sum_defs(
+@gtscript.function
+def add(a: gtscript.Field["undefined_dtype"], b: gtscript.Field["dtype"]):
+    return a + b
+
+
+def stencil_defs(
     in_a: gtscript.Field["dtype"],
     in_b: gtscript.Field["dtype"],
     out_c: gtscript.Field["dtype"],
 ):
+    from __externals__ import add
+
     with computation(PARALLEL), interval(...):
-        out_c = in_a + in_b
+        out_c = add(in_a, in_b)
 
 
 @settings(
@@ -60,7 +67,7 @@ def stencil_sum_defs(
 )
 @given(hyp_st.data())
 def test(data):
-    # gt_storage.prepare_numpy()
+    gt_storage.prepare_numpy()
 
     # ========================================
     # random data generation
@@ -74,16 +81,6 @@ def test(data):
     ny = data.draw(hyp_st.integers(min_value=1, max_value=30))
     nz = data.draw(hyp_st.integers(min_value=1, max_value=30))
     storage_shape = (nx, ny, nz)
-
-    ni = data.draw(hyp_st.integers(min_value=1, max_value=nx))
-    nj = data.draw(hyp_st.integers(min_value=1, max_value=ny))
-    nk = data.draw(hyp_st.integers(min_value=1, max_value=nz))
-    domain = (ni, nj, nk)
-
-    oi = data.draw(hyp_st.integers(min_value=0, max_value=nx - ni))
-    oj = data.draw(hyp_st.integers(min_value=0, max_value=ny - nj))
-    ok = data.draw(hyp_st.integers(min_value=0, max_value=nz - nk))
-    origin = (oi, oj, ok)
 
     a = data.draw(
         st_raw_field(
@@ -118,16 +115,16 @@ def test(data):
     # ========================================
     # test bed
     # ========================================
-    stencil_sum = gtscript.stencil(
-        definition=stencil_sum_defs,
+    stencil = gtscript.stencil(
+        definition=stencil_defs,
         backend=backend,
         rebuild=False,
         dtypes={"dtype": dtype},
+        externals={"add": add},
     )
 
-    stencil_sum(in_a=a, in_b=b, out_c=c, origin=origin, domain=domain)
+    stencil(in_a=a, in_b=b, out_c=c, origin=(0, 0, 0), domain=(nx, ny, nz))
 
-    i, j, k = slice(oi, oi + ni), slice(oj, oj + nj), slice(ok, ok + nk)
     c_val = zeros(
         storage_shape,
         gt_powered=gt_powered,
@@ -135,7 +132,7 @@ def test(data):
         dtype=dtype,
         default_origin=default_origin,
     )
-    c_val[i, j, k] = a[i, j, k] + b[i, j, k]
+    c_val[...] = a + b
 
     compare_arrays(c, c_val)
 

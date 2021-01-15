@@ -32,7 +32,7 @@ import pytest
 import tempfile
 
 from tasmania import get_dataarray_3d
-from tasmania.python.utils.io_utils import NetCDFMonitor, load_netcdf_dataset
+from tasmania.python.utils.io import NetCDFMonitor, load_netcdf_dataset
 
 from tests.strategies import st_domain, st_isentropic_state
 from tests.utilities import compare_arrays, compare_dataarrays, hyp_settings

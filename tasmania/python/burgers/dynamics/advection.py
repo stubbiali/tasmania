@@ -29,7 +29,7 @@ from gt4py import gtscript
 from tasmania.python.framework.register import factorize, register
 from tasmania.python.framework.stencil import StencilFactory
 from tasmania.python.framework.tag import stencil_subroutine
-from tasmania.python.utils import taz_types
+from tasmania.python.utils import typing
 
 
 class BurgersAdvection(StencilFactory, abc.ABC):
@@ -78,8 +78,8 @@ class BurgersAdvection(StencilFactory, abc.ABC):
     @gtscript.function
     @abc.abstractmethod
     def call_gt4py(
-        dx: float, dy: float, u: taz_types.gtfield_t, v: taz_types.gtfield_t
-    ) -> "Tuple[taz_types.gtfield_t, taz_types.gtfield_t, taz_types.gtfield_t, taz_types.gtfield_t]":
+        dx: float, dy: float, u: typing.gtfield_t, v: typing.gtfield_t
+    ) -> "Tuple[typing.gtfield_t, typing.gtfield_t, typing.gtfield_t, typing.gtfield_t]":
         """
         Compute the accelerations due to advection. GT4Py-based implementation.
 

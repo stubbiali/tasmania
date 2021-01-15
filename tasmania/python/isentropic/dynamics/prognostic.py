@@ -29,7 +29,7 @@ from tasmania.python.framework.base_components import (
 )
 from tasmania.python.framework.register import factorize
 from tasmania.python.framework.stencil import StencilFactory
-from tasmania.python.utils import taz_types
+from tasmania.python.utils import typing
 
 if TYPE_CHECKING:
     from tasmania.python.domain.domain import Domain
@@ -169,10 +169,10 @@ class IsentropicPrognostic(DomainComponent, StencilFactory, abc.ABC):
     def stage_call(
         self,
         stage: int,
-        timestep: taz_types.timedelta_t,
-        state: taz_types.array_dict_t,
-        tendencies: Optional[taz_types.array_dict_t] = None,
-    ) -> taz_types.gtstorage_dict_t:
+        timestep: typing.timedelta_t,
+        state: typing.array_dict_t,
+        tendencies: Optional[typing.array_dict_t] = None,
+    ) -> typing.gtstorage_dict_t:
         """
         Perform a stage.
 

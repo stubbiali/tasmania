@@ -22,41 +22,47 @@
 #
 import numpy as np
 
-try:
-    import cupy as cp
-except ImportError:
-    cp = np
-
-import gt4py as gt
+from tasmania.third_party import cupy as cp, gt4py as gt, numba
 
 from tasmania.python.framework.allocators import empty
 from tasmania.python.framework.options import StorageOptions
-from tasmania.python.utils.utils import get_gt_backend
 
 
-@empty.register(backend=("numpy", "numba:cpu"))
+@empty.register(backend="numpy")
 def empty_numpy(shape, *, storage_options=None):
     so = storage_options or StorageOptions()
     return np.empty(shape, dtype=so.dtype)
 
 
-@empty.register(backend=("cupy", "numba:gpu"))
-def empty_cupy(shape, *, storage_options=None):
-    so = storage_options or StorageOptions()
-    return cp.empty(shape, dtype=so.dtype)
+if numba:
+    empty.register(empty_numpy, backend="numba:cpu")
 
 
-@empty.register(backend="gt4py*")
-def empty_gt4py(shape, *, storage_options=None):
-    backend = empty_gt4py.__tasmania_runtime__["backend"]
-    gt_backend = get_gt_backend(backend)
-    so = storage_options or StorageOptions()
-    default_origin = so.default_origin or (0,) * len(shape)
-    return gt.storage.empty(
-        gt_backend,
-        default_origin,
-        shape,
-        so.dtype,
-        mask=so.mask,
-        managed_memory=so.managed_memory,
-    )
+if cp:
+
+    @empty.register(backend="cupy")
+    def empty_cupy(shape, *, storage_options=None):
+        so = storage_options or StorageOptions()
+        return cp.empty(shape, dtype=so.dtype)
+
+    if numba:
+        empty.register(empty_cupy, backend="numba:gpu")
+
+
+if gt:
+    from tasmania.python.utils.backend import get_gt_backend
+
+    @empty.register(backend="gt4py*")
+    def empty_gt4py(shape, *, storage_options=None):
+        backend = empty_gt4py.__tasmania_runtime__["backend"]
+        gt_backend = get_gt_backend(backend)
+        so = storage_options or StorageOptions()
+        default_origin = so.default_origin or (0,) * len(shape)
+        return gt.storage.empty(
+            gt_backend,
+            default_origin,
+            shape,
+            so.dtype,
+            mask=so.mask,
+            managed_memory=so.managed_memory,
+        )

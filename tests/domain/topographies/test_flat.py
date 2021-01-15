@@ -25,7 +25,7 @@ import numpy as np
 import pytest
 
 from tasmania.python.domain.topography import PhysicalTopography
-from tasmania.python.utils.storage_utils import get_dataarray_2d
+from tasmania.python.utils.storage import get_dataarray_2d
 
 from tests.strategies import st_physical_horizontal_grid, st_topography_kwargs
 from tests.utilities import compare_dataarrays, hyp_settings

@@ -22,31 +22,33 @@
 #
 import numpy as np
 
-try:
-    import cupy as cp
-except ImportError:
-    cp = np
-
-import gt4py as gt
+from tasmania.third_party import cupy as cp, gt4py as gt, numba
 
 from tasmania.python.framework.asarray import asarray
-from tasmania.python.utils.utils import get_gt_backend
 
 
 @asarray.register(backend="numpy")
-@asarray.register(backend="numba:cpu")
 def asarray_numpy():
     return np.asarray
 
 
-@asarray.register(backend="cupy")
-def asarray_cupy():
-    return cp.asarray
+if cp:
+
+    @asarray.register(backend="cupy")
+    def asarray_cupy():
+        return cp.asarray
 
 
-@asarray.register(backend="gt4py*")
-def asarray_gt4py():
-    backend = asarray_gt4py.__tasmania_runtime__["backend"]
-    gt_backend = get_gt_backend(backend)
-    device = gt.backend.from_name(gt_backend).storage_info["device"]
-    return cp.asarray if device == "gpu" else np.asarray
+if gt:
+    from tasmania.python.utils.backend import get_gt_backend
+
+    @asarray.register(backend="gt4py*")
+    def asarray_gt4py():
+        backend = asarray_gt4py.__tasmania_runtime__["backend"]
+        gt_backend = get_gt_backend(backend)
+        device = gt.backend.from_name(gt_backend).storage_info["device"]
+        return cp.asarray if device == "gpu" else np.asarray
+
+
+if numba:
+    asarray.register(asarray_numpy, "numba:cpu")

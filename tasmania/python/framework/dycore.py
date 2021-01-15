@@ -42,17 +42,17 @@ from tasmania.python.framework.composite import (
 from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
 from tasmania.python.framework.stencil import StencilFactory
 from tasmania.python.framework.tendency_checkers import SubsetTendencyChecker
-from tasmania.python.utils import taz_types
-from tasmania.python.utils.storage_utils import (
+from tasmania.python.utils import typing
+from tasmania.python.utils.storage import (
     get_array_dict,
     get_dataarray_dict,
 )
-from tasmania.python.utils.dict_utils import DataArrayDictOperator
-from tasmania.python.utils.framework_utils import (
+from tasmania.python.utils.dict import DataArrayDictOperator
+from tasmania.python.utils.framework import (
     check_properties_compatibility,
     check_missing_properties,
 )
-from tasmania.python.utils.utils import Timer
+from tasmania.python.utils.time import Timer
 
 if TYPE_CHECKING:
     from tasmania.python.domain.domain import Domain
@@ -83,20 +83,15 @@ class DynamicalCore(DomainComponent, StencilFactory, abc.ABC):
         self,
         domain: "Domain",
         intermediate_tendency_component: Optional[
-            taz_types.tendency_component_t
+            typing.tendency_component_t
         ] = None,
         intermediate_diagnostic_component: Optional[
-            Union[
-                taz_types.diagnostic_component_t,
-                taz_types.tendency_component_t,
-            ]
+            Union[typing.diagnostic_component_t, typing.tendency_component_t,]
         ] = None,
         substeps: int = 0,
-        fast_tendency_component: Optional[
-            taz_types.tendency_component_t
-        ] = None,
+        fast_tendency_component: Optional[typing.tendency_component_t] = None,
         fast_diagnostic_component: Optional[
-            taz_types.diagnostic_component_t
+            typing.diagnostic_component_t
         ] = None,
         *,
         backend: str = "numpy",
@@ -551,7 +546,7 @@ class DynamicalCore(DomainComponent, StencilFactory, abc.ABC):
                 properties2_name="input_properties",
             )
 
-    def _init_input_properties(self) -> taz_types.properties_dict_t:
+    def _init_input_properties(self) -> typing.properties_dict_t:
         """
         Return
         ------
@@ -628,7 +623,7 @@ class DynamicalCore(DomainComponent, StencilFactory, abc.ABC):
 
     @property
     @abc.abstractmethod
-    def stage_input_properties(self) -> taz_types.properties_dict_t:
+    def stage_input_properties(self) -> typing.properties_dict_t:
         """
         Dictionary whose keys are strings denoting variables which
         should be included in any state passed to the ``stage_array_call``, and
@@ -639,7 +634,7 @@ class DynamicalCore(DomainComponent, StencilFactory, abc.ABC):
 
     @property
     @abc.abstractmethod
-    def substep_input_properties(self) -> taz_types.properties_dict_t:
+    def substep_input_properties(self) -> typing.properties_dict_t:
         """
         Dictionary whose keys are strings denoting variables which
         should be included in any state passed to the ``substep_array_call``
@@ -648,7 +643,7 @@ class DynamicalCore(DomainComponent, StencilFactory, abc.ABC):
         """
         pass
 
-    def _init_tendency_properties(self) -> taz_types.properties_dict_t:
+    def _init_tendency_properties(self) -> typing.properties_dict_t:
         """
         Return
         ------
@@ -685,7 +680,7 @@ class DynamicalCore(DomainComponent, StencilFactory, abc.ABC):
 
     @property
     @abc.abstractmethod
-    def stage_tendency_properties(self) -> taz_types.properties_dict_t:
+    def stage_tendency_properties(self) -> typing.properties_dict_t:
         """
         Dictionary whose keys are strings denoting (slow and intermediate)
         tendencies which may (or may not) be passed to ``stage_array_call``,
@@ -696,7 +691,7 @@ class DynamicalCore(DomainComponent, StencilFactory, abc.ABC):
 
     @property
     @abc.abstractmethod
-    def substep_tendency_properties(self) -> taz_types.properties_dict_t:
+    def substep_tendency_properties(self) -> typing.properties_dict_t:
         """
         Dictionary whose keys are strings denoting (slow, intermediate and fast)
         tendencies which may (or may not) be passed to ``substep_array_call``,
@@ -705,7 +700,7 @@ class DynamicalCore(DomainComponent, StencilFactory, abc.ABC):
         """
         pass
 
-    def _init_output_properties(self) -> taz_types.properties_dict_t:
+    def _init_output_properties(self) -> typing.properties_dict_t:
         """
         Return
         ------
@@ -756,7 +751,7 @@ class DynamicalCore(DomainComponent, StencilFactory, abc.ABC):
 
     @property
     @abc.abstractmethod
-    def stage_output_properties(self) -> taz_types.properties_dict_t:
+    def stage_output_properties(self) -> typing.properties_dict_t:
         """
         Dictionary whose keys are strings denoting variables which are
         included in the output state returned by ``stage_array_call``,
@@ -767,7 +762,7 @@ class DynamicalCore(DomainComponent, StencilFactory, abc.ABC):
 
     @property
     @abc.abstractmethod
-    def substep_output_properties(self) -> taz_types.properties_dict_t:
+    def substep_output_properties(self) -> typing.properties_dict_t:
         """
         Return
         ------
@@ -794,16 +789,16 @@ class DynamicalCore(DomainComponent, StencilFactory, abc.ABC):
         pass
 
     @abc.abstractmethod
-    def allocate_output_state(self) -> taz_types.dataarray_dict_t:
+    def allocate_output_state(self) -> typing.dataarray_dict_t:
         """ Allocate memory for the return state. """
         pass
 
     def __call__(
         self,
-        state: taz_types.dataarray_dict_t,
-        tendencies: taz_types.dataarray_dict_t,
-        timestep: taz_types.timedelta_t,
-    ) -> taz_types.dataarray_dict_t:
+        state: typing.dataarray_dict_t,
+        tendencies: typing.dataarray_dict_t,
+        timestep: typing.timedelta_t,
+    ) -> typing.dataarray_dict_t:
         """Advance the input state one timestep forward.
 
         Parameters
@@ -866,13 +861,13 @@ class DynamicalCore(DomainComponent, StencilFactory, abc.ABC):
     def call(
         self,
         stage: int,
-        timestep: taz_types.timedelta_t,
-        state: taz_types.dataarray_dict_t,
-        tmp_state: taz_types.dataarray_dict_t,
-        slow_tendencies: taz_types.dataarray_dict_t,
-        inter_tendencies: taz_types.dataarray_dict_t,
-        out_state: taz_types.mutable_dataarray_dict_t,
-    ) -> taz_types.dataarray_dict_t:
+        timestep: typing.timedelta_t,
+        state: typing.dataarray_dict_t,
+        tmp_state: typing.dataarray_dict_t,
+        slow_tendencies: typing.dataarray_dict_t,
+        inter_tendencies: typing.dataarray_dict_t,
+        out_state: typing.mutable_dataarray_dict_t,
+    ) -> typing.dataarray_dict_t:
         """Perform a single stage of the time integration algorithm.
 
         Parameters
@@ -1145,10 +1140,10 @@ class DynamicalCore(DomainComponent, StencilFactory, abc.ABC):
     def stage_array_call(
         self,
         stage: int,
-        raw_state: taz_types.array_dict_t,
-        raw_tendencies: taz_types.array_dict_t,
-        timestep: taz_types.timedelta_t,
-    ) -> taz_types.array_dict_t:
+        raw_state: typing.array_dict_t,
+        raw_tendencies: typing.array_dict_t,
+        timestep: typing.timedelta_t,
+    ) -> typing.array_dict_t:
         """Integrate the state over a stage.
 
         Parameters
@@ -1174,12 +1169,12 @@ class DynamicalCore(DomainComponent, StencilFactory, abc.ABC):
         self,
         stage: int,
         substep: int,
-        raw_state: taz_types.array_dict_t,
-        raw_stage_state: taz_types.array_dict_t,
-        raw_tmp_state: taz_types.array_dict_t,
-        raw_tendencies: taz_types.array_dict_t,
-        timestep: taz_types.timedelta_t,
-    ) -> taz_types.array_dict_t:
+        raw_state: typing.array_dict_t,
+        raw_stage_state: typing.array_dict_t,
+        raw_tmp_state: typing.array_dict_t,
+        raw_tendencies: typing.array_dict_t,
+        timestep: typing.timedelta_t,
+    ) -> typing.array_dict_t:
         """Integrate the state over a substep.
 
         Parameters
@@ -1207,7 +1202,7 @@ class DynamicalCore(DomainComponent, StencilFactory, abc.ABC):
         """
         pass
 
-    def update_topography(self, time: taz_types.datetime_t) -> None:
+    def update_topography(self, time: typing.datetime_t) -> None:
         """Update the underlying (time-dependent) topography.
 
         Parameters

@@ -24,7 +24,7 @@ import numpy as np
 from sympl import DataArray
 from typing import Optional, TYPE_CHECKING
 
-from tasmania.python.utils import taz_types
+from tasmania.python.utils import typing
 
 if TYPE_CHECKING:
     from tasmania.python.domain.horizontal_boundary import HorizontalBoundary
@@ -78,14 +78,19 @@ class HorizontalGrid:
         # x-spacing
         dx_v = 1.0 if nx == 1 else (x.values[-1] - x.values[0]) / (nx - 1)
         dx_v = dx_v if dx_v != 0.0 else 1.0
-        self._dx = DataArray(dx_v, name="dx", attrs={"units": x.attrs["units"]})
+        self._dx = DataArray(
+            dx_v, name="dx", attrs={"units": x.attrs["units"]}
+        )
 
         # x-coordinates of the x-staggered points
         if x_at_u_locations is not None:
             self._xu = x_at_u_locations
         else:
             xu_v = np.linspace(
-                x.values[0] - 0.5 * dx_v, x.values[-1] + 0.5 * dx_v, nx + 1, dtype=dtype
+                x.values[0] - 0.5 * dx_v,
+                x.values[-1] + 0.5 * dx_v,
+                nx + 1,
+                dtype=dtype,
             )
             self._xu = DataArray(
                 xu_v,
@@ -105,14 +110,19 @@ class HorizontalGrid:
         # y-spacing
         dy_v = 1.0 if ny == 1 else (y.values[-1] - y.values[0]) / (ny - 1)
         dy_v = dy_v if dy_v != 0.0 else 1.0
-        self._dy = DataArray(dy_v, name="dy", attrs={"units": y.attrs["units"]})
+        self._dy = DataArray(
+            dy_v, name="dy", attrs={"units": y.attrs["units"]}
+        )
 
         # y-coordinates of the y-staggered points
         if y_at_v_locations is not None:
             self._yv = y_at_v_locations
         else:
             yv_v = np.linspace(
-                y.values[0] - 0.5 * dy_v, y.values[-1] + 0.5 * dy_v, ny + 1, dtype=dtype
+                y.values[0] - 0.5 * dy_v,
+                y.values[-1] + 0.5 * dy_v,
+                ny + 1,
+                dtype=dtype,
             )
             self._yv = DataArray(
                 yv_v,
@@ -192,7 +202,7 @@ class PhysicalHorizontalGrid(HorizontalGrid):
         nx: int,
         domain_y: DataArray,
         ny: int,
-        dtype: taz_types.dtype_t = np.float64,
+        dtype: typing.dtype_t = np.float64,
     ) -> None:
         """
         Parameters
@@ -228,7 +238,11 @@ class PhysicalHorizontalGrid(HorizontalGrid):
             else np.linspace(values_x[0], values_x[1], nx, dtype=dtype)
         )
         x = DataArray(
-            x_v, coords=[x_v], dims=dims_x, name=dims_x[0], attrs={"units": units_x}
+            x_v,
+            coords=[x_v],
+            dims=dims_x,
+            name=dims_x[0],
+            attrs={"units": units_x},
         )
 
         # extract y-axis properties
@@ -243,7 +257,11 @@ class PhysicalHorizontalGrid(HorizontalGrid):
             else np.linspace(values_y[0], values_y[1], ny, dtype=dtype)
         )
         y = DataArray(
-            y_v, coords=[y_v], dims=dims_y, name=dims_y[0], attrs={"units": units_y}
+            y_v,
+            coords=[y_v],
+            dims=dims_y,
+            name=dims_y[0],
+            attrs={"units": units_y},
         )
 
         # call parent's constructor
@@ -270,7 +288,9 @@ class NumericalHorizontalGrid(HorizontalGrid):
 
         # x-coordinates of the x-staggered points
         dims = "c_" + phys_grid.x_at_u_locations.dims[0]
-        xu = boundary.get_numerical_xaxis(phys_grid.x_at_u_locations, dims=dims)
+        xu = boundary.get_numerical_xaxis(
+            phys_grid.x_at_u_locations, dims=dims
+        )
 
         # y-coordinates of the mass points
         dims = "c_" + phys_grid.y.dims[0]
@@ -278,7 +298,9 @@ class NumericalHorizontalGrid(HorizontalGrid):
 
         # y-coordinates of the y-staggered points
         dims = "c_" + phys_grid.y_at_v_locations.dims[0]
-        yv = boundary.get_numerical_yaxis(phys_grid.y_at_v_locations, dims=dims)
+        yv = boundary.get_numerical_yaxis(
+            phys_grid.y_at_v_locations, dims=dims
+        )
 
         # call parent's constructor
         super().__init__(x, y, xu, yv)

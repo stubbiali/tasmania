@@ -35,7 +35,7 @@ from tasmania.python.isentropic.physics.horizontal_diffusion import (
     IsentropicHorizontalDiffusion,
 )
 from tasmania.python.dwarfs.horizontal_diffusion import HorizontalDiffusion
-from tasmania.python.utils.storage_utils import get_dataarray_3d
+from tasmania.python.utils.storage import get_dataarray_3d
 
 from tests.conf import (
     backend as conf_backend,

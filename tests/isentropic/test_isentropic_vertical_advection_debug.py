@@ -36,7 +36,7 @@ from tasmania.python.framework.tag import stencil_definition
 from tasmania.python.isentropic.physics.vertical_advection import (
     IsentropicVerticalAdvection,
 )
-from tasmania.python.utils.storage_utils import get_dataarray_3d
+from tasmania.python.utils.storage import get_dataarray_3d
 
 from tests.conf import default_origin as conf_dorigin, dtype as conf_dtype
 from tests.isentropic.test_isentropic_vertical_advection import validation

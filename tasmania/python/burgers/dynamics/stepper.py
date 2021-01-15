@@ -32,7 +32,7 @@ from tasmania.python.burgers.dynamics.advection import BurgersAdvection
 from tasmania.python.framework.register import factorize, register
 from tasmania.python.framework.stencil import StencilFactory
 from tasmania.python.framework.tag import stencil_definition
-from tasmania.python.utils import taz_types
+from tasmania.python.utils import typing
 
 if TYPE_CHECKING:
     from tasmania.python.domain.horizontal_grid import HorizontalGrid
@@ -102,10 +102,10 @@ class BurgersStepper(StencilFactory, abc.ABC):
     def __call__(
         self,
         stage: int,
-        state: taz_types.gtstorage_dict_t,
-        tendencies: taz_types.gtstorage_dict_t,
-        timestep: taz_types.timedelta_t,
-    ) -> taz_types.gtstorage_dict_t:
+        state: typing.gtstorage_dict_t,
+        tendencies: typing.gtstorage_dict_t,
+        timestep: typing.timedelta_t,
+    ) -> typing.gtstorage_dict_t:
         """
         Performing a stage of the time integrator.
 
@@ -211,8 +211,8 @@ class BurgersStepper(StencilFactory, abc.ABC):
         dt: float,
         dx: float,
         dy: float,
-        origin: taz_types.triplet_int_t,
-        domain: taz_types.triplet_int_t
+        origin: typing.triplet_int_t,
+        domain: typing.triplet_int_t
     ) -> None:
         istart, istop = origin[0], origin[0] + domain[0]
         i = slice(istart, istop)

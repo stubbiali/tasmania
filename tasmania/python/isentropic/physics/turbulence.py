@@ -24,8 +24,8 @@ from typing import Optional, Sequence, TYPE_CHECKING, Tuple
 
 from tasmania.python.dwarfs.diagnostics import HorizontalVelocity
 from tasmania.python.physics.turbulence import Smagorinsky2d
-from tasmania.python.utils import taz_types
-from tasmania.python.utils.storage_utils import zeros
+from tasmania.python.utils import typing
+from tasmania.python.utils.storage import zeros
 
 if TYPE_CHECKING:
     from tasmania.python.domain.domain import Domain
@@ -101,7 +101,7 @@ class IsentropicSmagorinsky(Smagorinsky2d):
         self._out_sv_tnd = self.zeros(shape=self._storage_shape)
 
     @property
-    def input_properties(self) -> taz_types.properties_dict_t:
+    def input_properties(self) -> typing.properties_dict_t:
         dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])
         return {
             "air_isentropic_density": {"dims": dims, "units": "kg m^-2 K^-1"},
@@ -116,7 +116,7 @@ class IsentropicSmagorinsky(Smagorinsky2d):
         }
 
     @property
-    def tendency_properties(self) -> taz_types.properties_dict_t:
+    def tendency_properties(self) -> typing.properties_dict_t:
         dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])
         return {
             "x_momentum_isentropic": {
@@ -130,12 +130,12 @@ class IsentropicSmagorinsky(Smagorinsky2d):
         }
 
     @property
-    def diagnostic_properties(self) -> taz_types.properties_dict_t:
+    def diagnostic_properties(self) -> typing.properties_dict_t:
         return {}
 
     def array_call(
-        self, state: taz_types.array_dict_t
-    ) -> Tuple[taz_types.array_dict_t, taz_types.array_dict_t]:
+        self, state: typing.array_dict_t
+    ) -> Tuple[typing.array_dict_t, typing.array_dict_t]:
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
         nb = self._nb
         dx = self.grid.dx.to_units("m").values.item()

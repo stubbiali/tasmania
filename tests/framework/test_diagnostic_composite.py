@@ -36,8 +36,8 @@ from tasmania.python.isentropic.physics.diagnostics import (
 from tasmania.python.physics.microphysics.kessler import (
     KesslerSaturationAdjustmentDiagnostic,
 )
-from tasmania.python.utils.meteo_utils import tetens_formula
-from tasmania.python.utils.storage_utils import deepcopy_dataarray_dict
+from tasmania.python.utils.meteo import tetens_formula
+from tasmania.python.utils.storage import deepcopy_dataarray_dict
 
 from tests.conf import (
     backend as conf_backend,
@@ -85,11 +85,7 @@ def isentropic_diagnostics_validation(grid, state, cp, p_ref, rd, g):
         .to_units("kg m^-2 K^-1")
         .data[:nx, :ny, :nz]
     )
-    pt = (
-        state["air_pressure_on_interface_levels"]
-        .to_units("Pa")
-        .data[0, 0, 0]
-    )
+    pt = state["air_pressure_on_interface_levels"].to_units("Pa").data[0, 0, 0]
 
     # pressure
     p_val = np.zeros((nx, ny, nz + 1), dtype=dtype)

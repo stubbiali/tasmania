@@ -72,7 +72,9 @@ def get_constant(
                 sympl_set_constant(name, return_value, units)
                 return return_value
             else:
-                from tasmania.python.utils.exceptions import ConstantNotFoundError
+                from tasmania.python.utils.exceptions import (
+                    ConstantNotFoundError,
+                )
 
                 raise ConstantNotFoundError("{} not found".format(name))
 
@@ -110,7 +112,9 @@ def get_physical_constants(
     for name, d_const in default_physical_constants.items():
         d_units = d_const.attrs["units"]
         const = (
-            physical_constants.get(name, None) if physical_constants is not None else None
+            physical_constants.get(name, None)
+            if physical_constants is not None
+            else None
         )
         raw_physical_constants[name] = (
             const.to_units(d_units).values.item()

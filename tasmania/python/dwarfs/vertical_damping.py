@@ -27,7 +27,7 @@ from typing import Optional, Sequence, TYPE_CHECKING
 
 from gt4py import gtscript
 
-from tasmania.python.utils import taz_types
+from tasmania.python.utils import typing
 from tasmania.python.framework.base_components import GridComponent
 from tasmania.python.framework.register import factorize
 from tasmania.python.framework.stencil import StencilFactory
@@ -125,11 +125,11 @@ class VerticalDamping(GridComponent, StencilFactory, abc.ABC):
     @abc.abstractmethod
     def __call__(
         self: "VerticalDamping",
-        dt: taz_types.timedelta_t,
-        field_now: taz_types.array_t,
-        field_new: taz_types.array_t,
-        field_ref: taz_types.array_t,
-        field_out: taz_types.array_t,
+        dt: typing.timedelta_t,
+        field_now: typing.array_t,
+        field_new: typing.array_t,
+        field_ref: typing.array_t,
+        field_out: typing.array_t,
     ) -> None:
         """Apply vertical damping to a generic field.
 
@@ -220,8 +220,8 @@ class VerticalDamping(GridComponent, StencilFactory, abc.ABC):
         out_phi: np.ndarray,
         *,
         dt: float,
-        origin: taz_types.triplet_int_t,
-        domain: taz_types.triplet_int_t,
+        origin: typing.triplet_int_t,
+        domain: typing.triplet_int_t,
         **kwargs  # catch-all
     ) -> None:
         pass

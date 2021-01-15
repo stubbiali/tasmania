@@ -25,7 +25,7 @@ from typing import Optional, TYPE_CHECKING, Tuple
 
 from tasmania.python.dwarfs.horizontal_diffusion import HorizontalDiffusion
 from tasmania.python.framework.base_components import TendencyComponent
-from tasmania.python.utils import taz_types
+from tasmania.python.utils import typing
 
 if TYPE_CHECKING:
     from tasmania.python.domain.domain import Domain
@@ -109,7 +109,7 @@ class BurgersHorizontalDiffusion(TendencyComponent):
         self._out_v_tnd = self.zeros(shape=(nx, ny, 1))
 
     @property
-    def input_properties(self) -> taz_types.properties_dict_t:
+    def input_properties(self) -> typing.properties_dict_t:
         g = self.grid
         dims = (g.grid_xy.x.dims[0], g.grid_xy.y.dims[0], g.z.dims[0])
         return {
@@ -118,7 +118,7 @@ class BurgersHorizontalDiffusion(TendencyComponent):
         }
 
     @property
-    def tendency_properties(self) -> taz_types.properties_dict_t:
+    def tendency_properties(self) -> typing.properties_dict_t:
         g = self.grid
         dims = (g.grid_xy.x.dims[0], g.grid_xy.y.dims[0], g.z.dims[0])
         return {
@@ -127,12 +127,12 @@ class BurgersHorizontalDiffusion(TendencyComponent):
         }
 
     @property
-    def diagnostic_properties(self) -> taz_types.properties_dict_t:
+    def diagnostic_properties(self) -> typing.properties_dict_t:
         return {}
 
     def array_call(
-        self, state: taz_types.array_dict_t
-    ) -> Tuple[taz_types.array_dict_t, taz_types.array_dict_t]:
+        self, state: typing.array_dict_t
+    ) -> Tuple[typing.array_dict_t, typing.array_dict_t]:
         self._diffuser(state["x_velocity"], self._out_u_tnd)
         self._diffuser(state["y_velocity"], self._out_v_tnd)
 

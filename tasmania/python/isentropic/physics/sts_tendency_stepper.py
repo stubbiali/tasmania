@@ -25,15 +25,17 @@ from typing import Optional, Tuple, Union
 
 from gt4py import gtscript
 
+from tasmania.python.framework.register import register
 from tasmania.python.framework.stencil import StencilFactory
 from tasmania.python.framework.sts_tendency_stepper import STSTendencyStepper
+from tasmania.python.framework.subclasses.stencil_definitions.cla import (
+    thomas_numpy,
+)
 from tasmania.python.framework.tag import stencil_definition
 from tasmania.python.isentropic.physics.implicit_vertical_advection import (
     IsentropicImplicitVerticalAdvectionDiagnostic,
 )
-from tasmania.python.utils import taz_types
-from tasmania.python.framework.register import register
-from tasmania.python.utils.utils import thomas_numpy
+from tasmania.python.utils import typing
 
 
 mfwv = "mass_fraction_of_water_vapor_in_air"
@@ -74,10 +76,10 @@ def setup_tridiagonal_system_numpy(
 @gtscript.function
 def setup_tridiagonal_system(
     gamma: float,
-    w: taz_types.gtfield_t,
-    phi: taz_types.gtfield_t,
-    phi_prv: taz_types.gtfield_t,
-) -> "Tuple[taz_types.gtfield_t, taz_types.gtfield_t, taz_types.gtfield_t]":
+    w: typing.gtfield_t,
+    phi: typing.gtfield_t,
+    phi_prv: typing.gtfield_t,
+) -> "Tuple[typing.gtfield_t, typing.gtfield_t, typing.gtfield_t]":
     a = gamma * w[0, 0, -1]
     c = -gamma * w[0, 0, 1]
     d = phi_prv[0, 0, 0] - gamma * (
@@ -88,8 +90,8 @@ def setup_tridiagonal_system(
 
 @gtscript.function
 def setup_tridiagonal_system_bc(
-    phi_prv: taz_types.gtfield_t,
-) -> "Tuple[taz_types.gtfield_t, taz_types.gtfield_t, taz_types.gtfield_t]":
+    phi_prv: typing.gtfield_t,
+) -> "Tuple[typing.gtfield_t, typing.gtfield_t, typing.gtfield_t]":
     a = 0.0
     c = 0.0
     d = phi_prv[0, 0, 0]
@@ -290,8 +292,8 @@ class IsentropicVerticalAdvection(STSTendencyStepper, StencilFactory):
         out_qr: Optional[np.ndarray] = None,
         *,
         gamma: float,
-        origin: taz_types.triplet_int_t,
-        domain: taz_types.triplet_int_t,
+        origin: typing.triplet_int_t,
+        domain: typing.triplet_int_t,
     ) -> None:
         i = slice(origin[0], origin[0] + domain[0])
         j = slice(origin[1], origin[1] + domain[1])

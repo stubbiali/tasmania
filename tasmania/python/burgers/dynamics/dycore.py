@@ -25,8 +25,8 @@ from typing import Optional, TYPE_CHECKING
 
 from tasmania.python.burgers.dynamics.stepper import BurgersStepper
 from tasmania.python.framework.dycore import DynamicalCore
-from tasmania.python.utils import taz_types
-from tasmania.python.utils.storage_utils import get_dataarray_3d, zeros
+from tasmania.python.utils import typing
+from tasmania.python.utils.storage import get_dataarray_3d, zeros
 
 if TYPE_CHECKING:
     from tasmania.python.domain.domain import Domain
@@ -39,7 +39,7 @@ class BurgersDynamicalCore(DynamicalCore):
         self,
         domain: "Domain",
         intermediate_tendency_component: Optional[
-            taz_types.tendency_component_t
+            typing.tendency_component_t
         ] = None,
         time_integration_scheme: str = "forward_euler",
         flux_scheme: str = "upwind",
@@ -107,7 +107,7 @@ class BurgersDynamicalCore(DynamicalCore):
         )
 
     @property
-    def stage_input_properties(self) -> taz_types.properties_dict_t:
+    def stage_input_properties(self) -> typing.properties_dict_t:
         g = self.grid
         dims = (g.grid_xy.x.dims[0], g.grid_xy.y.dims[0], g.z.dims[0])
         return {
@@ -116,11 +116,11 @@ class BurgersDynamicalCore(DynamicalCore):
         }
 
     @property
-    def substep_input_properties(self) -> taz_types.properties_dict_t:
+    def substep_input_properties(self) -> typing.properties_dict_t:
         return {}
 
     @property
-    def stage_tendency_properties(self) -> taz_types.properties_dict_t:
+    def stage_tendency_properties(self) -> typing.properties_dict_t:
         g = self.grid
         dims = (g.grid_xy.x.dims[0], g.grid_xy.y.dims[0], g.z.dims[0])
         return {
@@ -129,11 +129,11 @@ class BurgersDynamicalCore(DynamicalCore):
         }
 
     @property
-    def substep_tendency_properties(self) -> taz_types.properties_dict_t:
+    def substep_tendency_properties(self) -> typing.properties_dict_t:
         return {}
 
     @property
-    def stage_output_properties(self) -> taz_types.properties_dict_t:
+    def stage_output_properties(self) -> typing.properties_dict_t:
         g = self.grid
         dims = (g.grid_xy.x.dims[0], g.grid_xy.y.dims[0], g.z.dims[0])
         return {
@@ -142,7 +142,7 @@ class BurgersDynamicalCore(DynamicalCore):
         }
 
     @property
-    def substep_output_properties(self) -> taz_types.properties_dict_t:
+    def substep_output_properties(self) -> typing.properties_dict_t:
         return {}
 
     @property
@@ -169,10 +169,10 @@ class BurgersDynamicalCore(DynamicalCore):
     def stage_array_call(
         self,
         stage: int,
-        raw_state: taz_types.array_dict_t,
-        raw_tendencies: taz_types.array_dict_t,
-        timestep: taz_types.timedelta_t,
-    ) -> taz_types.array_dict_t:
+        raw_state: typing.array_dict_t,
+        raw_tendencies: typing.array_dict_t,
+        timestep: typing.timedelta_t,
+    ) -> typing.array_dict_t:
         out_state = self._stepper(stage, raw_state, raw_tendencies, timestep)
 
         self.horizontal_boundary.dmn_enforce_raw(
@@ -189,10 +189,10 @@ class BurgersDynamicalCore(DynamicalCore):
         self,
         stage: int,
         substep: int,
-        raw_state: taz_types.array_dict_t,
-        raw_stage_state: taz_types.array_dict_t,
-        raw_tmp_state: taz_types.array_dict_t,
-        raw_tendencies: taz_types.array_dict_t,
-        timestep: taz_types.timedelta_t,
+        raw_state: typing.array_dict_t,
+        raw_stage_state: typing.array_dict_t,
+        raw_tmp_state: typing.array_dict_t,
+        raw_tendencies: typing.array_dict_t,
+        timestep: typing.timedelta_t,
     ):
         raise NotImplementedError()

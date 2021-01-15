@@ -26,7 +26,7 @@ import pytest
 from sympl import DataArray
 
 from tasmania.python.domain.topography import PhysicalTopography
-from tasmania.python.utils.storage_utils import (
+from tasmania.python.utils.storage import (
     deepcopy_dataarray,
     get_dataarray_2d,
 )

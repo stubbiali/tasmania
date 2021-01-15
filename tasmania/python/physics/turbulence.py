@@ -27,7 +27,7 @@ from gt4py import gtscript
 
 from tasmania.python.framework.base_components import TendencyComponent
 from tasmania.python.framework.tag import stencil_definition
-from tasmania.python.utils import taz_types
+from tasmania.python.utils import typing
 
 if TYPE_CHECKING:
     from tasmania.python.domain.domain import Domain
@@ -108,7 +108,7 @@ class Smagorinsky2d(TendencyComponent):
         self._stencil = self.compile("smagorinsky")
 
     @property
-    def input_properties(self) -> taz_types.properties_dict_t:
+    def input_properties(self) -> typing.properties_dict_t:
         dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])
         return {
             "x_velocity": {"dims": dims, "units": "m s^-1"},
@@ -116,7 +116,7 @@ class Smagorinsky2d(TendencyComponent):
         }
 
     @property
-    def tendency_properties(self) -> taz_types.properties_dict_t:
+    def tendency_properties(self) -> typing.properties_dict_t:
         dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])
         return {
             "x_velocity": {"dims": dims, "units": "m s^-2"},
@@ -124,12 +124,12 @@ class Smagorinsky2d(TendencyComponent):
         }
 
     @property
-    def diagnostic_properties(self) -> taz_types.properties_dict_t:
+    def diagnostic_properties(self) -> typing.properties_dict_t:
         return {}
 
     def array_call(
-        self, state: taz_types.array_dict_t
-    ) -> Tuple[taz_types.array_dict_t, taz_types.array_dict_t]:
+        self, state: typing.array_dict_t
+    ) -> Tuple[typing.array_dict_t, typing.array_dict_t]:
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
         nb = self._nb
         dx = self.grid.dx.to_units("m").values.item()
@@ -168,8 +168,8 @@ class Smagorinsky2d(TendencyComponent):
         dx: float,
         dy: float,
         cs: float,
-        origin: taz_types.triplet_int_t,
-        domain: taz_types.triplet_int_t,
+        origin: typing.triplet_int_t,
+        domain: typing.triplet_int_t,
         **kwargs  # catch-all
     ) -> None:
         ib, ie = origin[0], origin[0] + domain[0]

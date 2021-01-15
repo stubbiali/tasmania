@@ -25,7 +25,7 @@ import numpy as np
 from gt4py import gtscript
 from gt4py.gtscript import PARALLEL, __INLINED, computation, interval
 
-from tasmania.python.utils.storage_utils import zeros
+from tasmania.python.utils.storage import zeros
 
 
 @gtscript.function
@@ -104,13 +104,27 @@ if __name__ == "__main__":
     )
     stencil = decorator(stencil_defs)
 
-    in_w = zeros((30, 30, 11), gt_powered=gt_powered, backend=backend, dtype=dtype)
-    in_s = zeros((30, 30, 11), gt_powered=gt_powered, backend=backend, dtype=dtype)
-    in_su = zeros((30, 30, 11), gt_powered=gt_powered, backend=backend, dtype=dtype)
-    in_sv = zeros((30, 30, 11), gt_powered=gt_powered, backend=backend, dtype=dtype)
-    out_s = zeros((30, 30, 11), gt_powered=gt_powered, backend=backend, dtype=dtype)
-    out_su = zeros((30, 30, 11), gt_powered=gt_powered, backend=backend, dtype=dtype)
-    out_sv = zeros((30, 30, 11), gt_powered=gt_powered, backend=backend, dtype=dtype)
+    in_w = zeros(
+        (30, 30, 11), gt_powered=gt_powered, backend=backend, dtype=dtype
+    )
+    in_s = zeros(
+        (30, 30, 11), gt_powered=gt_powered, backend=backend, dtype=dtype
+    )
+    in_su = zeros(
+        (30, 30, 11), gt_powered=gt_powered, backend=backend, dtype=dtype
+    )
+    in_sv = zeros(
+        (30, 30, 11), gt_powered=gt_powered, backend=backend, dtype=dtype
+    )
+    out_s = zeros(
+        (30, 30, 11), gt_powered=gt_powered, backend=backend, dtype=dtype
+    )
+    out_su = zeros(
+        (30, 30, 11), gt_powered=gt_powered, backend=backend, dtype=dtype
+    )
+    out_sv = zeros(
+        (30, 30, 11), gt_powered=gt_powered, backend=backend, dtype=dtype
+    )
     dz = 1.0
 
     stencil(

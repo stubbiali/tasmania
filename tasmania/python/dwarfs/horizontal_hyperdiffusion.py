@@ -27,10 +27,10 @@ from typing import Optional
 
 from gt4py import gtscript
 
-from tasmania.python.utils import taz_types
 from tasmania.python.framework.register import factorize
-from tasmania.python.utils.storage_utils import zeros
-from tasmania.python.utils.utils import get_gt_backend, is_gt
+from tasmania.python.utils import typing
+from tasmania.python.utils.backend import is_gt, get_gt_backend
+from tasmania.python.utils.storage import zeros
 
 
 def stage_laplacian_x_numpy(dx: float, phi: np.ndarray) -> np.ndarray:
@@ -51,25 +51,21 @@ def stage_laplacian_numpy(dx: float, dy: float, phi: np.ndarray) -> np.ndarray:
 
 
 @gtscript.function
-def stage_laplacian_x(
-    dx: float, phi: taz_types.gtfield_t
-) -> taz_types.gtfield_t:
+def stage_laplacian_x(dx: float, phi: typing.gtfield_t) -> typing.gtfield_t:
     lap = (phi[-1, 0, 0] - 2.0 * phi[0, 0, 0] + phi[1, 0, 0]) / (dx * dx)
     return lap
 
 
 @gtscript.function
-def stage_laplacian_y(
-    dy: float, phi: taz_types.gtfield_t
-) -> taz_types.gtfield_t:
+def stage_laplacian_y(dy: float, phi: typing.gtfield_t) -> typing.gtfield_t:
     lap = (phi[0, -1, 0] - 2.0 * phi[0, 0, 0] + phi[0, 1, 0]) / (dy * dy)
     return lap
 
 
 @gtscript.function
 def stage_laplacian(
-    dx: float, dy: float, phi: taz_types.gtfield_t
-) -> taz_types.gtfield_t:
+    dx: float, dy: float, phi: typing.gtfield_t
+) -> typing.gtfield_t:
     lap_x = stage_laplacian_x(dx=dx, phi=phi)
     lap_y = stage_laplacian_y(dy=dy, phi=phi)
     lap = lap_x + lap_y
@@ -83,7 +79,7 @@ class HorizontalHyperDiffusion(abc.ABC):
 
     def __init__(
         self,
-        shape: taz_types.triplet_int_t,
+        shape: typing.triplet_int_t,
         dx: float,
         dy: float,
         diffusion_coeff: float,
@@ -91,11 +87,11 @@ class HorizontalHyperDiffusion(abc.ABC):
         diffusion_damp_depth: int,
         nb: int,
         backend: str,
-        backend_opts: taz_types.options_dict_t,
-        dtype: taz_types.dtype_t,
-        build_info: taz_types.options_dict_t,
-        exec_info: taz_types.mutable_options_dict_t,
-        default_origin: taz_types.triplet_int_t,
+        backend_opts: typing.options_dict_t,
+        dtype: typing.dtype_t,
+        build_info: typing.options_dict_t,
+        exec_info: typing.mutable_options_dict_t,
+        default_origin: typing.triplet_int_t,
         rebuild: bool,
         managed_memory: bool,
     ) -> None:
@@ -190,7 +186,7 @@ class HorizontalHyperDiffusion(abc.ABC):
 
     @abc.abstractmethod
     def __call__(
-        self, phi: taz_types.gtstorage_t, phi_tnd: taz_types.gtstorage_t
+        self, phi: typing.gtstorage_t, phi_tnd: typing.gtstorage_t
     ) -> None:
         """Calculate the tendency.
 
@@ -206,7 +202,7 @@ class HorizontalHyperDiffusion(abc.ABC):
     @staticmethod
     def factory(
         diffusion_type: str,
-        shape: taz_types.triplet_int_t,
+        shape: typing.triplet_int_t,
         dx: float,
         dy: float,
         diffusion_coeff: float,
@@ -215,11 +211,11 @@ class HorizontalHyperDiffusion(abc.ABC):
         nb: Optional[int] = None,
         *,
         backend: str = "numpy",
-        backend_opts: Optional[taz_types.options_dict_t] = None,
-        dtype: taz_types.dtype_t = np.float64,
-        build_info: Optional[taz_types.options_dict_t] = None,
-        exec_info: Optional[taz_types.mutable_options_dict_t] = None,
-        default_origin: Optional[taz_types.triplet_int_t] = None,
+        backend_opts: Optional[typing.options_dict_t] = None,
+        dtype: typing.dtype_t = np.float64,
+        build_info: Optional[typing.options_dict_t] = None,
+        exec_info: Optional[typing.mutable_options_dict_t] = None,
+        default_origin: Optional[typing.triplet_int_t] = None,
         rebuild: bool = False,
         managed_memory: bool = False
     ) -> "HorizontalHyperDiffusion":
@@ -313,8 +309,8 @@ class HorizontalHyperDiffusion(abc.ABC):
         *,
         dx: float,
         dy: float,
-        origin: taz_types.triplet_int_t,
-        domain: taz_types.triplet_int_t
+        origin: typing.triplet_int_t,
+        domain: typing.triplet_int_t
     ) -> None:
         pass
 

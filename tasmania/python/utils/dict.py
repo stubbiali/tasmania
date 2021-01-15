@@ -22,11 +22,10 @@
 #
 from typing import Optional, TYPE_CHECKING
 
-from gt4py import gtscript
-
 from tasmania.python.framework.stencil import StencilFactory
-from tasmania.python.utils import taz_types
-from tasmania.python.utils.storage_utils import deepcopy_dataarray
+from tasmania.python.utils import typing
+from tasmania.python.utils.storage import deepcopy_dataarray
+from tasmania.python.utils.time import Timer
 
 if TYPE_CHECKING:
     from tasmania.python.framework.options import (
@@ -73,8 +72,8 @@ class DataArrayDictOperator(StencilFactory):
 
     def copy(
         self,
-        dst: taz_types.dataarray_dict_t,
-        src: taz_types.dataarray_dict_t,
+        dst: typing.dataarray_dict_t,
+        src: typing.dataarray_dict_t,
         unshared_variables_in_output: bool = False,
     ) -> None:
         """
@@ -91,6 +90,8 @@ class DataArrayDictOperator(StencilFactory):
             ``True`` to include in the destination dictionary the variables not
             originally shared with the source dictionary.
         """
+        Timer.start(label="copy")
+
         if "time" in src:
             dst["time"] = src["time"]
 
@@ -121,14 +122,16 @@ class DataArrayDictOperator(StencilFactory):
             for key in unshared_keys:
                 dst[key] = src[key]
 
+        Timer.stop(label="copy")
+
     def add(
         self,
-        dict1: taz_types.dataarray_dict_t,
-        dict2: taz_types.dataarray_dict_t,
-        out: Optional[taz_types.dataarray_dict_t] = None,
-        field_properties: Optional[taz_types.properties_dict_t] = None,
+        dict1: typing.dataarray_dict_t,
+        dict2: typing.dataarray_dict_t,
+        out: Optional[typing.dataarray_dict_t] = None,
+        field_properties: Optional[typing.properties_dict_t] = None,
         unshared_variables_in_output: bool = False,
-    ) -> taz_types.dataarray_dict_t:
+    ) -> typing.dataarray_dict_t:
         """Add up two dictionaries item-wise.
 
         Parameters
@@ -221,9 +224,9 @@ class DataArrayDictOperator(StencilFactory):
 
     def iadd(
         self,
-        dict1: taz_types.dataarray_dict_t,
-        dict2: taz_types.dataarray_dict_t,
-        field_properties: Optional[taz_types.properties_dict_t] = None,
+        dict1: typing.dataarray_dict_t,
+        dict2: typing.dataarray_dict_t,
+        field_properties: Optional[typing.properties_dict_t] = None,
         unshared_variables_in_output: bool = False,
         deepcopy_unshared_variables: bool = False,
     ) -> None:
@@ -289,12 +292,12 @@ class DataArrayDictOperator(StencilFactory):
 
     def sub(
         self,
-        dict1: taz_types.dataarray_dict_t,
-        dict2: taz_types.dataarray_dict_t,
-        out: Optional[taz_types.dataarray_dict_t] = None,
-        field_properties: Optional[taz_types.properties_dict_t] = None,
+        dict1: typing.dataarray_dict_t,
+        dict2: typing.dataarray_dict_t,
+        out: Optional[typing.dataarray_dict_t] = None,
+        field_properties: Optional[typing.properties_dict_t] = None,
         unshared_variables_in_output: bool = False,
-    ) -> taz_types.dataarray_dict_t:
+    ) -> typing.dataarray_dict_t:
         """Compute the item-wise difference between two dictionaries.
 
         Parameters
@@ -409,9 +412,9 @@ class DataArrayDictOperator(StencilFactory):
 
     def isub(
         self,
-        dict1: taz_types.dataarray_dict_t,
-        dict2: taz_types.dataarray_dict_t,
-        field_properties: Optional[taz_types.properties_dict_t] = None,
+        dict1: typing.dataarray_dict_t,
+        dict2: typing.dataarray_dict_t,
+        field_properties: Optional[typing.properties_dict_t] = None,
         unshared_variables_in_output: bool = False,
     ) -> None:
         """In-place variant of `add`.
@@ -488,11 +491,11 @@ class DataArrayDictOperator(StencilFactory):
 
     def scale(
         self,
-        dictionary: taz_types.dataarray_dict_t,
+        dictionary: typing.dataarray_dict_t,
         factor: float,
-        out: Optional[taz_types.dataarray_dict_t] = None,
-        field_properties: Optional[taz_types.properties_dict_t] = None,
-    ) -> taz_types.dataarray_dict_t:
+        out: Optional[typing.dataarray_dict_t] = None,
+        field_properties: Optional[typing.properties_dict_t] = None,
+    ) -> typing.dataarray_dict_t:
         """ TODO """
 
         field_properties = field_properties or {}
@@ -535,9 +538,9 @@ class DataArrayDictOperator(StencilFactory):
 
     def iscale(
         self,
-        dictionary: taz_types.dataarray_dict_t,
+        dictionary: typing.dataarray_dict_t,
         factor: float,
-        field_properties: Optional[taz_types.properties_dict_t] = None,
+        field_properties: Optional[typing.properties_dict_t] = None,
     ) -> None:
         """ TODO """
 
@@ -565,12 +568,12 @@ class DataArrayDictOperator(StencilFactory):
 
     def addsub(
         self,
-        dict1: taz_types.dataarray_dict_t,
-        dict2: taz_types.dataarray_dict_t,
-        dict3: taz_types.dataarray_dict_t,
-        out: Optional[taz_types.dataarray_dict_t] = None,
-        field_properties: Optional[taz_types.properties_dict_t] = None,
-    ) -> taz_types.dataarray_dict_t:
+        dict1: typing.dataarray_dict_t,
+        dict2: typing.dataarray_dict_t,
+        dict3: typing.dataarray_dict_t,
+        out: Optional[typing.dataarray_dict_t] = None,
+        field_properties: Optional[typing.properties_dict_t] = None,
+    ) -> typing.dataarray_dict_t:
         """ TODO """
 
         field_properties = field_properties or {}
@@ -620,10 +623,10 @@ class DataArrayDictOperator(StencilFactory):
 
     def iaddsub(
         self,
-        dict1: taz_types.dataarray_dict_t,
-        dict2: taz_types.dataarray_dict_t,
-        dict3: taz_types.dataarray_dict_t,
-        field_properties: Optional[taz_types.properties_dict_t] = None,
+        dict1: typing.dataarray_dict_t,
+        dict2: typing.dataarray_dict_t,
+        dict3: typing.dataarray_dict_t,
+        field_properties: Optional[typing.properties_dict_t] = None,
     ) -> None:
         """ TODO """
 
@@ -659,12 +662,12 @@ class DataArrayDictOperator(StencilFactory):
 
     def fma(
         self,
-        dict1: taz_types.dataarray_dict_t,
-        dict2: taz_types.dataarray_dict_t,
+        dict1: typing.dataarray_dict_t,
+        dict2: typing.dataarray_dict_t,
         factor: float,
-        out: Optional[taz_types.dataarray_dict_t] = None,
-        field_properties: Optional[taz_types.properties_dict_t] = None,
-    ) -> taz_types.dataarray_dict_t:
+        out: Optional[typing.dataarray_dict_t] = None,
+        field_properties: Optional[typing.properties_dict_t] = None,
+    ) -> typing.dataarray_dict_t:
         """ TODO """
 
         field_properties = field_properties or {}
@@ -711,12 +714,12 @@ class DataArrayDictOperator(StencilFactory):
     def sts_rk2_0(
         self,
         dt: float,
-        state: taz_types.dataarray_dict_t,
-        state_prv: taz_types.dataarray_dict_t,
-        tnd: taz_types.dataarray_dict_t,
-        out: Optional[taz_types.dataarray_dict_t] = None,
-        field_properties: Optional[taz_types.properties_dict_t] = None,
-    ) -> taz_types.dataarray_dict_t:
+        state: typing.dataarray_dict_t,
+        state_prv: typing.dataarray_dict_t,
+        tnd: typing.dataarray_dict_t,
+        out: Optional[typing.dataarray_dict_t] = None,
+        field_properties: Optional[typing.properties_dict_t] = None,
+    ) -> typing.dataarray_dict_t:
         """ TODO """
 
         field_properties = field_properties or {}
@@ -766,12 +769,12 @@ class DataArrayDictOperator(StencilFactory):
     def sts_rk3ws_0(
         self,
         dt: float,
-        state: taz_types.dataarray_dict_t,
-        state_prv: taz_types.dataarray_dict_t,
-        tnd: taz_types.dataarray_dict_t,
-        out: Optional[taz_types.dataarray_dict_t] = None,
-        field_properties: Optional[taz_types.properties_dict_t] = None,
-    ) -> taz_types.dataarray_dict_t:
+        state: typing.dataarray_dict_t,
+        state_prv: typing.dataarray_dict_t,
+        tnd: typing.dataarray_dict_t,
+        out: Optional[typing.dataarray_dict_t] = None,
+        field_properties: Optional[typing.properties_dict_t] = None,
+    ) -> typing.dataarray_dict_t:
         """ TODO """
 
         field_properties = field_properties or {}

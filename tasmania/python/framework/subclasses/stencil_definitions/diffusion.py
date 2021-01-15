@@ -20,13 +20,13 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from gt4py import gtscript
+from tasmania.third_party import cupy, gt4py
 
 from tasmania.python.framework.stencil import stencil_definition
 
 
-@stencil_definition.register(backend=("numpy", "cupy"), stencil="diffusion")
-def diffusion_numpy(in_phi, out_phi, *, alpha, origin, domain, **kwargs):
+@stencil_definition.register(backend="numpy", stencil="diffusion")
+def diffusion_numpy(in_phi, out_phi, *, alpha, origin, domain):
     ib, jb, kb = origin
     ie, je, ke = tuple(origin[i] + domain[i] for i in range(3))
 
@@ -56,38 +56,45 @@ def diffusion_numpy(in_phi, out_phi, *, alpha, origin, domain, **kwargs):
     )
 
 
-@stencil_definition.register(backend="gt4py*", stencil="diffusion")
-def diffusion_gt4py(
-    in_phi: gtscript.Field["dtype"],
-    out_phi: gtscript.Field["dtype"],
-    *,
-    alpha: "dtype"
-) -> None:
-    with computation(PARALLEL), interval(...):
-        # compute the laplacian-of-laplacian
-        lap = (
-            -4 * in_phi[0, 0, 0]
-            + in_phi[-1, 0, 0]
-            + in_phi[1, 0, 0]
-            + in_phi[0, -1, 0]
-            + in_phi[0, 1, 0]
-        )
-        bilap = (
-            -4 * lap[0, 0, 0]
-            + lap[-1, 0, 0]
-            + lap[1, 0, 0]
-            + lap[0, -1, 0]
-            + lap[0, 1, 0]
-        )
+if True:  # cupy:
+    stencil_definition.register(diffusion_numpy, "cupy", "diffusion")
 
-        # compute the x- and y-flux
-        flux_x = bilap[1, 0, 0] - bilap[0, 0, 0]
-        flux_y = bilap[0, 1, 0] - bilap[0, 0, 0]
 
-        # update the field
-        out_phi = in_phi + alpha * (
-            flux_x[0, 0, 0]
-            - flux_x[-1, 0, 0]
-            + flux_y[0, 0, 0]
-            - flux_y[0, -1, 0]
-        )
+if gt4py:
+    from gt4py import gtscript
+
+    @stencil_definition.register(backend="gt4py*", stencil="diffusion")
+    def diffusion_gt4py(
+        in_phi: gtscript.Field["dtype"],
+        out_phi: gtscript.Field["dtype"],
+        *,
+        alpha: "dtype"
+    ) -> None:
+        with computation(PARALLEL), interval(...):
+            # compute the laplacian-of-laplacian
+            lap = (
+                -4 * in_phi[0, 0, 0]
+                + in_phi[-1, 0, 0]
+                + in_phi[1, 0, 0]
+                + in_phi[0, -1, 0]
+                + in_phi[0, 1, 0]
+            )
+            bilap = (
+                -4 * lap[0, 0, 0]
+                + lap[-1, 0, 0]
+                + lap[1, 0, 0]
+                + lap[0, -1, 0]
+                + lap[0, 1, 0]
+            )
+
+            # compute the x- and y-flux
+            flux_x = bilap[1, 0, 0] - bilap[0, 0, 0]
+            flux_y = bilap[0, 1, 0] - bilap[0, 0, 0]
+
+            # update the field
+            out_phi = in_phi + alpha * (
+                flux_x[0, 0, 0]
+                - flux_x[-1, 0, 0]
+                + flux_y[0, 0, 0]
+                - flux_y[0, -1, 0]
+            )

@@ -23,7 +23,7 @@
 from typing import Callable, Sequence, Union
 
 from tasmania.python.framework import protocol as prt
-from tasmania.python.utils.protocol_utils import multiregister
+from tasmania.python.utils.protocol import multiregister
 
 
 def asarray(

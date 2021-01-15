@@ -30,7 +30,7 @@ import pytest
 
 from tasmania.python.domain.domain import Domain
 from tasmania.python.domain.horizontal_boundary import HorizontalBoundary
-from tasmania.python.utils.storage_utils import (
+from tasmania.python.utils.storage import (
     deepcopy_array_dict,
     deepcopy_dataarray_dict,
 )

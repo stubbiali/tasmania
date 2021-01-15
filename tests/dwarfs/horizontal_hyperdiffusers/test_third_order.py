@@ -31,7 +31,7 @@ import pytest
 from tasmania.python.dwarfs.horizontal_hyperdiffusion import (
     HorizontalHyperDiffusion as HHD,
 )
-from tasmania.python.utils.storage_utils import zeros
+from tasmania.python.utils.storage import zeros
 
 from tests.conf import (
     backend as conf_backend,

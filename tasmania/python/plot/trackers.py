@@ -29,7 +29,7 @@ from tasmania.python.plot.drawer import Drawer
 from tasmania.python.plot.profile import LineProfile
 from tasmania.python.plot.retrievers import DataRetriever
 from tasmania.python.plot.plot_utils import make_contourf, make_lineplot
-from tasmania.python.utils import taz_types
+from tasmania.python.utils import typing
 
 if TYPE_CHECKING:
     from tasmania.python.domain.grid import Grid
@@ -47,10 +47,10 @@ class TimeSeries(Drawer):
         y: int = 0,
         z: int = 0,
         time_mode: str = "elapsed",
-        init_time: Optional[taz_types.datetime_t] = None,
+        init_time: Optional[typing.datetime_t] = None,
         time_units: str = "s",
         time_on_xaxis: bool = True,
-        properties: Optional[taz_types.options_dict_t] = None,
+        properties: Optional[typing.options_dict_t] = None,
     ) -> None:
         """
         Parameters
@@ -117,7 +117,7 @@ class TimeSeries(Drawer):
 
     def __call__(
         self,
-        state: taz_types.dataarray_dict_t,
+        state: typing.dataarray_dict_t,
         fig: Optional[plt.Figure] = None,
         ax: Optional[plt.Axes] = None,
     ) -> None:
@@ -125,7 +125,8 @@ class TimeSeries(Drawer):
         if self._tmode == "elapsed":
             self._itime = state["time"] if self._itime is None else self._itime
             ctime = DataArray(
-                (state["time"] - self._itime).total_seconds(), attrs={"units": "s"}
+                (state["time"] - self._itime).total_seconds(),
+                attrs={"units": "s"},
             )
             self._time.append(ctime.to_units(self._tunits).values.item())
         else:
@@ -157,9 +158,9 @@ class HovmollerDiagram(Drawer):
         axis_y: Optional[int] = None,
         axis_z: Optional[int] = None,
         time_mode: str = "elapsed",
-        init_time: Optional[taz_types.datetime_t] = None,
+        init_time: Optional[typing.datetime_t] = None,
         time_units: str = "s",
-        properties: Optional[taz_types.options_dict_t] = None,
+        properties: Optional[typing.options_dict_t] = None,
     ) -> None:
         """
         Parameters
@@ -278,7 +279,7 @@ class HovmollerDiagram(Drawer):
 
     def __call__(
         self,
-        state: taz_types.dataarray_dict_t,
+        state: typing.dataarray_dict_t,
         fig: Optional[plt.Figure] = None,
         ax: Optional[plt.Axes] = None,
     ) -> None:
@@ -286,7 +287,8 @@ class HovmollerDiagram(Drawer):
         if self._tmode == "elapsed":
             self._itime = state["time"] if self._itime is None else self._itime
             ctime = DataArray(
-                (state["time"] - self._itime).total_seconds(), attrs={"units": "s"}
+                (state["time"] - self._itime).total_seconds(),
+                attrs={"units": "s"},
             )
             self._time.append(ctime.to_units(self._tunits).values.item())
         else:
@@ -298,7 +300,9 @@ class HovmollerDiagram(Drawer):
             self._axis = (
                 spatial_axis[np.newaxis, :]
                 if self._axis is None
-                else np.concatenate((self._axis, spatial_axis[np.newaxis, :]), axis=0)
+                else np.concatenate(
+                    (self._axis, spatial_axis[np.newaxis, :]), axis=0
+                )
             )
             self._data = (
                 field[np.newaxis, :]
@@ -307,7 +311,9 @@ class HovmollerDiagram(Drawer):
             )
 
             x = np.repeat(
-                np.array(self._time)[:, np.newaxis], self._axis.shape[1], axis=1
+                np.array(self._time)[:, np.newaxis],
+                self._axis.shape[1],
+                axis=1,
             )
             y = self._axis
             val = self._data
@@ -317,7 +323,9 @@ class HovmollerDiagram(Drawer):
             self._axis = (
                 spatial_axis[:, np.newaxis]
                 if self._axis is None
-                else np.concatenate((self._axis, spatial_axis[:, np.newaxis]), axis=1)
+                else np.concatenate(
+                    (self._axis, spatial_axis[:, np.newaxis]), axis=1
+                )
             )
             self._data = (
                 field[:, np.newaxis]
@@ -327,7 +335,9 @@ class HovmollerDiagram(Drawer):
 
             x = self._axis
             y = np.repeat(
-                np.array(self._time)[np.newaxis, :], self._axis.shape[0], axis=0
+                np.array(self._time)[np.newaxis, :],
+                self._axis.shape[0],
+                axis=0,
             )
             val = self._data
 

@@ -32,16 +32,18 @@ except (ImportError, ModuleNotFoundError):
 
 import gt4py as gt
 
-from tasmania.python.utils import taz_types
-from tasmania.python.utils.data_utils import get_physical_constants
-from tasmania.python.utils.storage_utils import get_dataarray_3d
+from tasmania.python.utils import typing
+from tasmania.python.utils.data import get_physical_constants
+from tasmania.python.utils.storage import get_dataarray_3d
 
 if TYPE_CHECKING:
     from tasmania.python.domain.grid import Grid
 
 
 _d_physical_constants = {
-    "gas_constant_of_dry_air": DataArray(287.05, attrs={"units": "J K^-1 kg^-1"}),
+    "gas_constant_of_dry_air": DataArray(
+        287.05, attrs={"units": "J K^-1 kg^-1"}
+    ),
     "gravitational_acceleration": DataArray(9.81, attrs={"units": "m s^-2"}),
     "reference_air_pressure": DataArray(1.0e5, attrs={"units": "Pa"}),
     "specific_heat_of_dry_air_at_constant_pressure": DataArray(
@@ -131,7 +133,8 @@ def get_isothermal_isentropic_analytical_solution(
 
     # Compute Scorer parameter
     scpam = np.sqrt(
-        (g ** 2) / (cp * T * (u_bar ** 2)) - (g ** 2) / (4.0 * (Rd ** 2) * (T ** 2))
+        (g ** 2) / (cp * T * (u_bar ** 2))
+        - (g ** 2) / (4.0 * (Rd ** 2) * (T ** 2))
     )
 
     # Build the underlying x-z grid
@@ -180,9 +183,13 @@ def get_isothermal_isentropic_analytical_solution(
             + 2.0 * x * (a * np.cos(scpam * z) - x * np.sin(scpam * z))
         )
     )
-    dd_dtheta = 0.5 * cp / (Rd * T) * ((theta / T) ** (0.5 * cp / Rd - 1.0)) * h * a * (
-        a * np.cos(scpam * z) - x * np.sin(scpam * z)
-    ) / ((x ** 2) + (a ** 2)) - ((theta / T) ** (0.5 * cp / Rd)) * h * a * (
+    dd_dtheta = 0.5 * cp / (Rd * T) * (
+        (theta / T) ** (0.5 * cp / Rd - 1.0)
+    ) * h * a * (a * np.cos(scpam * z) - x * np.sin(scpam * z)) / (
+        (x ** 2) + (a ** 2)
+    ) - (
+        (theta / T) ** (0.5 * cp / Rd)
+    ) * h * a * (
         a * np.sin(scpam * z) + x * np.cos(scpam * z)
     ) * scpam * dz_dtheta / (
         (x ** 2) + (a ** 2)
@@ -200,7 +207,7 @@ def get_isothermal_isentropic_analytical_solution(
 
 def convert_relative_humidity_to_water_vapor(
     method: str, p: DataArray, t: DataArray, rh: DataArray
-) -> taz_types.array_t:
+) -> typing.array_t:
     """
     Convert relative humidity to water vapor mixing ratio.
 
@@ -265,7 +272,7 @@ def convert_relative_humidity_to_water_vapor(
     return qv
 
 
-def tetens_formula(t: taz_types.array_t) -> taz_types.array_t:
+def tetens_formula(t: typing.array_t) -> typing.array_t:
     """
     Compute the saturation vapor pressure over water at a given temperature,
     according to the Tetens formula.
@@ -294,7 +301,7 @@ def tetens_formula(t: taz_types.array_t) -> taz_types.array_t:
     return e
 
 
-def goff_gratch_formula(t: taz_types.array_t) -> taz_types.array_t:
+def goff_gratch_formula(t: typing.array_t) -> typing.array_t:
     """
     Compute the saturation vapor pressure over water at a given temperature,
     according to the Goff-Gratch formula.

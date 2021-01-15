@@ -34,7 +34,7 @@ from tasmania.python.isentropic.physics.horizontal_smoothing import (
     IsentropicHorizontalSmoothing,
 )
 from tasmania.python.dwarfs.horizontal_smoothing import HorizontalSmoothing
-from tasmania.python.utils.storage_utils import get_dataarray_3d
+from tasmania.python.utils.storage import get_dataarray_3d
 
 from tests.conf import (
     backend as conf_backend,

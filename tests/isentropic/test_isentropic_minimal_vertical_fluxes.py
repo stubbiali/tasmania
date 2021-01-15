@@ -43,7 +43,7 @@ from tasmania.python.isentropic.dynamics.subclasses.minimal_vertical_fluxes impo
     ThirdOrderUpwind,
     FifthOrderUpwind,
 )
-from tasmania.python.utils.utils import get_gt_backend, is_gt
+from tasmania.python.utils.backend import is_gt, get_gt_backend
 
 from tests.conf import (
     backend as conf_backend,
