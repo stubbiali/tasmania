@@ -22,7 +22,10 @@
 #
 from datetime import datetime, timedelta
 import numpy as np
+import os
+import socket
 from sympl import DataArray
+import tasmania as taz
 
 
 # computational domain
@@ -45,27 +48,30 @@ nb = 3
 hb_kwargs = {"nr": 6, "nz": nz}
 
 # backend settings
-backend_kwargs = {
-    "backend": "gt4py:gtcuda",
-    "build_info": None,
-    "dtype": np.float64,
-    "exec_info": None,
-    "default_origin": (nb, nb, 0),
-    "rebuild": False,
-    "managed_memory": False,
-}
-backend_kwargs["backend_opts"] = (
-    {"verbose": True}
-    if backend_kwargs["backend"]
-    in ("gt4py:gtx86", "gt4py:gtmc", "gt4py:gtcuda")
-    else None
+backend = "gt4py:gtmc"
+bo = taz.BackendOptions(
+    # gt4py
+    build_info={},
+    exec_info={"__aggregate_data": True},
+    rebuild=False,
+    validate_args=False,
+    # numba
+    cache=True,
+    check_rebuild=False,
+    fastmath=False,
+    inline="always",
+    nopython=True,
+    parallel=True,
+)
+so = taz.StorageOptions(
+    dtype=np.float64, default_origin=(nb, nb, 0), managed_memory=False
 )
 
 # topography
 topo_type = "gaussian"
 topo_kwargs = {
     "time": timedelta(seconds=1800),
-    "max_height": DataArray(500.0, attrs={"units": "m"}),
+    "max_height": DataArray(0.5, attrs={"units": "km"}),
     "width_x": DataArray(50.0, attrs={"units": "km"}),
     "width_y": DataArray(50.0, attrs={"units": "km"}),
     "smooth": False,
@@ -75,9 +81,8 @@ topo_kwargs = {
 init_time = datetime(year=1992, month=2, day=20, hour=0)
 x_velocity = DataArray(22.5, attrs={"units": "m s^-1"})
 y_velocity = DataArray(0.0, attrs={"units": "m s^-1"})
-isothermal = False
 brunt_vaisala = DataArray(0.015, attrs={"units": "s^-1"})
-temperature = DataArray(250.0, attrs={"units": "K"})
+relative_humidity = 0.95
 
 # time stepping
 time_integration_scheme = "rk3ws_si"
@@ -86,9 +91,13 @@ eps = 0.5
 a = 0.375
 b = 0.375
 c = 0.25
+physics_time_integration_scheme = "rk2"
 
 # advection
 horizontal_flux_scheme = "fifth_order_upwind"
+vertical_advection = True
+implicit_vertical_advection = False
+vertical_flux_scheme = "third_order_upwind"
 
 # damping
 damp = True
@@ -97,13 +106,6 @@ damp_depth = 15
 damp_max = 0.0005
 damp_at_every_stage = False
 
-# horizontal diffusion
-diff = False
-diff_type = "second_order"
-diff_coeff = DataArray(10, attrs={"units": "s^-1"})
-diff_coeff_max = DataArray(12, attrs={"units": "s^-1"})
-diff_damp_depth = 30
-
 # horizontal smoothing
 smooth = True
 smooth_type = "second_order"
@@ -111,52 +113,46 @@ smooth_coeff = 1.0
 smooth_coeff_max = 1.0
 smooth_damp_depth = 0
 smooth_at_every_stage = False
+smooth_moist = True
+smooth_moist_type = "second_order"
+smooth_moist_coeff = 1.0
+smooth_moist_coeff_max = 1.0
+smooth_moist_damp_depth = 0
+smooth_moist_at_every_stage = False
 
 # turbulence
-turbulence = True
 smagorinsky_constant = 0.18
 
 # coriolis
-coriolis = True
 coriolis_parameter = None
+
+# microphysics
+sedimentation = True
+sedimentation_flux_scheme = "second_order_upwind"
+rain_evaporation = True
+autoconversion_threshold = DataArray(0.1, attrs={"units": "g kg^-1"})
+autoconversion_rate = DataArray(0.001, attrs={"units": "s^-1"})
+collection_rate = DataArray(2.2, attrs={"units": "s^-1"})
+saturation_rate = DataArray(0.025, attrs={"units": "s^-1"})
+update_frequency = 0
 
 # simulation length
 timestep = timedelta(seconds=10)
-niter = 100  # int(1 * 60 * 60 / timestep.total_seconds())
+niter = 100
 
 # output
-save = False
-save_frequency = 20
-filename = (
-    "../../data/benchmarking/isentropic_dry_{}_{}_nx{}_nz{}_dt{}_nt{}_"
-    "{}_L{}_H{}_u{}_{}{}{}{}_fc_{}.nc".format(
-        time_integration_scheme,
-        horizontal_flux_scheme,
-        nx,
-        nz,
-        int(timestep.total_seconds()),
-        niter,
-        topo_type,
-        int(topo_kwargs["width_x"].to_units("m").values.item()),
-        int(topo_kwargs["max_height"].to_units("m").values.item()),
-        int(x_velocity.to_units("m s^-1").values.item()),
-        "T" if isothermal else "bv",
-        "_diff" if diff else "",
-        "_smooth" if smooth else "",
-        "_turb" if turbulence else "",
-        backend_kwargs["backend"],
-    )
-)
-store_names = (
-    "air_isentropic_density",
-    "air_pressure_on_interface_levels",
-    "exner_function_on_interface_levels",
-    "height_on_interface_levels",
-    "montgomery_potential",
-    "x_momentum_isentropic",
-    "x_velocity_at_u_locations",
-    "y_momentum_isentropic",
-    "y_velocity_at_v_locations",
-)
-print_frequency = -1
-logfile = f"namelist_fc_{backend_kwargs['backend']}.log"
+hostname = socket.gethostname()
+if "nid" in hostname:
+    if os.path.exists("/scratch/snx3000"):
+        prefix = "/scratch/snx3000/subbiali/timing"
+    else:
+        prefix = "/scratch/snx3000tds/subbiali/timing"
+elif "daint" in hostname:
+    prefix = "/scratch/snx3000/subbiali/timing"
+elif "dom" in hostname:
+    prefix = "/scratch/snx3000tds/subbiali/timing"
+else:
+    prefix = "../timing"
+exec_info_csv = os.path.join(prefix, f"isentropic_moist_exec_ps_{backend}.csv")
+run_info_csv = os.path.join(prefix, "isentropic_moist_run_ps.csv")
+log_txt = os.path.join(prefix, f"isentropic_moist_log_ps_{backend}.txt")

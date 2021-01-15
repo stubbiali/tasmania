@@ -22,18 +22,21 @@
 #
 from datetime import datetime, timedelta
 import numpy as np
+import os
+import socket
 from sympl import DataArray
+import tasmania as taz
 
 
 # computational domain
 domain_x = DataArray([-176, 176], dims="x", attrs={"units": "km"}).to_units(
     "m"
 )
-nx = 41
+nx = 161
 domain_y = DataArray([-176, 176], dims="y", attrs={"units": "km"}).to_units(
     "m"
 )
-ny = 41
+ny = 161
 domain_z = DataArray(
     [400, 280], dims="potential_temperature", attrs={"units": "K"}
 )
@@ -42,23 +45,26 @@ nz = 60
 # horizontal boundary
 hb_type = "relaxed"
 nb = 3
-hb_kwargs = {"nr": 6, "nz": nz}
+hb_kwargs = {"nr": 6}
 
 # backend settings
-backend_kwargs = {
-    "backend": "gt4py:gtmc",
-    "build_info": None,
-    "dtype": np.float64,
-    "exec_info": None,
-    "default_origin": (nb, nb, 0),
-    "rebuild": False,
-    "managed_memory": False,
-}
-backend_kwargs["backend_opts"] = (
-    {"verbose": True}
-    if backend_kwargs["backend"]
-    in ("gt4py:gtx86", "gt4py:gtmc", "gt4py:gtcuda")
-    else None
+backend = "gt4py:gtmc"
+bo = taz.BackendOptions(
+    # gt4py
+    build_info={},
+    exec_info={"__aggregate_data": True},
+    rebuild=False,
+    validate_args=False,
+    # numba
+    cache=True,
+    check_rebuild=False,
+    fastmath=False,
+    inline="always",
+    nopython=True,
+    parallel=True,
+)
+so = taz.StorageOptions(
+    dtype=np.float64, default_origin=(nb, nb, 0), managed_memory=False
 )
 
 # topography
@@ -75,9 +81,7 @@ topo_kwargs = {
 init_time = datetime(year=1992, month=2, day=20, hour=0)
 x_velocity = DataArray(22.5, attrs={"units": "m s^-1"})
 y_velocity = DataArray(0.0, attrs={"units": "m s^-1"})
-isothermal = False
 brunt_vaisala = DataArray(0.015, attrs={"units": "s^-1"})
-temperature = DataArray(250.0, attrs={"units": "K"})
 
 # time stepping
 time_integration_scheme = "rk3ws_si"
@@ -95,15 +99,8 @@ horizontal_flux_scheme = "fifth_order_upwind"
 damp = True
 damp_type = "rayleigh"
 damp_depth = 15
-damp_max = 0.0005
+damp_max = 0.0002
 damp_at_every_stage = False
-
-# horizontal diffusion
-diff = False
-diff_type = "second_order"
-diff_coeff = DataArray(10, attrs={"units": "s^-1"})
-diff_coeff_max = DataArray(12, attrs={"units": "s^-1"})
-diff_damp_depth = 30
 
 # horizontal smoothing
 smooth = True
@@ -114,50 +111,28 @@ smooth_damp_depth = 0
 smooth_at_every_stage = False
 
 # turbulence
-turbulence = True
 smagorinsky_constant = 0.18
 
 # coriolis
-coriolis = True
-coriolis_parameter = None  # DataArray(1e-3, attrs={'units': 'rad s^-1'})
+coriolis_parameter = None
 
 # simulation length
 timestep = timedelta(seconds=10)
-niter = 100  # int(1 * 60 * 60 / timestep.total_seconds())
+niter = 100
 
 # output
-save = False
-save_frequency = 20
-filename = (
-    "../../data/benchmarking/isentropic_dry_{}_{}_{}_nx{}_nz{}_dt{}_nt{}_"
-    "{}_L{}_H{}_u{}_{}{}{}{}_sts_{}.nc".format(
-        time_integration_scheme,
-        horizontal_flux_scheme,
-        physics_time_integration_scheme,
-        nx,
-        nz,
-        int(timestep.total_seconds()),
-        niter,
-        topo_type,
-        int(topo_kwargs["width_x"].to_units("m").values.item()),
-        int(topo_kwargs["max_height"].to_units("m").values.item()),
-        int(x_velocity.to_units("m s^-1").values.item()),
-        "T" if isothermal else "bv",
-        "_diff" if diff else "",
-        "_smooth" if smooth else "",
-        "_turb" if turbulence else "",
-        backend_kwargs["backend"],
-    )
-)
-store_names = (
-    "air_isentropic_density",
-    "air_pressure_on_interface_levels",
-    "exner_function_on_interface_levels",
-    "height_on_interface_levels",
-    "montgomery_potential",
-    "x_momentum_isentropic",
-    "x_velocity_at_u_locations",
-    "y_momentum_isentropic",
-    "y_velocity_at_v_locations",
-)
-print_frequency = 1
+hostname = socket.gethostname()
+if "nid" in hostname:
+    if os.path.exists("/scratch/snx3000"):
+        prefix = "/scratch/snx3000/subbiali/timing"
+    else:
+        prefix = "/scratch/snx3000tds/subbiali/timing"
+elif "daint" in hostname:
+    prefix = "/scratch/snx3000/subbiali/timing"
+elif "dom" in hostname:
+    prefix = "/scratch/snx3000tds/subbiali/timing"
+else:
+    prefix = "../timing"
+exec_info_csv = os.path.join(prefix, f"isentropic_dry_exec_sus_{backend}.csv")
+run_info_csv = os.path.join(prefix, "isentropic_dry_run_sus.csv")
+log_txt = os.path.join(prefix, f"isentropic_dry_log_sus_{backend}.txt")
