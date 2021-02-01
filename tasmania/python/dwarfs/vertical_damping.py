@@ -94,12 +94,13 @@ class VerticalDamping(GridComponent, StencilFactory, abc.ABC):
         # store input arguments needed at run-time
         self._damp_depth = damp_depth
         self._tunits = time_units
-        storage_shape = storage_shape or (grid.nx, grid.ny, grid.nz)
-        assert grid.nz <= storage_shape[2] <= grid.nz + 1
+        storage_shape = self.get_storage_shape(
+            storage_shape, max_shape=(grid.nx + 1, grid.ny + 1, grid.nz + 1),
+        )
         self._shape = storage_shape
 
         # allocate the damping matrix
-        self._rmat = self.zeros(backend, shape=storage_shape)
+        self._rmat = self.zeros(shape=storage_shape)
         if damp_depth > 0:
             # fill the damping matrix
             z = (
@@ -114,13 +115,14 @@ class VerticalDamping(GridComponent, StencilFactory, abc.ABC):
                 * damp_coeff_max
                 * (1 - np.cos(math.pi * (z - za) / (zt - za)))
             )
-            asarray = self.asarray(backend)
-            self._rmat[...] = asarray(r[np.newaxis, np.newaxis, :])
+            self._rmat[...] = self.as_storage(
+                data=r[np.newaxis, np.newaxis, :]
+            )
 
         # instantiate the underlying stencil
         dtype = self.storage_options.dtype
         self.backend_options.dtypes = {"dtype": dtype}
-        self._stencil = self.compile("damping")
+        self._stencil_damp = self.compile("damping")
 
     @abc.abstractmethod
     def __call__(

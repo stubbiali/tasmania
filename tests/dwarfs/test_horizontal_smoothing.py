@@ -26,7 +26,9 @@ from hypothesis import (
 )
 import pytest
 
-from tasmania.python.dwarfs.horizontal_smoothing import HorizontalSmoothing as HS
+from tasmania.python.dwarfs.horizontal_smoothing import (
+    HorizontalSmoothing as HS,
+)
 from tasmania.python.dwarfs.subclasses.horizontal_smoothers import (
     FirstOrder,
     FirstOrder1DX,
@@ -89,7 +91,11 @@ def test_factory(data):
     # ========================================
     # first_order
     obj = HS.factory(
-        "first_order", (ni, nj, nk), smooth_coeff, smooth_coeff_max, smooth_damp_depth
+        "first_order",
+        (ni, nj, nk),
+        smooth_coeff,
+        smooth_coeff_max,
+        smooth_damp_depth,
     )
     assert isinstance(obj, FirstOrder)
 
@@ -115,7 +121,11 @@ def test_factory(data):
 
     # second_order
     obj = HS.factory(
-        "second_order", (ni, nj, nk), smooth_coeff, smooth_coeff_max, smooth_damp_depth
+        "second_order",
+        (ni, nj, nk),
+        smooth_coeff,
+        smooth_coeff_max,
+        smooth_damp_depth,
     )
     assert isinstance(obj, SecondOrder)
 
@@ -141,7 +151,11 @@ def test_factory(data):
 
     # third_order
     obj = HS.factory(
-        "third_order", (ni, nj, nk), smooth_coeff, smooth_coeff_max, smooth_damp_depth
+        "third_order",
+        (ni, nj, nk),
+        smooth_coeff,
+        smooth_coeff_max,
+        smooth_damp_depth,
     )
     assert isinstance(obj, ThirdOrder)
 

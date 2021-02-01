@@ -24,16 +24,14 @@ from gt4py import gtscript
 
 from tasmania.python.dwarfs.horizontal_hyperdiffusion import (
     HorizontalHyperDiffusion,
-    stage_laplacian_numpy,
-    stage_laplacian_x_numpy,
-    stage_laplacian_y_numpy,
 )
 from tasmania.python.framework.register import register
+from tasmania.python.framework.tag import stencil_definition
 
 
 @register(name="first_order")
 class FirstOrder(HorizontalHyperDiffusion):
-    """ Two-dimensional first-order hyper-diffusion. """
+    """Two-dimensional first-order hyper-diffusion."""
 
     def __init__(
         self,
@@ -45,13 +43,8 @@ class FirstOrder(HorizontalHyperDiffusion):
         diffusion_damp_depth,
         nb,
         backend,
-        backend_opts,
-        dtype,
-        build_info,
-        exec_info,
-        default_origin,
-        rebuild,
-        managed_memory,
+        backend_options,
+        storage_options,
     ):
         nb = 1 if (nb is None or nb < 1) else nb
         super().__init__(
@@ -63,13 +56,8 @@ class FirstOrder(HorizontalHyperDiffusion):
             diffusion_damp_depth,
             nb,
             backend,
-            backend_opts,
-            dtype,
-            build_info,
-            exec_info,
-            default_origin,
-            rebuild,
-            managed_memory,
+            backend_options,
+            storage_options,
         )
 
     def __call__(self, phi, phi_tnd):
@@ -90,21 +78,19 @@ class FirstOrder(HorizontalHyperDiffusion):
         )
 
     @staticmethod
-    def _stencil_numpy(
-        in_phi, in_gamma, out_phi, *, dx, dy, origin, domain, **kwargs
-    ):
+    @stencil_definition(backend=("numpy", "cupy"), stencil="hyperdiffusion")
+    def _stencil_numpy(in_phi, in_gamma, out_phi, *, dx, dy, origin, domain):
         ib, ie = origin[0], origin[0] + domain[0]
         jb, je = origin[1], origin[1] + domain[1]
         k = slice(origin[2], origin[2] + domain[2])
 
-        out_phi[ib:ie, jb:je, k] = in_gamma[
-            ib:ie, jb:je, k
-        ] * stage_laplacian_numpy(
+        out_phi[ib:ie, jb:je, k] = in_gamma[ib:ie, jb:je, k] * laplacian(
             dx, dy, in_phi[ib - 1 : ie + 1, jb - 1 : je + 1, k]
         )
 
     @staticmethod
-    def _stencil_gt_defs(
+    @stencil_definition(backend="gt4py*", stencil="hyperdiffusion")
+    def _stencil_gt4py(
         in_phi: gtscript.Field["dtype"],
         in_gamma: gtscript.Field["dtype"],
         out_phi: gtscript.Field["dtype"],
@@ -112,20 +98,16 @@ class FirstOrder(HorizontalHyperDiffusion):
         dx: float,
         dy: float
     ) -> None:
-        from __externals__ import (
-            stage_laplacian,
-            stage_laplacian_x,
-            stage_laplacian_y,
-        )
+        from __externals__ import laplacian, laplacian_x, laplacian_y
 
         with computation(PARALLEL), interval(...):
-            lap = stage_laplacian(dx=dx, dy=dy, phi=in_phi)
+            lap = laplacian(dx=dx, dy=dy, phi=in_phi)
             out_phi = in_gamma * lap
 
 
 @register(name="first_order_1dx")
 class FirstOrder1DX(HorizontalHyperDiffusion):
-    """ One-dimensional first-order hyper-diffusion along the x-direction. """
+    """One-dimensional first-order hyper-diffusion along the x-direction."""
 
     def __init__(
         self,
@@ -137,13 +119,8 @@ class FirstOrder1DX(HorizontalHyperDiffusion):
         diffusion_damp_depth,
         nb,
         backend,
-        backend_opts,
-        dtype,
-        build_info,
-        exec_info,
-        default_origin,
-        rebuild,
-        managed_memory,
+        backend_options,
+        storage_options,
     ):
         nb = 1 if (nb is None or nb < 1) else nb
         super().__init__(
@@ -155,13 +132,8 @@ class FirstOrder1DX(HorizontalHyperDiffusion):
             diffusion_damp_depth,
             nb,
             backend,
-            backend_opts,
-            dtype,
-            build_info,
-            exec_info,
-            default_origin,
-            rebuild,
-            managed_memory,
+            backend_options,
+            storage_options,
         )
 
     def __call__(self, phi, phi_tnd):
@@ -182,19 +154,19 @@ class FirstOrder1DX(HorizontalHyperDiffusion):
         )
 
     @staticmethod
-    def _stencil_numpy(
-        in_phi, in_gamma, out_phi, *, dx, dy, origin, domain, **kwargs
-    ):
+    @stencil_definition(backend=("numpy", "cupy"), stencil="hyperdiffusion")
+    def _stencil_numpy(in_phi, in_gamma, out_phi, *, dx, dy, origin, domain):
         ib, ie = origin[0], origin[0] + domain[0]
         jb, je = origin[1], origin[1] + domain[1]
         k = slice(origin[2], origin[2] + domain[2])
 
-        out_phi[ib:ie, jb:je, k] = in_gamma[
-            ib:ie, jb:je, k
-        ] * stage_laplacian_x_numpy(dx, in_phi[ib - 1 : ie + 1, jb:je, k])
+        out_phi[ib:ie, jb:je, k] = in_gamma[ib:ie, jb:je, k] * laplacian_x(
+            dx, in_phi[ib - 1 : ie + 1, jb:je, k]
+        )
 
     @staticmethod
-    def _stencil_gt_defs(
+    @stencil_definition(backend="gt4py*", stencil="hyperdiffusion")
+    def _stencil_gt4py(
         in_phi: gtscript.Field["dtype"],
         in_gamma: gtscript.Field["dtype"],
         out_phi: gtscript.Field["dtype"],
@@ -202,16 +174,16 @@ class FirstOrder1DX(HorizontalHyperDiffusion):
         dx: float,
         dy: float = 0.0
     ) -> None:
-        from __externals__ import stage_laplacian_x
+        from __externals__ import laplacian_x
 
         with computation(PARALLEL), interval(...):
-            lap = stage_laplacian_x(dx=dx, phi=in_phi)
+            lap = laplacian_x(dx=dx, phi=in_phi)
             out_phi = in_gamma * lap
 
 
 @register(name="first_order_1dy")
 class FirstOrder1DY(HorizontalHyperDiffusion):
-    """ One-dimensional first-order hyper-diffusion along the y-direction. """
+    """One-dimensional first-order hyper-diffusion along the y-direction."""
 
     def __init__(
         self,
@@ -223,13 +195,8 @@ class FirstOrder1DY(HorizontalHyperDiffusion):
         diffusion_damp_depth,
         nb,
         backend,
-        backend_opts,
-        dtype,
-        build_info,
-        exec_info,
-        default_origin,
-        rebuild,
-        managed_memory,
+        backend_options,
+        storage_options,
     ):
         nb = 1 if (nb is None or nb < 1) else nb
         super().__init__(
@@ -241,13 +208,8 @@ class FirstOrder1DY(HorizontalHyperDiffusion):
             diffusion_damp_depth,
             nb,
             backend,
-            backend_opts,
-            dtype,
-            build_info,
-            exec_info,
-            default_origin,
-            rebuild,
-            managed_memory,
+            backend_options,
+            storage_options,
         )
 
     def __call__(self, phi, phi_tnd):
@@ -268,19 +230,19 @@ class FirstOrder1DY(HorizontalHyperDiffusion):
         )
 
     @staticmethod
-    def _stencil_numpy(
-        in_phi, in_gamma, out_phi, *, dx, dy, origin, domain, **kwargs
-    ):
+    @stencil_definition(backend=("numpy", "cupy"), stencil="hyperdiffusion")
+    def _stencil_numpy(in_phi, in_gamma, out_phi, *, dx, dy, origin, domain):
         ib, ie = origin[0], origin[0] + domain[0]
         jb, je = origin[1], origin[1] + domain[1]
         k = slice(origin[2], origin[2] + domain[2])
 
-        out_phi[ib:ie, jb:je, k] = in_gamma[
-            ib:ie, jb:je, k
-        ] * stage_laplacian_y_numpy(dy, in_phi[ib:ie, jb - 1 : je + 1, k])
+        out_phi[ib:ie, jb:je, k] = in_gamma[ib:ie, jb:je, k] * laplacian_y(
+            dy, in_phi[ib:ie, jb - 1 : je + 1, k]
+        )
 
     @staticmethod
-    def _stencil_gt_defs(
+    @stencil_definition(backend="gt4py*", stencil="hyperdiffusion")
+    def _stencil_gt4py(
         in_phi: gtscript.Field["dtype"],
         in_gamma: gtscript.Field["dtype"],
         out_phi: gtscript.Field["dtype"],
@@ -288,8 +250,8 @@ class FirstOrder1DY(HorizontalHyperDiffusion):
         dx: float = 0.0,
         dy: float
     ) -> None:
-        from __externals__ import stage_laplacian_y
+        from __externals__ import laplacian_y
 
         with computation(PARALLEL), interval(...):
-            lap = stage_laplacian_y(dy=dy, phi=in_phi)
+            lap = laplacian_y(dy=dy, phi=in_phi)
             out_phi = in_gamma * lap

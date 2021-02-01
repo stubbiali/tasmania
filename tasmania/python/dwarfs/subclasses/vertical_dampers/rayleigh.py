@@ -31,7 +31,7 @@ from tasmania.python.framework.tag import stencil_definition
 
 @register(name="rayleigh")
 class Rayleigh(VerticalDamping):
-    """ The Rayleigh absorber. """
+    """The Rayleigh absorber."""
 
     def __init__(
         self,
@@ -65,7 +65,7 @@ class Rayleigh(VerticalDamping):
         dt_raw = dt_da.to_units(self._tunits).values.item()
 
         # run the stencil
-        self._stencil(
+        self._stencil_damp(
             in_phi_now=field_now,
             in_phi_new=field_new,
             in_phi_ref=field_ref,

@@ -30,12 +30,13 @@ import pytest
 
 from tasmania.python.dwarfs.vertical_damping import VerticalDamping as VD
 from tasmania.python.framework.allocators import zeros
+from tasmania.python.framework.generic_functions import to_numpy
 from tasmania.python.framework.options import BackendOptions, StorageOptions
 
 from tests.conf import (
+    aligned_index as conf_aligned_index,
     backend as conf_backend,
     dtype as conf_dtype,
-    default_origin as conf_dorigin,
 )
 from tests.strategies import st_domain, st_one_of, st_raw_field, st_timedeltas
 from tests.utilities import compare_arrays, hyp_settings
@@ -66,14 +67,16 @@ def assert_rayleigh(
         storage_shape=phi_now.shape,
         storage_options=storage_options,
     )
-
-    rmat = vd._rmat
-
     vd(dt, phi_now, phi_new, phi_ref, phi_out)
 
-    phi_val = phi_new[:ni, :nj, :nk] - dt.total_seconds() * rmat[
+    rmat = to_numpy(vd._rmat)
+    phi_now_np = to_numpy(phi_now)
+    phi_new_np = to_numpy(phi_new)
+    phi_ref_np = to_numpy(phi_ref)
+    phi_val = phi_new_np[:ni, :nj, :nk] - dt.total_seconds() * rmat[
         :ni, :nj, :nk
-    ] * (phi_now[:ni, :nj, :nk] - phi_ref[:ni, :nj, :nk])
+    ] * (phi_now_np[:ni, :nj, :nk] - phi_ref_np[:ni, :nj, :nk])
+
     compare_arrays(phi_out[:, :, :depth], phi_val[:, :, :depth])
     compare_arrays(phi_out[:, :, depth:], phi_val[:ni, :nj, depth:nk])
 
@@ -86,7 +89,11 @@ def test(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+    aligned_index = data.draw(
+        st_one_of(conf_aligned_index), label="aligned_index"
+    )
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
 
     domain = data.draw(
         st_domain(
@@ -94,16 +101,17 @@ def test(data, backend, dtype):
             yaxis_length=(1, 30),
             zaxis_length=(1, 30),
             backend=backend,
-            dtype=dtype,
+            backend_options=bo,
+            storage_options=so,
         ),
         label="grid",
     )
-    cgrid = domain.numerical_grid
+    ngrid = domain.numerical_grid
 
     dnx = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dnx")
     dny = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dny")
     dnz = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dnz")
-    shape = (cgrid.nx + dnx, cgrid.ny + dny, cgrid.nz + dnz)
+    shape = (ngrid.nx + dnx, ngrid.ny + dny, ngrid.nz + dnz)
 
     phi_now = data.draw(
         st_raw_field(
@@ -111,8 +119,7 @@ def test(data, backend, dtype):
             min_value=-1e10,
             max_value=1e10,
             backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
+            storage_options=so,
         ),
         label="phi_now",
     )
@@ -122,8 +129,7 @@ def test(data, backend, dtype):
             min_value=-1e10,
             max_value=1e10,
             backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
+            storage_options=so,
         ),
         label="phi_new",
     )
@@ -133,8 +139,7 @@ def test(data, backend, dtype):
             min_value=-1e10,
             max_value=1e10,
             backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
+            storage_options=so,
         ),
         label="phi_ref",
     )
@@ -147,18 +152,15 @@ def test(data, backend, dtype):
     )
 
     depth = data.draw(
-        hyp_st.integers(min_value=0, max_value=cgrid.nz), label="depth"
+        hyp_st.integers(min_value=0, max_value=ngrid.nz), label="depth"
     )
 
     # ========================================
     # test
     # ========================================
-    bo = BackendOptions(rebuild=False)
-    so = StorageOptions(dtype=dtype, default_origin=default_origin)
-
     phi_out = zeros(backend, shape=shape, storage_options=so)
     assert_rayleigh(
-        cgrid, depth, backend, bo, so, dt, phi_now, phi_new, phi_ref, phi_out,
+        ngrid, depth, backend, bo, so, dt, phi_now, phi_new, phi_ref, phi_out,
     )
 
 

@@ -24,16 +24,14 @@ from gt4py import gtscript
 
 from tasmania.python.dwarfs.horizontal_hyperdiffusion import (
     HorizontalHyperDiffusion,
-    stage_laplacian_numpy,
-    stage_laplacian_x_numpy,
-    stage_laplacian_y_numpy,
 )
 from tasmania.python.framework.register import register
+from tasmania.python.framework.tag import stencil_definition
 
 
 @register(name="second_order")
 class SecondOrder(HorizontalHyperDiffusion):
-    """ Two-dimensional second-order hyper-diffusion. """
+    """Two-dimensional second-order hyper-diffusion."""
 
     def __init__(
         self,
@@ -45,13 +43,8 @@ class SecondOrder(HorizontalHyperDiffusion):
         diffusion_damp_depth,
         nb,
         backend,
-        backend_opts,
-        dtype,
-        build_info,
-        exec_info,
-        default_origin,
-        rebuild,
-        managed_memory,
+        backend_options,
+        storage_options,
     ):
         nb = 2 if (nb is None or nb < 2) else nb
         super().__init__(
@@ -63,13 +56,8 @@ class SecondOrder(HorizontalHyperDiffusion):
             diffusion_damp_depth,
             nb,
             backend,
-            backend_opts,
-            dtype,
-            build_info,
-            exec_info,
-            default_origin,
-            rebuild,
-            managed_memory,
+            backend_options,
+            storage_options,
         )
 
     def __call__(self, phi, phi_tnd):
@@ -90,22 +78,20 @@ class SecondOrder(HorizontalHyperDiffusion):
         )
 
     @staticmethod
-    def _stencil_numpy(
-        in_phi, in_gamma, out_phi, *, dx, dy, origin, domain, **kwargs
-    ):
+    @stencil_definition(backend=("numpy", "cupy"), stencil="hyperdiffusion")
+    def _stencil_numpy(in_phi, in_gamma, out_phi, *, dx, dy, origin, domain):
         ib, ie = origin[0], origin[0] + domain[0]
         jb, je = origin[1], origin[1] + domain[1]
         k = slice(origin[2], origin[2] + domain[2])
 
-        lap0 = stage_laplacian_numpy(
-            dx, dy, in_phi[ib - 2 : ie + 2, jb - 2 : je + 2, k]
+        lap0 = laplacian(dx, dy, in_phi[ib - 2 : ie + 2, jb - 2 : je + 2, k])
+        out_phi[ib:ie, jb:je, k] = in_gamma[ib:ie, jb:je, k] * laplacian(
+            dx, dy, lap0
         )
-        out_phi[ib:ie, jb:je, k] = in_gamma[
-            ib:ie, jb:je, k
-        ] * stage_laplacian_numpy(dx, dy, lap0)
 
     @staticmethod
-    def _stencil_gt_defs(
+    @stencil_definition(backend="gt4py*", stencil="hyperdiffusion")
+    def _stencil_gt4py(
         in_phi: gtscript.Field["dtype"],
         in_gamma: gtscript.Field["dtype"],
         out_phi: gtscript.Field["dtype"],
@@ -113,15 +99,11 @@ class SecondOrder(HorizontalHyperDiffusion):
         dx: float,
         dy: float
     ) -> None:
-        from __externals__ import (
-            stage_laplacian,
-            stage_laplacian_x,
-            stage_laplacian_y,
-        )
+        from __externals__ import laplacian, laplacian_x, laplacian_y
 
         with computation(PARALLEL), interval(...):
-            lap0 = stage_laplacian(dx=dx, dy=dy, phi=in_phi)
-            lap1 = stage_laplacian(dx=dx, dy=dy, phi=lap0)
+            lap0 = laplacian(dx=dx, dy=dy, phi=in_phi)
+            lap1 = laplacian(dx=dx, dy=dy, phi=lap0)
             out_phi = in_gamma * lap1
 
 
@@ -139,13 +121,8 @@ class SecondOrder1DX(HorizontalHyperDiffusion):
         diffusion_damp_depth,
         nb,
         backend,
-        backend_opts,
-        dtype,
-        build_info,
-        exec_info,
-        default_origin,
-        rebuild,
-        managed_memory,
+        backend_options,
+        storage_options,
     ):
         nb = 2 if (nb is None or nb < 2) else nb
         super().__init__(
@@ -157,13 +134,8 @@ class SecondOrder1DX(HorizontalHyperDiffusion):
             diffusion_damp_depth,
             nb,
             backend,
-            backend_opts,
-            dtype,
-            build_info,
-            exec_info,
-            default_origin,
-            rebuild,
-            managed_memory,
+            backend_options,
+            storage_options,
         )
 
     def __call__(self, phi, phi_tnd):
@@ -184,20 +156,20 @@ class SecondOrder1DX(HorizontalHyperDiffusion):
         )
 
     @staticmethod
-    def _stencil_numpy(
-        in_phi, in_gamma, out_phi, *, dx, dy, origin, domain, **kwargs
-    ):
+    @stencil_definition(backend=("numpy", "cupy"), stencil="hyperdiffusion")
+    def _stencil_numpy(in_phi, in_gamma, out_phi, *, dx, dy, origin, domain):
         ib, ie = origin[0], origin[0] + domain[0]
         jb, je = origin[1], origin[1] + domain[1]
         k = slice(origin[2], origin[2] + domain[2])
 
-        lap0 = stage_laplacian_x_numpy(dx, in_phi[ib - 2 : ie + 2, jb:je, k])
-        out_phi[ib:ie, jb:je, k] = in_gamma[
-            ib:ie, jb:je, k
-        ] * stage_laplacian_x_numpy(dx, lap0)
+        lap0 = laplacian_x(dx, in_phi[ib - 2 : ie + 2, jb:je, k])
+        out_phi[ib:ie, jb:je, k] = in_gamma[ib:ie, jb:je, k] * laplacian_x(
+            dx, lap0
+        )
 
     @staticmethod
-    def _stencil_gt_defs(
+    @stencil_definition(backend="gt4py*", stencil="hyperdiffusion")
+    def _stencil_gt4py(
         in_phi: gtscript.Field["dtype"],
         in_gamma: gtscript.Field["dtype"],
         out_phi: gtscript.Field["dtype"],
@@ -205,11 +177,11 @@ class SecondOrder1DX(HorizontalHyperDiffusion):
         dx: float,
         dy: float = 0.0
     ) -> None:
-        from __externals__ import stage_laplacian_x
+        from __externals__ import laplacian_x
 
         with computation(PARALLEL), interval(...):
-            lap0 = stage_laplacian_x(dx=dx, phi=in_phi)
-            lap1 = stage_laplacian_x(dx=dx, phi=lap0)
+            lap0 = laplacian_x(dx=dx, phi=in_phi)
+            lap1 = laplacian_x(dx=dx, phi=lap0)
             out_phi = in_gamma * lap1
 
 
@@ -227,13 +199,8 @@ class SecondOrder1DY(HorizontalHyperDiffusion):
         diffusion_damp_depth,
         nb,
         backend,
-        backend_opts,
-        dtype,
-        build_info,
-        exec_info,
-        default_origin,
-        rebuild,
-        managed_memory,
+        backend_options,
+        storage_options,
     ):
         nb = 2 if (nb is None or nb < 2) else nb
         super().__init__(
@@ -245,13 +212,8 @@ class SecondOrder1DY(HorizontalHyperDiffusion):
             diffusion_damp_depth,
             nb,
             backend,
-            backend_opts,
-            dtype,
-            build_info,
-            exec_info,
-            default_origin,
-            rebuild,
-            managed_memory,
+            backend_options,
+            storage_options,
         )
 
     def __call__(self, phi, phi_tnd):
@@ -272,20 +234,20 @@ class SecondOrder1DY(HorizontalHyperDiffusion):
         )
 
     @staticmethod
-    def _stencil_numpy(
-        in_phi, in_gamma, out_phi, *, dx, dy, origin, domain, **kwargs
-    ):
+    @stencil_definition(backend=("numpy", "cupy"), stencil="hyperdiffusion")
+    def _stencil_numpy(in_phi, in_gamma, out_phi, *, dx, dy, origin, domain):
         ib, ie = origin[0], origin[0] + domain[0]
         jb, je = origin[1], origin[1] + domain[1]
         k = slice(origin[2], origin[2] + domain[2])
 
-        lap0 = stage_laplacian_y_numpy(dy, in_phi[ib:ie, jb - 2 : je + 2, k])
-        out_phi[ib:ie, jb:je, k] = in_gamma[
-            ib:ie, jb:je, k
-        ] * stage_laplacian_y_numpy(dy, lap0)
+        lap0 = laplacian_y(dy, in_phi[ib:ie, jb - 2 : je + 2, k])
+        out_phi[ib:ie, jb:je, k] = in_gamma[ib:ie, jb:je, k] * laplacian_y(
+            dy, lap0
+        )
 
     @staticmethod
-    def _stencil_gt_defs(
+    @stencil_definition(backend="gt4py*", stencil="hyperdiffusion")
+    def _stencil_gt4py(
         in_phi: gtscript.Field["dtype"],
         in_gamma: gtscript.Field["dtype"],
         out_phi: gtscript.Field["dtype"],
@@ -293,9 +255,9 @@ class SecondOrder1DY(HorizontalHyperDiffusion):
         dx: float = 0.0,
         dy: float
     ) -> None:
-        from __externals__ import stage_laplacian_y
+        from __externals__ import laplacian_y
 
         with computation(PARALLEL), interval(...):
-            lap0 = stage_laplacian_y(dy=dy, phi=in_phi)
-            lap1 = stage_laplacian_y(dy=dy, phi=lap0)
+            lap0 = laplacian_y(dy=dy, phi=in_phi)
+            lap1 = laplacian_y(dy=dy, phi=lap0)
             out_phi = in_gamma * lap1

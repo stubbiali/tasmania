@@ -32,12 +32,13 @@ from tasmania.python.dwarfs.horizontal_diffusion import (
     HorizontalDiffusion as HD,
 )
 from tasmania.python.framework.allocators import zeros
+from tasmania.python.framework.generic_functions import to_numpy
 from tasmania.python.framework.options import BackendOptions, StorageOptions
 
 from tests.conf import (
+    aligned_index as conf_aligned_index,
     backend as conf_backend,
     dtype as conf_dtype,
-    default_origin as conf_dorigin,
     nb as conf_nb,
 )
 from tests.strategies import st_domain, st_one_of, st_raw_field
@@ -114,9 +115,9 @@ def second_order_validation_xyz(
     )
     hd(phi, phi_tnd)
 
-    gamma = hd._gamma  # np.tile(hd._gamma, (ni, nj, 1))
+    gamma = to_numpy(hd._gamma)  # np.tile(hd._gamma, (ni, nj, 1))
 
-    phi_tnd_assert = gamma * second_order_diffusion_xyz(dx, dy, phi)
+    phi_tnd_assert = gamma * second_order_diffusion_xyz(dx, dy, to_numpy(phi))
     assert_xyz(phi_tnd, phi_tnd_assert, nb)
 
 
@@ -146,9 +147,9 @@ def second_order_validation_xz(
     )
     hd(phi, phi_tnd)
 
-    gamma = hd._gamma  # np.tile(hd._gamma, (ni, nj, 1))
+    gamma = to_numpy(hd._gamma)  # np.tile(hd._gamma, (ni, nj, 1))
 
-    phi_tnd_assert = gamma * second_order_diffusion_xz(dx, phi)
+    phi_tnd_assert = gamma * second_order_diffusion_xz(dx, to_numpy(phi))
     assert_xz(phi_tnd, phi_tnd_assert, nb)
 
 
@@ -178,9 +179,9 @@ def second_order_validation_yz(
     )
     hd(phi, phi_tnd)
 
-    gamma = hd._gamma  # np.tile(hd._gamma, (ni, nj, 1))
+    gamma = to_numpy(hd._gamma)  # np.tile(hd._gamma, (ni, nj, 1))
 
-    phi_tnd_assert = gamma * second_order_diffusion_yz(dy, phi)
+    phi_tnd_assert = gamma * second_order_diffusion_yz(dy, to_numpy(phi))
     assert_yz(phi_tnd, phi_tnd_assert, nb)
 
 
@@ -192,7 +193,11 @@ def test(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+    aligned_index = data.draw(
+        st_one_of(conf_aligned_index), label="aligned_index"
+    )
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
 
     nb = data.draw(hyp_st.integers(min_value=1, max_value=max(1, conf_nb)))
     domain = data.draw(
@@ -202,7 +207,8 @@ def test(data, backend, dtype):
             zaxis_length=(1, 30),
             nb=nb,
             backend=backend,
-            dtype=dtype,
+            backend_options=bo,
+            storage_options=so,
         ),
         label="grid",
     )
@@ -219,8 +225,7 @@ def test(data, backend, dtype):
             min_value=-1e10,
             max_value=1e10,
             backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
+            storage_options=so,
         ),
         label="phi",
     )
@@ -232,9 +237,6 @@ def test(data, backend, dtype):
     # ========================================
     # test
     # ========================================
-    bo = BackendOptions(rebuild=False)
-    so = StorageOptions(dtype=dtype, default_origin=default_origin)
-
     second_order_validation_xyz(phi, grid, depth, nb, backend, bo, so)
     second_order_validation_xz(phi, grid, depth, nb, backend, bo, so)
     second_order_validation_yz(phi, grid, depth, nb, backend, bo, so)

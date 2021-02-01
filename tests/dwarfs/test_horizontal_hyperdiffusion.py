@@ -83,7 +83,9 @@ def test_factory(data):
     dx = data.draw(st_floats(min_value=0), label="dx")
     dy = data.draw(st_floats(min_value=0), label="dy")
     diff_coeff = data.draw(st_floats(min_value=0), label="diff_coeff")
-    diff_coeff_max = data.draw(st_floats(min_value=diff_coeff), label="diff_coeff_max")
+    diff_coeff_max = data.draw(
+        st_floats(min_value=diff_coeff), label="diff_coeff_max"
+    )
     diff_damp_depth = data.draw(hyp_st.integers(min_value=0, max_value=nk))
 
     # ========================================
@@ -91,7 +93,13 @@ def test_factory(data):
     # ========================================
     # first_order
     obj = HHD.factory(
-        "first_order", (ni, nj, nk), dx, dy, diff_coeff, diff_coeff_max, diff_damp_depth
+        "first_order",
+        (ni, nj, nk),
+        dx,
+        dy,
+        diff_coeff,
+        diff_coeff_max,
+        diff_damp_depth,
     )
     assert isinstance(obj, FirstOrder)
 
@@ -121,7 +129,13 @@ def test_factory(data):
 
     # second_order
     obj = HHD.factory(
-        "second_order", (ni, nj, nk), dx, dy, diff_coeff, diff_coeff_max, diff_damp_depth
+        "second_order",
+        (ni, nj, nk),
+        dx,
+        dy,
+        diff_coeff,
+        diff_coeff_max,
+        diff_damp_depth,
     )
     assert isinstance(obj, SecondOrder)
 
@@ -151,7 +165,13 @@ def test_factory(data):
 
     # third_order
     obj = HHD.factory(
-        "third_order", (ni, nj, nk), dx, dy, diff_coeff, diff_coeff_max, diff_damp_depth
+        "third_order",
+        (ni, nj, nk),
+        dx,
+        dy,
+        diff_coeff,
+        diff_coeff_max,
+        diff_damp_depth,
     )
     assert isinstance(obj, ThirdOrder)
 

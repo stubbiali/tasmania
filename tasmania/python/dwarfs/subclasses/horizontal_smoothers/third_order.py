@@ -60,7 +60,7 @@ class ThirdOrder(HorizontalSmoothing):
         nx, ny, nz = self._shape
 
         # run the stencil
-        self._stencil(
+        self._stencil_smooth(
             in_phi=phi,
             in_gamma=self._gamma,
             out_phi=phi_out,
@@ -202,7 +202,7 @@ class ThirdOrder1DX(HorizontalSmoothing):
         nx, ny, nz = self._shape
 
         # run the stencil
-        self._stencil(
+        self._stencil_smooth(
             in_phi=phi,
             in_gamma=self._gamma,
             out_phi=phi_out,
@@ -310,7 +310,7 @@ class ThirdOrder1DY(HorizontalSmoothing):
         nx, ny, nz = self._shape
 
         # run the stencil
-        self._stencil(
+        self._stencil_smooth(
             in_phi=phi,
             in_gamma=self._gamma,
             out_phi=phi_out,

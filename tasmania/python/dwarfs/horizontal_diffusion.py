@@ -22,7 +22,6 @@
 #
 import abc
 import math
-import numba
 import numpy as np
 from typing import Optional, TYPE_CHECKING
 

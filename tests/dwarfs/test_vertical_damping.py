@@ -51,9 +51,9 @@ def test_factory(data):
         ),
         label="grid",
     )
-    cgrid = domain.numerical_grid
+    ngrid = domain.numerical_grid
     depth = data.draw(
-        hyp_st.integers(min_value=0, max_value=cgrid.nz), label="depth"
+        hyp_st.integers(min_value=0, max_value=ngrid.nz), label="depth"
     )
     coeff_max = data.draw(
         st_floats(min_value=0, max_value=1e4), label="coeff_max"
@@ -63,7 +63,7 @@ def test_factory(data):
     # test
     # ========================================
     # rayleigh
-    obj = VD.factory("rayleigh", cgrid, depth, coeff_max)
+    obj = VD.factory("rayleigh", ngrid, depth, coeff_max)
     assert isinstance(obj, Rayleigh)
 
 

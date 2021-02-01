@@ -31,13 +31,14 @@ from tasmania.python.dwarfs.diagnostics import (
     HorizontalVelocity,
     WaterConstituent,
 )
-from tasmania.python.framework.options import BackendOptions, StorageOptions
 from tasmania.python.framework.allocators import zeros
+from tasmania.python.framework.generic_functions import to_numpy
+from tasmania.python.framework.options import BackendOptions, StorageOptions
 
 from tests.conf import (
+    aligned_index as conf_aligned_index,
     backend as conf_backend,
     dtype as conf_dtype,
-    default_origin as conf_dorigin,
 )
 from tests.strategies import st_one_of, st_domain, st_raw_field
 from tests.utilities import compare_arrays, hyp_settings
@@ -51,7 +52,11 @@ def test_horizontal_velocity_staggered(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+    aligned_index = data.draw(
+        st_one_of(conf_aligned_index), label="aligned_index"
+    )
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
 
     domain = data.draw(
         st_domain(
@@ -60,7 +65,8 @@ def test_horizontal_velocity_staggered(data, backend, dtype):
             zaxis_length=(1, 20),
             nb=1,
             backend=backend,
-            dtype=dtype,
+            backend_options=bo,
+            storage_options=so,
         ),
         label="domain",
     )
@@ -73,8 +79,7 @@ def test_horizontal_velocity_staggered(data, backend, dtype):
             min_value=1,
             max_value=1e4,
             backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
+            storage_options=so,
         ),
         label="r",
     )
@@ -84,8 +89,7 @@ def test_horizontal_velocity_staggered(data, backend, dtype):
             min_value=1,
             max_value=1e4,
             backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
+            storage_options=so,
         ),
         label="r",
     )
@@ -95,8 +99,7 @@ def test_horizontal_velocity_staggered(data, backend, dtype):
             min_value=1,
             max_value=1e4,
             backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
+            storage_options=so,
         ),
         label="r",
     )
@@ -104,9 +107,6 @@ def test_horizontal_velocity_staggered(data, backend, dtype):
     # ========================================
     # test bed
     # ========================================
-    bo = BackendOptions(rebuild=False)
-    so = StorageOptions(dtype=dtype, default_origin=default_origin)
-
     ru = zeros(backend, shape=(nx + 1, ny + 1, nz + 1), storage_options=so)
     rv = zeros(backend, shape=(nx + 1, ny + 1, nz + 1), storage_options=so)
 
@@ -116,9 +116,14 @@ def test_horizontal_velocity_staggered(data, backend, dtype):
 
     hv.get_momenta(r, u, v, ru, rv)
 
-    ru_val = r[:-1, :-1, :-1] * 0.5 * (u[:-1, :-1, :-1] + u[1:, :-1, :-1])
+    r_np, u_np, v_np = to_numpy(r), to_numpy(u), to_numpy(v)
+    ru_val = (
+        r_np[:-1, :-1, :-1] * 0.5 * (u_np[:-1, :-1, :-1] + u_np[1:, :-1, :-1])
+    )
     compare_arrays(ru[:-1, :-1, :-1], ru_val)
-    rv_val = r[:-1, :-1, :-1] * 0.5 * (v[:-1, :-1, :-1] + v[:-1, 1:, :-1])
+    rv_val = (
+        r_np[:-1, :-1, :-1] * 0.5 * (v_np[:-1, :-1, :-1] + v_np[:-1, 1:, :-1])
+    )
     compare_arrays(rv[:-1, :-1, :-1], rv_val)
 
     u_new = zeros(backend, shape=(nx + 1, ny + 1, nz + 1), storage_options=so)
@@ -126,9 +131,14 @@ def test_horizontal_velocity_staggered(data, backend, dtype):
 
     hv.get_velocity_components(r, ru, rv, u_new, v_new)
 
-    u_new_val = (ru[:-2, :] + ru[1:-1, :]) / (r[:-2, :] + r[1:-1, :])
+    ru_np, rv_np = to_numpy(ru), to_numpy(rv)
+    u_new_val = (ru_np[:-2, :] + ru_np[1:-1, :]) / (
+        r_np[:-2, :] + r_np[1:-1, :]
+    )
     compare_arrays(u_new[1:-1, :-1, :-1], u_new_val[:, :-1, :-1])
-    v_new_val = (rv[:, :-2] + rv[:, 1:-1]) / (r[:, :-2] + r[:, 1:-1])
+    v_new_val = (rv_np[:, :-2] + rv_np[:, 1:-1]) / (
+        r_np[:, :-2] + r_np[:, 1:-1]
+    )
     compare_arrays(v_new[:-1, 1:-1, :-1], v_new_val[:-1, :, :-1])
 
 
@@ -140,7 +150,11 @@ def test_horizontal_velocity(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+    aligned_index = data.draw(
+        st_one_of(conf_aligned_index), label="aligned_index"
+    )
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
 
     domain = data.draw(
         st_domain(
@@ -149,7 +163,8 @@ def test_horizontal_velocity(data, backend, dtype):
             zaxis_length=(1, 20),
             nb=1,
             backend=backend,
-            dtype=dtype,
+            backend_options=bo,
+            storage_options=so,
         ),
         label="domain",
     )
@@ -162,8 +177,7 @@ def test_horizontal_velocity(data, backend, dtype):
             min_value=1,
             max_value=1e4,
             backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
+            storage_options=so,
         ),
         label="r",
     )
@@ -173,8 +187,7 @@ def test_horizontal_velocity(data, backend, dtype):
             min_value=1,
             max_value=1e4,
             backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
+            storage_options=so,
         ),
         label="r",
     )
@@ -184,8 +197,7 @@ def test_horizontal_velocity(data, backend, dtype):
             min_value=1,
             max_value=1e4,
             backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
+            storage_options=so,
         ),
         label="r",
     )
@@ -193,9 +205,6 @@ def test_horizontal_velocity(data, backend, dtype):
     # ========================================
     # test bed
     # ========================================
-    bo = BackendOptions(rebuild=False)
-    so = StorageOptions(dtype=dtype, default_origin=default_origin)
-
     ru = zeros(backend, shape=(nx + 1, ny + 1, nz + 1), storage_options=so)
     rv = zeros(backend, shape=(nx + 1, ny + 1, nz + 1), storage_options=so)
 
@@ -205,9 +214,10 @@ def test_horizontal_velocity(data, backend, dtype):
 
     hv.get_momenta(r, u, v, ru, rv)
 
-    ru_val = r[:-1, :-1, :-1] * u[:-1, :-1, :-1]
+    r_np, u_np, v_np = to_numpy(r), to_numpy(u), to_numpy(v)
+    ru_val = r_np[:-1, :-1, :-1] * u_np[:-1, :-1, :-1]
     compare_arrays(ru[:-1, :-1, :-1], ru_val)
-    rv_val = r[:-1, :-1, :-1] * v[:-1, :-1, :-1]
+    rv_val = r_np[:-1, :-1, :-1] * v_np[:-1, :-1, :-1]
     compare_arrays(rv[:-1, :-1, :-1], rv_val)
 
     u_new = zeros(backend, shape=(nx + 1, ny + 1, nz + 1), storage_options=so)
@@ -215,9 +225,10 @@ def test_horizontal_velocity(data, backend, dtype):
 
     hv.get_velocity_components(r, ru, rv, u_new, v_new)
 
-    u_new_val = ru[:-1, :-1, :-1] / r[:-1, :-1, :-1]
+    ru_np, rv_np = to_numpy(ru), to_numpy(rv)
+    u_new_val = ru_np[:-1, :-1, :-1] / r_np[:-1, :-1, :-1]
     compare_arrays(u_new[:-1, :-1, :-1], u_new_val)
-    v_new_val = rv[:-1, :-1, :-1] / r[:-1, :-1, :-1]
+    v_new_val = rv_np[:-1, :-1, :-1] / r_np[:-1, :-1, :-1]
     compare_arrays(v_new[:-1, :-1, :-1], v_new_val)
 
 
@@ -229,7 +240,11 @@ def test_water_constituent(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+    aligned_index = data.draw(
+        st_one_of(conf_aligned_index), label="aligned_index"
+    )
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
 
     domain = data.draw(
         st_domain(
@@ -238,7 +253,8 @@ def test_water_constituent(data, backend, dtype):
             zaxis_length=(1, 20),
             nb=1,
             backend=backend,
-            dtype=dtype,
+            backend_options=bo,
+            storage_options=so,
         ),
         label="domain",
     )
@@ -251,8 +267,7 @@ def test_water_constituent(data, backend, dtype):
             min_value=1,
             max_value=1e4,
             backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
+            storage_options=so,
         ),
         label="r",
     )
@@ -262,8 +277,7 @@ def test_water_constituent(data, backend, dtype):
             min_value=-1e4,
             max_value=1e4,
             backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
+            storage_options=so,
         ),
         label="q",
     )
@@ -271,9 +285,6 @@ def test_water_constituent(data, backend, dtype):
     # ========================================
     # test bed
     # ========================================
-    bo = BackendOptions(rebuild=False)
-    so = StorageOptions(dtype=dtype, default_origin=default_origin)
-
     rq = zeros(backend, shape=(nx + 1, ny + 1, nz + 1), storage_options=so)
     q_new = zeros(backend, shape=(nx + 1, ny + 1, nz + 1), storage_options=so)
 
@@ -285,11 +296,13 @@ def test_water_constituent(data, backend, dtype):
     )
 
     wc.get_density_of_water_constituent(r, q, rq)
-    rq_val = r[:-1, :-1, :-1] * q[:-1, :-1, :-1]
+    r_np, q_np = to_numpy(r), to_numpy(q)
+    rq_val = r_np[:-1, :-1, :-1] * q_np[:-1, :-1, :-1]
     compare_arrays(rq[:-1, :-1, :-1], rq_val)
 
     wc.get_mass_fraction_of_water_constituent_in_air(r, rq, q_new)
-    q_new_val = rq[:-1, :-1, :-1] / r[:-1, :-1, :-1]
+    rq_np = to_numpy(rq)
+    q_new_val = rq_np[:-1, :-1, :-1] / r_np[:-1, :-1, :-1]
     compare_arrays(q_new[:-1, :-1, :-1], q_new_val)
 
     #
@@ -300,12 +313,14 @@ def test_water_constituent(data, backend, dtype):
     )
 
     wc.get_density_of_water_constituent(r, q, rq)
-    rq_val = r[:-1, :-1, :-1] * q[:-1, :-1, :-1]
+    r_np, q_np = to_numpy(r), to_numpy(q)
+    rq_val = r_np[:-1, :-1, :-1] * q_np[:-1, :-1, :-1]
     rq_val[rq_val < 0.0] = 0.0
     compare_arrays(rq[:-1, :-1, :-1], rq_val)
 
     wc.get_mass_fraction_of_water_constituent_in_air(r, rq, q_new)
-    q_new_val = rq[:-1, :-1, :-1] / r[:-1, :-1, :-1]
+    rq_np = to_numpy(rq)
+    q_new_val = rq_np[:-1, :-1, :-1] / r_np[:-1, :-1, :-1]
     q_new_val[q_new_val < 0.0] = 0.0
     compare_arrays(q_new[:-1, :-1, :-1], q_new_val)
 

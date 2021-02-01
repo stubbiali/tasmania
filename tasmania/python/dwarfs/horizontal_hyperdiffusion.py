@@ -23,63 +23,34 @@
 import abc
 import math
 import numpy as np
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 
 from gt4py import gtscript
 
+from tasmania.python.framework.generic_functions import to_numpy
 from tasmania.python.framework.register import factorize
-from tasmania.python.utils import typing
-from tasmania.python.utils.backend import is_gt, get_gt_backend
-from tasmania.python.utils.storage import zeros
+from tasmania.python.framework.stencil import StencilFactory
+from tasmania.python.framework.tag import (
+    stencil_definition,
+    stencil_subroutine,
+)
+from tasmania.python.utils import typing as ty
+
+if TYPE_CHECKING:
+    from tasmania.python.framework.options import (
+        BackendOptions,
+        StorageOptions,
+    )
 
 
-def stage_laplacian_x_numpy(dx: float, phi: np.ndarray) -> np.ndarray:
-    lap = (phi[:-2] - 2.0 * phi[1:-1] + phi[2:]) / (dx * dx)
-    return lap
-
-
-def stage_laplacian_y_numpy(dy: float, phi: np.ndarray) -> np.ndarray:
-    lap = (phi[:, :-2] - 2.0 * phi[:, 1:-1] + phi[:, 2:]) / (dy * dy)
-    return lap
-
-
-def stage_laplacian_numpy(dx: float, dy: float, phi: np.ndarray) -> np.ndarray:
-    lap = (phi[:-2, 1:-1] - 2.0 * phi[1:-1, 1:-1] + phi[2:, 1:-1]) / (
-        dx * dx
-    ) + (phi[1:-1, :-2] - 2.0 * phi[1:-1, 1:-1] + phi[1:-1, 2:]) / (dy * dy)
-    return lap
-
-
-@gtscript.function
-def stage_laplacian_x(dx: float, phi: typing.gtfield_t) -> typing.gtfield_t:
-    lap = (phi[-1, 0, 0] - 2.0 * phi[0, 0, 0] + phi[1, 0, 0]) / (dx * dx)
-    return lap
-
-
-@gtscript.function
-def stage_laplacian_y(dy: float, phi: typing.gtfield_t) -> typing.gtfield_t:
-    lap = (phi[0, -1, 0] - 2.0 * phi[0, 0, 0] + phi[0, 1, 0]) / (dy * dy)
-    return lap
-
-
-@gtscript.function
-def stage_laplacian(
-    dx: float, dy: float, phi: typing.gtfield_t
-) -> typing.gtfield_t:
-    lap_x = stage_laplacian_x(dx=dx, phi=phi)
-    lap_y = stage_laplacian_y(dy=dy, phi=phi)
-    lap = lap_x + lap_y
-    return lap
-
-
-class HorizontalHyperDiffusion(abc.ABC):
-    """ Calculate the tendency due to horizontal hyper-diffusion. """
+class HorizontalHyperDiffusion(StencilFactory, abc.ABC):
+    """Calculate the tendency due to horizontal hyper-diffusion."""
 
     registry = {}
 
     def __init__(
-        self,
-        shape: typing.triplet_int_t,
+        self: "HorizontalHyperDiffusion",
+        shape: ty.triplet_int_t,
         dx: float,
         dy: float,
         diffusion_coeff: float,
@@ -87,13 +58,8 @@ class HorizontalHyperDiffusion(abc.ABC):
         diffusion_damp_depth: int,
         nb: int,
         backend: str,
-        backend_opts: typing.options_dict_t,
-        dtype: typing.dtype_t,
-        build_info: typing.options_dict_t,
-        exec_info: typing.mutable_options_dict_t,
-        default_origin: typing.triplet_int_t,
-        rebuild: bool,
-        managed_memory: bool,
+        backend_options: "BackendOptions",
+        storage_options: "StorageOptions",
     ) -> None:
         """
         Parameters
@@ -114,45 +80,29 @@ class HorizontalHyperDiffusion(abc.ABC):
             Number of boundary layers.
         backend : str
             The backend.
-        backend_opts : dict
-            Dictionary of backend-specific options.
-        dtype : data-type
-            Data type of the storages.
-        build_info : dict
-            Dictionary of building options.
-        exec_info : dict
-            Dictionary which will store statistics and diagnostics gathered at
-            run time.
-        default_origin : tuple[int]
-            Storage default origin.
-        rebuild : bool
-            ``True`` to trigger the stencils compilation at any class
-            instantiation, ``False`` to rely on the caching mechanism
-            implemented by the backend.
-        managed_memory : `bool`, optional
-            ``True`` to allocate the storages as managed memory,
-            ``False`` otherwise.
+        backend_options : BackendOptions
+            Backend-specific options.
+        storage_options : StorageOptions
+            Storage-related options.
         """
+        super().__init__(backend, backend_options, storage_options)
+
         # store input arguments needed at run-time
         self._shape = shape
         self._nb = nb
         self._dx = dx
         self._dy = dy
-        self._exec_info = exec_info
 
         # initialize the diffusion coefficient
-        self._gamma = zeros(
-            shape,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-            managed_memory=managed_memory,
-        )
+        self._gamma = self.zeros(shape=shape)
+        self._gamma[...] = diffusion_coeff
 
-        # the diffusivity is monotonically increased towards the top of the model,
-        # so to mimic the effect of a short-length wave absorber
+        # the diffusivity is monotonically increased towards the top of
+        # the domain, so to mimic the effect of a short-length wave absorber
         n = diffusion_damp_depth
-        if True:  # if n > 0:
+        dtype = self.storage_options.dtype
+        if n > 0:
+            g = self._gamma
             pert = (
                 np.sin(0.5 * math.pi * (n - np.arange(0, n, dtype=dtype)) / n)
                 ** 2
@@ -160,41 +110,28 @@ class HorizontalHyperDiffusion(abc.ABC):
             pert = np.tile(
                 pert[np.newaxis, np.newaxis, :], (shape[0], shape[1], 1)
             )
-            self._gamma[...] = diffusion_coeff
-            self._gamma[:, :, :n] += (
-                diffusion_coeff_max - diffusion_coeff
-            ) * pert
-
-        if is_gt(backend):
-            # initialize the underlying stencil
-            self._stencil = gtscript.stencil(
-                definition=self._stencil_gt_defs,
-                name=self.__class__.__name__,
-                backend=get_gt_backend(backend),
-                build_info=build_info,
-                rebuild=rebuild,
-                dtypes={"dtype": dtype},
-                externals={
-                    "stage_laplacian": stage_laplacian,
-                    "stage_laplacian_x": stage_laplacian_x,
-                    "stage_laplacian_y": stage_laplacian_y,
-                },
-                **(backend_opts or {})
+            g[:, :, :n] = (
+                g[:, :, :n] + (diffusion_coeff_max - diffusion_coeff) * pert
             )
-        else:
-            self._stencil = self._stencil_numpy
+
+        # compile the underlying stencil
+        self.backend_options.dtypes = {"dtype": dtype}
+        self.backend_options.externals = {
+            "laplacian": self.stencil_subroutine("laplacian"),
+            "laplacian_x": self.stencil_subroutine("laplacian_x"),
+            "laplacian_y": self.stencil_subroutine("laplacian_y"),
+        }
+        self._stencil = self.compile("hyperdiffusion")
 
     @abc.abstractmethod
-    def __call__(
-        self, phi: typing.gtstorage_t, phi_tnd: typing.gtstorage_t
-    ) -> None:
+    def __call__(self, phi: ty.Storage, phi_tnd: ty.Storage) -> None:
         """Calculate the tendency.
 
         Parameters
         ----------
-        phi : gt4py.storage.storage.Storage
+        phi : array-like
             The 3-D prognostic field.
-        phi_tnd : gt4py.storage.storage.Storage
+        phi_tnd : array-like
             Output buffer into which to place the computed tendency.
         """
         pass
@@ -202,7 +139,7 @@ class HorizontalHyperDiffusion(abc.ABC):
     @staticmethod
     def factory(
         diffusion_type: str,
-        shape: typing.triplet_int_t,
+        shape: ty.triplet_int_t,
         dx: float,
         dy: float,
         diffusion_coeff: float,
@@ -211,13 +148,8 @@ class HorizontalHyperDiffusion(abc.ABC):
         nb: Optional[int] = None,
         *,
         backend: str = "numpy",
-        backend_opts: Optional[typing.options_dict_t] = None,
-        dtype: typing.dtype_t = np.float64,
-        build_info: Optional[typing.options_dict_t] = None,
-        exec_info: Optional[typing.mutable_options_dict_t] = None,
-        default_origin: Optional[typing.triplet_int_t] = None,
-        rebuild: bool = False,
-        managed_memory: bool = False
+        backend_options: Optional["BackendOptions"] = None,
+        storage_options: Optional["StorageOptions"] = None
     ) -> "HorizontalHyperDiffusion":
         """
         Static method returning an instance of the derived class
@@ -256,24 +188,10 @@ class HorizontalHyperDiffusion(abc.ABC):
             from the extent of the underlying stencil.
         backend : `str`, optional
             The backend.
-        backend_opts : `dict`, optional
-            Dictionary of backend-specific options.
-        dtype : `data-type`, optional
-            Data type of the storages.
-        build_info : `dict`, optional
-            Dictionary of building options.
-        exec_info : `dict`, optional
-            Dictionary which will store statistics and diagnostics gathered at
-            run time.
-        default_origin : `tuple[int]`, optional
-            Storage default origin.
-        rebuild : `bool`, optional
-            ``True`` to trigger the stencils compilation at any class
-            instantiation, ``False`` to rely on the caching mechanism
-            implemented by the backend.
-        managed_memory : `bool`, optional
-            ``True`` to allocate the storages as managed memory,
-            ``False`` otherwise.
+        backend_options : `BackendOptions`, optional
+            Backend-specific options.
+        storage_options : `StorageOptions`, optional
+            Storage-related options.
 
         Return
         ------
@@ -289,18 +207,14 @@ class HorizontalHyperDiffusion(abc.ABC):
             diffusion_damp_depth,
             nb,
             backend,
-            backend_opts,
-            dtype,
-            build_info,
-            exec_info,
-            default_origin,
-            rebuild,
-            managed_memory,
+            backend_options,
+            storage_options,
         )
         obj = factorize(diffusion_type, HorizontalHyperDiffusion, args)
         return obj
 
     @staticmethod
+    @stencil_definition(backend=("numpy", "cupy"), stencil="hyperdiffusion")
     @abc.abstractmethod
     def _stencil_numpy(
         in_phi: np.ndarray,
@@ -309,14 +223,15 @@ class HorizontalHyperDiffusion(abc.ABC):
         *,
         dx: float,
         dy: float,
-        origin: typing.triplet_int_t,
-        domain: typing.triplet_int_t
+        origin: ty.triplet_int_t,
+        domain: ty.triplet_int_t
     ) -> None:
         pass
 
     @staticmethod
+    @stencil_definition(backend="gt4py*", stencil="hyperdiffusion")
     @abc.abstractmethod
-    def _stencil_gt_defs(
+    def _stencil_gt4py(
         in_phi: gtscript.Field["dtype"],
         in_gamma: gtscript.Field["dtype"],
         out_phi: gtscript.Field["dtype"],
@@ -325,3 +240,52 @@ class HorizontalHyperDiffusion(abc.ABC):
         dy: float
     ) -> None:
         pass
+
+    @staticmethod
+    @stencil_subroutine(backend=("numpy", "cupy"), stencil="laplacian_x")
+    def stage_laplacian_x_numpy(dx: float, phi: np.ndarray) -> np.ndarray:
+        lap = (phi[:-2] - 2.0 * phi[1:-1] + phi[2:]) / (dx * dx)
+        return lap
+
+    @staticmethod
+    @stencil_subroutine(backend=("numpy", "cupy"), stencil="laplacian_y")
+    def stage_laplacian_y_numpy(dy: float, phi: np.ndarray) -> np.ndarray:
+        lap = (phi[:, :-2] - 2.0 * phi[:, 1:-1] + phi[:, 2:]) / (dy * dy)
+        return lap
+
+    @staticmethod
+    @stencil_subroutine(backend=("numpy", "cupy"), stencil="laplacian")
+    def stage_laplacian_numpy(
+        dx: float, dy: float, phi: np.ndarray
+    ) -> np.ndarray:
+        lap = (phi[:-2, 1:-1] - 2.0 * phi[1:-1, 1:-1] + phi[2:, 1:-1]) / (
+            dx * dx
+        ) + (phi[1:-1, :-2] - 2.0 * phi[1:-1, 1:-1] + phi[1:-1, 2:]) / (
+            dy * dy
+        )
+        return lap
+
+    @staticmethod
+    @stencil_subroutine(backend="gt4py*", stencil="laplacian_x")
+    @gtscript.function
+    def stage_laplacian_x(dx: float, phi: ty.gtfield_t) -> ty.gtfield_t:
+        lap = (phi[-1, 0, 0] - 2.0 * phi[0, 0, 0] + phi[1, 0, 0]) / (dx * dx)
+        return lap
+
+    @staticmethod
+    @stencil_subroutine(backend="gt4py*", stencil="laplacian_y")
+    @gtscript.function
+    def stage_laplacian_y(dy: float, phi: ty.gtfield_t) -> ty.gtfield_t:
+        lap = (phi[0, -1, 0] - 2.0 * phi[0, 0, 0] + phi[0, 1, 0]) / (dy * dy)
+        return lap
+
+    @staticmethod
+    @stencil_subroutine(backend="gt4py*", stencil="laplacian")
+    @gtscript.function
+    def stage_laplacian(
+        dx: float, dy: float, phi: ty.gtfield_t
+    ) -> ty.gtfield_t:
+        lap = (phi[-1, 0, 0] - 2.0 * phi[0, 0, 0] + phi[1, 0, 0]) / (
+            dx * dx
+        ) + (phi[0, -1, 0] - 2.0 * phi[0, 0, 0] + phi[0, 1, 0]) / (dy * dy)
+        return lap

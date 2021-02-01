@@ -98,12 +98,11 @@ class HorizontalSmoothing(StencilFactory, abc.ABC):
 
         # convert diffusivity to proper storage
         self._gamma = self.zeros(backend, shape=shape)
-        asarray = self.asarray(backend)
-        self._gamma[...] = asarray(gamma)
+        self._gamma[...] = self.as_storage(data=gamma)
 
         # initialize the underlying stencil
         self.backend_options.dtypes = {"dtype": dtype}
-        self._stencil = self.compile("smoothing")
+        self._stencil_smooth = self.compile("smoothing")
         self._stencil_copy = self.compile("copy")
 
     @abc.abstractmethod
