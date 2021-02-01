@@ -27,13 +27,19 @@ import pytest
 from tasmania.third_party import cupy, gt4py, numba
 
 from tasmania.python.framework import protocol as prt
-from tasmania.python.framework.allocators import empty, ones, zeros
+from tasmania.python.framework.allocators import as_storage, empty, ones, zeros
 from tasmania.python.framework.options import StorageOptions
+from tasmania.python.framework.subclasses.allocators.as_storage_numpy import (
+    as_storage_numpy,
+)
 from tasmania.python.framework.subclasses.allocators.empty import empty_numpy
 from tasmania.python.framework.subclasses.allocators.ones import ones_numpy
 from tasmania.python.framework.subclasses.allocators.zeros import zeros_numpy
 
 if cupy:
+    from tasmania.python.framework.subclasses.allocators.as_storage_cupy import (
+        as_storage_cupy,
+    )
     from tasmania.python.framework.subclasses.allocators.empty import (
         empty_cupy,
     )
@@ -43,6 +49,9 @@ if cupy:
     )
 
 if gt4py:
+    from tasmania.python.framework.subclasses.allocators.as_storage_gt4py import (
+        as_storage_gt4py,
+    )
     from tasmania.python.framework.subclasses.allocators.empty import (
         empty_gt4py,
     )
@@ -55,13 +64,13 @@ if gt4py:
 class _TestAllocator(abc.ABC):
     subclass = None
     function = None
-    backends = (
+    backends = {
         "numpy",
         "numba:cpu" if numba else "numpy",
         "cupy" if cupy else "numpy",
         "numba:gpu" if cupy and numba else "numpy",
         "gt4py*" if gt4py else "numpy",
-    )
+    }
     values = {}
 
     def check_registry_keys(self, r, f):
@@ -106,10 +115,9 @@ class _TestAllocator(abc.ABC):
                     shape=shape,
                     storage_options=so,
                 )
-                assert isinstance(obj, gt4py.storage.storage.Storage)
+                assert isinstance(obj, gt4py.storage.Storage)
                 assert all(it1 == it2 for it1, it2 in zip(obj.shape, shape))
                 assert obj.dtype == so.dtype
-                assert obj.backend == gt_backend
 
     def test_factory(self):
         self.check_factory(self.subclass)
@@ -152,6 +160,75 @@ class TestZeros(_TestAllocator):
         values["gt4py*"] = zeros_gt4py
     if numba:
         values["numba:cpu"] = zeros_numpy
+
+
+class TestAsStorage(_TestAllocator):
+    subclass = as_storage
+    function = "as_storage"
+    backends = {
+        "numpy",
+        "numba:cpu" if numba else "numpy",
+        "cupy" if cupy else "numpy",
+        "numba:gpu" if cupy and numba else "numpy",
+        "gt4py*" if gt4py else "numpy",
+    }
+    values = {"numpy": as_storage_numpy}
+    if numba:
+        values["numba:cpu"] = as_storage_numpy
+    if cupy:
+        values["cupy"] = as_storage_cupy
+        if numba:
+            values["numba:gpu"] = as_storage_cupy
+    if gt4py:
+        values["gt4py*"] = as_storage_gt4py
+
+    @staticmethod
+    def check_factory():
+        backends = {
+            "numpy",
+            "numba:cpu" if numba else "numpy",
+            "cupy" if cupy else "numpy",
+            "numba:gpu" if cupy and numba else "numpy",
+            "gt4py:debug" if gt4py else "numpy",
+            "gt4py:numpy" if gt4py else "numpy",
+            "gt4py:gtx86" if gt4py else "numpy",
+            "gt4py:gtmc" if gt4py else "numpy",
+        }
+        shape = (3, 4, 5)
+        so = StorageOptions()
+
+        for backend_to in {"numpy", "numba:cpu" if numba else "numpy"}:
+            for backend_from in backends:
+                data = zeros(backend_from, shape=shape, storage_options=so)
+                obj = as_storage(backend_to, data=data)
+                assert isinstance(obj, np.ndarray)
+                assert all(it1 == it2 for it1, it2 in zip(obj.shape, shape))
+                assert obj.dtype == so.dtype
+
+        if cupy:
+            for backend_to in {"cupy", "numba:gpu" if numba else "cupy"}:
+                for backend_from in backends:
+                    data = zeros(backend_from, shape=shape, storage_options=so)
+                    obj = as_storage(backend_to, data=data)
+                    assert isinstance(obj, cupy.ndarray)
+                    assert all(
+                        it1 == it2 for it1, it2 in zip(obj.shape, shape)
+                    )
+                    assert obj.dtype == so.dtype
+
+        if gt4py:
+            for gt_backend in ("debug", "numpy", "gtx86", "gtmc"):
+                for backend_from in backends:
+                    data = zeros(backend_from, shape=shape, storage_options=so)
+                    obj = as_storage(backend=f"gt4py:{gt_backend}", data=data)
+                    assert isinstance(obj, gt4py.storage.Storage)
+                    assert all(
+                        it1 == it2 for it1, it2 in zip(obj.shape, shape)
+                    )
+                    assert obj.dtype == so.dtype
+
+    def test_factory(self):
+        self.check_factory()
 
 
 if __name__ == "__main__":

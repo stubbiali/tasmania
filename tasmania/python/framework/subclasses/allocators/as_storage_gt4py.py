@@ -20,45 +20,29 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-import numpy as np
+from typing import Optional, TYPE_CHECKING
 
-from tasmania.third_party import cupy as cp, gt4py as gt, numba
+from tasmania.third_party import gt4py as gt
 
-from tasmania.python.framework.allocators import ones
+from tasmania.python.framework.allocators import as_storage
 from tasmania.python.framework.options import StorageOptions
+from tasmania.python.utils.backend import get_gt_backend
 
-
-@ones.register(backend="numpy")
-def ones_numpy(shape, *, storage_options=None):
-    so = storage_options or StorageOptions
-    return np.ones(shape, dtype=so.dtype)
-
-
-if numba:
-    ones.register(ones_numpy, backend="numba:cpu")
-
-
-if cp:
-
-    @ones.register(backend="cupy")
-    def ones_cupy(shape, *, storage_options=None):
-        so = storage_options or StorageOptions
-        return cp.ones(shape, dtype=so.dtype)
-
-    if numba:
-        ones.register(ones_cupy, backend="numba:gpu")
+if TYPE_CHECKING:
+    from tasmania.python.utils.typing import Storage
 
 
 if gt:
-    from tasmania.python.utils.backend import get_gt_backend
 
-    @ones.register(backend="gt4py*")
-    def ones_gt4py(shape, *, storage_options=None):
-        backend = ones_gt4py.__tasmania_runtime__["backend"]
+    @as_storage.register(backend="gt4py*")
+    def as_storage_gt4py(
+        data: "Storage", *, storage_options: Optional[StorageOptions] = None
+    ) -> gt.storage.Storage:
+        backend = as_storage_gt4py.__tasmania_runtime__["backend"]
         defaults = get_gt_backend(backend)
         so = storage_options or StorageOptions
-        return gt.storage.ones(
-            shape,
+        return gt.storage.as_storage(
+            data,
             dtype=so.dtype,
             aligned_index=so.aligned_index,
             defaults=defaults,

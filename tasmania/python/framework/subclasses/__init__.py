@@ -27,5 +27,4 @@ from tasmania.python.framework.subclasses import (
     sts_tendency_steppers,
     tendency_steppers,
 )
-from tasmania.python.framework.subclasses.asarray import *
 from tasmania.python.framework.subclasses.stencil_compilers import *

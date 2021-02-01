@@ -25,9 +25,9 @@ import inspect
 from typing import Any, Callable, Optional, Sequence, Type, Union
 
 from tasmania.python.framework import protocol as prt
-from tasmania.python.framework.allocators import Allocator
-from tasmania.python.framework.asarray import AsArray
+from tasmania.python.framework.allocators import Allocator, AsStorage
 from tasmania.python.framework.options import BackendOptions, StorageOptions
+from tasmania.python.utils import typing as ty
 from tasmania.python.utils.exceptions import FactoryRegistryError
 from tasmania.python.utils.protocol import (
     Registry,
@@ -198,7 +198,7 @@ stencil_compiler = StencilCompiler
 
 class StencilFactory(abc.ABC):
     _default_allocator_registry = Allocator.registry
-    _default_asarray_registry = AsArray.registry
+    _default_as_storage_registry = AsStorage.registry
     _default_definition_registry = StencilDefinition.registry
     _default_compiler_registry = StencilCompiler.registry
     _default_subroutine_registry = StencilSubroutine.registry
@@ -216,28 +216,40 @@ class StencilFactory(abc.ABC):
         self._registry = Registry()
         self._fill_registry()
 
-    def asarray(
+    def as_storage(
         self: "StencilFactory",
         backend: Optional[str] = None,
         stencil: str = prt.wildcard,
-    ) -> Callable:
+        *,
+        data: ty.Storage,
+        storage_options: Optional[StorageOptions] = None,
+    ) -> ty.Storage:
         backend = backend or self.backend
-        key = ("asarray", backend, stencil)
+        key = ("as_storage", backend, stencil)
         try:
-            obj = self._registry[key]
+            as_storage = self._registry[key]
         except KeyError:
             try:
-                obj = self._default_asarray_registry[key]
+                as_storage = self._default_as_storage_registry[key]
             except KeyError:
                 raise FactoryRegistryError(
-                    f"No asarray function found for the backend '{backend}'."
+                    f"No storage converter registered for the backend "
+                    f"'{backend}'."
                 )
 
         set_runtime_attribute(
-            obj, "function", "asarray", "backend", backend, "stencil", stencil
+            as_storage,
+            "function",
+            "as_storage",
+            "backend",
+            backend,
+            "stencil",
+            stencil,
         )
 
-        return obj()
+        so = storage_options or self.storage_options
+
+        return as_storage(data, storage_options=so)
 
     def compile(
         self: "StencilFactory",
@@ -300,9 +312,9 @@ class StencilFactory(abc.ABC):
         *,
         shape: Sequence[int],
         storage_options: Optional[StorageOptions] = None
-    ) -> Any:
+    ) -> ty.Storage:
         return self._allocate(
-            "empty", backend, stencil, shape, storage_options
+            "empty", backend or self.backend, stencil, shape, storage_options
         )
 
     def ones(
@@ -312,8 +324,10 @@ class StencilFactory(abc.ABC):
         *,
         shape: Sequence[int],
         storage_options: Optional[StorageOptions] = None
-    ) -> Any:
-        return self._allocate("ones", backend, stencil, shape, storage_options)
+    ) -> ty.Storage:
+        return self._allocate(
+            "ones", backend or self.backend, stencil, shape, storage_options
+        )
 
     def stencil_definition(
         self: "StencilFactory", stencil: str, backend: Optional[str] = None
@@ -380,20 +394,19 @@ class StencilFactory(abc.ABC):
         *,
         shape: Sequence[int],
         storage_options: Optional[StorageOptions] = None
-    ) -> Any:
+    ) -> ty.Storage:
         return self._allocate(
-            "zeros", backend, stencil, shape, storage_options
+            "zeros", backend or self.backend, stencil, shape, storage_options
         )
 
     def _allocate(
         self: "StencilFactory",
         function: str,
-        backend: Optional[str],
+        backend: str,
         stencil: str,
         shape: Sequence[int],
         storage_options: StorageOptions,
-    ) -> Any:
-        backend = backend or self.backend
+    ) -> ty.Storage:
         key = (function, backend, stencil)
         try:
             allocator = self._registry[key]

@@ -21,6 +21,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 import abc
+import numpy as np
 from typing import (
     Any,
     Callable,
@@ -34,8 +35,8 @@ from typing import (
 from tasmania.python.framework import protocol as prt
 from tasmania.python.utils.exceptions import FactoryRegistryError
 from tasmania.python.utils.protocol import (
-    multiregister,
     Registry,
+    multiregister,
     set_runtime_attribute,
 )
 
@@ -64,20 +65,20 @@ class Allocator(abc.ABC):
         key = (cls.function, backend, stencil)
         try:
             obj = cls.registry[key]
-            set_runtime_attribute(
-                obj,
-                "function",
-                cls.function,
-                "backend",
-                backend,
-                "stencil",
-                stencil,
-            )
-            return obj(shape, storage_options=storage_options)
         except KeyError:
             raise FactoryRegistryError(
                 f"No allocator registered for the backend '{backend}'."
             )
+        set_runtime_attribute(
+            obj,
+            "function",
+            cls.function,
+            "backend",
+            backend,
+            "stencil",
+            stencil,
+        )
+        return obj(shape, storage_options=storage_options)
 
     @classmethod
     def register(
@@ -128,7 +129,72 @@ class Zeros(Allocator):
     function = "zeros"
 
 
+class AsStorage(abc.ABC):
+    """A class to centrally manage objects allocating storages."""
+
+    # the dictionary of registered objects
+    registry = Registry()
+
+    def __new__(
+        cls: Type["AsStorage"],
+        backend: str,
+        stencil: str = prt.wildcard,
+        *,
+        data: "Storage",
+        storage_options: Optional["StorageOptions"] = None
+    ) -> "Storage":
+        """Dispatch the call to the proper registered object."""
+        key = ("as_storage", backend, stencil)
+        try:
+            obj = cls.registry[key]
+        except KeyError:
+            raise FactoryRegistryError(
+                f"No storage converter registered for the backend '{backend}'."
+            )
+        set_runtime_attribute(
+            obj,
+            "function",
+            "as_storage",
+            "backend",
+            backend,
+            "stencil",
+            stencil,
+        )
+        return obj(data, storage_options=storage_options)
+
+    @classmethod
+    def register(
+        cls: Type["Allocator"],
+        handle: Optional[Callable] = None,
+        backend: Union[str, Sequence[str]] = prt.wildcard,
+        stencil: Union[str, Sequence[str]] = prt.wildcard,
+    ) -> Callable:
+        """Decorator to register an object."""
+        return multiregister(
+            handle,
+            cls.registry,
+            (
+                "function",
+                "as_storage",
+                "backend",
+                backend,
+                "stencil",
+                stencil,
+            ),
+        )
+
+    @staticmethod
+    def template(
+        shape: Sequence[int],
+        *,
+        storage_options: Optional["StorageOptions"] = None
+    ):
+        """Signature template for any registered object."""
+        pass
+
+
 # numpy-compliant aliases
+as_storage = AsStorage
 empty = Empty
 ones = Ones
 zeros = Zeros

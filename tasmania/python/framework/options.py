@@ -63,9 +63,9 @@ class StorageOptions:
     dtype: Type = np.float64
 
     # gt4py
-    default_origin: Sequence[int] = None
-    managed_memory: bool = False
-    mask: Sequence[bool] = None
+    aligned_index: Sequence[int] = None
+    halo: Sequence[int] = None
+    managed: Union[bool, str] = False
 
 
 @dataclass

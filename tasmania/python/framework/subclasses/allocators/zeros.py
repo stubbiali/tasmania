@@ -50,21 +50,19 @@ if cp:
 
 
 if gt:
-    from tasmania.python.utils.backend import get_gt_backend, get_ti_arch
+    from tasmania.python.utils.backend import get_gt_backend
 
     @zeros.register(backend="gt4py*")
     def zeros_gt4py(shape, *, storage_options=None):
         backend = zeros_gt4py.__tasmania_runtime__["backend"]
-        gt_backend = get_gt_backend(backend)
+        defaults = get_gt_backend(backend)
         so = storage_options or StorageOptions()
-        default_origin = so.default_origin or (0,) * len(shape)
         return gt.storage.zeros(
-            gt_backend,
-            default_origin,
             shape,
-            so.dtype,
-            mask=so.mask,
-            managed_memory=so.managed_memory,
+            dtype=so.dtype,
+            aligned_index=so.aligned_index,
+            defaults=defaults,
+            halo=so.halo,
         )
 
 

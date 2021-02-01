@@ -20,9 +20,15 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from .as_storage_cupy import *
-from .as_storage_gt4py import *
-from .as_storage_numpy import *
-from .empty import *
-from .ones import *
-from .zeros import *
+from typing import TYPE_CHECKING
+
+from tasmania.python.framework.allocators import as_storage
+
+if TYPE_CHECKING:
+    import numpy as np
+
+    from tasmania.python.utils.typing import Storage
+
+
+def to_numpy(data: "Storage") -> "np.ndarray":
+    return as_storage("numpy", data=data)
