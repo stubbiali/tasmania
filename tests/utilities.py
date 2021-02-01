@@ -24,8 +24,15 @@ from hypothesis import HealthCheck, settings
 import numpy as np
 from pint import UnitRegistry
 from sympl import DataArray
+from typing import Any, Optional, TYPE_CHECKING, Tuple
+import xarray as xr
 
-import gt4py as gt
+from tasmania.python.framework.generic_functions import to_numpy
+from tasmania.python.framework.options import StorageOptions
+from tasmania.python.utils import typing as ty
+
+if TYPE_CHECKING:
+    from tasmania.python.domain.grid import Grid
 
 
 mfwv = "mass_fraction_of_water_vapor_in_air"
@@ -48,43 +55,38 @@ default_physical_constants = {
 unit_registry = UnitRegistry()
 
 
-def compare_datetimes(td1, td2):
+def compare_datetimes(td1: ty.Datetime, td2: ty.Datetime) -> None:
     assert abs(td1 - td2).total_seconds() <= 1e-5
 
 
-def compare_arrays(field_a, field_b, atol=1e-8, rtol=1e-5):
-    # to prevent segfaults
-    gt.storage.restore_numpy()
-
+def compare_arrays(
+    field_a: ty.Storage,
+    field_b: ty.Storage,
+    atol: float = 1e-8,
+    rtol: float = 1e-5,
+) -> None:
+    # replace infs with nans
     # field_a[np.isinf(field_a)] = np.nan
     # field_b[np.isinf(field_b)] = np.nan
 
-    try:  # GPU storage
-        field_a.synchronize()
-        field_b.synchronize()
-    except AttributeError:
-        pass
+    # coerce fields to ndarrays
+    field_a_np = to_numpy(field_a)
+    field_b_np = to_numpy(field_b)
 
-    try:
-        assert np.allclose(
-            field_a, field_b, equal_nan=True, atol=atol, rtol=rtol
-        )
-    except RuntimeError:
-        try:
-            assert np.allclose(
-                field_a.data,
-                field_b.data,
-                equal_nan=True,
-                atol=atol,
-                rtol=rtol,
-            )
-        except AttributeError:
-            assert False
-
-    gt.storage.prepare_numpy()
+    # compare
+    # np.testing.assert_allclose(
+    #     field_a_np, field_b_np, equal_nan=True, atol=atol, rtol=rtol
+    # )
+    assert np.allclose(
+        field_a_np, field_b_np, equal_nan=True, atol=atol, rtol=rtol
+    )
 
 
-def compare_dataarrays(da1, da2, compare_coordinate_values=True):
+def compare_dataarrays(
+    da1: xr.DataArray,
+    da2: xr.DataArray,
+    compare_coordinate_values: bool = True,
+) -> None:
     """ Assert whether two :class:`sympl.DataArray`\s are equal. """
     assert len(da1.dims) == len(da2.dims)
 
@@ -116,7 +118,7 @@ def compare_dataarrays(da1, da2, compare_coordinate_values=True):
     compare_arrays(da1.data, da2.data)
 
 
-def get_float_width(dtype):
+def get_float_width(dtype: ty.Datatype) -> int:
     """ Get the number of bits used by ``dtype``. """
     if dtype == np.float16:
         return 16
@@ -126,7 +128,9 @@ def get_float_width(dtype):
         return 64
 
 
-def get_interval(el0, el1, dims, units, increasing):
+def get_interval(
+    el0: float, el1: float, dims: str, units: str, increasing: bool
+) -> xr.DataArray:
     """ Generate a 2-elements DataArray representing a domain interval. """
     invert = ((el0 > el1) and increasing) or ((el0 < el1) and not increasing)
     return DataArray(
@@ -134,12 +138,19 @@ def get_interval(el0, el1, dims, units, increasing):
     )
 
 
-def get_nanoseconds(secs):
+def get_nanoseconds(secs: float) -> float:
     """ Convert seconds in nanoseconds. """
     return int((secs - int(secs * 1e9) * 1e-9) * 1e12)
 
 
-def get_xaxis(domain_x, nx, dtype):
+def get_xaxis(
+    domain_x: xr.DataArray,
+    nx: int,
+    storage_options: Optional[StorageOptions] = None,
+) -> Tuple[xr.DataArray, xr.DataArray, xr.DataArray]:
+    so = storage_options or StorageOptions()
+    dtype = so.dtype
+
     x_v = (
         np.linspace(domain_x.data[0], domain_x.data[1], nx, dtype=dtype)
         if nx > 1
@@ -155,9 +166,7 @@ def get_xaxis(domain_x, nx, dtype):
     )
 
     dx_v = (
-        1.0
-        if nx == 1
-        else (domain_x.data[-1] - domain_x.data[0]) / (nx - 1)
+        1.0 if nx == 1 else (domain_x.data[-1] - domain_x.data[0]) / (nx - 1)
     )
     dx_v = 1.0 if dx_v == 0.0 else dx_v
     dx = DataArray(dx_v, attrs={"units": domain_x.attrs["units"]})
@@ -175,7 +184,14 @@ def get_xaxis(domain_x, nx, dtype):
     return x, xu, dx
 
 
-def get_yaxis(domain_y, ny, dtype):
+def get_yaxis(
+    domain_y: xr.DataArray,
+    ny: int,
+    storage_options: Optional[StorageOptions] = None,
+) -> Tuple[xr.DataArray, xr.DataArray, xr.DataArray]:
+    so = storage_options or StorageOptions()
+    dtype = so.dtype
+
     y_v = (
         np.linspace(domain_y.data[0], domain_y.data[1], ny, dtype=dtype)
         if ny > 1
@@ -191,9 +207,7 @@ def get_yaxis(domain_y, ny, dtype):
     )
 
     dy_v = (
-        1.0
-        if ny == 1
-        else (domain_y.data[-1] - domain_y.data[0]) / (ny - 1)
+        1.0 if ny == 1 else (domain_y.data[-1] - domain_y.data[0]) / (ny - 1)
     )
     dy_v = 1.0 if dy_v == 0.0 else dy_v
     dy = DataArray(dy_v, attrs={"units": domain_y.attrs["units"]})
@@ -211,7 +225,14 @@ def get_yaxis(domain_y, ny, dtype):
     return y, yv, dy
 
 
-def get_zaxis(domain_z, nz, dtype):
+def get_zaxis(
+    domain_z: xr.DataArray,
+    nz: int,
+    storage_options: Optional[StorageOptions] = None,
+) -> Tuple[xr.DataArray, xr.DataArray, xr.DataArray]:
+    so = storage_options or StorageOptions()
+    dtype = so.dtype
+
     zhl_v = np.linspace(
         domain_z.data[0], domain_z.data[1], nz + 1, dtype=dtype
     )
@@ -240,7 +261,14 @@ def get_zaxis(domain_z, nz, dtype):
     return z, zhl, dz
 
 
-def pi_function(time, grid, slice_x, slice_y, field_name, field_units):
+def pi_function(
+    time: ty.Datetime,
+    grid: "Grid",
+    slice_x: slice,
+    slice_y: slice,
+    field_name: str,
+    field_units: str,
+) -> np.ndarray:
     if slice_x is not None:
         li = slice_x.stop - slice_x.start
     else:
@@ -266,7 +294,7 @@ def pi_function(time, grid, slice_x, slice_y, field_name, field_units):
     return out
 
 
-def get_grid_shape(name, grid):
+def get_grid_shape(name: str, grid: "Grid") -> Tuple[int, int, int]:
     return (
         grid.nx + int("at_u_locations" in name or "at_uv_locations" in name),
         grid.ny + int("at_v_locations" in name or "at_uv_locations" in name),
@@ -276,7 +304,7 @@ def get_grid_shape(name, grid):
 
 # hypothesis settings
 class CustomSettings(settings):
-    def __init__(self, parent=None):
+    def __init__(self, parent: Any = None) -> None:
         super().__init__(
             parent,
             suppress_health_check=(

@@ -29,7 +29,7 @@ from tasmania.third_party import cupy, dawn4py, gt4py, numba
 # backend settings
 backend = ["numpy"]
 if gt4py:
-    backend += ["gt4py:numpy", "gt4py:gtx86"]  # gt4py:gtmc
+    backend += ["gt4py:numpy", "gt4py:gtx86", "gt4py:gtmc"]
 # if numba:
 #     backend += ["numba:cpu"]
 # if cupy:
@@ -46,7 +46,7 @@ if gt4py:
 #         "gt4py:dawn:gtmc",
 #     ]
 dtype = (np.float64,)
-default_origin = ((0, 0, 0), (1, 1, 0), (3, 3, 0), (2, 0, 1))
+aligned_index = ((0, 0, 0), (1, 1, 0), (3, 3, 0), (2, 0, 1))
 
 # x-axis
 axis_x = {
