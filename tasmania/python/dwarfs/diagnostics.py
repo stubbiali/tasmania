@@ -28,7 +28,7 @@ from gt4py import gtscript
 from tasmania.python.framework.base_components import GridComponent
 from tasmania.python.framework.stencil import StencilFactory
 from tasmania.python.framework.tag import stencil_definition
-from tasmania.python.utils import typing
+from tasmania.python.utils import typing as ty
 from tasmania.python.utils.gtscript import positive
 
 if TYPE_CHECKING:
@@ -89,11 +89,11 @@ class HorizontalVelocity(GridComponent, StencilFactory):
 
     def get_momenta(
         self: "HorizontalVelocity",
-        d: typing.array_t,
-        u: typing.array_t,
-        v: typing.array_t,
-        du: typing.array_t,
-        dv: typing.array_t,
+        d: ty.Storage,
+        u: ty.Storage,
+        v: ty.Storage,
+        du: ty.Storage,
+        dv: ty.Storage,
     ) -> None:
         """
         Diagnose the horizontal momenta.
@@ -129,11 +129,11 @@ class HorizontalVelocity(GridComponent, StencilFactory):
 
     def get_velocity_components(
         self: "HorizontalVelocity",
-        d: typing.array_t,
-        du: typing.array_t,
-        dv: typing.array_t,
-        u: typing.array_t,
-        v: typing.array_t,
+        d: ty.Storage,
+        du: ty.Storage,
+        dv: ty.Storage,
+        u: ty.Storage,
+        v: ty.Storage,
     ) -> None:
         """
         Diagnose the horizontal velocity components.
@@ -189,9 +189,8 @@ class HorizontalVelocity(GridComponent, StencilFactory):
         out_du: np.ndarray,
         out_dv: np.ndarray,
         *,
-        origin: typing.triplet_int_t,
-        domain: typing.triplet_int_t,
-        **kwargs  # catch-all
+        origin: ty.triplet_int_t,
+        domain: ty.triplet_int_t
     ) -> None:
         i = slice(origin[0], origin[0] + domain[0])
         ip1 = slice(origin[0] + 1, origin[0] + domain[0] + 1)
@@ -236,9 +235,8 @@ class HorizontalVelocity(GridComponent, StencilFactory):
         in_du: np.ndarray,
         out_u: np.ndarray,
         *,
-        origin: typing.triplet_int_t,
-        domain: typing.triplet_int_t,
-        **kwargs  # catch-all
+        origin: ty.triplet_int_t,
+        domain: ty.triplet_int_t
     ) -> None:
         i = slice(origin[0], origin[0] + domain[0])
         im1 = slice(origin[0] - 1, origin[0] + domain[0] - 1)
@@ -276,9 +274,8 @@ class HorizontalVelocity(GridComponent, StencilFactory):
         in_dv: np.ndarray,
         out_v: np.ndarray,
         *,
-        origin: typing.triplet_int_t,
-        domain: typing.triplet_int_t,
-        **kwargs  # catch-all
+        origin: ty.triplet_int_t,
+        domain: ty.triplet_int_t
     ) -> None:
         i = slice(origin[0], origin[0] + domain[0])
         j = slice(origin[1], origin[1] + domain[1])
@@ -360,10 +357,7 @@ class WaterConstituent(GridComponent, StencilFactory):
         self._stencil_diagnosing_mass_fraction = self.compile("mass_fraction")
 
     def get_density_of_water_constituent(
-        self: "WaterConstituent",
-        d: typing.array_t,
-        q: typing.array_t,
-        dq: typing.array_t,
+        self: "WaterConstituent", d: ty.Storage, q: ty.Storage, dq: ty.Storage,
     ) -> None:
         """
         Diagnose the density of a water constituent.
@@ -393,10 +387,7 @@ class WaterConstituent(GridComponent, StencilFactory):
         )
 
     def get_mass_fraction_of_water_constituent_in_air(
-        self: "WaterConstituent",
-        d: typing.array_t,
-        dq: typing.array_t,
-        q: typing.array_t,
+        self: "WaterConstituent", d: ty.Storage, dq: ty.Storage, q: ty.Storage,
     ) -> None:
         """
         Diagnose the mass fraction of a water constituent.
@@ -433,9 +424,8 @@ class WaterConstituent(GridComponent, StencilFactory):
         in_q: np.ndarray,
         out_dq: np.ndarray,
         *,
-        origin: typing.triplet_int_t,
-        domain: typing.triplet_int_t,
-        **kwargs  # catch-all
+        origin: ty.triplet_int_t,
+        domain: ty.triplet_int_t
     ) -> None:
         i = slice(origin[0], origin[0] + domain[0])
         j = slice(origin[1], origin[1] + domain[1])
@@ -470,8 +460,8 @@ class WaterConstituent(GridComponent, StencilFactory):
         in_dq: np.ndarray,
         out_q: np.ndarray,
         *,
-        origin: typing.triplet_int_t,
-        domain: typing.triplet_int_t,
+        origin: ty.triplet_int_t,
+        domain: ty.triplet_int_t,
         **kwargs  # catch-all
     ) -> None:
         i = slice(origin[0], origin[0] + domain[0])

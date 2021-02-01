@@ -30,7 +30,7 @@ from gt4py import gtscript
 from tasmania.python.framework.register import factorize
 from tasmania.python.framework.stencil import StencilFactory
 from tasmania.python.framework.tag import stencil_definition
-from tasmania.python.utils import typing
+from tasmania.python.utils import typing as ty
 
 if TYPE_CHECKING:
     from tasmania.python.framework.options import (
@@ -46,7 +46,7 @@ class HorizontalDiffusion(StencilFactory, abc.ABC):
 
     def __init__(
         self: "HorizontalDiffusion",
-        shape: typing.triplet_int_t,
+        shape: ty.triplet_int_t,
         dx: float,
         dy: float,
         diffusion_coeff: float,
@@ -119,9 +119,7 @@ class HorizontalDiffusion(StencilFactory, abc.ABC):
 
     @abc.abstractmethod
     def __call__(
-        self: "HorizontalDiffusion",
-        phi: typing.array_t,
-        phi_tnd: typing.array_t,
+        self: "HorizontalDiffusion", phi: ty.Storage, phi_tnd: ty.Storage,
     ) -> None:
         """Calculate the tendency.
 
@@ -137,7 +135,7 @@ class HorizontalDiffusion(StencilFactory, abc.ABC):
     @staticmethod
     def factory(
         diffusion_type: str,
-        shape: typing.triplet_int_t,
+        shape: ty.triplet_int_t,
         dx: float,
         dy: float,
         diffusion_coeff: float,
@@ -206,8 +204,8 @@ class HorizontalDiffusion(StencilFactory, abc.ABC):
         *,
         dx: float,
         dy: float,
-        origin: typing.triplet_int_t,
-        domain: typing.triplet_int_t
+        origin: ty.triplet_int_t,
+        domain: ty.triplet_int_t
     ) -> None:
         pass
 
@@ -234,8 +232,8 @@ class HorizontalDiffusion(StencilFactory, abc.ABC):
         *,
         dx: float,
         dy: float,
-        origin: typing.triplet_int_t,
-        domain: typing.triplet_int_t
+        origin: ty.triplet_int_t,
+        domain: ty.triplet_int_t
     ) -> None:
         pass
 

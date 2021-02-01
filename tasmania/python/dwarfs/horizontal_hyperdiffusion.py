@@ -27,7 +27,6 @@ from typing import Optional, TYPE_CHECKING
 
 from gt4py import gtscript
 
-from tasmania.python.framework.generic_functions import to_numpy
 from tasmania.python.framework.register import factorize
 from tasmania.python.framework.stencil import StencilFactory
 from tasmania.python.framework.tag import (
