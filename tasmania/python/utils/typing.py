@@ -40,6 +40,7 @@ from typing import (
     Sequence,
     TYPE_CHECKING,
     Tuple,
+    TypeVar,
     Union,
 )
 
@@ -48,8 +49,7 @@ try:
 except ImportError:
     cp = np
 
-from gt4py import gtscript
-from gt4py.storage.storage import Storage
+from gt4py import gtscript, storage as gt_storage
 
 if TYPE_CHECKING:
     from tasmania.python.framework._base import (
@@ -59,15 +59,20 @@ if TYPE_CHECKING:
         BaseTendency2Diagnostic,
     )
 
+Datatype = TypeVar
+Datetime = Union[dt.datetime, pd.Timestamp]
+datetime_t = Datetime
+Storage = TypeVar("Storage")
+ArrayDict = Dict[str, Union[Datetime, Storage]]
+DataArrayDict = Dict[str, Union[Datetime, DataArray]]
 
-array_t = Union[np.ndarray, cp.ndarray, Storage]
+array_t = Union[np.ndarray, cp.ndarray, gt_storage.Storage]
 dataarray_t = DataArray
-gtstorage_t = Storage
+gtstorage_t = gt_storage.Storage
 timedelta_t = Union[dt.timedelta, pd.Timedelta]
 
 array_dict_t = Dict[str, Union[timedelta_t, array_t]]
 dataarray_dict_t = Dict[str, Union[timedelta_t, dataarray_t]]
-datetime_t = Union[dt.datetime, pd.Timestamp]
 diagnostic_component_t = Union[
     DiagnosticComponent,
     DiagnosticComponentComposite,

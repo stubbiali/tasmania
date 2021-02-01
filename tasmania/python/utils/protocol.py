@@ -235,3 +235,9 @@ def multiregister(
         return core
     else:
         return handle
+
+
+def add_method(obj, method_name, method_handle):
+    if not getattr(obj, method_name, None):
+        setattr(obj, method_name, method_handle)
+    return obj

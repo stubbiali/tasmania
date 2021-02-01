@@ -32,6 +32,7 @@ except (ImportError, ModuleNotFoundError):
 
 import gt4py as gt
 
+from tasmania.python.framework.generic_functions import to_numpy
 from tasmania.python.utils import typing
 from tasmania.python.utils.data import get_physical_constants
 from tasmania.python.utils.storage import get_dataarray_3d
@@ -230,24 +231,24 @@ def convert_relative_humidity_to_water_vapor(
     Return
     ------
     array_like :
-        :class:`gt4py.storage.storage.Storage` representing the mass fraction of water vapor,
-        in units of ([:math:`g \, g^{-1}`]).
+        :class:`gt4py.storage.storage.Storage` representing the mass
+        fraction of water vapor, in units of ([:math:`g \, g^{-1}`]).
 
     References
     ----------
-    Vaisala, O. (2013). _Humidity conversion formulas: Calculation formulas for humidity_. \
-        Retrieved from `<https://www.vaisala.com>`_.
+    Vaisala, O. (2013). _Humidity conversion formulas: Calculation formulas
+        for humidity_. Retrieved from `<https://www.vaisala.com>`_.
     """
-    # Extract the raw arrays
-    p_ = p.to_units("Pa").data
-    t_ = t.to_units("K").data
-    rh_ = rh.to_units("1").data
+    # Extract the raw arrays as ndarrays
+    p_np = p.to_units("Pa").values
+    t_np = t.to_units("K").values
+    rh_np = rh.to_units("1").values
 
     # Get the saturation water vapor pressure
     if method == "tetens":
-        p_sat = tetens_formula(t_)
+        p_sat = tetens_formula(t_np)
     elif method == "goff_gratch":
-        p_sat = goff_gratch_formula(t_)
+        p_sat = goff_gratch_formula(t_np)
     else:
         raise ValueError(
             "Unknown formula to compute the saturation water vapor pressure. "
@@ -255,24 +256,17 @@ def convert_relative_humidity_to_water_vapor(
         )
 
     # Compute the water vapor pressure
-    pw = rh_ * p_sat
+    pw = rh_np * p_sat
 
     # Compute the mixing ratio of water vapor
     B = 0.62198
-    qv = deepcopy(t_)
-    for i in range(qv.shape[0]):
-        for j in range(qv.shape[1]):
-            for k in range(qv.shape[2]):
-                qv[i, j, k] = (
-                    0.0
-                    if p_sat[i, j, k] >= 0.616 * p_[i, j, k]
-                    else B * pw[i, j, k] / (p_[i, j, k] - pw[i, j, k])
-                )
+    qv = np.zeros_like(t_np)
+    qv[...] = np.where(p_sat >= 0.616 * p_np, 0, B * pw / (p_np - pw))
 
     return qv
 
 
-def tetens_formula(t: typing.array_t) -> typing.array_t:
+def tetens_formula(t: np.ndarray) -> np.ndarray:
     """
     Compute the saturation vapor pressure over water at a given temperature,
     according to the Tetens formula.
@@ -292,16 +286,12 @@ def tetens_formula(t: typing.array_t) -> typing.array_t:
     tr = 273.16
     bw = 35.86
 
-    backend = getattr(t, "backend", "numpy")
-    device = gt.backend.from_name(backend).storage_info["device"]
-    exp = cp.exp if device == "gpu" else np.exp
-
-    e = pw * exp(aw * (t - tr) / (t - bw))
+    e = pw * np.exp(aw * (t - tr) / (t - bw))
 
     return e
 
 
-def goff_gratch_formula(t: typing.array_t) -> typing.array_t:
+def goff_gratch_formula(t: np.ndarray) -> np.ndarray:
     """
     Compute the saturation vapor pressure over water at a given temperature,
     according to the Goff-Gratch formula.
@@ -318,8 +308,9 @@ def goff_gratch_formula(t: typing.array_t) -> typing.array_t:
 
     References
     ----------
-    Goff, J. A., and S. Gratch. (1946). `Low-pressure properties of water from -160 to 212 F`. \
-        *Transactions of the American Society of Heating and Ventilating Engineers*, 95-122.
+    Goff, J. A., and S. Gratch. (1946). `Low-pressure properties of water \
+        from -160 to 212 F`. *Transactions of the American Society of \
+        Heating and Ventilating Engineers*, 95-122.
     """
     c1 = 7.90298
     c2 = 5.02808
@@ -330,13 +321,9 @@ def goff_gratch_formula(t: typing.array_t) -> typing.array_t:
     t_st = 373.15
     e_st = 1013.25e2
 
-    backend = getattr(t, "backend", "numpy")
-    device = gt.backend.from_name(backend).storage_info["device"]
-    log10 = cp.log10 if device == "gpu" else np.log10
-
     e = e_st * 10 ** (
         -c1 * (t_st / t - 1.0)
-        + c2 * log10(t_st / t)
+        + c2 * np.log10(t_st / t)
         - c3 * (10.0 ** (c4 * (1.0 - t / t_st)) - 1.0)
         + c5 * (10 ** (-c6 * (t_st / t - 1.0)) - 1.0)
     )

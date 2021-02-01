@@ -50,8 +50,7 @@ def get_dataarray_2d(
     grid_shape: Optional[typing.pair_int_t] = None,
     set_coordinates: bool = True,
 ) -> DataArray:
-    """
-    Create a DataArray out of a 2-D :class:`numpy.ndarray`-like storage.
+    """Create a DataArray out of a 2-D :class:`numpy.ndarray`-like storage.
 
     Parameters
     ----------
@@ -87,7 +86,7 @@ def get_dataarray_2d(
         ni, nj = grid_shape
     except ValueError:
         raise ValueError(
-            "Expected a 2-D array, got a {}-D one.".format(len(grid_shape))
+            f"Expected a 2-D array, got a {len(grid_shape)}-D one."
         )
 
     if ni == nx:
@@ -96,8 +95,8 @@ def get_dataarray_2d(
         x = grid.x_at_u_locations
     else:
         raise ValueError(
-            "The array extent in the x-direction is {} but either "
-            "{} or {} was expected.".format(ni, nx, nx + 1)
+            f"The array extent in the x-direction is {ni} but either "
+            f"{nx} or {nx+1} was expected."
         )
 
     if nj == ny:
@@ -106,8 +105,8 @@ def get_dataarray_2d(
         y = grid.y_at_v_locations
     else:
         raise ValueError(
-            "The array extent in the y-direction is {} but either "
-            "{} or {} was expected.".format(nj, ny, ny + 1)
+            f"The array extent in the y-direction is {nj} but either "
+            f"{ny} or {ny+1} was expected."
         )
 
     if set_coordinates:
@@ -138,8 +137,7 @@ def get_dataarray_3d(
     grid_shape: Optional[typing.triplet_int_t] = None,
     set_coordinates: bool = True,
 ) -> DataArray:
-    """
-    Create a DataArray out of a 3-D ndarray-like storage.
+    """Create a DataArray out of a 3-D ndarray-like storage.
 
     Parameters
     ----------
@@ -153,13 +151,15 @@ def get_dataarray_3d(
         The variable name. Defaults to `None`.
     grid_origin : `Sequence[int]`, optional
         The index of the element in the buffer associated with the (0, 0, 0)
-        grid point. If not specified, it is assumed that `grid_origin = (0, 0, 0)`.
+        grid point. If not specified, it is assumed that
+        `grid_origin = (0, 0, 0)`.
     grid_shape : `Sequence[int]`, optional
         The shape of grid underlying the field. It cannot exceed the shape
         of the passed buffer. If not specified, it is assumed that it coincides
         with the shape of the buffer.
     set_coordinates : `bool`, optional
-        ``True`` to set the coordinates of the grid points, ``False`` otherwise.
+        ``True`` to set the coordinates of the grid points,
+        ``False`` otherwise.
 
     Return
     ------
@@ -175,7 +175,7 @@ def get_dataarray_3d(
         ni, nj, nk = grid_shape
     except ValueError:
         raise ValueError(
-            "Expected a 3-D array, got a {}-D one.".format(len(grid_shape))
+            f"Expected a 3-D array, got a {len(grid_shape)}-D one."
         )
 
     if ni == 1 and nx != 1:
@@ -190,8 +190,8 @@ def get_dataarray_3d(
         x = grid.grid_xy.x_at_u_locations
     else:
         raise ValueError(
-            "The grid extent in the x-direction is {} but either "
-            "{}, {} or {} was expected.".format(ni, 1, nx, nx + 1)
+            f"The grid extent in the x-direction is {ni} but either "
+            f"{1}, {nx} or {nx+1} was expected."
         )
 
     if nj == 1 and ny != 1:
@@ -206,8 +206,8 @@ def get_dataarray_3d(
         y = grid.grid_xy.y_at_v_locations
     else:
         raise ValueError(
-            "The grid extent in the y-direction is {} but either "
-            "{}, {} or {} was expected.".format(nj, 1, ny, ny + 1)
+            f"The grid extent in the y-direction is {nj} but either "
+            f"1, {ny} or {ny+1} was expected."
         )
 
     if nk == 1:
@@ -229,8 +229,8 @@ def get_dataarray_3d(
         z = grid.z_on_interface_levels
     else:
         raise ValueError(
-            "The grid extent in the z-direction is {} but either "
-            "1, {} or {} was expected.".format(nk, nz, nz + 1)
+            f"The grid extent in the z-direction is {nk} but either "
+            f"1, {nz} or {nz+1} was expected."
         )
 
     if set_coordinates:
@@ -361,8 +361,8 @@ def get_physical_state(
     store_names: Optional[Sequence[str]] = None,
 ) -> DataArray:
     """
-    Given a state dictionary defined over the numerical grid, transpose that state
-    over the corresponding physical grid.
+    Given a state dictionary defined over the numerical grid, transpose
+    that state over the corresponding physical grid.
     """
     pgrid = domain.physical_grid
     nx, ny, nz = pgrid.nx, pgrid.ny, pgrid.nz
@@ -490,119 +490,38 @@ def get_storage_shape(
     return out_shape
 
 
-def get_default_origin(
-    default_origin: typing.triplet_int_t,
+def get_aligned_index(
+    aligned_index: typing.triplet_int_t,
     storage_shape: typing.triplet_int_t,
-    min_default_origin: Optional[typing.triplet_int_t] = None,
-    max_default_origin: Optional[typing.triplet_int_t] = None,
+    min_aligned_index: Optional[typing.triplet_int_t] = None,
+    max_aligned_index: Optional[typing.triplet_int_t] = None,
 ) -> typing.triplet_int_t:
-    default_origin = default_origin or (0, 0, 0)
+    aligned_index = aligned_index or (0, 0, 0)
 
-    max_default_origin = max_default_origin or default_origin
-    max_default_origin = tuple(
-        max_default_origin[i]
-        if storage_shape[i] > 2 * max_default_origin[i]
+    max_aligned_index = max_aligned_index or aligned_index
+    max_aligned_index = tuple(
+        max_aligned_index[i]
+        if storage_shape[i] > 2 * max_aligned_index[i]
         else 0
         for i in range(3)
     )
 
-    min_default_origin = min_default_origin or max_default_origin
-    min_default_origin = tuple(
-        min_default_origin[i]
-        if min_default_origin[i] <= max_default_origin[i]
-        else max_default_origin[i]
+    min_aligned_index = min_aligned_index or max_aligned_index
+    min_aligned_index = tuple(
+        min_aligned_index[i]
+        if min_aligned_index[i] <= max_aligned_index[i]
+        else max_aligned_index[i]
         for i in range(3)
     )
 
     out = tuple(
-        default_origin[i]
-        if min_default_origin[i] <= default_origin[i] <= max_default_origin[i]
-        else min_default_origin[i]
+        aligned_index[i]
+        if min_aligned_index[i] <= aligned_index[i] <= max_aligned_index[i]
+        else min_aligned_index[i]
         for i in range(3)
     )
 
     return out
-
-
-def empty(
-    storage_shape: typing.triplet_int_t,
-    *,
-    backend: str = "numpy",
-    dtype: typing.dtype_t = np.float64,
-    default_origin: Optional[typing.triplet_int_t] = None,
-    mask: Optional[typing.triplet_bool_t] = None,
-    managed_memory: bool = False
-) -> Union[np.ndarray, typing.gtstorage_t]:
-    default_origin = default_origin or (0, 0, 0)
-
-    if is_gt(backend):
-        storage = gt.storage.empty(
-            get_gt_backend(backend),
-            default_origin,
-            storage_shape,
-            dtype,
-            mask=mask,
-            managed_memory=managed_memory,
-        )
-    else:
-        _empty = cp.empty if backend == "cupy" else np.empty
-        storage = _empty(storage_shape, dtype=dtype)
-
-    return storage
-
-
-def zeros(
-    storage_shape: typing.triplet_int_t,
-    *,
-    backend: str = "numpy",
-    dtype: typing.dtype_t = np.float64,
-    default_origin: Optional[typing.triplet_int_t] = None,
-    mask: Optional[typing.triplet_bool_t] = None,
-    managed_memory: bool = False
-) -> Union[np.ndarray, typing.gtstorage_t]:
-    default_origin = default_origin or (0, 0, 0)
-
-    if is_gt(backend):
-        storage = gt.storage.zeros(
-            get_gt_backend(backend),
-            default_origin,
-            storage_shape,
-            dtype,
-            mask=mask,
-            managed_memory=managed_memory,
-        )
-    else:
-        _zeros = cp.zeros if backend == "cupy" else np.zeros
-        storage = _zeros(storage_shape, dtype=dtype)
-
-    return storage
-
-
-def ones(
-    storage_shape: typing.triplet_int_t,
-    *,
-    backend: str = "numpy",
-    dtype: typing.dtype_t = np.float64,
-    default_origin: Optional[typing.triplet_int_t] = None,
-    mask: Optional[typing.triplet_bool_t] = None,
-    managed_memory: bool = False
-) -> Union[np.ndarray, typing.gtstorage_t]:
-    default_origin = default_origin or (0, 0, 0)
-
-    if is_gt(backend):
-        storage = gt.storage.ones(
-            get_gt_backend(backend),
-            default_origin,
-            storage_shape,
-            dtype,
-            mask=mask,
-            managed_memory=managed_memory,
-        )
-    else:
-        _ones = cp.ones if backend == "cupy" else np.ones
-        storage = _ones(storage_shape, dtype=dtype)
-
-    return storage
 
 
 def deepcopy_array_dict(src: typing.array_dict_t) -> typing.array_dict_t:
@@ -632,13 +551,3 @@ def deepcopy_dataarray_dict(
         if name != "time":
             dst[name] = deepcopy_dataarray(src[name])
     return dst
-
-
-def get_asarray_function(backend: str = "numpy"):
-    if is_gt(backend):
-        device = gt.backend.from_name(get_gt_backend(backend)).storage_info[
-            "device"
-        ]
-    else:
-        device = "gpu" if backend == "cupy" else "cpu"
-    return cp.asarray if device == "gpu" else np.asarray
