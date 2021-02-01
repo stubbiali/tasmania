@@ -26,21 +26,20 @@ from hypothesis import (
     strategies as hyp_st,
     reproduce_failure,
 )
-import numpy as np
 import pytest
-from sympl import DataArray
 
 from tasmania.python.domain.horizontal_boundary import HorizontalBoundary
+from tasmania.python.framework.allocators import zeros
 from tasmania.python.framework.options import StorageOptions
 
 from tests.conf import backend as conf_backend, dtype as conf_dtype
+from tests.domain.horizontal_boundaries.test_periodic import validate
 from tests.strategies import (
     st_horizontal_boundary_layers,
-    st_one_of,
     st_physical_grid,
     st_raw_field,
 )
-from tests.utilities import compare_arrays, compare_dataarrays, hyp_settings
+from tests.utilities import compare_arrays, hyp_settings
 
 
 @hyp_settings
@@ -59,7 +58,7 @@ def test_properties(data):
     # ========================================
     # test
     # ========================================
-    hb = HorizontalBoundary.factory("periodic", 1, ny, nb)
+    hb = HorizontalBoundary.factory("periodic", grid, nb)
 
     assert hb.nx == 1
     assert hb.ny == ny
@@ -86,55 +85,13 @@ def test_axis(data):
     # ========================================
     # test
     # ========================================
-    hb = HorizontalBoundary.factory("periodic", 1, ny, nb)
+    hb = HorizontalBoundary.factory("periodic", grid, nb)
 
-    #
-    # get_numerical_axis
-    #
-    # mass points
-    px = grid.y
-    dx = px.values[1] - px.values[0]
-    cx_val_values = np.array(
-        tuple(px.values[0] + i * dx for i in range(-nb, ny + nb))
-    )
-    cx_val = DataArray(
-        cx_val_values,
-        coords={px.dims[0]: cx_val_values},
-        dims=px.dims,
-        attrs=px.attrs.copy(),
-    )
-    cx = hb.get_numerical_yaxis(px, dims=px.dims[0])
-    compare_dataarrays(cx, cx_val)
+    # numerical axes - mass points
+    validate(hb.get_numerical_yaxis, grid.y, nb)
 
-    # staggered points
-    px = grid.y_at_v_locations
-    dx = px.values[1] - px.values[0]
-    cx_val_values = np.array(
-        tuple(px.values[0] + i * dx for i in range(-nb, ny + 1 + nb))
-    )
-    cx_val = DataArray(
-        cx_val_values,
-        coords={px.dims[0]: cx_val_values},
-        dims=px.dims,
-        attrs=px.attrs.copy(),
-    )
-    cx = hb.get_numerical_yaxis(px, dims=px.dims[0])
-    compare_dataarrays(cx, cx_val)
-
-    #
-    # get_physical_axis
-    #
-    # mass points
-    px_val = grid.y
-    cx = hb.get_numerical_yaxis(px_val)
-    px = hb.get_physical_yaxis(cx)
-    compare_dataarrays(px, px_val)
-
-    # staggered points
-    px_val = grid.y_at_v_locations
-    cx = hb.get_numerical_yaxis(px_val)
-    px = hb.get_physical_yaxis(cx)
-    compare_dataarrays(px, px_val)
+    # numerical axes - staggered points
+    validate(hb.get_numerical_yaxis_staggered, grid.y_at_v_locations, nb)
 
 
 @hyp_settings
@@ -145,6 +102,8 @@ def test_field(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
+    so = StorageOptions(dtype=dtype)
+
     grid = data.draw(
         st_physical_grid(xaxis_length=(1, 1), yaxis_length=(2, None)),
         label="grid",
@@ -153,20 +112,23 @@ def test_field(data, backend, dtype):
     nb = data.draw(st_horizontal_boundary_layers(1, ny), label="nb")
 
     pfield = data.draw(
-        st_raw_field((2, ny + 1, nz), -1e4, 1e4, backend=backend, dtype=dtype,)
+        st_raw_field(
+            (2, ny + 1, nz), -1e4, 1e4, backend=backend, storage_options=so
+        )
     )
 
     # ========================================
     # test
     # ========================================
-    so = StorageOptions(dtype=dtype)
     hb = HorizontalBoundary.factory(
-        "periodic", 1, ny, nb, backend=backend, storage_options=so
+        "periodic", grid, nb, backend=backend, storage_options=so
     )
 
     # (1, ny)
     pf = pfield[:-1, :-1]
-    cf = np.zeros((2 * nb + 1, ny + 2 * nb, nz), dtype=dtype)
+    cf = zeros(
+        backend, shape=(2 * nb + 1, ny + 2 * nb, nz), storage_options=so
+    )
     cf[nb : nb + 1, nb : ny + nb] = pf
     cf[nb : nb + 1, :nb] = cf[nb : nb + 1, ny - 1 : ny + nb - 1]
     cf[nb : nb + 1, -nb:] = cf[nb : nb + 1, nb + 1 : 2 * nb + 1]
@@ -177,7 +139,9 @@ def test_field(data, backend, dtype):
 
     # (1, ny+1)
     pf = pfield[:-1, :]
-    cf = np.zeros((2 * nb + 1, ny + 1 + 2 * nb, nz), dtype=dtype)
+    cf = zeros(
+        backend, shape=(2 * nb + 1, ny + 1 + 2 * nb, nz), storage_options=so
+    )
     cf[nb : nb + 1, nb : ny + 1 + nb] = pf
     cf[nb : nb + 1, :nb] = cf[nb : nb + 1, ny - 1 : ny + nb - 1]
     cf[nb : nb + 1, -nb:] = cf[nb : nb + 1, nb + 2 : 2 * nb + 2]
@@ -188,7 +152,9 @@ def test_field(data, backend, dtype):
 
     # (2, ny)
     pf = pfield[:, :-1]
-    cf = np.zeros((2 * nb + 2, ny + 2 * nb, nz), dtype=dtype)
+    cf = zeros(
+        backend, shape=(2 * nb + 2, ny + 2 * nb, nz), storage_options=so
+    )
     cf[nb : nb + 2, nb : ny + nb] = pf
     cf[nb : nb + 2, :nb] = cf[nb : nb + 2, ny - 1 : ny + nb - 1]
     cf[nb : nb + 2, -nb:] = cf[nb : nb + 2, nb + 1 : 2 * nb + 1]
@@ -199,7 +165,9 @@ def test_field(data, backend, dtype):
 
     # (nx+1, 2)
     pf = pfield
-    cf = np.zeros((2 * nb + 2, ny + 1 + 2 * nb, nz), dtype=dtype)
+    cf = zeros(
+        backend, shape=(2 * nb + 2, ny + 1 + 2 * nb, nz), storage_options=so
+    )
     cf[nb : nb + 2, nb : ny + 1 + nb] = pf
     cf[nb : nb + 2, :nb] = cf[nb : nb + 2, ny - 1 : ny + nb - 1]
     cf[nb : nb + 2, -nb:] = cf[nb : nb + 2, nb + 2 : 2 * nb + 2]
@@ -223,6 +191,8 @@ def test_enforce(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
+    so = StorageOptions(dtype=dtype)
+
     grid = data.draw(
         st_physical_grid(xaxis_length=(1, 1), yaxis_length=(2, None)),
         label="grid",
@@ -236,16 +206,15 @@ def test_enforce(data, backend, dtype):
             -1e4,
             1e4,
             backend=backend,
-            dtype=dtype,
+            storage_options=so,
         )
     )
 
     # ========================================
     # test
     # ========================================
-    so = StorageOptions(dtype=dtype)
     hb = HorizontalBoundary.factory(
-        "periodic", 1, ny, nb, backend=backend, storage_options=so
+        "periodic", grid, nb, backend=backend, storage_options=so
     )
 
     # (1, ny)
@@ -289,6 +258,8 @@ def test_outermost_layers(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
+    so = StorageOptions(dtype=dtype)
+
     grid = data.draw(
         st_physical_grid(xaxis_length=(1, 1), yaxis_length=(2, None)),
         label="grid",
@@ -302,16 +273,15 @@ def test_outermost_layers(data, backend, dtype):
             -1e4,
             1e4,
             backend=backend,
-            dtype=dtype,
+            storage_options=so,
         )
     )
 
     # ========================================
     # test
     # ========================================
-    so = StorageOptions(dtype=dtype)
     hb = HorizontalBoundary.factory(
-        "periodic", 1, ny, nb, backend=backend, storage_options=so
+        "periodic", grid, nb, backend=backend, storage_options=so
     )
 
     # (1, ny+1)

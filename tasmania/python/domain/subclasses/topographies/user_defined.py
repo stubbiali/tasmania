@@ -28,7 +28,7 @@ from tasmania.python.framework.register import register
 
 @register(name="user_defined")
 class UserDefined(PhysicalTopography):
-    """ User-defined terrain profile.
+    """User-defined terrain profile.
 
     The analytical expression of the profile is passed to the class as a string,
     which is then parsed in C++ via `Cython <http://cython.org>`_ . Therefore

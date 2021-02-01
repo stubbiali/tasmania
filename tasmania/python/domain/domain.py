@@ -20,14 +20,19 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-import functools
 from sympl import DataArray
-from typing import Any, Dict, Optional, Sequence
+from typing import Any, Dict, Optional, Sequence, TYPE_CHECKING
 
+from tasmania.python.domain.grid import PhysicalGrid
 from tasmania.python.domain.horizontal_boundary import HorizontalBoundary
-from tasmania.python.domain.grid import PhysicalGrid, NumericalGrid
-from tasmania.python.framework.options import BackendOptions, StorageOptions
-from tasmania.python.utils import typing
+from tasmania.python.utils import typing as ty
+
+if TYPE_CHECKING:
+    from tasmania.python.domain.grid import NumericalGrid
+    from tasmania.python.framework.options import (
+        BackendOptions,
+        StorageOptions,
+    )
 
 
 class Domain:
@@ -42,7 +47,7 @@ class Domain:
     """
 
     def __init__(
-        self,
+        self: "Domain",
         domain_x: DataArray,
         nx: int,
         domain_y: DataArray,
@@ -113,9 +118,6 @@ class Domain:
         storage_options : `StorageOptions`, optional
             Storage-related options.
         """
-        bo = backend_options or BackendOptions()
-        so = storage_options or StorageOptions()
-
         # the physical grid
         topo_kwargs = (
             {}
@@ -135,7 +137,7 @@ class Domain:
             z_interface=z_interface,
             topography_type=topography_type,
             topography_kwargs=topo_kwargs,
-            dtype=so.dtype,
+            storage_options=storage_options,
         )
 
         # the object handling the horizontal boundary conditions
@@ -149,64 +151,34 @@ class Domain:
         )
         self._hb = HorizontalBoundary.factory(
             horizontal_boundary_type,
-            nx,
-            ny,
+            self._pgrid,
             nb,
             backend=backend,
-            backend_options=bo,
+            backend_options=backend_options,
             storage_shape=storage_shape,
-            storage_options=so,
+            storage_options=storage_options,
             **hb_kwargs
         )
 
-        # the numerical grid
-        self._cgrid = NumericalGrid(self._pgrid, self._hb)
-
     @property
-    def physical_grid(self) -> PhysicalGrid:
-        """ The :class:`~tasmania.PhysicalGrid`. """
-        return self._pgrid
-
-    @property
-    def numerical_grid(self) -> NumericalGrid:
-        """ The :class:`~tasmania.NumericalGrid`. """
-        return self._cgrid
-
-    @property
-    def horizontal_boundary(self) -> HorizontalBoundary:
+    def horizontal_boundary(self: "Domain") -> HorizontalBoundary:
         """
-        Instance of :class:`~tasmania.HorizontalBoundary` handling the boundary
-        conditions.
-
-        This object is enriched with the following new methods:
-
-        * ``dmn_enforce_field``,
-        * ``dmn_enforce_raw``,
-        * ``dmn_enforce``,
-        * ``dmn_set_outermost_layers_x``, and
-        * ``dmn_set_outermost_layers_y``.
+        Instance of :class:`~tasmania.HorizontalBoundary` handling the
+        boundary conditions.
         """
-        hb = self._hb
-
-        hb.dmn_enforce_field = functools.partial(
-            hb.enforce_field, grid=self.numerical_grid
-        )
-        hb.dmn_enforce_raw = functools.partial(
-            hb.enforce_raw, grid=self.numerical_grid
-        )
-        hb.dmn_enforce = functools.partial(
-            hb.enforce, grid=self.numerical_grid
-        )
-        hb.dmn_set_outermost_layers_x = functools.partial(
-            hb.set_outermost_layers_x, grid=self.numerical_grid
-        )
-        hb.dmn_set_outermost_layers_y = functools.partial(
-            hb.set_outermost_layers_y, grid=self.numerical_grid
-        )
-
         return self._hb
 
-    def update_topography(self, time: typing.datetime_t) -> None:
+    @property
+    def numerical_grid(self: "Domain") -> "NumericalGrid":
+        """The :class:`~tasmania.NumericalGrid`."""
+        return self._hb.numerical_grid
+
+    @property
+    def physical_grid(self: "Domain") -> PhysicalGrid:
+        """The :class:`~tasmania.PhysicalGrid`."""
+        return self._pgrid
+
+    def update_topography(self: "Domain", time: ty.datetime_t) -> None:
         """Update the (time-dependent) :class:`~tasmania.Topography`.
 
         Parameters
@@ -215,4 +187,4 @@ class Domain:
             The elapsed simulation time.
         """
         self._pgrid.update_topography(time)
-        self._cgrid.update_topography(time)
+        self._hb.numerical_grid.update_topography(time)

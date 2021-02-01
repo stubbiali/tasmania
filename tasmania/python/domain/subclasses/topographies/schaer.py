@@ -29,7 +29,7 @@ from tasmania.python.framework.register import register
 
 @register(name="schaer")
 class Schaer(PhysicalTopography):
-    """ A modified Gaussian mountain proposed by Schaer and Durran (1997).
+    """A modified Gaussian mountain proposed by Schaer and Durran (1997).
 
     Let :math:`h_s = h_s(x,y)` be the topography. Then
 

@@ -29,16 +29,18 @@ except (ImportError, ModuleNotFoundError):
 
 from tasmania.python.domain.horizontal_boundary import HorizontalBoundary
 from tasmania.python.domain.subclasses.horizontal_boundaries.utils import (
+    change_dims,
     repeat_axis,
-    shrink_axis,
 )
+from tasmania.python.framework.generic_functions import to_numpy
 from tasmania.python.framework.register import register
 
 
 class Identity(HorizontalBoundary):
     """*Identity* boundary conditions."""
 
-    def __init__(self, nx, ny, nb, backend, storage_options):
+    def __init__(self, grid, nb, backend, storage_options):
+        nx, ny = grid.nx, grid.ny
         assert nx > 1, (
             "Number of grid points along first dimension should be larger "
             "than 1."
@@ -51,7 +53,7 @@ class Identity(HorizontalBoundary):
         assert nb <= ny / 2, "Number of boundary layers cannot exceed ny/2."
 
         super().__init__(
-            nx, ny, nb, backend=backend, storage_options=storage_options
+            grid, nb, backend=backend, storage_options=storage_options
         )
 
     @property
@@ -62,36 +64,36 @@ class Identity(HorizontalBoundary):
     def nj(self):
         return self.ny
 
-    def get_numerical_xaxis(self, paxis, dims=None):
-        return paxis
+    def get_numerical_xaxis(self, dims=None):
+        return change_dims(self.physical_grid.x, dims)
 
-    def get_numerical_yaxis(self, paxis, dims=None):
-        return paxis
+    def get_numerical_xaxis_staggered(self, dims=None):
+        return change_dims(self.physical_grid.x_at_u_locations, dims)
+
+    def get_numerical_yaxis(self, dims=None):
+        return change_dims(self.physical_grid.y, dims)
+
+    def get_numerical_yaxis_staggered(self, dims=None):
+        return change_dims(self.physical_grid.y_at_v_locations, dims)
 
     def get_numerical_field(self, field, field_name=None):
-        return np.asarray(field)
-
-    def get_physical_xaxis(self, caxis, dims=None):
-        return caxis
-
-    def get_physical_yaxis(self, caxis, dims=None):
-        return caxis
+        return field
 
     def get_physical_field(self, field, field_name=None):
-        return np.asarray(field)
+        return field
 
     def enforce_field(
-        self, field, field_name=None, field_units=None, time=None, grid=None
+        self, field, field_name=None, field_units=None, time=None
     ):
         pass
 
     def set_outermost_layers_x(
-        self, field, field_name=None, field_units=None, time=None, grid=None
+        self, field, field_name=None, field_units=None, time=None
     ):
         pass
 
     def set_outermost_layers_y(
-        self, field, field_name=None, field_units=None, time=None, grid=None
+        self, field, field_name=None, field_units=None, time=None
     ):
         pass
 
@@ -99,7 +101,8 @@ class Identity(HorizontalBoundary):
 class Identity1DX(HorizontalBoundary):
     """*Identity* boundary conditions for a physical grid with ``ny=1``."""
 
-    def __init__(self, nx, ny, nb, backend, storage_options):
+    def __init__(self, grid, nb, backend, storage_options):
+        nx, ny = grid.nx, grid.ny
         assert nx > 1, (
             "Number of grid points along first dimension should be larger "
             "than 1."
@@ -110,7 +113,7 @@ class Identity1DX(HorizontalBoundary):
         assert nb <= nx / 2, "Number of boundary layers cannot exceed nx/2."
 
         super().__init__(
-            nx, ny, nb, backend=backend, storage_options=storage_options
+            grid, nb, backend=backend, storage_options=storage_options
         )
 
     @property
@@ -121,40 +124,41 @@ class Identity1DX(HorizontalBoundary):
     def nj(self):
         return 2 * self.nb + 1
 
-    def get_numerical_xaxis(self, paxis, dims=None):
-        return paxis
+    def get_numerical_xaxis(self, dims=None):
+        return change_dims(self.physical_grid.x, dims)
 
-    def get_numerical_yaxis(self, paxis, dims=None):
-        return repeat_axis(paxis, self.nb, dims)
+    def get_numerical_xaxis_staggered(self, dims=None):
+        return change_dims(self.physical_grid.x_at_u_locations, dims)
+
+    def get_numerical_yaxis(self, dims=None):
+        return repeat_axis(self.physical_grid.y, self.nb, dims)
+
+    def get_numerical_yaxis_staggered(self, dims=None):
+        return repeat_axis(self.physical_grid.y_at_v_locations, self.nb, dims)
 
     def get_numerical_field(self, field, field_name=None):
         try:
             li, lj, lk = field.shape
-            cfield = np.zeros(
-                (li, lj + 2 * self.nb, lk), dtype=self.storage_options.dtype
-            )
+            trg = self.zeros(shape=(li, lj + 2 * self.nb, lk))
+            src = field
         except ValueError:
+            # resort to numpy for 2d arrays
             li, lj = field.shape
-            cfield = np.zeros(
+            trg = np.zeros(
                 (li, lj + 2 * self.nb), dtype=self.storage_options.dtype
             )
+            src = to_numpy(field)
 
-        cfield[:, : self.nb + 1] = field[:, :1]
-        cfield[:, self.nb + 1 :] = field[:, -1:]
+        trg[:, : self.nb + 1] = src[:, :1]
+        trg[:, self.nb + 1 :] = src[:, -1:]
 
-        return cfield
-
-    def get_physical_xaxis(self, caxis, dims=None):
-        return caxis
-
-    def get_physical_yaxis(self, caxis, dims=None):
-        return shrink_axis(caxis, self.nb, dims)
+        return trg
 
     def get_physical_field(self, field, field_name=None):
-        return np.asarray(field[:, self.nb : -self.nb])
+        return field[:, self.nb : -self.nb]
 
     def enforce_field(
-        self, field, field_name=None, field_units=None, time=None, grid=None
+        self, field, field_name=None, field_units=None, time=None
     ):
         ny, nb = self.ny, self.nb
         field_name = field_name or ""
@@ -170,12 +174,12 @@ class Identity1DX(HorizontalBoundary):
         )
 
     def set_outermost_layers_x(
-        self, field, field_name=None, field_units=None, time=None, grid=None
+        self, field, field_name=None, field_units=None, time=None
     ):
         pass
 
     def set_outermost_layers_y(
-        self, field, field_name=None, field_units=None, time=None, grid=None
+        self, field, field_name=None, field_units=None, time=None
     ):
         pass
 
@@ -183,7 +187,8 @@ class Identity1DX(HorizontalBoundary):
 class Identity1DY(HorizontalBoundary):
     """*Identity* boundary conditions for a physical grid with ``nx=1``."""
 
-    def __init__(self, nx, ny, nb, backend, storage_options):
+    def __init__(self, grid, nb, backend, storage_options):
+        nx, ny = grid.nx, grid.ny
         assert (
             nx == 1
         ), "Number of grid points along first dimension must be 1."
@@ -194,7 +199,7 @@ class Identity1DY(HorizontalBoundary):
         assert nb <= ny / 2, "Number of boundary layers cannot exceed ny/2."
 
         super().__init__(
-            nx, ny, nb, backend=backend, storage_options=storage_options
+            grid, nb, backend=backend, storage_options=storage_options
         )
 
     @property
@@ -205,40 +210,41 @@ class Identity1DY(HorizontalBoundary):
     def nj(self):
         return self.ny
 
-    def get_numerical_xaxis(self, paxis, dims=None):
-        return repeat_axis(paxis, self.nb, dims)
+    def get_numerical_xaxis(self, dims=None):
+        return repeat_axis(self.physical_grid.x, self.nb, dims)
 
-    def get_numerical_yaxis(self, paxis, dims=None):
-        return paxis
+    def get_numerical_xaxis_staggered(self, dims=None):
+        return repeat_axis(self.physical_grid.x_at_u_locations, self.nb, dims)
+
+    def get_numerical_yaxis(self, dims=None):
+        return change_dims(self.physical_grid.y, dims)
+
+    def get_numerical_yaxis_staggered(self, dims=None):
+        return change_dims(self.physical_grid.y_at_v_locations, dims)
 
     def get_numerical_field(self, field, field_name=None):
         try:
             li, lj, lk = field.shape
-            cfield = np.zeros(
-                (li + 2 * self.nb, lj, lk), dtype=self.storage_options.dtype
-            )
+            trg = self.zeros(shape=(li + 2 * self.nb, lj, lk))
+            src = field
         except ValueError:
+            # resort to numpy for 2d arrays
             li, lj = field.shape
-            cfield = np.zeros(
+            trg = np.zeros(
                 (li + 2 * self.nb, lj), dtype=self.storage_options.dtype
             )
+            src = to_numpy(field)
 
-        cfield[: self.nb + 1, :] = field[:1, :]
-        cfield[self.nb + 1 :, :] = field[-1:, :]
+        trg[: self.nb + 1, :] = src[:1, :]
+        trg[self.nb + 1 :, :] = src[-1:, :]
 
-        return cfield
-
-    def get_physical_xaxis(self, caxis, dims=None):
-        return shrink_axis(caxis, self.nb, dims)
-
-    def get_physical_yaxis(self, caxis, dims=None):
-        return caxis
+        return trg
 
     def get_physical_field(self, field, field_name=None):
         return field[self.nb : -self.nb, :]
 
     def enforce_field(
-        self, field, field_name=None, field_units=None, time=None, grid=None
+        self, field, field_name=None, field_units=None, time=None
     ):
         nx, nb = self.nx, self.nb
         field_name = field_name or ""
@@ -254,30 +260,29 @@ class Identity1DY(HorizontalBoundary):
         )
 
     def set_outermost_layers_x(
-        self, field, field_name=None, field_units=None, time=None, grid=None
+        self, field, field_name=None, field_units=None, time=None
     ):
         pass
 
     def set_outermost_layers_y(
-        self, field, field_name=None, field_units=None, time=None, grid=None
+        self, field, field_name=None, field_units=None, time=None
     ):
         pass
 
 
 @register(name="identity", registry_class=HorizontalBoundary)
 def dispatch(
-    nx,
-    ny,
+    grid,
     nb,
     backend="numpy",
     backend_options=None,
     storage_shape=None,
     storage_options=None,
 ):
-    """Dispatch based on the grid size."""
-    if nx == 1:
-        return Identity1DY(1, ny, nb, backend, storage_options)
-    elif ny == 1:
-        return Identity1DX(nx, 1, nb, backend, storage_options)
+    """Instantiate appropriate class based on the grid size."""
+    if grid.nx == 1:
+        return Identity1DY(grid, nb, backend, storage_options)
+    elif grid.ny == 1:
+        return Identity1DX(grid, nb, backend, storage_options)
     else:
-        return Identity(nx, ny, nb, backend, storage_options)
+        return Identity(grid, nb, backend, storage_options)

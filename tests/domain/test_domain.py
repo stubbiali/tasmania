@@ -29,7 +29,9 @@ from hypothesis import (
 import pytest
 
 from tasmania.python.domain.domain import Domain
+from tasmania.python.domain.grid import PhysicalGrid
 from tasmania.python.domain.horizontal_boundary import HorizontalBoundary
+from tasmania.python.framework.options import BackendOptions, StorageOptions
 from tasmania.python.utils.storage import (
     deepcopy_array_dict,
     deepcopy_dataarray_dict,
@@ -65,6 +67,9 @@ def test(data, backend, dtype, subtests):
     # ========================================
     # random data generation
     # ========================================
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype)
+
     nx = data.draw(st_length(axis_name="x"), label="nx")
     ny = data.draw(st_length(axis_name="y"), label="ny")
     nz = data.draw(st_length(axis_name="z"), label="nz")
@@ -89,12 +94,31 @@ def test(data, backend, dtype, subtests):
     # ========================================
     # test bed
     # ========================================
-    x, xu, dx = get_xaxis(domain_x, nx, dtype)
-    y, yv, dy = get_yaxis(domain_y, ny, dtype)
-    z, zhl, dz = get_zaxis(domain_z, nz, dtype)
+    x, xu, dx = get_xaxis(domain_x, nx, storage_options=so)
+    y, yv, dy = get_yaxis(domain_y, ny, storage_options=so)
+    z, zhl, dz = get_zaxis(domain_z, nz, storage_options=so)
+
+    pgrid = PhysicalGrid(
+        domain_x,
+        nx,
+        domain_y,
+        ny,
+        domain_z,
+        nz,
+        zi,
+        topo_type,
+        topo_kwargs,
+        storage_options=so,
+    )
 
     hb = HorizontalBoundary.factory(
-        hb_type, nx, ny, nb, backend=backend, dtype=dtype, **hb_kwargs
+        hb_type,
+        pgrid,
+        nb,
+        backend=backend,
+        backend_options=bo,
+        storage_options=so,
+        **hb_kwargs
     )
 
     domain = Domain(
@@ -111,7 +135,8 @@ def test(data, backend, dtype, subtests):
         topography_type=topo_type,
         topography_kwargs=topo_kwargs,
         backend=backend,
-        dtype=dtype,
+        backend_options=bo,
+        storage_options=so,
     )
 
     # physical_grid
@@ -129,18 +154,18 @@ def test(data, backend, dtype, subtests):
     # numerical_grid
     grid = domain.numerical_grid
     compare_dataarrays(
-        hb.get_numerical_xaxis(x, dims="c_" + x.dims[0]), grid.grid_xy.x
+        hb.get_numerical_xaxis(dims="c_" + x.dims[0]), grid.grid_xy.x
     )
     compare_dataarrays(
-        hb.get_numerical_xaxis(xu, dims="c_" + xu.dims[0]),
+        hb.get_numerical_xaxis_staggered(dims="c_" + xu.dims[0]),
         grid.grid_xy.x_at_u_locations,
     )
     compare_dataarrays(dx, grid.grid_xy.dx)
     compare_dataarrays(
-        hb.get_numerical_yaxis(y, dims="c_" + y.dims[0]), grid.grid_xy.y
+        hb.get_numerical_yaxis(dims="c_" + y.dims[0]), grid.grid_xy.y
     )
     compare_dataarrays(
-        hb.get_numerical_yaxis(yv, dims="c_" + yv.dims[0]),
+        hb.get_numerical_yaxis_staggered(dims="c_" + yv.dims[0]),
         grid.grid_xy.y_at_v_locations,
     )
     compare_dataarrays(dy, grid.grid_xy.dy)
@@ -148,18 +173,10 @@ def test(data, backend, dtype, subtests):
     compare_dataarrays(zhl, grid.z_on_interface_levels)
     compare_dataarrays(dz, grid.dz)
 
-    # horizontal_boundary
-    dmn_hb = domain.horizontal_boundary
-    assert hasattr(dmn_hb, "dmn_enforce_field")
-    assert hasattr(dmn_hb, "dmn_enforce_raw")
-    assert hasattr(dmn_hb, "dmn_enforce")
-    assert hasattr(dmn_hb, "dmn_set_outermost_layers_x")
-    assert hasattr(dmn_hb, "dmn_set_outermost_layers_y")
-
-    state = data.draw(st_state(grid, backend=backend))
+    state = data.draw(st_state(grid, backend=backend, storage_options=so))
     state_dc = deepcopy_dataarray_dict(state)
-
     hb.reference_state = state
+    dmn_hb = domain.horizontal_boundary
     dmn_hb.reference_state = state
 
     # enforce_field
@@ -169,7 +186,6 @@ def test(data, backend, dtype, subtests):
         field_name=key,
         field_units=state[key].attrs["units"],
         time=state["time"],
-        grid=grid,
     )
     dmn_hb.enforce_field(
         state_dc[key].values,
@@ -190,7 +206,7 @@ def test(data, backend, dtype, subtests):
     for key in state:
         if key != "time" and data.draw(hyp_st.booleans()):
             field_properties[key] = {"units": state[key].attrs["units"]}
-    hb.enforce_raw(raw_state, field_properties=field_properties, grid=grid)
+    hb.enforce_raw(raw_state, field_properties=field_properties)
     dmn_hb.enforce_raw(raw_state_dc, field_properties=field_properties)
 
     for name in raw_state:
@@ -200,7 +216,7 @@ def test(data, backend, dtype, subtests):
 
     # enforce
     field_names = tuple(key for key in field_properties)
-    hb.enforce(state, field_names=field_names, grid=grid)
+    hb.enforce(state, field_names=field_names)
     dmn_hb.enforce(state_dc, field_names=field_names)
 
     for name in state:

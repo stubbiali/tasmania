@@ -21,7 +21,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 import numpy as np
-from sympl import DataArray
 
 try:
     import cupy as cp
@@ -30,16 +29,18 @@ except (ImportError, ModuleNotFoundError):
 
 from tasmania.python.domain.horizontal_boundary import HorizontalBoundary
 from tasmania.python.domain.subclasses.horizontal_boundaries.utils import (
+    extend_axis,
     repeat_axis,
-    shrink_axis,
 )
+from tasmania.python.framework.generic_functions import to_numpy
 from tasmania.python.framework.register import register
 
 
 class Periodic(HorizontalBoundary):
     """Periodic boundary conditions."""
 
-    def __init__(self, nx, ny, nb, backend, storage_options):
+    def __init__(self, grid, nb, backend, storage_options):
+        nx, ny = grid.nx, grid.ny
         assert nx > 1, (
             "Number of grid points along first dimension should be larger "
             "than 1."
@@ -52,7 +53,7 @@ class Periodic(HorizontalBoundary):
         assert nb <= ny / 2, "Number of boundary layers cannot exceed ny/2."
 
         super().__init__(
-            nx, ny, nb, backend=backend, storage_options=storage_options
+            grid, nb, backend=backend, storage_options=storage_options
         )
 
     @property
@@ -63,43 +64,20 @@ class Periodic(HorizontalBoundary):
     def nj(self):
         return self.ny + 2 * self.nb
 
-    def get_numerical_xaxis(self, paxis, dims=None):
-        nb = self.nb
-        pvalues = paxis.values
-        cdims = dims if dims is not None else paxis.dims[0]
-        mi, dtype = pvalues.shape[0], pvalues.dtype
+    def get_numerical_xaxis(self, dims=None):
+        return extend_axis(self.physical_grid.x, self.nb, dims)
 
-        cvalues = np.zeros(mi + 2 * nb, dtype=dtype)
-        cvalues[nb:-nb] = pvalues[...]
-        cvalues[:nb] = np.array(
-            [
-                pvalues[0] - i * (pvalues[1] - pvalues[0])
-                for i in range(nb, 0, -1)
-            ],
-            dtype=dtype,
-        )
-        cvalues[-nb:] = np.array(
-            [
-                pvalues[-1] + (i + 1) * (pvalues[1] - pvalues[0])
-                for i in range(nb)
-            ],
-            dtype=dtype,
-        )
+    def get_numerical_xaxis_staggered(self, dims=None):
+        return extend_axis(self.physical_grid.x_at_u_locations, self.nb, dims)
 
-        return DataArray(
-            cvalues,
-            coords=[cvalues],
-            dims=cdims,
-            name=paxis.name,
-            attrs={"units": paxis.attrs["units"]},
-        )
+    def get_numerical_yaxis(self, dims=None):
+        return extend_axis(self.physical_grid.y, self.nb, dims)
 
-    def get_numerical_yaxis(self, paxis, dims=None):
-        return self.get_numerical_xaxis(paxis, dims)
+    def get_numerical_yaxis_staggered(self, dims=None):
+        return extend_axis(self.physical_grid.y_at_v_locations, self.nb, dims)
 
     def get_numerical_field(self, field, field_name=None):
         nx, ny, nb = self.nx, self.ny, self.nb
-        dtype = field.dtype
         field_name = field_name or ""
         mx = (
             nx + 1
@@ -117,38 +95,37 @@ class Periodic(HorizontalBoundary):
 
         try:
             li, lj, lk = field.shape
-            cfield = np.zeros((li + 2 * nb, lj + 2 * nb, lk), dtype=dtype)
+            trg = self.zeros(shape=(li + 2 * nb, lj + 2 * nb, lk))
+            src = field
         except ValueError:
+            # resort to numpy for 2d arrays
             li, lj = field.shape
-            cfield = np.zeros((li + 2 * nb, lj + 2 * nb), dtype=dtype)
+            trg = np.zeros(
+                (li + 2 * nb, lj + 2 * nb), dtype=self.storage_options.dtype
+            )
+            src = to_numpy(field)
 
-        cfield[nb : mx + nb, nb : my + nb] = np.asarray(field[:mx, :my])
-        cfield[:nb, nb : my + nb] = cfield[nx - 1 : nx - 1 + nb, nb : my + nb]
-        cfield[mx + nb : mx + 2 * nb, nb : my + nb] = (
-            cfield[nb + 1 : 2 * nb + 1, nb : my + nb]
+        trg[nb : mx + nb, nb : my + nb] = src[:mx, :my]
+        trg[:nb, nb : my + nb] = trg[nx - 1 : nx - 1 + nb, nb : my + nb]
+        trg[mx + nb : mx + 2 * nb, nb : my + nb] = (
+            trg[nb + 1 : 2 * nb + 1, nb : my + nb]
             if mx == nx
-            else cfield[nb + 2 : 2 * nb + 2, nb : my + nb]
+            else trg[nb + 2 : 2 * nb + 2, nb : my + nb]
         )
-        cfield[:mi, :nb] = cfield[:mi, ny - 1 : ny - 1 + nb]
-        cfield[:mi, my + nb : my + 2 * nb] = (
-            cfield[:mi, nb + 1 : 2 * nb + 1]
+        trg[:mi, :nb] = trg[:mi, ny - 1 : ny - 1 + nb]
+        trg[:mi, my + nb : my + 2 * nb] = (
+            trg[:mi, nb + 1 : 2 * nb + 1]
             if my == ny
-            else cfield[:mi, nb + 2 : 2 * nb + 2]
+            else trg[:mi, nb + 2 : 2 * nb + 2]
         )
 
-        return cfield
-
-    def get_physical_xaxis(self, caxis, dims=None):
-        return shrink_axis(caxis, self.nb, dims)
-
-    def get_physical_yaxis(self, caxis, dims=None):
-        return shrink_axis(caxis, self.nb, dims)
+        return trg
 
     def get_physical_field(self, field, field_name=None):
         return field[self.nb : -self.nb, self.nb : -self.nb]
 
     def enforce_field(
-        self, field, field_name=None, field_units=None, time=None, grid=None
+        self, field, field_name=None, field_units=None, time=None
     ):
         nx, ny, nb = self.nx, self.ny, self.nb
         field_name = field_name or ""
@@ -180,13 +157,13 @@ class Periodic(HorizontalBoundary):
         )
 
     def set_outermost_layers_x(
-        self, field, field_name=None, field_units=None, time=None, grid=None
+        self, field, field_name=None, field_units=None, time=None
     ):
         field[0, :] = field[-2, :]
         field[-1, :] = field[1, :]
 
     def set_outermost_layers_y(
-        self, field, field_name=None, field_units=None, time=None, grid=None
+        self, field, field_name=None, field_units=None, time=None
     ):
         field[:, 0] = field[:, -2]
         field[:, -1] = field[:, 1]
@@ -195,7 +172,8 @@ class Periodic(HorizontalBoundary):
 class Periodic1DX(HorizontalBoundary):
     """Periodic boundary conditions for a physical grid with ``ny=1``."""
 
-    def __init__(self, nx, ny, nb, backend, storage_options):
+    def __init__(self, grid, nb, backend, storage_options):
+        nx, ny = grid.nx, grid.ny
         assert nx > 1, (
             "Number of grid points along first dimension should be larger "
             "than 1."
@@ -206,7 +184,7 @@ class Periodic1DX(HorizontalBoundary):
         assert nb <= nx / 2, "Number of boundary layers cannot exceed nx/2."
 
         super().__init__(
-            nx, ny, nb, backend=backend, storage_options=storage_options
+            grid, nb, backend=backend, storage_options=storage_options
         )
 
     @property
@@ -217,43 +195,20 @@ class Periodic1DX(HorizontalBoundary):
     def nj(self):
         return 2 * self.nb + 1
 
-    def get_numerical_xaxis(self, paxis, dims=None):
-        nb = self.nb
-        pvalues = paxis.values
-        cdims = dims if dims is not None else paxis.dims[0]
-        mi, dtype = pvalues.shape[0], pvalues.dtype
+    def get_numerical_xaxis(self, dims=None):
+        return extend_axis(self.physical_grid.x, self.nb, dims)
 
-        cvalues = np.zeros(mi + 2 * nb, dtype=dtype)
-        cvalues[nb:-nb] = pvalues[...]
-        cvalues[:nb] = np.array(
-            [
-                pvalues[0] - i * (pvalues[1] - pvalues[0])
-                for i in range(nb, 0, -1)
-            ],
-            dtype=dtype,
-        )
-        cvalues[-nb:] = np.array(
-            [
-                pvalues[-1] + (i + 1) * (pvalues[1] - pvalues[0])
-                for i in range(nb)
-            ],
-            dtype=dtype,
-        )
+    def get_numerical_xaxis_staggered(self, dims=None):
+        return extend_axis(self.physical_grid.x_at_u_locations, self.nb, dims)
 
-        return DataArray(
-            cvalues,
-            coords=[cvalues],
-            dims=cdims,
-            name=paxis.name,
-            attrs={"units": paxis.attrs["units"]},
-        )
+    def get_numerical_yaxis(self, dims=None):
+        return repeat_axis(self.physical_grid.y, self.nb, dims)
 
-    def get_numerical_yaxis(self, paxis, dims=None):
-        return repeat_axis(paxis, self.nb, dims)
+    def get_numerical_yaxis_staggered(self, dims=None):
+        return repeat_axis(self.physical_grid.y_at_v_locations, self.nb, dims)
 
     def get_numerical_field(self, field, field_name=None):
         nx, nb = self.nx, self.nb
-        dtype = field.dtype
         field_name = field_name or ""
         mx = (
             nx + 1
@@ -271,38 +226,35 @@ class Periodic1DX(HorizontalBoundary):
 
         try:
             li, lj, lk = field.shape
-            cfield = np.zeros((li + 2 * nb, lj + 2 * nb, lk), dtype=dtype)
+            trg = self.zeros(shape=(li + 2 * nb, lj + 2 * nb, lk))
+            src = field
         except ValueError:
+            # resort to numpy for 2d arrays
             li, lj = field.shape
-            cfield = np.zeros((li + 2 * nb, lj + 2 * nb), dtype=dtype)
+            trg = np.zeros(
+                (li + 2 * nb, lj + 2 * nb), dtype=self.storage_options.dtype
+            )
+            src = to_numpy(field)
 
-        cfield[nb : mx + nb, nb : my + nb] = np.asarray(field[:mx, :my])
-        cfield[:nb, nb : my + nb] = cfield[nx - 1 : nx - 1 + nb, nb : my + nb]
-        cfield[mx + nb : mx + 2 * nb, nb : my + nb] = (
-            cfield[nb + 1 : 2 * nb + 1, nb : my + nb]
+        trg[nb : mx + nb, nb : my + nb] = src[:mx, :my]
+        trg[:nb, nb : my + nb] = trg[nx - 1 : nx - 1 + nb, nb : my + nb]
+        trg[mx + nb : mx + 2 * nb, nb : my + nb] = (
+            trg[nb + 1 : 2 * nb + 1, nb : my + nb]
             if mx == nx
-            else cfield[nb + 2 : 2 * nb + 2, nb : my + nb]
+            else trg[nb + 2 : 2 * nb + 2, nb : my + nb]
         )
-        cfield[:mi, :nb] = cfield[:mi, nb : nb + 1]
-        cfield[:mi, my + nb : my + 2 * nb] = (
-            cfield[:mi, nb : nb + 1]
-            if my == 1
-            else cfield[:mi, nb + 1 : nb + 2]
+        trg[:mi, :nb] = trg[:mi, nb : nb + 1]
+        trg[:mi, my + nb : my + 2 * nb] = (
+            trg[:mi, nb : nb + 1] if my == 1 else trg[:mi, nb + 1 : nb + 2]
         )
 
-        return cfield
-
-    def get_physical_xaxis(self, caxis, dims=None):
-        return shrink_axis(caxis, self.nb, dims)
-
-    def get_physical_yaxis(self, caxis, dims=None):
-        return shrink_axis(caxis, self.nb, dims)
+        return trg
 
     def get_physical_field(self, field, field_name=None):
         return field[self.nb : -self.nb, self.nb : -self.nb]
 
     def enforce_field(
-        self, field, field_name=None, field_units=None, time=None, grid=None
+        self, field, field_name=None, field_units=None, time=None
     ):
         nx, ny, nb = self.nx, self.ny, self.nb
         field_name = field_name or ""
@@ -332,13 +284,13 @@ class Periodic1DX(HorizontalBoundary):
         )
 
     def set_outermost_layers_x(
-        self, field, field_name=None, field_units=None, time=None, grid=None
+        self, field, field_name=None, field_units=None, time=None
     ):
         field[0, :] = field[-2, :]
         field[-1, :] = field[1, :]
 
     def set_outermost_layers_y(
-        self, field, field_name=None, field_units=None, time=None, grid=None
+        self, field, field_name=None, field_units=None, time=None
     ):
         field[:, 0] = field[:, -2]
         field[:, -1] = field[:, 1]
@@ -347,7 +299,8 @@ class Periodic1DX(HorizontalBoundary):
 class Periodic1DY(HorizontalBoundary):
     """Periodic boundary conditions for a physical grid with ``ny=1``."""
 
-    def __init__(self, nx, ny, nb, backend, storage_options):
+    def __init__(self, grid, nb, backend, storage_options):
+        nx, ny = grid.nx, grid.ny
         assert (
             nx == 1
         ), "Number of grid points along first dimension must be 1."
@@ -358,7 +311,7 @@ class Periodic1DY(HorizontalBoundary):
         assert nb <= ny / 2, "Number of boundary layers cannot exceed ny/2."
 
         super().__init__(
-            nx, ny, nb, backend=backend, storage_options=storage_options
+            grid, nb, backend=backend, storage_options=storage_options
         )
 
     @property
@@ -369,43 +322,20 @@ class Periodic1DY(HorizontalBoundary):
     def nj(self):
         return self.ny + 2 * self.nb
 
-    def get_numerical_xaxis(self, paxis, dims=None):
-        return repeat_axis(paxis, self.nb, dims)
+    def get_numerical_xaxis(self, dims=None):
+        return repeat_axis(self.physical_grid.x, self.nb, dims)
 
-    def get_numerical_yaxis(self, paxis, dims=None):
-        nb = self.nb
-        pvalues = paxis.values
-        cdims = dims if dims is not None else paxis.dims[0]
-        mi, dtype = pvalues.shape[0], pvalues.dtype
+    def get_numerical_xaxis_staggered(self, dims=None):
+        return repeat_axis(self.physical_grid.x_at_u_locations, self.nb, dims)
 
-        cvalues = np.zeros(mi + 2 * nb, dtype=dtype)
-        cvalues[nb:-nb] = pvalues[...]
-        cvalues[:nb] = np.array(
-            [
-                pvalues[0] - i * (pvalues[1] - pvalues[0])
-                for i in range(nb, 0, -1)
-            ],
-            dtype=dtype,
-        )
-        cvalues[-nb:] = np.array(
-            [
-                pvalues[-1] + (i + 1) * (pvalues[1] - pvalues[0])
-                for i in range(nb)
-            ],
-            dtype=dtype,
-        )
+    def get_numerical_yaxis(self, dims=None):
+        return extend_axis(self.physical_grid.y, self.nb, dims)
 
-        return DataArray(
-            cvalues,
-            coords=[cvalues],
-            dims=cdims,
-            name=paxis.name,
-            attrs={"units": paxis.attrs["units"]},
-        )
+    def get_numerical_yaxis_staggered(self, dims=None):
+        return extend_axis(self.physical_grid.y_at_v_locations, self.nb, dims)
 
     def get_numerical_field(self, field, field_name=None):
         ny, nb = self.ny, self.nb
-        dtype = field.dtype
         field_name = field_name or ""
         mx = (
             2
@@ -423,38 +353,35 @@ class Periodic1DY(HorizontalBoundary):
 
         try:
             li, lj, lk = field.shape
-            cfield = np.zeros((li + 2 * nb, lj + 2 * nb, lk), dtype=dtype)
+            trg = self.zeros(shape=(li + 2 * nb, lj + 2 * nb, lk))
+            src = field
         except ValueError:
+            # resort to numpy for 2d arrays
             li, lj = field.shape
-            cfield = np.zeros((li + 2 * nb, lj + 2 * nb), dtype=dtype)
+            trg = np.zeros(
+                (li + 2 * nb, lj + 2 * nb), dtype=self.storage_options.dtype
+            )
+            src = to_numpy(field)
 
-        cfield[nb : mx + nb, nb : my + nb] = np.asarray(field[:mx, :my])
-        cfield[nb : mx + nb, :nb] = cfield[nb : mx + nb, ny - 1 : ny - 1 + nb]
-        cfield[nb : mx + nb, my + nb : my + 2 * nb] = (
-            cfield[nb : mx + nb, nb + 1 : 2 * nb + 1]
+        trg[nb : mx + nb, nb : my + nb] = field[:mx, :my]
+        trg[nb : mx + nb, :nb] = trg[nb : mx + nb, ny - 1 : ny - 1 + nb]
+        trg[nb : mx + nb, my + nb : my + 2 * nb] = (
+            trg[nb : mx + nb, nb + 1 : 2 * nb + 1]
             if my == ny
-            else cfield[nb : mx + nb, nb + 2 : 2 * nb + 2]
+            else trg[nb : mx + nb, nb + 2 : 2 * nb + 2]
         )
-        cfield[:nb, :mj] = cfield[nb : nb + 1, :mj]
-        cfield[mx + nb : mx + 2 * nb, :mj] = (
-            cfield[nb : nb + 1, :mj]
-            if mx == 1
-            else cfield[nb + 1 : nb + 2, :mj]
+        trg[:nb, :mj] = trg[nb : nb + 1, :mj]
+        trg[mx + nb : mx + 2 * nb, :mj] = (
+            trg[nb : nb + 1, :mj] if mx == 1 else trg[nb + 1 : nb + 2, :mj]
         )
 
-        return cfield
-
-    def get_physical_xaxis(self, caxis, dims=None):
-        return shrink_axis(caxis, self.nb, dims)
-
-    def get_physical_yaxis(self, caxis, dims=None):
-        return shrink_axis(caxis, self.nb, dims)
+        return trg
 
     def get_physical_field(self, field, field_name=None):
         return field[self.nb : -self.nb, self.nb : -self.nb]
 
     def enforce_field(
-        self, field, field_name=None, field_units=None, time=None, grid=None
+        self, field, field_name=None, field_units=None, time=None
     ):
         ny, nb = self.ny, self.nb
         field_name = field_name or ""
@@ -484,13 +411,13 @@ class Periodic1DY(HorizontalBoundary):
         )
 
     def set_outermost_layers_x(
-        self, field, field_name=None, field_units=None, time=None, grid=None
+        self, field, field_name=None, field_units=None, time=None
     ):
         field[0, :] = field[-2, :]
         field[-1, :] = field[1, :]
 
     def set_outermost_layers_y(
-        self, field, field_name=None, field_units=None, time=None, grid=None
+        self, field, field_name=None, field_units=None, time=None
     ):
         field[:, 0] = field[:, -2]
         field[:, -1] = field[:, 1]
@@ -498,18 +425,17 @@ class Periodic1DY(HorizontalBoundary):
 
 @register(name="periodic", registry_class=HorizontalBoundary)
 def dispatch(
-    nx,
-    ny,
+    grid,
     nb,
     backend="numpy",
     backend_options=None,
     storage_shape=None,
     storage_options=None,
 ):
-    """Dispatch based on the grid size."""
-    if nx == 1:
-        return Periodic1DY(1, ny, nb, backend, storage_options)
-    elif ny == 1:
-        return Periodic1DX(nx, 1, nb, backend, storage_options)
+    """Instantiate the appropriate class based on the grid size."""
+    if grid.nx == 1:
+        return Periodic1DY(grid, nb, backend, storage_options)
+    elif grid.ny == 1:
+        return Periodic1DX(grid, nb, backend, storage_options)
     else:
-        return Periodic(nx, ny, nb, backend, storage_options)
+        return Periodic(grid, nb, backend, storage_options)

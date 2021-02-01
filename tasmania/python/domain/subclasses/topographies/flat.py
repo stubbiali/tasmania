@@ -28,7 +28,7 @@ from tasmania.python.framework.register import register
 
 @register(name="flat")
 class Flat(PhysicalTopography):
-    """ Flat terrain. """
+    """Flat terrain."""
 
     def compute_steady_profile(self, grid, **kwargs):
         nx, ny = grid.nx, grid.ny

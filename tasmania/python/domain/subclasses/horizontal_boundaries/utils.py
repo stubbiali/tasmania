@@ -24,6 +24,41 @@ import numpy as np
 from sympl import DataArray
 
 
+def change_dims(paxis, dims):
+    ndims = dims if dims is not None else paxis.dims[0]
+    return DataArray(
+        paxis.values,
+        coords=[paxis.values],
+        dims=ndims,
+        attrs={"units": paxis.attrs["units"]},
+    )
+
+
+def extend_axis(paxis, nb, dims):
+    pvalues = paxis.values
+    cdims = dims if dims is not None else paxis.dims[0]
+    mi, dtype = pvalues.shape[0], pvalues.dtype
+
+    cvalues = np.zeros(mi + 2 * nb, dtype=dtype)
+    cvalues[nb:-nb] = pvalues[...]
+    cvalues[:nb] = np.array(
+        [pvalues[0] - i * (pvalues[1] - pvalues[0]) for i in range(nb, 0, -1)],
+        dtype=dtype,
+    )
+    cvalues[-nb:] = np.array(
+        [pvalues[-1] + (i + 1) * (pvalues[1] - pvalues[0]) for i in range(nb)],
+        dtype=dtype,
+    )
+
+    return DataArray(
+        cvalues,
+        coords=[cvalues],
+        dims=cdims,
+        name=paxis.name,
+        attrs={"units": paxis.attrs["units"]},
+    )
+
+
 def repeat_axis(paxis, nb, dims):
     pvalues = paxis.values
     dims = dims if dims is not None else paxis.dims[0]
@@ -53,13 +88,13 @@ def repeat_axis(paxis, nb, dims):
     )
 
 
-def shrink_axis(caxis, nb, dims):
-    cvalues = caxis.values
-    dims = dims if dims is not None else caxis.dims[0]
-    name = caxis.name
-    attrs = caxis.attrs
+def shrink_axis(naxis, nb, dims):
+    nvalues = naxis.values
+    dims = dims if dims is not None else naxis.dims[0]
+    name = naxis.name
+    attrs = naxis.attrs
 
-    pvalues = cvalues[nb:-nb]
+    pvalues = nvalues[nb:-nb]
 
     return DataArray(
         pvalues, coords=[pvalues], dims=dims, name=name, attrs=attrs

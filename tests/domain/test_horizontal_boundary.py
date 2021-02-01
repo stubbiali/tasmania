@@ -54,11 +54,11 @@ from tasmania.python.domain.subclasses.horizontal_boundaries.relaxed import (
     dispatch as dispatch_relaxed,
 )
 from tasmania.python.domain.horizontal_boundary import HorizontalBoundary
+from tasmania.python.framework.options import BackendOptions, StorageOptions
 from tasmania.python.utils.storage import (
     deepcopy_array_dict,
     deepcopy_dataarray_dict,
 )
-from tasmania.python.utils.backend import is_gt
 
 from tests.conf import backend as conf_backend, dtype as conf_dtype
 from tests.strategies import (
@@ -87,37 +87,48 @@ def test_registry():
     assert HorizontalBoundary.registry["relaxed"] == dispatch_relaxed
 
 
-def test_factory():
+@given(data=hyp_st.data())
+def test_factory(data):
+    grid_xy = data.draw(
+        st_physical_grid(xaxis_length=(3, 20), yaxis_length=(3, 20))
+    )
+    grid_x = data.draw(
+        st_physical_grid(xaxis_length=(3, 20), yaxis_length=(1, 1))
+    )
+    grid_y = data.draw(
+        st_physical_grid(xaxis_length=(1, 1), yaxis_length=(3, 20))
+    )
+
     # dirichlet
-    obj = HorizontalBoundary.factory("dirichlet", 10, 20, 3)
+    obj = HorizontalBoundary.factory("dirichlet", grid_xy, 1)
     assert isinstance(obj, Dirichlet)
-    obj = HorizontalBoundary.factory("dirichlet", 10, 1, 3)
+    obj = HorizontalBoundary.factory("dirichlet", grid_x, 1)
     assert isinstance(obj, Dirichlet1DX)
-    obj = HorizontalBoundary.factory("dirichlet", 1, 20, 3)
+    obj = HorizontalBoundary.factory("dirichlet", grid_y, 1)
     assert isinstance(obj, Dirichlet1DY)
 
     # identity
-    obj = HorizontalBoundary.factory("identity", 10, 20, 3)
+    obj = HorizontalBoundary.factory("identity", grid_xy, 1)
     assert isinstance(obj, Identity)
-    obj = HorizontalBoundary.factory("identity", 10, 1, 3)
+    obj = HorizontalBoundary.factory("identity", grid_x, 1)
     assert isinstance(obj, Identity1DX)
-    obj = HorizontalBoundary.factory("identity", 1, 20, 3)
+    obj = HorizontalBoundary.factory("identity", grid_y, 1)
     assert isinstance(obj, Identity1DY)
 
     # periodic
-    obj = HorizontalBoundary.factory("periodic", 10, 20, 3)
+    obj = HorizontalBoundary.factory("periodic", grid_xy, 1)
     assert isinstance(obj, Periodic)
-    obj = HorizontalBoundary.factory("periodic", 10, 1, 3)
+    obj = HorizontalBoundary.factory("periodic", grid_x, 1)
     assert isinstance(obj, Periodic1DX)
-    obj = HorizontalBoundary.factory("periodic", 1, 20, 3)
+    obj = HorizontalBoundary.factory("periodic", grid_y, 1)
     assert isinstance(obj, Periodic1DY)
 
     # relaxed
-    obj = HorizontalBoundary.factory("relaxed", 10, 20, 1, nr=2)
+    obj = HorizontalBoundary.factory("relaxed", grid_xy, 1, nr=1)
     assert isinstance(obj, Relaxed)
-    obj = HorizontalBoundary.factory("relaxed", 10, 1, 1, nr=2)
+    obj = HorizontalBoundary.factory("relaxed", grid_x, 1, nr=1)
     assert isinstance(obj, Relaxed1DX)
-    obj = HorizontalBoundary.factory("relaxed", 1, 20, 1, nr=2)
+    obj = HorizontalBoundary.factory("relaxed", grid_y, 1, nr=1)
     assert isinstance(obj, Relaxed1DY)
 
 
@@ -129,16 +140,19 @@ def test_enforce_raw(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    pgrid = data.draw(st_physical_grid(dtype=dtype), label="grid")
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype)
+
+    pgrid = data.draw(st_physical_grid(storage_options=so), label="grid")
     hb = data.draw(
         st_horizontal_boundary(
-            pgrid.nx, pgrid.ny, nz=pgrid.nz, backend=backend, dtype=dtype,
+            pgrid, backend=backend, backend_options=bo, storage_options=so
         ),
         label="hb",
     )
-    ngrid = NumericalGrid(pgrid, hb)
+    ngrid = NumericalGrid(hb)
 
-    state = data.draw(st_state(ngrid, backend=backend))
+    state = data.draw(st_state(ngrid, backend=backend, storage_options=so))
 
     field_properties = {}
     for key in state:
@@ -154,7 +168,7 @@ def test_enforce_raw(data, backend, dtype):
     raw_state.update({key: state[key].data for key in state if key != "time"})
     raw_state_dc = deepcopy_array_dict(raw_state)
 
-    hb.enforce_raw(raw_state, field_properties, ngrid)
+    hb.enforce_raw(raw_state, field_properties)
 
     for key in state:
         if key != "time":
@@ -164,7 +178,6 @@ def test_enforce_raw(data, backend, dtype):
                     field_name=key,
                     field_units=state[key].attrs["units"],
                     time=state["time"],
-                    grid=ngrid,
                 )
             compare_arrays(raw_state[key], raw_state_dc[key])
 
@@ -177,19 +190,17 @@ def test_enforce(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    if is_gt(backend):
-        gt.storage.prepare_numpy()
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype)
 
-    pgrid = data.draw(st_physical_grid(dtype=dtype), label="grid")
+    pgrid = data.draw(st_physical_grid(storage_options=so), label="grid")
     hb = data.draw(
-        st_horizontal_boundary(
-            pgrid.nx, pgrid.ny, nz=pgrid.nz, backend=backend, dtype=dtype,
-        ),
+        st_horizontal_boundary(pgrid, backend=backend, storage_options=so),
         label="hb",
     )
-    ngrid = NumericalGrid(pgrid, hb)
+    ngrid = NumericalGrid(hb)
 
-    state = data.draw(st_state(ngrid, backend=backend))
+    state = data.draw(st_state(ngrid, backend=backend, storage_options=so))
 
     field_names = []
     for key in state:
@@ -203,7 +214,7 @@ def test_enforce(data, backend, dtype):
 
     state_dc = deepcopy_dataarray_dict(state)
 
-    hb.enforce(state, field_names, ngrid)
+    hb.enforce(state, field_names)
 
     for key in state:
         if key != "time":
@@ -213,7 +224,6 @@ def test_enforce(data, backend, dtype):
                     field_name=key,
                     field_units=state[key].attrs["units"],
                     time=state["time"],
-                    grid=ngrid,
                 )
             compare_dataarrays(state[key], state_dc[key])
 

@@ -22,13 +22,13 @@
 #
 import abc
 from copy import deepcopy
-import numpy as np
 from sympl import DataArray
 from typing import Any, Dict, Optional, Sequence, TYPE_CHECKING
 
-from tasmania.python.utils import typing
+from tasmania.python.domain.grid import Grid, NumericalGrid
 from tasmania.python.framework.register import factorize
 from tasmania.python.framework.stencil import StencilFactory
+from tasmania.python.utils import typing as ty
 from tasmania.python.utils.storage import deepcopy_dataarray
 
 if TYPE_CHECKING:
@@ -39,14 +39,13 @@ if TYPE_CHECKING:
 
 
 class HorizontalBoundary(StencilFactory, abc.ABC):
-    """ Handle boundary conditions for a two-dimensional rectilinear grid. """
+    """Handle boundary conditions for a two-dimensional rectilinear grid."""
 
     registry = {}
 
     def __init__(
         self: "HorizontalBoundary",
-        nx: int,
-        ny: int,
+        grid: Grid,
         nb: int,
         *,
         backend: str = "numpy",
@@ -57,12 +56,8 @@ class HorizontalBoundary(StencilFactory, abc.ABC):
         """
         Parameters
         ----------
-        nx : int
-            Number of mass points featured by the physical grid
-            along the first dimension.
-        ny : int
-            Number of mass points featured by the physical grid
-            along the second dimension.
+        grid : Grid
+            The underlying three-dimensional grid.
         nb : int
             Number of boundary layers.
         backend : `str`, optional
@@ -76,77 +71,54 @@ class HorizontalBoundary(StencilFactory, abc.ABC):
         """
         super().__init__(backend, backend_options, storage_options)
 
-        self._nx = nx
-        self._ny = ny
+        self._pgrid = grid
         self._nb = nb
-
-        self._backend = backend
         self._storage_shape = storage_shape
+
+        self._ngrid = NumericalGrid(self)
 
         self._type = ""
         self._kwargs = {}
         self._ref_state = None
 
     @property
-    def nx(self) -> int:
-        """
-        Number of mass points featured by the physical grid
-        along the first dimension.
-        """
-        return self._nx
-
-    @property
-    def ny(self) -> int:
-        """
-        Number of mass points featured by the physical grid
-        along the second dimension.
-        """
-        return self._ny
-
-    @property
-    def nb(self) -> int:
-        """ Number of boundary layers. """
-        return self._nb
-
-    @property
-    @abc.abstractmethod
-    def ni(self) -> int:
-        """
-        Number of mass points featured by the numerical grid
-        along the first dimension.
-        """
-        pass
-
-    @property
-    @abc.abstractmethod
-    def nj(self) -> int:
-        """
-        Number of mass points featured by the numerical grid
-        along the second dimension.
-        """
-        pass
-
-    @property
-    def type(self) -> str:
-        """
-        The string passed to :meth:`tasmania.HorizontalBoundary.factory`
-        as ``boundary_type`` argument.
-        """
-        return self._type
-
-    @type.setter
-    def type(self, type_str: str) -> None:
-        self._type = type_str
-
-    @property
-    def kwargs(self) -> Dict[str, Any]:
-        """
-        The keyword arguments used to initialize the derived class.
-        """
+    def kwargs(self: "HorizontalBoundary") -> Dict[str, Any]:
+        """The keyword arguments used to initialize the derived class."""
         return self._kwargs
 
     @property
-    def reference_state(self) -> typing.dataarray_dict_t:
+    def nb(self: "HorizontalBoundary") -> int:
+        """Number of boundary layers."""
+        return self._nb
+
+    @property
+    def numerical_grid(self: "HorizontalBoundary") -> NumericalGrid:
+        """The underlying numerical grid."""
+        return self._ngrid
+
+    @property
+    def nx(self: "HorizontalBoundary") -> int:
+        """
+        Number of mass points featured by the physical grid
+        along the first dimension.
+        """
+        return self._pgrid.nx
+
+    @property
+    def ny(self: "HorizontalBoundary") -> int:
+        """
+        Number of mass points featured by the physical grid
+        along the second dimension.
+        """
+        return self._pgrid.ny
+
+    @property
+    def physical_grid(self: "HorizontalBoundary") -> Grid:
+        """The underlying physical grid."""
+        return self._pgrid
+
+    @property
+    def reference_state(self: "HorizontalBoundary") -> ty.DataArrayDict:
         """
         The reference model state dictionary, defined over the
         numerical grid.
@@ -154,7 +126,9 @@ class HorizontalBoundary(StencilFactory, abc.ABC):
         return self._ref_state if self._ref_state is not None else {}
 
     @reference_state.setter
-    def reference_state(self, ref_state: typing.dataarray_dict_t) -> None:
+    def reference_state(
+        self: "HorizontalBoundary", ref_state: ty.DataArrayDict
+    ) -> None:
         for name in ref_state:
             if name != "time":
                 assert (
@@ -168,17 +142,63 @@ class HorizontalBoundary(StencilFactory, abc.ABC):
             else:
                 self._ref_state[name] = deepcopy_dataarray(ref_state[name])
 
+    @property
+    def type(self: "HorizontalBoundary") -> str:
+        """
+        The string passed to :meth:`tasmania.HorizontalBoundary.factory`
+        as ``boundary_type`` argument.
+        """
+        return self._type
+
+    @type.setter
+    def type(self: "HorizontalBoundary", value: str) -> None:
+        self._type = value
+
+    @property
+    @abc.abstractmethod
+    def ni(self: "HorizontalBoundary") -> int:
+        """
+        Number of mass points featured by the numerical grid
+        along the first dimension.
+        """
+        pass
+
+    @property
+    @abc.abstractmethod
+    def nj(self: "HorizontalBoundary") -> int:
+        """
+        Number of mass points featured by the numerical grid
+        along the second dimension.
+        """
+        pass
+
     @abc.abstractmethod
     def get_numerical_xaxis(
-        self, paxis: DataArray, dims: Optional[str] = None
+        self: "HorizontalBoundary", dims: Optional[str] = None
     ) -> DataArray:
         """
         Parameters
         ----------
-        paxis : sympl.DataArray
+        dims : `str`, optional
+            The dimensions of the returned :class:`~sympl.DataArray`. If not
+            specified, the returned :class:`~sympl.DataArray` will have the same
+            dimensions of the input one.
+
+        Return
+        ------
+        sympl.DataArray :
             1-D :class:`~sympl.DataArray` collecting the coordinates of the
-            grid points of the physical grid along the first dimension.
-            Both unstaggered and staggered grid locations are supported.
+            grid points of the numerical grid along the first dimension.
+        """
+        pass
+
+    @abc.abstractmethod
+    def get_numerical_xaxis_staggered(
+        self: "HorizontalBoundary", dims: Optional[str] = None
+    ) -> DataArray:
+        """
+        Parameters
+        ----------
         dims : `str`, optional
             The dimensions of the returned :class:`~sympl.DataArray`. If not
             specified, the returned :class:`~sympl.DataArray` will have the same
@@ -194,15 +214,31 @@ class HorizontalBoundary(StencilFactory, abc.ABC):
 
     @abc.abstractmethod
     def get_numerical_yaxis(
-        self, paxis: DataArray, dims: Optional[str] = None
+        self: "HorizontalBoundary", dims: Optional[str] = None
     ) -> DataArray:
         """
         Parameters
         ----------
-        paxis : sympl.DataArray
+        dims : `str`, optional
+            The dimensions of the returned :class:`~sympl.DataArray`. If not
+            specified, the returned :class:`~sympl.DataArray` will have the same
+            dimensions of the input one.
+
+        Return
+        ------
+        sympl.DataArray :
             1-D :class:`~sympl.DataArray` collecting the coordinates of the
-            grid points of the physical grid along the second dimension.
-            Both unstaggered and staggered grid locations are supported.
+            grid points of the numerical grid along the second dimension.
+        """
+        pass
+
+    @abc.abstractmethod
+    def get_numerical_yaxis_staggered(
+        self: "HorizontalBoundary", dims: Optional[str] = None
+    ) -> DataArray:
+        """
+        Parameters
+        ----------
         dims : `str`, optional
             The dimensions of the returned :class:`~sympl.DataArray`. If not
             specified, the returned :class:`~sympl.DataArray` will have the same
@@ -218,98 +254,53 @@ class HorizontalBoundary(StencilFactory, abc.ABC):
 
     @abc.abstractmethod
     def get_numerical_field(
-        self, field: typing.array_t, field_name: Optional[str] = None
-    ) -> np.ndarray:
+        self: "HorizontalBoundary",
+        field: ty.Storage,
+        field_name: Optional[str] = None,
+    ) -> ty.Storage:
         """
         Parameters
         ----------
-        field : array_like
+        field : array-like
             A raw field defined over the physical grid.
         field_name : `str`, optional
             The field name.
 
         Return
         ------
-        numpy.ndarray :
+        array-like :
             The same field defined over the numerical grid.
         """
         pass
 
     @abc.abstractmethod
-    def get_physical_xaxis(
-        self, caxis: DataArray, dims: Optional[str] = None
-    ) -> DataArray:
-        """
-        Parameters
-        ----------
-        caxis : sympl.DataArray
-            1-D :class:`~sympl.DataArray` collecting the coordinates of the
-            grid points of the numerical grid along the first dimension.
-            Both unstaggered and staggered grid locations are supported.
-        dims : `str`, optional
-            The dimensions of the returned :class:`~sympl.DataArray`. If not
-            specified, the returned :class:`~sympl.DataArray` will have the same
-            dimensions of the input one.
-
-        Return
-        ------
-        sympl.DataArray :
-            1-D :class:`~sympl.DataArray` collecting the coordinates of the
-            grid points of the physical grid along the first dimension.
-        """
-        pass
-
-    @abc.abstractmethod
-    def get_physical_yaxis(
-        self, caxis: DataArray, dims: Optional[str] = None
-    ) -> DataArray:
-        """
-        Parameters
-        ----------
-        caxis : sympl.DataArray
-            1-D :class:`~sympl.DataArray` collecting the coordinates of the
-            grid points of the numerical grid along the second dimension.
-            Both unstaggered and staggered grid locations are supported.
-        dims : `str`, optional
-            The dimensions of the returned :class:`~sympl.DataArray`. If not
-            specified, the returned :class:`~sympl.DataArray` will have the same
-            dimensions of the input one.
-
-        Return
-        ------
-        sympl.DataArray :
-            1-D :class:`sympl.DataArray` collecting the coordinates of the
-            grid points of the physical grid along the second dimension.
-        """
-        pass
-
-    @abc.abstractmethod
     def get_physical_field(
-        self, field: typing.array_t, field_name: Optional[str] = None
-    ) -> np.ndarray:
+        self: "HorizontalBoundary",
+        field: ty.Storage,
+        field_name: Optional[str] = None,
+    ) -> ty.Storage:
         """
         Parameters
         ----------
-        field : array_like
+        field : array-like
             A raw field defined over the numerical grid.
         field_name : `str`, optional
             The field name.
 
         Return
         ------
-        numpy.ndarray :
+        array-like :
             The same field defined over the physical grid.
         """
         pass
 
     @abc.abstractmethod
     def enforce_field(
-        self,
-        field: typing.array_t,
+        self: "HorizontalBoundary",
+        field: ty.Storage,
         field_name: Optional[str] = None,
         field_units: Optional[str] = None,
-        time: Optional[typing.datetime_t] = None,
-        grid: Optional["NumericalGrid"] = None,
+        time: Optional[ty.Datetime] = None,
     ) -> None:
         """Enforce the boundary conditions on a raw field.
 
@@ -326,16 +317,13 @@ class HorizontalBoundary(StencilFactory, abc.ABC):
             The field units.
         time : `datetime`, optional
             Time point at which the field is defined.
-        grid : `tasmania.NumericalGrid`, optional
-            The underlying numerical grid.
         """
         pass
 
     def enforce_raw(
-        self,
-        state: typing.array_dict_t,
-        field_properties: Optional[typing.properties_mapping_t] = None,
-        grid: Optional["NumericalGrid"] = None,
+        self: "HorizontalBoundary",
+        state: ty.ArrayDict,
+        field_properties: Optional[ty.properties_mapping_t] = None,
     ) -> None:
         """Enforce the boundary conditions on a raw state.
 
@@ -344,7 +332,7 @@ class HorizontalBoundary(StencilFactory, abc.ABC):
 
         Parameters
         ----------
-        state : dict[str, array_like]
+        state : dict[str, array-like]
             Dictionary whose keys are strings denoting model state
             variables, and whose values are :class:`numpy.ndarray`-like duck
             arrays storing the grid values for those variables.
@@ -354,8 +342,6 @@ class HorizontalBoundary(StencilFactory, abc.ABC):
             values are dictionaries specifying fundamental properties (units)
             of those fields. If not specified, boundary conditions are
             enforced on all model variables included in the model state.
-        grid : `tasmania.NumericalGrid`, optional
-            The underlying numerical grid.
         """
         rfps = {
             name: {"units": self.reference_state[name].attrs["units"]}
@@ -385,14 +371,12 @@ class HorizontalBoundary(StencilFactory, abc.ABC):
                 field_name=field_name,
                 field_units=field_units,
                 time=time,
-                grid=grid,
             )
 
     def enforce(
-        self,
-        state: typing.dataarray_dict_t,
+        self: "HorizontalBoundary",
+        state: ty.DataArrayDict,
         field_names: Optional[Sequence[str]] = None,
-        grid: Optional["NumericalGrid"] = None,
     ) -> None:
         """Enforce the boundary conditions on a state.
 
@@ -410,8 +394,6 @@ class HorizontalBoundary(StencilFactory, abc.ABC):
             boundary conditions should be enforced. If not specified,
             boundary conditions are enforced on all model variables
             included in the model state.
-        grid : `tasmania.NumericalGrid`, optional
-            The underlying numerical grid.
         """
         fns = (
             tuple(name for name in self.reference_state if name != "time")
@@ -429,25 +411,21 @@ class HorizontalBoundary(StencilFactory, abc.ABC):
             try:
                 field_units = state[field_name].attrs["units"]
             except KeyError:
-                raise KeyError(
-                    "Field {} misses units attribute.".format(field_name)
-                )
+                raise KeyError(f"Field {field_name} misses units attribute.")
             self.enforce_field(
                 state[field_name].data,
                 field_name=field_name,
                 field_units=field_units,
                 time=time,
-                grid=grid,
             )
 
     @abc.abstractmethod
     def set_outermost_layers_x(
-        self,
-        field: typing.array_t,
+        self: "HorizontalBoundary",
+        field: ty.Storage,
         field_name: Optional[str] = None,
         field_units: Optional[str] = None,
-        time: Optional[typing.datetime_t] = None,
-        grid: Optional["NumericalGrid"] = None,
+        time: Optional[ty.Datetime] = None,
     ) -> None:
         """Set the outermost layers along the first dimension.
 
@@ -456,7 +434,7 @@ class HorizontalBoundary(StencilFactory, abc.ABC):
 
         Parameters
         ----------
-        field : array_like
+        field : array-like
             The raw field.
         field_name : `str`, optional
             The field name.
@@ -464,19 +442,16 @@ class HorizontalBoundary(StencilFactory, abc.ABC):
             The field units.
         time : `datetime`, optional
             Time point at which the field is defined.
-        grid : `tasmania.NumericalGrid`, optional
-            The underlying numerical grid.
         """
         pass
 
     @abc.abstractmethod
     def set_outermost_layers_y(
         self,
-        field: typing.array_t,
+        field: ty.Storage,
         field_name: Optional[str] = None,
         field_units: Optional[str] = None,
-        time: Optional[typing.datetime_t] = None,
-        grid: Optional["NumericalGrid"] = None,
+        time: Optional[ty.Datetime] = None,
     ) -> None:
         """Set the outermost layers along the first dimension.
 
@@ -485,7 +460,7 @@ class HorizontalBoundary(StencilFactory, abc.ABC):
 
         Parameters
         ----------
-        field : array_like
+        field : array-like
             The raw field.
         field_name : `str`, optional
             The field name.
@@ -493,16 +468,13 @@ class HorizontalBoundary(StencilFactory, abc.ABC):
             The field units.
         time : `datetime`, optional
             Time point at which the field is defined.
-        grid : `tasmania.NumericalGrid`, optional
-            The underlying numerical grid.
         """
         pass
 
     @staticmethod
     def factory(
         boundary_type: str,
-        nx: int,
-        ny: int,
+        grid: Grid,
         nb: int,
         *,
         backend: str = "numpy",
@@ -524,12 +496,8 @@ class HorizontalBoundary(StencilFactory, abc.ABC):
             * "periodic";
             * "relaxed".
 
-        nx : int
-            Number of points featured by the physical grid
-            along the first horizontal dimension.
-        ny : int
-            Number of points featured by the physical grid
-            along the second horizontal dimension.
+        grid : Grid
+            The underlying physical grid.
         nb : int
             Number of boundary layers.
         backend : `str`, optional
@@ -548,7 +516,7 @@ class HorizontalBoundary(StencilFactory, abc.ABC):
         obj :
             An object of the suitable child class.
         """
-        args = (nx, ny, nb)
+        args = (grid, nb)
         child_kwargs = {
             "backend": backend,
             "backend_options": backend_options,
@@ -556,8 +524,6 @@ class HorizontalBoundary(StencilFactory, abc.ABC):
             "storage_options": storage_options,
         }
         child_kwargs.update(kwargs)
-
         obj = factorize(boundary_type, HorizontalBoundary, args, child_kwargs)
         obj.type = boundary_type
-
         return obj

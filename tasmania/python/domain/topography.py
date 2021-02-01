@@ -27,21 +27,19 @@ from pandas import Timedelta
 from sympl import DataArray
 from typing import Any, Dict, Optional, TYPE_CHECKING
 
-from tasmania.python.utils import typing
+from tasmania.python.domain.horizontal_grid import NumericalHorizontalGrid
 from tasmania.python.framework.register import factorize
+from tasmania.python.utils import typing as ty
 from tasmania.python.utils.storage import get_dataarray_2d
 from tasmania.python.utils.utils import smaller_than as lt
 
 if TYPE_CHECKING:
     from tasmania.python.domain.horizontal_boundary import HorizontalBoundary
-    from tasmania.python.domain.horizontal_grid import (
-        PhysicalHorizontalGrid,
-        NumericalHorizontalGrid,
-    )
+    from tasmania.python.domain.horizontal_grid import PhysicalHorizontalGrid
 
 
 class Topography:
-    """ A time-dependent topography.
+    """A time-dependent topography.
 
     Although clearly not physical, a terrain surface (slowly) growing in the
     early stages of a simulation may help to retain numerical stability, as it
@@ -49,21 +47,24 @@ class Topography:
     """
 
     def __init__(
-        self,
+        self: "Topography",
         steady_profile: DataArray,
         profile: Optional[DataArray] = None,
-        time: Optional[typing.timedelta_t] = None,
+        time: Optional[ty.timedelta_t] = None,
     ) -> None:
         """
         Parameters
         ----------
         steady_profile : sympl.DataArray
-            2-D :class:`~sympl.DataArray` representing the steady-state height profile.
+            2-D :class:`~sympl.DataArray` representing the steady-state
+            height profile.
         profile : `sympl.DataArray`, optional
-            2-D :class:`~sympl.DataArray` representing the current height profile.
+            2-D :class:`~sympl.DataArray` representing the current
+            height profile.
         time : `datetime.timedelta`
-            The elapsed simulation time after which the topography should stop increasing.
-            If not specified, a time-invariant terrain surface-height is assumed.
+            The elapsed simulation time after which the topography should
+            stop increasing. If not specified, a time-invariant terrain
+            surface-height is assumed.
         """
         self._steady_profile = steady_profile.to_units("m")
 
@@ -79,28 +80,30 @@ class Topography:
         )
 
     @property
-    def profile(self) -> DataArray:
+    def profile(self: "Topography") -> DataArray:
         """
         2-D :class:`~sympl.DataArray` storing the current topography profile.
         """
         return self._profile
 
     @property
-    def steady_profile(self) -> DataArray:
+    def steady_profile(self: "Topography") -> DataArray:
         """
-        2-D :class:`~sympl.DataArray` storing the steady-state topography profile.
+        2-D :class:`~sympl.DataArray` storing the steady-state
+        topography profile.
         """
         return self._steady_profile
 
     @property
-    def time(self) -> typing.datetime_t:
+    def time(self: "Topography") -> ty.Datetime:
         """
-        The elapsed simulation time after which the topography stops increasing.
+        The elapsed simulation time after which the topography
+        stops increasing.
         """
         return self._time
 
-    def update(self, time: typing.datetime_t) -> None:
-        """ Update the topography at current simulation time.
+    def update(self: "Topography", time: ty.Datetime) -> None:
+        """Update the topography at current simulation time.
 
         Parameters
         ----------
@@ -115,14 +118,14 @@ class Topography:
 
 
 class PhysicalTopography(abc.ABC, Topography):
-    """ A time-dependent topography defined over a physical grid. """
+    """A time-dependent topography defined over a physical grid."""
 
     registry = {}
 
     def __init__(
         self,
         grid: "PhysicalHorizontalGrid",
-        time: typing.timedelta_t,
+        time: ty.timedelta_t,
         smooth: bool,
         **kwargs
     ) -> None:
@@ -169,25 +172,25 @@ class PhysicalTopography(abc.ABC, Topography):
         super().__init__(topo_steady, time=time)
 
     @property
-    def kwargs(self) -> Dict[str, Any]:
-        """ Keyword arguments used to initialize the object. """
+    def kwargs(self: "PhysicalTopography") -> Dict[str, Any]:
+        """Keyword arguments used to initialize the object."""
         return self._kwargs
 
     @property
-    def type(self) -> str:
-        """ String used to register the subclass. """
+    def type(self: "PhysicalTopography") -> str:
+        """String used to register the subclass."""
         assert self._type is not None
         return self._type
 
     @type.setter
-    def type(self, topography_type) -> None:
+    def type(self: "PhysicalTopography", topography_type: str) -> None:
         self._type = topography_type
 
     @abc.abstractmethod
     def compute_steady_profile(
         self, grid: "PhysicalHorizontalGrid", **kwargs
     ) -> np.ndarray:
-        """ Compute the steady topography profile.
+        """Compute the steady topography profile.
 
         Parameters
         ----------
@@ -207,11 +210,11 @@ class PhysicalTopography(abc.ABC, Topography):
     def factory(
         topography_type: str,
         grid: "PhysicalHorizontalGrid",
-        time: Optional[typing.timedelta_t] = None,
+        time: Optional[ty.timedelta_t] = None,
         smooth: bool = False,
         **kwargs
     ):
-        """ Get an instance of a registered derived class.
+        """Get an instance of a registered derived class.
 
         Parameters
         ----------
@@ -224,6 +227,8 @@ class PhysicalTopography(abc.ABC, Topography):
             * "schaer";
             * "user_defined".
 
+        grid : PhysicalHorizontalGrid
+            The underlying horizontal grid.
         time : `datetime.timedelta`, optional
             The elapsed simulation time after which the topography should stop
             increasing. If not specified, a time-invariant terrain surface-height
@@ -247,25 +252,21 @@ class PhysicalTopography(abc.ABC, Topography):
 
 
 class NumericalTopography(Topography):
-    """ A time-dependent topography defined over a numerical grid. """
+    """A time-dependent topography defined over a numerical grid."""
 
     def __init__(
-        self,
-        grid: "NumericalHorizontalGrid",
-        phys_topography: PhysicalTopography,
-        boundary: "HorizontalBoundary",
+        self: "NumericalTopography", boundary: "HorizontalBoundary"
     ) -> None:
         """
         Parameters
         ----------
-        grid : tasmania.NumericalHorizontalGrid
-            The underlying :class:`~tasmania.NumericalHorizontalGrid`.
-        phys_topography : tasmania.Topography
-            The topography defined over the associated physical grid.
         boundary : tasmania.HorizontalBoundary
             The :class:`~tasmania.HorizontalBoundary` handling the horizontal
             boundary conditions.
         """
+        phys_topography = boundary.physical_grid.topography
+        nhgrid = NumericalHorizontalGrid(boundary)
+
         self._kwargs = phys_topography.kwargs
         self._type = phys_topography.type
         topo_time = phys_topography.time
@@ -275,16 +276,16 @@ class NumericalTopography(Topography):
         units = phys_topography.profile.attrs["units"]
 
         ctopo = get_dataarray_2d(
-            boundary.get_numerical_field(ptopo), grid, units
+            boundary.get_numerical_field(ptopo), nhgrid, units
         )
         ctopo_steady = get_dataarray_2d(
-            boundary.get_numerical_field(ptopo_steady), grid, units
+            boundary.get_numerical_field(ptopo_steady), nhgrid, units
         )
 
         super().__init__(ctopo_steady, ctopo, topo_time)
 
     @property
-    def kwargs(self) -> Dict[str, Any]:
+    def kwargs(self: "NumericalTopography") -> Dict[str, Any]:
         """
         The keyword arguments used to initialize the corresponding
         physical topography.
@@ -292,6 +293,6 @@ class NumericalTopography(Topography):
         return self._kwargs
 
     @property
-    def type(self) -> str:
-        """ The topography type. """
+    def type(self: "NumericalTopography") -> str:
+        """The topography type."""
         return self._type

@@ -37,11 +37,14 @@ from tasmania.python.domain.topography import (
     PhysicalTopography,
     NumericalTopography,
 )
+from tasmania.python.framework.options import StorageOptions
 
+from tests.conf import dtype as conf_dtype
 from tests.strategies import (
     st_floats,
     st_horizontal_boundary,
     st_horizontal_field,
+    st_physical_grid,
     st_physical_horizontal_grid,
     st_topography_kwargs,
 )
@@ -54,16 +57,20 @@ from tests.utilities import (
 
 
 @hyp_settings
-@given(hyp_st.data())
-def test_topography_properties(data):
+@given(data=hyp_st.data())
+@pytest.mark.parametrize("dtype", conf_dtype)
+def test_topography_properties(data, dtype):
     # ========================================
     # random data generation
     # ========================================
-    pgrid = data.draw(st_physical_horizontal_grid(), label="pgrid")
+    so = StorageOptions(dtype=dtype)
+
+    pgrid = data.draw(
+        st_physical_horizontal_grid(storage_options=so), label="pgrid"
+    )
 
     steady_profile = data.draw(
-        st_horizontal_field(pgrid, 0, 10000, "m", "sprof"),
-        label="sprof",
+        st_horizontal_field(pgrid, 0, 10000, "m", "sprof"), label="sprof",
     )
 
     kwargs = data.draw(st_topography_kwargs(pgrid.x, pgrid.y), label="kwargs")
@@ -90,16 +97,20 @@ def test_topography_properties(data):
 
 
 @hyp_settings
-@given(hyp_st.data())
-def test_topography_update(data):
+@given(data=hyp_st.data())
+@pytest.mark.parametrize("dtype", conf_dtype)
+def test_topography_update(data, dtype):
     # ========================================
     # random data generation
     # ========================================
-    pgrid = data.draw(st_physical_horizontal_grid(), label="pgrid")
+    so = StorageOptions(dtype=dtype)
+
+    pgrid = data.draw(
+        st_physical_horizontal_grid(storage_options=so), label="pgrid"
+    )
 
     steady_profile = data.draw(
-        st_horizontal_field(pgrid, 0, 10000, "m", "sprof"),
-        label="sprof",
+        st_horizontal_field(pgrid, 0, 10000, "m", "sprof"), label="sprof",
     )
 
     kwargs = data.draw(st_topography_kwargs(pgrid.x, pgrid.y), label="kwargs")
@@ -149,7 +160,7 @@ def test_physical_topography_registry():
 
 
 @hyp_settings
-@given(hyp_st.data())
+@given(data=hyp_st.data())
 def test_physical_topography_factory(data):
     # ========================================
     # random data generation
@@ -173,21 +184,26 @@ def test_physical_topography_factory(data):
 
 
 @hyp_settings
-@given(hyp_st.data())
-def test_numerical_topography(data):
+@given(data=hyp_st.data())
+@pytest.mark.parametrize("dtype", conf_dtype)
+def test_numerical_topography(data, dtype):
     # ========================================
     # random data generation
     # ========================================
-    pgrid = data.draw(st_physical_horizontal_grid(), label="pgrid")
-    hb = data.draw(st_horizontal_boundary(pgrid.nx, pgrid.ny), label="hb")
-    cgrid = NumericalHorizontalGrid(pgrid, hb)
-    kwargs = data.draw(st_topography_kwargs(pgrid.x, pgrid.y), label="kwargs")
+    so = StorageOptions(dtype=dtype)
+    pgrid = data.draw(st_physical_grid(storage_options=so), label="pgrid")
+    hb = data.draw(
+        st_horizontal_boundary(pgrid, storage_options=so), label="hb"
+    )
+    # kwargs = data.draw(st_topography_kwargs(pgrid.x, pgrid.y), label="kwargs")
 
     # ========================================
     # test bed
     # ========================================
+    topo_type = pgrid.topography.type
+    topo_time = pgrid.topography.time
+    topo_kwargs = pgrid.topography.kwargs
     keys = (
-        "time",
         "smooth",
         "max_height",
         "center_x",
@@ -195,26 +211,27 @@ def test_numerical_topography(data):
         "width_x",
         "width_y",
     )
-    ptopo = PhysicalTopography.factory(
-        "gaussian", pgrid, **{key: kwargs[key] for key in keys}
-    )
-    ctopo = NumericalTopography(cgrid, ptopo, hb)
 
-    assert ctopo.type == "gaussian"
+    ptopo = PhysicalTopography.factory(
+        topo_type, pgrid, topo_time, **{key: topo_kwargs[key] for key in keys}
+    )
+    ntopo = NumericalTopography(hb)
+
+    assert ntopo.type == topo_type
 
     # profile
     compare_arrays(
-        ctopo.profile.values, hb.get_numerical_field(ptopo.profile.values)
+        ntopo.profile.values, hb.get_numerical_field(ptopo.profile.values)
     )
 
     # steady_profile
     compare_arrays(
-        ctopo.steady_profile.values,
+        ntopo.steady_profile.values,
         hb.get_numerical_field(ptopo.steady_profile.values),
     )
 
     # time
-    compare_datetimes(ptopo.time, ctopo.time)
+    compare_datetimes(ptopo.time, ntopo.time)
 
 
 if __name__ == "__main__":

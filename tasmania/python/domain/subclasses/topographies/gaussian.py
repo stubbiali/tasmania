@@ -29,7 +29,7 @@ from tasmania.python.framework.register import register
 
 @register(name="gaussian")
 class Gaussian(PhysicalTopography):
-    """ An isolated Gaussian mountain.
+    """An isolated Gaussian mountain.
 
     Let :math:`h_s = h_s(x,y)` be the topography. Then
 

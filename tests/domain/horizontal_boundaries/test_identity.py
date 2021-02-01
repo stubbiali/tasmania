@@ -26,10 +26,10 @@ from hypothesis import (
     strategies as hyp_st,
     reproduce_failure,
 )
-import numpy as np
 import pytest
 
 from tasmania.python.domain.horizontal_boundary import HorizontalBoundary
+from tasmania.python.framework.allocators import zeros
 from tasmania.python.framework.options import StorageOptions
 
 from tests.conf import backend as conf_backend, dtype as conf_dtype
@@ -57,7 +57,7 @@ def test_properties(data):
     # ========================================
     # test
     # ========================================
-    hb = HorizontalBoundary.factory("identity", nx, ny, nb)
+    hb = HorizontalBoundary.factory("identity", grid, nb)
 
     assert hb.nx == nx
     assert hb.ny == ny
@@ -84,43 +84,21 @@ def test_axis(data):
     # ========================================
     # test
     # ========================================
-    hb = HorizontalBoundary.factory("identity", nx, ny, nb)
+    hb = HorizontalBoundary.factory("identity", grid, nb)
 
-    #
-    # get_numerical_axis
-    #
-    # mass points
-    px = grid.x
-    cx = hb.get_numerical_xaxis(px, dims=px.dims[0])
-    compare_dataarrays(cx, px)
-    cx = hb.get_numerical_yaxis(px, dims=px.dims[0])
-    compare_dataarrays(cx, px)
+    # numerical axes - mass points
+    compare_dataarrays(hb.get_numerical_xaxis(dims=grid.x.dims[0]), grid.x)
+    compare_dataarrays(hb.get_numerical_yaxis(dims=grid.y.dims[0]), grid.y)
 
-    # staggered points
-    px = grid.x_at_u_locations
-    cx = hb.get_numerical_xaxis(px, dims=px.dims[0])
-    compare_dataarrays(cx, px)
-    cx = hb.get_numerical_yaxis(px, dims=px.dims[0])
-    compare_dataarrays(cx, px)
-
-    #
-    # get_physical_axis
-    #
-    # mass points
-    px_val = grid.x
-    cx = hb.get_numerical_xaxis(px_val)
-    px = hb.get_physical_xaxis(cx)
-    compare_dataarrays(px, px_val)
-    px = hb.get_physical_yaxis(cx)
-    compare_dataarrays(px, px_val)
-
-    # staggered points
-    px_val = grid.y_at_v_locations
-    cx = hb.get_numerical_xaxis(px_val)
-    px = hb.get_physical_xaxis(cx)
-    compare_dataarrays(px, px_val)
-    px = hb.get_physical_yaxis(cx)
-    compare_dataarrays(px, px_val)
+    # numerical axes - staggered points
+    compare_dataarrays(
+        hb.get_numerical_xaxis_staggered(dims=grid.x_at_u_locations.dims[0]),
+        grid.x_at_u_locations,
+    )
+    compare_dataarrays(
+        hb.get_numerical_yaxis_staggered(dims=grid.y_at_v_locations.dims[0]),
+        grid.y_at_v_locations,
+    )
 
 
 @hyp_settings
@@ -131,6 +109,8 @@ def test_field(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
+    so = StorageOptions(dtype=dtype)
+
     grid = data.draw(
         st_physical_grid(xaxis_length=(2, None), yaxis_length=(2, None)),
         label="grid",
@@ -140,16 +120,19 @@ def test_field(data, backend, dtype):
 
     pfield = data.draw(
         st_raw_field(
-            (nx + 1, ny + 1, nz), -1e4, 1e4, backend=backend, dtype=dtype,
+            (nx + 1, ny + 1, nz),
+            -1e4,
+            1e4,
+            backend=backend,
+            storage_options=so,
         )
     )
 
     # ========================================
     # test
     # ========================================
-    so = StorageOptions(dtype=dtype)
     hb = HorizontalBoundary.factory(
-        "identity", nx, ny, nb, backend=backend, storage_options=so
+        "identity", grid, nb, backend=backend, storage_options=so
     )
 
     # (nx, ny)
@@ -187,6 +170,8 @@ def test_enforce(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
+    so = StorageOptions(dtype=dtype)
+
     grid = data.draw(
         st_physical_grid(xaxis_length=(2, None), yaxis_length=(2, None)),
         label="grid",
@@ -195,21 +180,22 @@ def test_enforce(data, backend, dtype):
     nb = data.draw(st_horizontal_boundary_layers(nx, ny), label="nb")
 
     storage_shape = (nx + 1, ny + 1, nz + 1)
-    cfield = data.draw(
-        st_raw_field(storage_shape, -1e4, 1e4, backend=backend, dtype=dtype)
+    nfield = data.draw(
+        st_raw_field(
+            storage_shape, -1e4, 1e4, backend=backend, storage_options=so
+        )
     )
 
     # ========================================
     # test
     # ========================================
-    so = StorageOptions(dtype=dtype)
     hb = HorizontalBoundary.factory(
-        "identity", nx, ny, nb, backend=backend, storage_options=so
+        "identity", grid, nb, backend=backend, storage_options=so
     )
 
-    cfield_val = deepcopy(cfield)
-    hb.enforce_field(cfield)
-    compare_arrays(cfield, cfield_val)
+    nfield_val = deepcopy(nfield)
+    hb.enforce_field(nfield)
+    compare_arrays(nfield, nfield_val)
 
 
 @hyp_settings
@@ -220,6 +206,8 @@ def test_outermost_layers(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
+    so = StorageOptions(dtype=dtype)
+
     grid = data.draw(
         st_physical_grid(xaxis_length=(2, None), yaxis_length=(2, None)),
         label="grid",
@@ -228,21 +216,20 @@ def test_outermost_layers(data, backend, dtype):
     nb = data.draw(st_horizontal_boundary_layers(nx, ny), label="nb")
 
     storage_shape = (nx + 1, ny + 1, nz + 1)
-    cfield = np.zeros(storage_shape, dtype=dtype)
+    nfield = zeros(backend, shape=storage_shape, storage_options=so)
 
     # ========================================
     # test
     # ========================================
-    so = StorageOptions(dtype=dtype)
     hb = HorizontalBoundary.factory(
-        "identity", nx, ny, nb, backend=backend, storage_options=so
+        "identity", grid, nb, backend=backend, storage_options=so
     )
 
-    cfield_val = deepcopy(cfield)
-    hb.set_outermost_layers_x(cfield)
-    compare_arrays(cfield, cfield_val)
-    hb.set_outermost_layers_y(cfield)
-    compare_arrays(cfield, cfield_val)
+    nfield_val = deepcopy(nfield)
+    hb.set_outermost_layers_x(nfield)
+    compare_arrays(nfield, nfield_val)
+    hb.set_outermost_layers_y(nfield)
+    compare_arrays(nfield, nfield_val)
 
 
 if __name__ == "__main__":

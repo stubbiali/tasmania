@@ -30,11 +30,11 @@ except (ImportError, ModuleNotFoundError):
 
 from tasmania.python.domain.horizontal_boundary import HorizontalBoundary
 from tasmania.python.domain.subclasses.horizontal_boundaries.utils import (
+    change_dims,
     repeat_axis,
-    shrink_axis,
 )
+from tasmania.python.framework.generic_functions import to_numpy
 from tasmania.python.framework.register import register
-from tasmania.python.utils.storage import get_asarray_function
 
 
 def placeholder(time, grid, slice_x, slice_y, field_name, field_units):
@@ -42,18 +42,14 @@ def placeholder(time, grid, slice_x, slice_y, field_name, field_units):
 
 
 class Dirichlet(HorizontalBoundary):
-    """ Dirichlet boundary conditions. """
+    """Dirichlet boundary conditions."""
 
-    def __init__(self, nx, ny, nb, backend, storage_options, core=placeholder):
+    def __init__(self, grid, nb, backend, storage_options, core=placeholder):
         """
         Parameters
         ----------
-        nx : int
-            Number of points featured by the physical grid
-            along the first dimension.
-        ny : int
-            Number of points featured by the physical grid
-            along the second dimension.
+        grid : Grid
+            The underlying three-dimensional physical grid.
         nb : int
             Number of boundary layers.
         backend : str
@@ -63,6 +59,7 @@ class Dirichlet(HorizontalBoundary):
         core : `callable`, optional
             Callable object providing the boundary layers values.
         """
+        nx, ny = grid.nx, grid.ny
         assert nx > 1, (
             "Number of grid points along first dimension should be larger "
             "than 1."
@@ -88,7 +85,7 @@ class Dirichlet(HorizontalBoundary):
         assert "field_units" in signature.parameters, error_msg
 
         super().__init__(
-            nx, ny, nb, backend=backend, storage_options=storage_options
+            grid, nb, backend=backend, storage_options=storage_options
         )
 
         self._kwargs["core"] = core
@@ -101,26 +98,26 @@ class Dirichlet(HorizontalBoundary):
     def nj(self):
         return self.ny
 
-    def get_numerical_xaxis(self, paxis, dims=None):
-        return paxis
+    def get_numerical_xaxis(self, dims=None):
+        return change_dims(self.physical_grid.x, dims)
 
-    def get_numerical_yaxis(self, paxis, dims=None):
-        return paxis
+    def get_numerical_xaxis_staggered(self, dims=None):
+        return change_dims(self.physical_grid.x_at_u_locations, dims)
+
+    def get_numerical_yaxis(self, dims=None):
+        return change_dims(self.physical_grid.y, dims)
+
+    def get_numerical_yaxis_staggered(self, dims=None):
+        return change_dims(self.physical_grid.y_at_v_locations, dims)
 
     def get_numerical_field(self, field, field_name=None):
-        return np.asarray(field)
-
-    def get_physical_xaxis(self, caxis, dims=None):
-        return caxis
-
-    def get_physical_yaxis(self, caxis, dims=None):
-        return caxis
+        return field
 
     def get_physical_field(self, field, field_name=None):
-        return np.asarray(field)
+        return field
 
     def enforce_field(
-        self, field, field_name=None, field_units=None, time=None, grid=None
+        self, field, field_name=None, field_units=None, time=None
     ):
         nb, core = self.nb, self._kwargs["core"]
 
@@ -138,37 +135,41 @@ class Dirichlet(HorizontalBoundary):
             else self.ny
         )
 
-        asarray = get_asarray_function(self._backend or "numpy")
-
-        field[:nb, :mj] = asarray(
-            core(
-                time, grid, slice(0, nb), slice(0, mj), field_name, field_units
+        ngrid = self.numerical_grid
+        field[:nb, :mj] = self.as_storage(
+            data=core(
+                time,
+                ngrid,
+                slice(0, nb),
+                slice(0, mj),
+                field_name,
+                field_units,
             )
         )
-        field[mi - nb : mi, :mj] = asarray(
-            core(
+        field[mi - nb : mi, :mj] = self.as_storage(
+            data=core(
                 time,
-                grid,
+                ngrid,
                 slice(mi - nb, mi),
                 slice(0, mj),
                 field_name,
                 field_units,
             )
         )
-        field[nb : mi - nb, :nb] = asarray(
-            core(
+        field[nb : mi - nb, :nb] = self.as_storage(
+            data=core(
                 time,
-                grid,
+                ngrid,
                 slice(nb, mi - nb),
                 slice(0, nb),
                 field_name,
                 field_units,
             )
         )
-        field[nb : mi - nb, mj - nb : mj] = asarray(
-            core(
+        field[nb : mi - nb, mj - nb : mj] = self.as_storage(
+            data=core(
                 time,
-                grid,
+                ngrid,
                 slice(nb, mi - nb),
                 slice(mj - nb, mj),
                 field_name,
@@ -177,7 +178,7 @@ class Dirichlet(HorizontalBoundary):
         )
 
     def set_outermost_layers_x(
-        self, field, field_name=None, field_units=None, time=None, grid=None
+        self, field, field_name=None, field_units=None, time=None
     ):
         core = self._kwargs["core"]
 
@@ -195,17 +196,16 @@ class Dirichlet(HorizontalBoundary):
             else self.ny
         )
 
-        asarray = get_asarray_function(self._backend or "numpy")
-
-        field[:1, :mj] = asarray(
-            core(
-                time, grid, slice(0, 1), slice(0, mj), field_name, field_units
+        ngrid = self.numerical_grid
+        field[:1, :mj] = self.as_storage(
+            data=core(
+                time, ngrid, slice(0, 1), slice(0, mj), field_name, field_units
             )
         )
-        field[mi - 1 : mi, :mj] = asarray(
-            core(
+        field[mi - 1 : mi, :mj] = self.as_storage(
+            data=core(
                 time,
-                grid,
+                ngrid,
                 slice(mi - 1, mi),
                 slice(0, mj),
                 field_name,
@@ -214,7 +214,7 @@ class Dirichlet(HorizontalBoundary):
         )
 
     def set_outermost_layers_y(
-        self, field, field_name=None, field_units=None, time=None, grid=None
+        self, field, field_name=None, field_units=None, time=None
     ):
         core = self._kwargs["core"]
 
@@ -232,17 +232,16 @@ class Dirichlet(HorizontalBoundary):
             else self.ny
         )
 
-        asarray = get_asarray_function(self._backend or "numpy")
-
-        field[:mi, :1] = asarray(
-            core(
-                time, grid, slice(0, mi), slice(0, 1), field_name, field_units
+        ngrid = self.numerical_grid
+        field[:mi, :1] = self.as_storage(
+            data=core(
+                time, ngrid, slice(0, mi), slice(0, 1), field_name, field_units
             )
         )
-        field[:mi, mj - 1 : mj] = asarray(
-            core(
+        field[:mi, mj - 1 : mj] = self.as_storage(
+            data=core(
                 time,
-                grid,
+                ngrid,
                 slice(0, mi),
                 slice(mj - 1, mj),
                 field_name,
@@ -252,18 +251,14 @@ class Dirichlet(HorizontalBoundary):
 
 
 class Dirichlet1DX(HorizontalBoundary):
-    """ Dirichlet boundary conditions for a physical grid with ``ny=1``. """
+    """Dirichlet boundary conditions for a physical grid with ``ny=1``."""
 
-    def __init__(self, nx, ny, nb, backend, storage_options, core=placeholder):
+    def __init__(self, grid, nb, backend, storage_options, core=placeholder):
         """
         Parameters
         ----------
-        nx : int
-            Number of points featured by the physical grid
-            along the first dimension.
-        ny : int
-            Number of points featured by the physical grid
-            along the second dimension. It must be 1.
+        grid : Grid
+            The underlying three-dimensional physical grid.
         nb : int
             Number of boundary layers.
         backend : str
@@ -273,6 +268,7 @@ class Dirichlet1DX(HorizontalBoundary):
         core : `callable`, optional
             Callable object providing the boundary layers values.
         """
+        nx, ny = grid.nx, grid.ny
         assert nx > 1, (
             "Number of grid points along first dimension should be larger "
             "than 1."
@@ -296,7 +292,7 @@ class Dirichlet1DX(HorizontalBoundary):
         assert "field_units" in signature.parameters, error_msg
 
         super().__init__(
-            nx, ny, nb, backend=backend, storage_options=storage_options
+            grid, nb, backend=backend, storage_options=storage_options
         )
 
         self._kwargs["core"] = core
@@ -309,40 +305,41 @@ class Dirichlet1DX(HorizontalBoundary):
     def nj(self):
         return 2 * self.nb + 1
 
-    def get_numerical_xaxis(self, paxis, dims=None):
-        return paxis
+    def get_numerical_xaxis(self, dims=None):
+        return change_dims(self.physical_grid.x, dims)
 
-    def get_numerical_yaxis(self, paxis, dims=None):
-        return repeat_axis(paxis, self.nb, dims)
+    def get_numerical_xaxis_staggered(self, dims=None):
+        return change_dims(self.physical_grid.x_at_u_locations, dims)
+
+    def get_numerical_yaxis(self, dims=None):
+        return repeat_axis(self.physical_grid.y, self.nb, dims)
+
+    def get_numerical_yaxis_staggered(self, dims=None):
+        return repeat_axis(self.physical_grid.y_at_v_locations, self.nb, dims)
 
     def get_numerical_field(self, field, field_name=None):
         try:
             li, lj, lk = field.shape
-            cfield = np.zeros(
-                (li, lj + 2 * self.nb, lk), dtype=self.storage_options.dtype
-            )
+            trg = self.zeros(shape=(li, lj + 2 * self.nb, lk))
+            src = field
         except ValueError:
+            # just resort to numpy for 2d arrays
             li, lj = field.shape
-            cfield = np.zeros(
+            trg = np.zeros(
                 (li, lj + 2 * self.nb), dtype=self.storage_options.dtype
             )
+            src = to_numpy(field)
 
-        cfield[:, : self.nb + 1] = field[:, :1]
-        cfield[:, self.nb + 1 :] = field[:, -1:]
+        trg[:, : self.nb + 1] = src[:, :1]
+        trg[:, self.nb + 1 :] = src[:, -1:]
 
-        return cfield
-
-    def get_physical_xaxis(self, caxis, dims=None):
-        return caxis
-
-    def get_physical_yaxis(self, caxis, dims=None):
-        return shrink_axis(caxis, self.nb, dims)
+        return trg
 
     def get_physical_field(self, field, field_name=None):
-        return np.asarray(field[:, self.nb : -self.nb])
+        return field[:, self.nb : -self.nb]
 
     def enforce_field(
-        self, field, field_name=None, field_units=None, time=None, grid=None
+        self, field, field_name=None, field_units=None, time=None
     ):
         nb, core = self.nb, self._kwargs["core"]
 
@@ -360,34 +357,32 @@ class Dirichlet1DX(HorizontalBoundary):
             else self.nj
         )
 
-        asarray = get_asarray_function(self._backend or "numpy")
-
-        field[:nb, nb : mj - nb] = asarray(
-            core(
+        ngrid = self.numerical_grid
+        field[:nb, nb : mj - nb] = self.as_storage(
+            data=core(
                 time,
-                grid,
+                ngrid,
                 slice(0, nb),
                 slice(nb, mj - nb),
                 field_name,
                 field_units,
             )
         )
-        field[mi - nb : mi, nb : mj - nb] = asarray(
-            core(
+        field[mi - nb : mi, nb : mj - nb] = self.as_storage(
+            data=core(
                 time,
-                grid,
+                ngrid,
                 slice(mi - nb, mi),
                 slice(nb, mj - nb),
                 field_name,
                 field_units,
             )
         )
-
         field[:mi, :nb] = field[:mi, nb : nb + 1]
         field[:mi, mj - nb : mj] = field[:mi, mj - nb - 1 : mj - nb]
 
     def set_outermost_layers_x(
-        self, field, field_name=None, field_units=None, time=None, grid=None
+        self, field, field_name=None, field_units=None, time=None
     ):
         core = self._kwargs["core"]
 
@@ -405,17 +400,16 @@ class Dirichlet1DX(HorizontalBoundary):
             else self.nj
         )
 
-        asarray = get_asarray_function(self._backend or "numpy")
-
-        field[:1, :mj] = asarray(
-            core(
-                time, grid, slice(0, 1), slice(0, mj), field_name, field_units
+        ngrid = self.numerical_grid
+        field[:1, :mj] = self.as_storage(
+            data=core(
+                time, ngrid, slice(0, 1), slice(0, mj), field_name, field_units
             )
         )
-        field[mi - 1 : mi, :mj] = asarray(
-            core(
+        field[mi - 1 : mi, :mj] = self.as_storage(
+            data=core(
                 time,
-                grid,
+                ngrid,
                 slice(mi - 1, mi),
                 slice(0, mj),
                 field_name,
@@ -424,7 +418,7 @@ class Dirichlet1DX(HorizontalBoundary):
         )
 
     def set_outermost_layers_y(
-        self, field, field_name=None, field_units=None, time=None, grid=None
+        self, field, field_name=None, field_units=None, time=None
     ):
         core = self._kwargs["core"]
 
@@ -442,17 +436,16 @@ class Dirichlet1DX(HorizontalBoundary):
             else self.nj
         )
 
-        asarray = get_asarray_function(self._backend or "numpy")
-
-        field[:mi, :1] = asarray(
-            core(
-                time, grid, slice(0, mi), slice(0, 1), field_name, field_units
+        ngrid = self.numerical_grid
+        field[:mi, :1] = self.as_storage(
+            data=core(
+                time, ngrid, slice(0, mi), slice(0, 1), field_name, field_units
             )
         )
-        field[:mi, mj - 1 : mj] = asarray(
-            core(
+        field[:mi, mj - 1 : mj] = self.as_storage(
+            data=core(
                 time,
-                grid,
+                ngrid,
                 slice(0, mi),
                 slice(mj - 1, mj),
                 field_name,
@@ -462,18 +455,14 @@ class Dirichlet1DX(HorizontalBoundary):
 
 
 class Dirichlet1DY(HorizontalBoundary):
-    """ Dirichlet boundary conditions for a physical grid with ``nx=1``. """
+    """Dirichlet boundary conditions for a physical grid with ``nx=1``."""
 
-    def __init__(self, nx, ny, nb, backend, storage_options, core=placeholder):
+    def __init__(self, grid, nb, backend, storage_options, core=placeholder):
         """
         Parameters
         ----------
-        nx : int
-            Number of points featured by the physical grid
-            along the first dimension. It must be 1.
-        ny : int
-            Number of points featured by the physical grid
-            along the second dimension.
+        grid : Grid
+            The underlying three-dimensional physical grid.
         nb : int
             Number of boundary layers.
         backend : str
@@ -483,6 +472,7 @@ class Dirichlet1DY(HorizontalBoundary):
         core : `callable`, optional
             Callable object providing the boundary layers values.
         """
+        nx, ny = grid.nx, grid.ny
         assert (
             nx == 1
         ), "Number of grid points along first dimension must be 1."
@@ -506,7 +496,7 @@ class Dirichlet1DY(HorizontalBoundary):
         assert "field_units" in signature.parameters, error_msg
 
         super().__init__(
-            nx, ny, nb, backend=backend, storage_options=storage_options
+            grid, nb, backend=backend, storage_options=storage_options
         )
 
         self._kwargs["core"] = core
@@ -519,40 +509,41 @@ class Dirichlet1DY(HorizontalBoundary):
     def nj(self):
         return self.ny
 
-    def get_numerical_xaxis(self, paxis, dims=None):
-        return repeat_axis(paxis, self.nb, dims)
+    def get_numerical_xaxis(self, dims=None):
+        return repeat_axis(self.physical_grid.x, self.nb, dims)
 
-    def get_numerical_yaxis(self, paxis, dims=None):
-        return paxis
+    def get_numerical_xaxis_staggered(self, dims=None):
+        return repeat_axis(self.physical_grid.x_at_u_locations, self.nb, dims)
+
+    def get_numerical_yaxis(self, dims=None):
+        return change_dims(self.physical_grid.y, dims)
+
+    def get_numerical_yaxis_staggered(self, dims=None):
+        return change_dims(self.physical_grid.y_at_v_locations, dims)
 
     def get_numerical_field(self, field, field_name=None):
         try:
             li, lj, lk = field.shape
-            cfield = np.zeros(
-                (li + 2 * self.nb, lj, lk), dtype=self.storage_options.dtype
-            )
+            trg = self.zeros(shape=(li + 2 * self.nb, lj, lk))
+            src = field
         except ValueError:
+            # resort to numpy for 2d arrays
             li, lj = field.shape
-            cfield = np.zeros(
+            trg = np.zeros(
                 (li + 2 * self.nb, lj), dtype=self.storage_options.dtype
             )
+            src = to_numpy(field)
 
-        cfield[: self.nb + 1, :] = field[:1, :]
-        cfield[self.nb + 1 :, :] = field[-1:, :]
+        trg[: self.nb + 1, :] = src[:1, :]
+        trg[self.nb + 1 :, :] = src[-1:, :]
 
-        return cfield
-
-    def get_physical_xaxis(self, caxis, dims=None):
-        return shrink_axis(caxis, self.nb, dims)
-
-    def get_physical_yaxis(self, caxis, dims=None):
-        return caxis
+        return trg
 
     def get_physical_field(self, field, field_name=None):
-        return np.asarray(field[self.nb : -self.nb, :])
+        return field[self.nb : -self.nb, :]
 
     def enforce_field(
-        self, field, field_name=None, field_units=None, time=None, grid=None
+        self, field, field_name=None, field_units=None, time=None
     ):
         nb, core = self.nb, self._kwargs["core"]
 
@@ -570,34 +561,32 @@ class Dirichlet1DY(HorizontalBoundary):
             else self.ny
         )
 
-        asarray = get_asarray_function(self._backend or "numpy")
-
-        field[nb : mi - nb, :nb] = asarray(
-            core(
+        ngrid = self.numerical_grid
+        field[nb : mi - nb, :nb] = self.as_storage(
+            data=core(
                 time,
-                grid,
+                ngrid,
                 slice(nb, mi - nb),
                 slice(0, nb),
                 field_name,
                 field_units,
             )
         )
-        field[nb : mi - nb, mj - nb : mj] = asarray(
-            core(
+        field[nb : mi - nb, mj - nb : mj] = self.as_storage(
+            data=core(
                 time,
-                grid,
+                ngrid,
                 slice(nb, mi - nb),
                 slice(mj - nb, mj),
                 field_name,
                 field_units,
             )
         )
-
         field[:nb, :mj] = field[nb : nb + 1, :mj]
         field[mi - nb : mi, :mj] = field[mi - nb - 1 : mi - nb, :mj]
 
     def set_outermost_layers_x(
-        self, field, field_name=None, field_units=None, time=None, grid=None
+        self, field, field_name=None, field_units=None, time=None
     ):
         core = self._kwargs["core"]
 
@@ -615,17 +604,16 @@ class Dirichlet1DY(HorizontalBoundary):
             else self.ny
         )
 
-        asarray = get_asarray_function(self._backend or "numpy")
-
-        field[:1, :mj] = asarray(
-            core(
-                time, grid, slice(0, 1), slice(0, mj), field_name, field_units
+        ngrid = self.numerical_grid
+        field[:1, :mj] = self.as_storage(
+            data=core(
+                time, ngrid, slice(0, 1), slice(0, mj), field_name, field_units
             )
         )
-        field[mi - 1 : mi, :mj] = asarray(
-            core(
+        field[mi - 1 : mi, :mj] = self.as_storage(
+            data=core(
                 time,
-                grid,
+                ngrid,
                 slice(mi - 1, mi),
                 slice(0, mj),
                 field_name,
@@ -634,7 +622,7 @@ class Dirichlet1DY(HorizontalBoundary):
         )
 
     def set_outermost_layers_y(
-        self, field, field_name=None, field_units=None, time=None, grid=None
+        self, field, field_name=None, field_units=None, time=None
     ):
         core = self._kwargs["core"]
 
@@ -652,17 +640,16 @@ class Dirichlet1DY(HorizontalBoundary):
             else self.ny
         )
 
-        asarray = get_asarray_function(self._backend or "numpy")
-
-        field[:mi, :1] = asarray(
-            core(
-                time, grid, slice(0, mi), slice(0, 1), field_name, field_units
+        ngrid = self.numerical_grid
+        field[:mi, :1] = self.as_storage(
+            data=core(
+                time, ngrid, slice(0, mi), slice(0, 1), field_name, field_units
             )
         )
-        field[:mi, mj - 1 : mj] = asarray(
-            core(
+        field[:mi, mj - 1 : mj] = self.as_storage(
+            data=core(
                 time,
-                grid,
+                ngrid,
                 slice(0, mi),
                 slice(mj - 1, mj),
                 field_name,
@@ -673,8 +660,7 @@ class Dirichlet1DY(HorizontalBoundary):
 
 @register(name="dirichlet", registry_class=HorizontalBoundary)
 def dispatch(
-    nx,
-    ny,
+    grid,
     nb,
     backend="numpy",
     backend_options=None,
@@ -682,10 +668,10 @@ def dispatch(
     storage_options=None,
     core=placeholder,
 ):
-    """ Dispatch based on the grid size. """
-    if nx == 1:
-        return Dirichlet1DY(1, ny, nb, backend, storage_options, core)
-    elif ny == 1:
-        return Dirichlet1DX(nx, 1, nb, backend, storage_options, core)
+    """Instantiate the appropriate class based on the grid size."""
+    if grid.nx == 1:
+        return Dirichlet1DY(grid, nb, backend, storage_options, core)
+    elif grid.ny == 1:
+        return Dirichlet1DX(grid, nb, backend, storage_options, core)
     else:
-        return Dirichlet(nx, ny, nb, backend, storage_options, core)
+        return Dirichlet(grid, nb, backend, storage_options, core)
