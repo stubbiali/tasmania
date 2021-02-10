@@ -59,17 +59,18 @@ if TYPE_CHECKING:
         BaseTendency2Diagnostic,
     )
 
-Datatype = TypeVar
+Datatype = TypeVar("Datatype")
 Datetime = Union[dt.datetime, pd.Timestamp]
 datetime_t = Datetime
 Storage = TypeVar("Storage")
 ArrayDict = Dict[str, Union[Datetime, Storage]]
 DataArrayDict = Dict[str, Union[Datetime, DataArray]]
+TimeDelta = Union[dt.timedelta, pd.Timedelta]
+timedelta_t = TimeDelta
 
 array_t = Union[np.ndarray, cp.ndarray, gt_storage.Storage]
 dataarray_t = DataArray
 gtstorage_t = gt_storage.Storage
-timedelta_t = Union[dt.timedelta, pd.Timedelta]
 
 array_dict_t = Dict[str, Union[timedelta_t, array_t]]
 dataarray_dict_t = Dict[str, Union[timedelta_t, dataarray_t]]
