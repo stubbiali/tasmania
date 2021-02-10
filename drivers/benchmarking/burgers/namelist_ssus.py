@@ -65,7 +65,7 @@ bo = taz.BackendOptions(
     parallel=True,
 )
 so = taz.StorageOptions(
-    dtype=np.float64, default_origin=(nb, nb, 0), managed_memory=False
+    dtype=np.float64, aligned_index=(nb, nb, 0), managed="gt4py"
 )
 
 # numerical scheme
