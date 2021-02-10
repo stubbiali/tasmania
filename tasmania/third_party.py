@@ -36,8 +36,6 @@ except (ImportError, ModuleNotFoundError):
 # >>> gt4py
 try:
     import gt4py
-
-    gt4py.storage.prepare_numpy()
 except (ImportError, ModuleNotFoundError):
     gt4py = None
 
