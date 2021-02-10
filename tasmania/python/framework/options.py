@@ -65,7 +65,7 @@ class StorageOptions:
     # gt4py
     aligned_index: Sequence[int] = None
     halo: Sequence[int] = None
-    managed: Union[bool, str] = False
+    managed: Union[bool, str] = "gt4py"
 
 
 @dataclass

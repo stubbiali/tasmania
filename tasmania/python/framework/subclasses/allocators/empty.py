@@ -63,4 +63,5 @@ if gt:
             aligned_index=so.aligned_index,
             defaults=defaults,
             halo=so.halo,
+            managed=so.managed,
         )
