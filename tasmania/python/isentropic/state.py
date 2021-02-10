@@ -29,25 +29,18 @@ try:
 except (ImportError, ModuleNotFoundError):
     cupy = np
 
-from tasmania.python.framework.allocators import ones, zeros
-from tasmania.python.framework.asarray import AsArray
+from tasmania.python.framework.allocators import as_storage, ones, zeros
+from tasmania.python.framework.generic_functions import to_numpy
 from tasmania.python.utils import typing
 from tasmania.python.utils.data import get_physical_constants
 from tasmania.python.utils.meteo import (
     convert_relative_humidity_to_water_vapor,
 )
-from tasmania.python.utils.storage import (
-    get_asarray_function,
-    get_dataarray_3d,
-    get_storage_shape,
-)
+from tasmania.python.utils.storage import get_dataarray_3d, get_storage_shape
 
 if TYPE_CHECKING:
     from tasmania.python.domain.grid import Grid
-    from tasmania.python.framework.options import (
-        BackendOptions,
-        StorageOptions,
-    )
+    from tasmania.python.framework.options import StorageOptions
 
 
 default_physical_constants = {
@@ -156,62 +149,84 @@ def get_isentropic_state_from_brunt_vaisala_frequency(
             backend, shape=storage_shape, storage_options=storage_options
         )
 
-    asarray = AsArray(backend)
+    def allocate_numpy():
+        return zeros(
+            "numpy", shape=storage_shape, storage_options=storage_options
+        )
+
+    def from_numpy(data):
+        return as_storage(backend, data=data, storage_options=storage_options)
 
     # initialize the velocity components
     u = allocate()
     u[: nx + 1, :ny, :nz] = x_velocity.to_units("m s^-1").values.item()
+    u_np = to_numpy(u)
     v = allocate()
     v[:nx, : ny + 1, :nz] = y_velocity.to_units("m s^-1").values.item()
+    v_np = to_numpy(v)
 
     # compute the geometric height of the half levels
-    theta1d = allocate()
-    theta1d[:, :, :nz] = asarray(
-        grid.z.to_units("K").values[np.newaxis, np.newaxis, :]
-    )
-    h = allocate()
-    h[:nx, :ny, nz] = asarray(hs)
+    theta1d = grid.z.to_units("K").values[np.newaxis, np.newaxis, :]
+    h_np = allocate_numpy()
+    h_np[:nx, :ny, nz] = hs
     for k in range(nz - 1, -1, -1):
-        h[:nx, :ny, k : k + 1] = h[:nx, :ny, k + 1 : k + 2] + g * dz / (
-            (bv ** 2) * theta1d[:nx, :ny, k : k + 1]
+        h_np[:nx, :ny, k : k + 1] = h_np[:nx, :ny, k + 1 : k + 2] + g * dz / (
+            (bv ** 2) * theta1d[:, :, k : k + 1]
         )
+    h = from_numpy(h_np)
 
     # initialize the Exner function
-    exn = allocate()
-    exn[:nx, :ny, nz] = cp
+    exn_np = allocate_numpy()
+    exn_np[:nx, :ny, nz] = cp
     for k in range(nz - 1, -1, -1):
-        exn[:nx, :ny, k : k + 1] = exn[:nx, :ny, k + 1 : k + 2] - dz * (
+        exn_np[:nx, :ny, k : k + 1] = exn_np[:nx, :ny, k + 1 : k + 2] - dz * (
             g ** 2
-        ) / ((bv ** 2) * (theta1d[:nx, :ny, k : k + 1] ** 2))
+        ) / ((bv ** 2) * (theta1d[:, :, k : k + 1] ** 2))
+    exn = from_numpy(exn_np)
 
     # diagnose the air pressure
-    p = allocate()
-    p[:nx, :ny, : nz + 1] = pref * (
-        (exn[:nx, :ny, : nz + 1] / cp) ** (cp / Rd)
+    p_np = allocate_numpy()
+    p_np[:nx, :ny, : nz + 1] = pref * (
+        (exn_np[:nx, :ny, : nz + 1] / cp) ** (cp / Rd)
     )
+    p = from_numpy(p_np)
 
     # diagnose the Montgomery potential
     mtg_s = (
-        g * h[:, :, nz : nz + 1]
+        g * h_np[:, :, nz : nz + 1]
         + grid.z_on_interface_levels.to_units("K").values[-1]
-        * exn[:, :, nz : nz + 1]
+        * exn_np[:, :, nz : nz + 1]
     )
-    mtg = allocate()
-    mtg[:nx, :ny, nz - 1] = mtg_s[:nx, :ny, 0] + 0.5 * dz * exn[:nx, :ny, nz]
+    mtg_np = allocate_numpy()
+    mtg_np[:nx, :ny, nz - 1] = (
+        mtg_s[:nx, :ny, 0] + 0.5 * dz * exn_np[:nx, :ny, nz]
+    )
     for k in range(nz - 2, -1, -1):
-        mtg[:nx, :ny, k] = mtg[:nx, :ny, k + 1] + dz * exn[:nx, :ny, k + 1]
+        mtg_np[:nx, :ny, k] = (
+            mtg_np[:nx, :ny, k + 1] + dz * exn_np[:nx, :ny, k + 1]
+        )
+    mtg = from_numpy(mtg_np)
 
     # diagnose the isentropic density and the momenta
-    s = allocate()
-    s[:nx, :ny, :nz] = -(p[:nx, :ny, :nz] - p[:nx, :ny, 1 : nz + 1]) / (g * dz)
-    su = allocate()
-    su[:nx, :ny, :nz] = (
-        0.5 * s[:nx, :ny, :nz] * (u[:nx, :ny, :nz] + u[1 : nx + 1, :ny, :nz])
+    s_np = allocate_numpy()
+    s_np[:nx, :ny, :nz] = -(
+        p_np[:nx, :ny, :nz] - p_np[:nx, :ny, 1 : nz + 1]
+    ) / (g * dz)
+    s = from_numpy(s_np)
+    su_np = allocate_numpy()
+    su_np[:nx, :ny, :nz] = (
+        0.5
+        * s_np[:nx, :ny, :nz]
+        * (u_np[:nx, :ny, :nz] + u_np[1 : nx + 1, :ny, :nz])
     )
-    sv = allocate()
-    sv[:nx, :ny, :nz] = (
-        0.5 * s[:nx, :ny, :nz] * (v[:nx, :ny, :nz] + v[:nx, 1 : ny + 1, :nz])
+    su = from_numpy(su_np)
+    sv_np = allocate_numpy()
+    sv_np[:nx, :ny, :nz] = (
+        0.5
+        * s_np[:nx, :ny, :nz]
+        * (v_np[:nx, :ny, :nz] + v_np[:nx, 1 : ny + 1, :nz])
     )
+    sv = from_numpy(sv_np)
 
     # instantiate the return state
     state = {
@@ -292,12 +307,13 @@ def get_isentropic_state_from_brunt_vaisala_frequency(
 
     if moist:
         # diagnose the air density and temperature
-        rho = allocate()
-        rho[:nx, :ny, :nz] = (
+        rho_np = allocate_numpy()
+        rho_np[:nx, :ny, :nz] = (
             s[:nx, :ny, :nz]
             * dz
             / (h[:nx, :ny, :nz] - h[:nx, :ny, 1 : nz + 1])
         )
+        rho = from_numpy(rho_np)
         state["air_density"] = get_dataarray_3d(
             rho,
             grid,
@@ -306,13 +322,14 @@ def get_isentropic_state_from_brunt_vaisala_frequency(
             grid_shape=(nx, ny, nz),
             set_coordinates=False,
         )
-        temp = allocate()
-        temp[:nx, :ny, :nz] = (
+        temp_np = allocate_numpy()
+        temp_np[:nx, :ny, :nz] = (
             0.5
-            * (exn[:nx, :ny, :nz] + exn[:nx, :ny, 1 : nz + 1])
-            * theta1d[:nx, :ny, :nz]
+            * (exn_np[:nx, :ny, :nz] + exn_np[:nx, :ny, 1 : nz + 1])
+            * theta1d[:, :, :nz]
             / cp
         )
+        temp = from_numpy(temp_np)
         state["air_temperature"] = get_dataarray_3d(
             temp,
             grid,
@@ -323,24 +340,25 @@ def get_isentropic_state_from_brunt_vaisala_frequency(
         )
 
         # initialize the relative humidity
-        rh = relative_humidity * ones(
-            backend, shape=storage_shape, storage_options=storage_options
-        )
-        rh_ = get_dataarray_3d(rh, grid, "1")
+        rh = allocate()
+        rh[...] = relative_humidity
+        rh_da = get_dataarray_3d(rh, grid, "1")
 
         # interpolate the pressure at the main levels
-        p_unstg = allocate()
-        p_unstg[:nx, :ny, :nz] = 0.5 * (
-            p[:nx, :ny, :nz] + p[:nx, :ny, 1 : nz + 1]
+        p_unstg_np = allocate_numpy()
+        p_unstg_np[:nx, :ny, :nz] = 0.5 * (
+            p_np[:nx, :ny, :nz] + p_np[:nx, :ny, 1 : nz + 1]
         )
-        p_unstg_ = get_dataarray_3d(
+        p_unstg = from_numpy(p_unstg_np)
+        p_unstg_da = get_dataarray_3d(
             p_unstg, grid, "Pa", grid_shape=(nx, ny, nz), set_coordinates=False
         )
 
         # diagnose the mass fraction of water vapor
-        qv = convert_relative_humidity_to_water_vapor(
-            "tetens", p_unstg_, state["air_temperature"], rh_
+        qv_np = convert_relative_humidity_to_water_vapor(
+            "tetens", p_unstg_da, state["air_temperature"], rh_da
         )
+        qv = from_numpy(qv_np)
         # qv = allocate()
         state[mfwv] = get_dataarray_3d(
             qv,
@@ -351,7 +369,8 @@ def get_isentropic_state_from_brunt_vaisala_frequency(
             set_coordinates=False,
         )
 
-        # initialize the mass fraction of cloud liquid water and precipitation water
+        # initialize the mass fraction of cloud liquid water and
+        # precipitation water
         qc = allocate()
         state[mfcw] = get_dataarray_3d(
             qc,
@@ -505,31 +524,41 @@ def get_isentropic_state_from_temperature(
             backend, shape=storage_shape, storage_options=storage_options
         )
 
+    def allocate_numpy():
+        return zeros(
+            "numpy", shape=storage_shape, storage_options=storage_options
+        )
+
+    def from_numpy(data):
+        return as_storage(backend, data=data, storage_options=storage_options)
+
     # initialize the air pressure
-    theta1d = grid.z_on_interface_levels.to_units("K").values
-    theta = allocate()
-    theta[:nx, :ny, : nz + 1] = theta1d[np.newaxis, np.newaxis, :]
+    theta1d = grid.z_on_interface_levels.to_units("K").values[
+        np.newaxis, np.newaxis, :
+    ]
     temp = background_temperature.to_units("K").values.item()
-    p = allocate()
-    p[:nx, :ny, : nz + 1] = pref * (
-        (temp / theta[:nx, :ny, : nz + 1]) ** (cp / Rd)
+    p_np = allocate_numpy()
+    p_np[:nx, :ny, : nz + 1] = pref * (
+        (temp / theta1d[:, :, : nz + 1]) ** (cp / Rd)
     )
 
     # initialize the Exner function
-    exn = allocate()
-    exn[:nx, :ny, : nz + 1] = cp * temp / theta[:nx, :ny, : nz + 1]
+    exn_np = allocate_numpy()
+    exn_np[:nx, :ny, : nz + 1] = cp * temp / theta1d[:, :, : nz + 1]
+    exn = from_numpy(exn_np)
 
     # diagnose the height of the half levels
     hs = grid.topography.profile.to_units("m").values
-    h = allocate()
-    h[:nx, :ny, nz] = hs
+    h_np = allocate_numpy()
+    h_np[:nx, :ny, nz] = hs
     for k in range(nz - 1, -1, -1):
-        h[:nx, :ny, k] = h[:nx, :ny, k + 1] - Rd / (cp * g) * (
-            theta[:nx, :ny, k] * exn[:nx, :ny, k]
-            + theta[:nx, :ny, k + 1] * exn[:nx, :ny, k + 1]
-        ) * (p[:nx, :ny, k] - p[:nx, :ny, k + 1]) / (
-            p[:nx, :ny, k] + p[:nx, :ny, k + 1]
+        h_np[:nx, :ny, k] = h_np[:nx, :ny, k + 1] - Rd / (cp * g) * (
+            theta1d[:, :, k] * exn_np[:nx, :ny, k]
+            + theta1d[:, :, k + 1] * exn_np[:nx, :ny, k + 1]
+        ) * (p_np[:nx, :ny, k] - p_np[:nx, :ny, k + 1]) / (
+            p_np[:nx, :ny, k] + p_np[:nx, :ny, k + 1]
         )
+    h = from_numpy(h_np)
 
     # warm/cool bubble
     if bubble_maximum_perturbation is not None:
@@ -541,47 +570,67 @@ def get_isentropic_state_from_temperature(
         r = bubble_radius.to_units("m").values.item()
         delta = bubble_maximum_perturbation.to_units("K").values.item()
 
-        d = np.sqrt(((x - cx) ** 2 + (y - cy) ** 2 + (h - ch) ** 2) / r ** 2)
-        t = temp * np.ones((nx, ny, nz + 1), dtype=dtype) + delta * (
+        d = np.sqrt(
+            ((x - cx) ** 2 + (y - cy) ** 2 + (h_np - ch) ** 2) / r ** 2
+        )
+        t = allocate_numpy()
+        t[:nx, :ny, : nz + 1] = temp + delta * (
             np.cos(0.5 * np.pi * d)
         ) ** 2 * (d <= 1.0)
     else:
-        t = allocate()
+        t = allocate_numpy()
         t[:nx, :ny, : nz + 1] = temp
 
     # diagnose the air pressure
-    p[:nx, :ny, : nz + 1] = pref * (
-        (t[:nx, :ny, : nz + 1] / theta[:nx, :ny, : nz + 1]) ** (cp / Rd)
+    p_np[:nx, :ny, : nz + 1] = pref * (
+        (t[:nx, :ny, : nz + 1] / theta1d[:, :, : nz + 1]) ** (cp / Rd)
     )
+    p = from_numpy(p_np)
 
     # diagnose the Exner function
-    exn[:nx, :ny, : nz + 1] = cp * temp / theta[:nx, :ny, : nz + 1]
+    exn_np = allocate_numpy()
+    exn_np[:nx, :ny, : nz + 1] = cp * temp / theta1d[:, :, : nz + 1]
+    exn = from_numpy(exn_np)
 
     # diagnose the Montgomery potential
     hs = grid.topography.profile.to_units("m").values
     mtg_s = cp * temp + g * hs
-    mtg = allocate()
-    mtg[:nx, :ny, nz - 1] = mtg_s + 0.5 * dz * exn[:nx, :ny, nz]
+    mtg_np = allocate_numpy()
+    mtg_np[:nx, :ny, nz - 1] = mtg_s + 0.5 * dz * exn_np[:nx, :ny, nz]
     for k in range(nz - 2, -1, -1):
-        mtg[:nx, :ny, k] = mtg[:nx, :ny, k + 1] + dz * exn[:nx, :ny, k + 1]
+        mtg_np[:nx, :ny, k] = (
+            mtg_np[:nx, :ny, k + 1] + dz * exn_np[:nx, :ny, k + 1]
+        )
+    mtg = from_numpy(mtg_np)
 
     # initialize the velocity components
     u = allocate()
     u[: nx + 1, :ny, :nz] = x_velocity.to_units("m s^-1").values.item()
+    u_np = to_numpy(u)
     v = allocate()
     v[:nx, : ny + 1, :nz] = y_velocity.to_units("m s^-1").values.item()
+    v_np = to_numpy(v)
 
     # diagnose the isentropic density and the momenta
-    s = allocate()
-    s[:nx, :ny, :nz] = -(p[:nx, :ny, :nz] - p[:nx, :ny, 1 : nz + 1]) / (g * dz)
-    su = allocate()
-    su[:nx, :ny, :nz] = (
-        0.5 * s[:nx, :ny, :nz] * (u[:nx, :ny, :nz] + u[1 : nx + 1, :ny, :nz])
+    s_np = allocate_numpy()
+    s_np[:nx, :ny, :nz] = -(
+        p_np[:nx, :ny, :nz] - p_np[:nx, :ny, 1 : nz + 1]
+    ) / (g * dz)
+    s = from_numpy(s_np)
+    su_np = allocate_numpy()
+    su_np[:nx, :ny, :nz] = (
+        0.5
+        * s_np[:nx, :ny, :nz]
+        * (u_np[:nx, :ny, :nz] + u_np[1 : nx + 1, :ny, :nz])
     )
-    sv = allocate()
-    sv[:nx, :ny, :nz] = (
-        0.5 * s[:nx, :ny, :nz] * (v[:nx, :ny, :nz] + v[:nx, 1 : ny + 1, :nz])
+    su = from_numpy(su_np)
+    sv_np = allocate_numpy()
+    sv_np[:nx, :ny, :nz] = (
+        0.5
+        * s_np[:nx, :ny, :nz]
+        * (v_np[:nx, :ny, :nz] + v_np[:nx, 1 : ny + 1, :nz])
     )
+    sv = from_numpy(sv_np)
 
     # instantiate the return state
     state = {

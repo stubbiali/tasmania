@@ -37,7 +37,7 @@ from tasmania.python.isentropic.state import (
 from tests.conf import (
     backend as conf_backend,
     dtype as conf_dtype,
-    default_origin as conf_dorigin,
+    aligned_index as conf_aligned_index,
     nb as conf_nb,
 )
 from tests.strategies import st_one_of, st_domain
@@ -52,7 +52,10 @@ def test_brunt_vaisala(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+    aligned_index = data.draw(
+        st_one_of(conf_aligned_index), label="aligned_index"
+    )
+    so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
 
     nb = data.draw(
         hyp_st.integers(min_value=3, max_value=max(3, conf_nb)), label="nb"
@@ -64,7 +67,7 @@ def test_brunt_vaisala(data, backend, dtype):
             zaxis_length=(2, 10),
             nb=nb,
             backend=backend,
-            dtype=dtype,
+            storage_options=so,
         ),
         label="domain",
     )
@@ -75,7 +78,6 @@ def test_brunt_vaisala(data, backend, dtype):
     # ========================================
     # test bed
     # ========================================
-    so = StorageOptions(dtype=dtype, default_origin=default_origin)
     state = get_isentropic_state_from_brunt_vaisala_frequency(
         grid=grid,
         time=datetime(year=1992, month=2, day=20, hour=12),
