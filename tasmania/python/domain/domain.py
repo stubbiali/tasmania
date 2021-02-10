@@ -25,6 +25,7 @@ from typing import Any, Dict, Optional, Sequence, TYPE_CHECKING
 
 from tasmania.python.domain.grid import PhysicalGrid
 from tasmania.python.domain.horizontal_boundary import HorizontalBoundary
+from tasmania.python.framework.allocators import as_storage
 from tasmania.python.utils import typing as ty
 
 if TYPE_CHECKING:
@@ -188,3 +189,83 @@ class Domain:
         """
         self._pgrid.update_topography(time)
         self._hb.numerical_grid.update_topography(time)
+
+    def copy(
+        self,
+        *,
+        backend: Optional[str] = None,
+        backend_options: Optional["BackendOptions"] = None,
+        storage_options: Optional["StorageOptions"] = None
+    ) -> "Domain":
+        nx = self.physical_grid.nx
+        x0 = self.physical_grid.x.values[0]
+        x1 = self.physical_grid.x.values[int(nx > 1)]
+        dims = self.physical_grid.x.dims[0]
+        units = self.physical_grid.x.attrs["units"]
+        domain_x = DataArray([x0, x1], dims=dims, attrs={"units": units})
+
+        ny = self.physical_grid.ny
+        y0 = self.physical_grid.y.values[0]
+        y1 = self.physical_grid.y.values[int(ny > 1)]
+        dims = self.physical_grid.y.dims[0]
+        units = self.physical_grid.y.attrs["units"]
+        domain_y = DataArray([y0, y1], dims=dims, attrs={"units": units})
+
+        z0 = self.physical_grid.z_on_interface_levels.values[0]
+        z1 = self.physical_grid.z_on_interface_levels.values[1]
+        dims = self.physical_grid.z.dims[0]
+        units = self.physical_grid.z.attrs["units"]
+        domain_z = DataArray([z0, z1], dims=dims, attrs={"units": units})
+        nz = self.physical_grid.nz
+        z_interface = self.physical_grid.z_interface
+
+        hb_type = self.horizontal_boundary.type
+        nb = self.horizontal_boundary.nb
+        hb_kwargs = self.horizontal_boundary.kwargs
+
+        topo_type = self.physical_grid.topography.type
+        topo_kwargs = self.physical_grid.topography.kwargs
+
+        ba = backend or self.horizontal_boundary.backend
+        bo = backend_options or self.horizontal_boundary.backend_options
+        so = storage_options or self.horizontal_boundary.storage_options
+
+        out = Domain(
+            domain_x,
+            nx,
+            domain_y,
+            ny,
+            domain_z,
+            nz,
+            z_interface,
+            hb_type,
+            nb,
+            hb_kwargs,
+            topo_type,
+            topo_kwargs,
+            backend=ba,
+            backend_options=bo,
+            storage_options=so,
+        )
+
+        ref_state_src = self.horizontal_boundary.reference_state
+        if len(ref_state_src) > 0:
+            ref_state = {"time": ref_state_src["time"]}
+            for name in ref_state_src:
+                if name != "time":
+                    raw_field_src = ref_state_src[name].data
+                    raw_field = as_storage(
+                        ba, data=raw_field_src, storage_options=so
+                    )
+                    dims = ref_state_src[name].dims
+                    coords = ref_state_src[name].coords
+                    units = ref_state_src[name].attrs["units"]
+                    ref_state[name] = DataArray(
+                        raw_field,
+                        coords=coords,
+                        dims=dims,
+                        attrs={"units": units},
+                    )
+            out.horizontal_boundary.reference_state = ref_state
+
+        return out
