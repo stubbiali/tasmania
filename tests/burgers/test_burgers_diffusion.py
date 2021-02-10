@@ -29,15 +29,16 @@ from hypothesis import (
 import pytest
 from sympl import DataArray
 
-from tasmania.python.framework.options import BackendOptions, StorageOptions
 from tasmania.python.burgers.physics.diffusion import (
     BurgersHorizontalDiffusion,
 )
+from tasmania.python.framework.generic_functions import to_numpy
+from tasmania.python.framework.options import BackendOptions, StorageOptions
 
 from tests.conf import (
+    aligned_index as conf_aligned_index,
     backend as conf_backend,
     dtype as conf_dtype,
-    default_origin as conf_dorigin,
     nb as conf_nb,
 )
 from tests.dwarfs.horizontal_diffusers.test_fourth_order import (
@@ -81,7 +82,11 @@ def test_second_order(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+    aligned_index = data.draw(
+        st_one_of(conf_aligned_index), label="aligned_index"
+    )
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
 
     nb = data.draw(
         hyp_st.integers(min_value=1, max_value=max(1, conf_nb)), label="nb"
@@ -93,25 +98,22 @@ def test_second_order(data, backend, dtype):
             zaxis_length=(1, 1),
             nb=nb,
             backend=backend,
-            dtype=dtype,
+            backend_options=bo,
+            storage_options=so,
         ),
         label="domain",
     )
     pgrid = domain.physical_grid
     assume(pgrid.nx > 2 or pgrid.ny > 2)
-    cgrid = domain.numerical_grid
+    ngrid = domain.numerical_grid
 
     pstate = data.draw(
-        st_burgers_state(
-            pgrid, backend=backend, default_origin=default_origin
-        ),
+        st_burgers_state(pgrid, backend=backend, storage_options=so),
         label="pstate",
     )
-    cstate = data.draw(
-        st_burgers_state(
-            cgrid, backend=backend, default_origin=default_origin
-        ),
-        label="cstate",
+    nstate = data.draw(
+        st_burgers_state(ngrid, backend=backend, storage_options=so),
+        label="nstate",
     )
 
     smooth_coeff = data.draw(
@@ -121,9 +123,6 @@ def test_second_order(data, backend, dtype):
     # ========================================
     # test
     # ========================================
-    bo = BackendOptions(rebuild=False)
-    so = StorageOptions(dtype=dtype, default_origin=default_origin)
-
     #
     # physical grid
     #
@@ -155,7 +154,7 @@ def test_second_order(data, backend, dtype):
     second_order_validation(
         pgrid,
         smooth_coeff,
-        pstate["x_velocity"].to_units("m s^-1").data,
+        to_numpy(pstate["x_velocity"].to_units("m s^-1").data),
         tendencies["x_velocity"].data,
         nb,
     )
@@ -164,7 +163,7 @@ def test_second_order(data, backend, dtype):
     second_order_validation(
         pgrid,
         smooth_coeff,
-        pstate["y_velocity"].to_units("m s^-1").data,
+        to_numpy(pstate["y_velocity"].to_units("m s^-1").data),
         tendencies["y_velocity"].data,
         nb,
     )
@@ -182,7 +181,7 @@ def test_second_order(data, backend, dtype):
         storage_options=so,
     )
 
-    tendencies, diagnostics = cbhd(cstate)
+    tendencies, diagnostics = cbhd(nstate)
 
     assert len(diagnostics) == 0
 
@@ -192,18 +191,18 @@ def test_second_order(data, backend, dtype):
 
     assert tendencies["x_velocity"].attrs["units"] == "m s^-2"
     second_order_validation(
-        cgrid,
+        ngrid,
         smooth_coeff,
-        cstate["x_velocity"].to_units("m s^-1").data,
+        to_numpy(nstate["x_velocity"].to_units("m s^-1").data),
         tendencies["x_velocity"].data,
         nb,
     )
 
     assert tendencies["y_velocity"].attrs["units"] == "m s^-2"
     second_order_validation(
-        cgrid,
+        ngrid,
         smooth_coeff,
-        cstate["y_velocity"].to_units("m s^-1").data,
+        to_numpy(nstate["y_velocity"].to_units("m s^-1").data),
         tendencies["y_velocity"].data,
         nb,
     )
@@ -233,7 +232,11 @@ def test_fourth_order(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+    aligned_index = data.draw(
+        st_one_of(conf_aligned_index), label="aligned_index"
+    )
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
 
     nb = data.draw(hyp_st.integers(min_value=2, max_value=max(2, conf_nb)))
     domain = data.draw(
@@ -243,25 +246,22 @@ def test_fourth_order(data, backend, dtype):
             zaxis_length=(1, 1),
             nb=nb,
             backend=backend,
-            dtype=dtype,
+            backend_options=bo,
+            storage_options=so,
         ),
         label="domain",
     )
     pgrid = domain.physical_grid
     assume(pgrid.nx > 4 or pgrid.ny > 4)
-    cgrid = domain.numerical_grid
+    ngrid = domain.numerical_grid
 
     pstate = data.draw(
-        st_burgers_state(
-            pgrid, backend=backend, default_origin=default_origin
-        ),
+        st_burgers_state(pgrid, backend=backend, storage_options=so),
         label="pstate",
     )
-    cstate = data.draw(
-        st_burgers_state(
-            cgrid, backend=backend, default_origin=default_origin
-        ),
-        label="cstate",
+    nstate = data.draw(
+        st_burgers_state(ngrid, backend=backend, storage_options=so),
+        label="nstate",
     )
 
     smooth_coeff = data.draw(
@@ -271,9 +271,6 @@ def test_fourth_order(data, backend, dtype):
     # ========================================
     # test
     # ========================================
-    bo = BackendOptions(rebuild=False)
-    so = StorageOptions(dtype=dtype, default_origin=default_origin)
-
     #
     # physical grid
     #
@@ -305,7 +302,7 @@ def test_fourth_order(data, backend, dtype):
     fourth_order_validation(
         pgrid,
         smooth_coeff,
-        pstate["x_velocity"].to_units("m s^-1").data,
+        to_numpy(pstate["x_velocity"].to_units("m s^-1").data),
         tendencies["x_velocity"].data,
         nb,
     )
@@ -314,7 +311,7 @@ def test_fourth_order(data, backend, dtype):
     fourth_order_validation(
         pgrid,
         smooth_coeff,
-        pstate["y_velocity"].to_units("m s^-1").data,
+        to_numpy(pstate["y_velocity"].to_units("m s^-1").data),
         tendencies["y_velocity"].data,
         nb,
     )
@@ -332,7 +329,7 @@ def test_fourth_order(data, backend, dtype):
         storage_options=so,
     )
 
-    tendencies, diagnostics = cbhd(cstate)
+    tendencies, diagnostics = cbhd(nstate)
 
     assert len(diagnostics) == 0
 
@@ -342,18 +339,18 @@ def test_fourth_order(data, backend, dtype):
 
     assert tendencies["x_velocity"].attrs["units"] == "m s^-2"
     fourth_order_validation(
-        cgrid,
+        ngrid,
         smooth_coeff,
-        cstate["x_velocity"].to_units("m s^-1").data,
+        to_numpy(nstate["x_velocity"].to_units("m s^-1").data),
         tendencies["x_velocity"].data,
         nb,
     )
 
     assert tendencies["y_velocity"].attrs["units"] == "m s^-2"
     fourth_order_validation(
-        cgrid,
+        ngrid,
         smooth_coeff,
-        cstate["y_velocity"].to_units("m s^-1").data,
+        to_numpy(nstate["y_velocity"].to_units("m s^-1").data),
         tendencies["y_velocity"].data,
         nb,
     )

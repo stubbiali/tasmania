@@ -26,13 +26,12 @@ import numpy as np
 from typing import Optional, TYPE_CHECKING
 
 from gt4py import gtscript
-from gt4py.gtscript import __INLINED, PARALLEL, computation, interval
 
 from tasmania.python.burgers.dynamics.advection import BurgersAdvection
-from tasmania.python.framework.register import factorize, register
+from tasmania.python.framework.register import factorize
 from tasmania.python.framework.stencil import StencilFactory
 from tasmania.python.framework.tag import stencil_definition
-from tasmania.python.utils import typing
+from tasmania.python.utils import typing as ty
 
 if TYPE_CHECKING:
     from tasmania.python.domain.horizontal_grid import HorizontalGrid
@@ -51,13 +50,13 @@ class BurgersStepper(StencilFactory, abc.ABC):
     registry = {}
 
     def __init__(
-        self,
+        self: "BurgersStepper",
         grid_xy: "HorizontalGrid",
         nb: int,
         flux_scheme: str,
         backend: str,
-        backend_options: Optional["BackendOptions"],
-        storage_options: Optional["StorageOptions"],
+        backend_options: "BackendOptions",
+        storage_options: "StorageOptions",
     ) -> None:
         """
         Parameters
@@ -89,7 +88,7 @@ class BurgersStepper(StencilFactory, abc.ABC):
 
     @property
     @abc.abstractmethod
-    def stages(self) -> int:
+    def stages(self: "BurgersStepper") -> int:
         """
         Returns
         -------
@@ -100,12 +99,12 @@ class BurgersStepper(StencilFactory, abc.ABC):
 
     @abc.abstractmethod
     def __call__(
-        self,
+        self: "BurgersStepper",
         stage: int,
-        state: typing.gtstorage_dict_t,
-        tendencies: typing.gtstorage_dict_t,
-        timestep: typing.timedelta_t,
-    ) -> typing.gtstorage_dict_t:
+        state: ty.ArrayDict,
+        tendencies: ty.ArrayDict,
+        timestep: ty.TimeDelta,
+    ) -> ty.ArrayDict:
         """
         Performing a stage of the time integrator.
 
@@ -178,13 +177,15 @@ class BurgersStepper(StencilFactory, abc.ABC):
         )
         return factorize(time_integration_scheme, BurgersStepper, args)
 
-    def _stencil_initialize(self, tendencies):
+    def _stencil_initialize(
+        self: "BurgersStepper", tendencies: ty.ArrayDict
+    ) -> None:
         storage_shape = (self._grid_xy.nx, self._grid_xy.ny, 1)
 
-        self._stencil_args = {
-            "out_u": self.zeros(shape=storage_shape),
-            "out_v": self.zeros(shape=storage_shape),
-        }
+        self._stencil_args = {}
+        self._stencil_output = tuple(
+            self.zeros(shape=storage_shape) for _ in range(2 * self.stages)
+        )
 
         dtype = self.storage_options.dtype
         self.backend_options.dtypes = {"dtype": dtype}
@@ -211,8 +212,8 @@ class BurgersStepper(StencilFactory, abc.ABC):
         dt: float,
         dx: float,
         dy: float,
-        origin: typing.triplet_int_t,
-        domain: typing.triplet_int_t
+        origin: ty.triplet_int_t,
+        domain: ty.triplet_int_t
     ) -> None:
         istart, istop = origin[0], origin[0] + domain[0]
         i = slice(istart, istop)
@@ -285,21 +286,21 @@ class BurgersStepper(StencilFactory, abc.ABC):
     @staticmethod
     @stencil_definition(backend="numba:cpu", stencil="forward_euler")
     def _forward_euler_numba_cpu(
-        in_u,
-        in_v,
-        in_u_tmp,
-        in_v_tmp,
-        out_u,
-        out_v,
-        in_u_tnd=None,
-        in_v_tnd=None,
+        in_u: np.ndarray,
+        in_v: np.ndarray,
+        in_u_tmp: np.ndarray,
+        in_v_tmp: np.ndarray,
+        out_u: np.ndarray,
+        out_v: np.ndarray,
+        in_u_tnd: Optional[np.ndarray] = None,
+        in_v_tnd: Optional[np.ndarray] = None,
         *,
-        dt,
-        dx,
-        dy,
-        origin,
-        domain
-    ):
+        dt: float,
+        dx: float,
+        dy: float,
+        origin: ty.triplet_int_t,
+        domain: ty.triplet_int_t
+    ) -> None:
         # >>> stencil definitions
         def step_def(phi, adv_x, adv_y, dt):
             return phi[0, 0, 0] - dt * (adv_x[0, 0, 0] + adv_y[0, 0, 0])

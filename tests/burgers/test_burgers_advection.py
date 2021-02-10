@@ -20,7 +20,6 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from copy import deepcopy
 from datetime import datetime
 from hypothesis import (
     given,
@@ -38,14 +37,15 @@ from tasmania.python.burgers.dynamics.advection import BurgersAdvection
 from tasmania.python.burgers.state import ZhaoStateFactory
 from tasmania.python.domain.grid import PhysicalGrid
 from tasmania.python.framework.allocators import zeros
+from tasmania.python.framework.generic_functions import to_numpy
 from tasmania.python.framework.options import BackendOptions, StorageOptions
 from tasmania.python.framework.stencil import StencilFactory
 from tasmania.python.framework.tag import stencil_definition
 
 from tests.conf import (
+    aligned_index as conf_aligned_index,
     backend as conf_backend,
     dtype as conf_dtype,
-    default_origin as conf_dorigin,
 )
 from tests.strategies import st_burgers_state, st_one_of, st_physical_grid
 from tests.utilities import compare_arrays, hyp_settings
@@ -80,8 +80,8 @@ class WrappingStencil(StencilFactory):
         )
 
     @staticmethod
-    @stencil_definition(backend="numpy", stencil="stencil")
-    def stencil_numpy(
+    @stencil_definition(backend=("numpy", "cupy"), stencil="stencil")
+    def burgers_advection_numpy(
         in_u,
         in_v,
         out_adv_u_x,
@@ -107,7 +107,7 @@ class WrappingStencil(StencilFactory):
 
     @staticmethod
     @stencil_definition(backend="gt4py*", stencil="stencil")
-    def stencil_gt4py(
+    def burgers_advection_gt4py(
         in_u: gtscript.Field["dtype"],
         in_v: gtscript.Field["dtype"],
         out_adv_u_x: gtscript.Field["dtype"],
@@ -127,7 +127,7 @@ class WrappingStencil(StencilFactory):
 
     @staticmethod
     @stencil_definition(backend="numba:cpu", stencil="stencil")
-    def stencil_numba(
+    def burgers_advection_numba(
         in_u,
         in_v,
         out_adv_u_x,
@@ -147,13 +147,13 @@ class WrappingStencil(StencilFactory):
 
 
 def first_order_advection(dx, dy, u, v, phi):
-    adv_x = deepcopy(phi)
+    adv_x = np.zeros_like(phi)
     adv_x[1:-1, :, :] = u[1:-1, :, :] / (2.0 * dx) * (
         phi[2:, :, :] - phi[:-2, :, :]
     ) - np.abs(u)[1:-1, :, :] / (2.0 * dx) * (
         phi[2:, :, :] - 2.0 * phi[1:-1, :, :] + phi[:-2, :, :]
     )
-    adv_y = deepcopy(phi)
+    adv_y = np.zeros_like(phi)
     adv_y[:, 1:-1, :] = v[:, 1:-1, :] / (2.0 * dy) * (
         phi[:, 2:, :] - phi[:, :-2, :]
     ) - np.abs(v)[:, 1:-1, :] / (2.0 * dy) * (
@@ -163,11 +163,11 @@ def first_order_advection(dx, dy, u, v, phi):
 
 
 def second_order_advection(dx, dy, u, v, phi):
-    adv_x = deepcopy(phi)
+    adv_x = np.zeros_like(phi)
     adv_x[1:-1, :, :] = (
         u[1:-1, :, :] / (2.0 * dx) * (phi[2:, :, :] - phi[:-2, :, :])
     )
-    adv_y = deepcopy(phi)
+    adv_y = np.zeros_like(phi)
     adv_y[:, 1:-1, :] = (
         v[:, 1:-1, :] / (2.0 * dy) * (phi[:, 2:, :] - phi[:, :-2, :])
     )
@@ -175,7 +175,7 @@ def second_order_advection(dx, dy, u, v, phi):
 
 
 def third_order_advection(dx, dy, u, v, phi):
-    adv_x = deepcopy(phi)
+    adv_x = np.zeros_like(phi)
     adv_x[2:-2, :, :] = u[2:-2, :, :] / (12.0 * dx) * (
         8.0 * (phi[3:-1, :, :] - phi[1:-3, :, :])
         - (phi[4:, :, :] - phi[:-4, :, :])
@@ -184,7 +184,7 @@ def third_order_advection(dx, dy, u, v, phi):
         - 4.0 * (phi[3:-1, :, :] + phi[1:-3, :, :])
         + 6.0 * phi[2:-2, :, :]
     )
-    adv_y = deepcopy(phi)
+    adv_y = np.zeros_like(phi)
     adv_y[:, 2:-2, :] = v[:, 2:-2, :] / (12.0 * dy) * (
         8.0 * (phi[:, 3:-1, :] - phi[:, 1:-3, :])
         - (phi[:, 4:, :] - phi[:, :-4, :])
@@ -197,7 +197,7 @@ def third_order_advection(dx, dy, u, v, phi):
 
 
 def fourth_order_advection(dx, dy, u, v, phi):
-    adv_x = deepcopy(phi)
+    adv_x = np.zeros_like(phi)
     adv_x[2:-2, :, :] = (
         u[2:-2, :, :]
         / (12.0 * dx)
@@ -206,7 +206,7 @@ def fourth_order_advection(dx, dy, u, v, phi):
             - (phi[4:, :, :] - phi[:-4, :, :])
         )
     )
-    adv_y = deepcopy(phi)
+    adv_y = np.zeros_like(phi)
     adv_y[:, 2:-2, :] = (
         v[:, 2:-2, :]
         / (12.0 * dy)
@@ -219,7 +219,7 @@ def fourth_order_advection(dx, dy, u, v, phi):
 
 
 def fifth_order_advection(dx, dy, u, v, phi):
-    adv_x = deepcopy(phi)
+    adv_x = np.zeros_like(phi)
     adv_x[3:-3, :, :] = u[3:-3, :, :] / (60.0 * dx) * (
         45.0 * (phi[4:-2, :, :] - phi[2:-4, :, :])
         - 9.0 * (phi[5:-1, :, :] - phi[1:-5, :, :])
@@ -230,7 +230,7 @@ def fifth_order_advection(dx, dy, u, v, phi):
         + 15.0 * (phi[4:-2, :, :] + phi[2:-4, :, :])
         - 20.0 * phi[3:-3, :, :]
     )
-    adv_y = deepcopy(phi)
+    adv_y = np.zeros_like(phi)
     adv_y[:, 3:-3, :] = v[:, 3:-3, :] / (60.0 * dy) * (
         45.0 * (phi[:, 4:-2, :] - phi[:, 2:-4, :])
         - 9.0 * (phi[:, 5:-1, :] - phi[:, 1:-5, :])
@@ -245,7 +245,7 @@ def fifth_order_advection(dx, dy, u, v, phi):
 
 
 def sixth_order_advection(dx, dy, u, v, phi):
-    adv_x = deepcopy(phi)
+    adv_x = np.zeros_like(phi)
     adv_x[3:-3, :, :] = (
         u[3:-3, :, :]
         / (60.0 * dx)
@@ -256,7 +256,7 @@ def sixth_order_advection(dx, dy, u, v, phi):
         )
     )
 
-    adv_y = deepcopy(phi)
+    adv_y = np.zeros_like(phi)
     adv_y[:, 3:-3, :] = (
         v[:, 3:-3, :]
         / (60.0 * dy)
@@ -289,7 +289,11 @@ def test(data, order, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+    aligned_index = data.draw(
+        st_one_of(conf_aligned_index), label="aligned_index"
+    )
+    bo = BackendOptions(cache=True, nopython=True, rebuild=False)
+    so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
 
     advection = BurgersAdvection.factory(order, backend)
     nb = advection.extent
@@ -299,22 +303,19 @@ def test(data, order, backend, dtype):
             xaxis_length=(2 * nb + 1, 40),
             yaxis_length=(2 * nb + 1, 40),
             zaxis_length=(1, 1),
-            dtype=dtype,
+            storage_options=so,
         ),
         label="grid",
     )
 
     state = data.draw(
-        st_burgers_state(grid, backend=backend, default_origin=default_origin),
+        st_burgers_state(grid, backend=backend, storage_options=so),
         label="state",
     )
 
     # ========================================
     # test bed
     # ========================================
-    bo = BackendOptions(cache=True, nopython=True, rebuild=False)
-    so = StorageOptions(dtype=dtype, default_origin=default_origin)
-
     dx = grid.grid_xy.dx.to_units("m").values.item()
     dy = grid.grid_xy.dy.to_units("m").values.item()
     u = state["x_velocity"].to_units("m s^-1").data
@@ -329,8 +330,13 @@ def test(data, order, backend, dtype):
     ws = WrappingStencil(advection, backend, bo, so)
     ws(dx, dy, u, v, adv_u_x, adv_u_y, adv_v_x, adv_v_y)
 
-    adv_u_x_val, adv_u_y_val = validation_functions[order](dx, dy, u, v, u)
-    adv_v_x_val, adv_v_y_val = validation_functions[order](dx, dy, u, v, v)
+    u_np, v_np = to_numpy(u), to_numpy(v)
+    adv_u_x_val, adv_u_y_val = validation_functions[order](
+        dx, dy, u_np, v_np, u_np
+    )
+    adv_v_x_val, adv_v_y_val = validation_functions[order](
+        dx, dy, u_np, v_np, v_np
+    )
 
     compare_arrays(adv_u_x[nb:-nb, nb:-nb], adv_u_x_val[nb:-nb, nb:-nb])
     compare_arrays(adv_u_y[nb:-nb, nb:-nb], adv_u_y_val[nb:-nb, nb:-nb])
@@ -345,12 +351,16 @@ def _test_performance(order, backend, dtype):
     nx = ny = 1024
     nz = 1
 
+    bo = BackendOptions(check_rebuild=False, inline="always")
+    so = StorageOptions(dtype=dtype)
+
     domain_x = sympl.DataArray([-10, 10], dims="x", attrs={"units": "m"})
     domain_y = sympl.DataArray([-10, 10], dims="y", attrs={"units": "m"})
     domain_z = sympl.DataArray([-10, 10], dims="z", attrs={"units": "m"})
-    grid = PhysicalGrid(domain_x, nx, domain_y, ny, domain_z, nz, dtype=dtype)
+    grid = PhysicalGrid(
+        domain_x, nx, domain_y, ny, domain_z, nz, storage_options=so
+    )
 
-    so = StorageOptions(dtype=dtype)
     zsf = ZhaoStateFactory(
         datetime(year=1992, month=2, day=20),
         sympl.DataArray(1.0, attrs={"units": "m^2 s^-1"}),
@@ -362,8 +372,6 @@ def _test_performance(order, backend, dtype):
     # ========================================
     # test bed
     # ========================================
-    bo = BackendOptions(check_rebuild=False, inline="always")
-
     dx = grid.grid_xy.dx.to_units("m").values.item()
     dy = grid.grid_xy.dy.to_units("m").values.item()
     u = state["x_velocity"].to_units("m s^-1").data
@@ -383,4 +391,4 @@ def _test_performance(order, backend, dtype):
 
 if __name__ == "__main__":
     pytest.main([__file__])
-    # _test_performance("fifth_order", "numba:cpu", float)
+    # test("sixth_order", "gt4py:gtmc", float)

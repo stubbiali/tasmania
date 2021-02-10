@@ -69,6 +69,8 @@ class RK3WS(RK2):
 
         self._stencil_args["in_u_tmp"] = state["x_velocity"]
         self._stencil_args["in_v_tmp"] = state["y_velocity"]
+        self._stencil_args["out_u"] = self._stencil_output[2 * stage]
+        self._stencil_args["out_v"] = self._stencil_output[2 * stage + 1]
         if "x_velocity" in tendencies:
             self._stencil_args["in_u_tnd"] = tendencies["x_velocity"]
         if "y_velocity" in tendencies:

@@ -34,8 +34,8 @@ from tasmania.python.burgers.state import ZhaoSolutionFactory, ZhaoStateFactory
 from tasmania.python.framework.options import StorageOptions
 
 from tests.conf import (
+    aligned_index as conf_aligned_index,
     backend as conf_backend,
-    default_origin as conf_dorigin,
     dtype as conf_dtype,
 )
 from tests.strategies import st_floats, st_one_of, st_physical_grid
@@ -50,7 +50,9 @@ def test_zhao_solution_factory(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    grid = data.draw(st_physical_grid(zaxis_length=(1, 1), dtype=dtype))
+    so = StorageOptions(dtype=dtype)
+
+    grid = data.draw(st_physical_grid(zaxis_length=(1, 1), storage_options=so))
     eps = DataArray(data.draw(st_floats()), attrs={"units": "m^2 s^-1"})
 
     el0 = data.draw(hyp_st.integers(min_value=0, max_value=grid.nx))
@@ -112,22 +114,19 @@ def test_zhao_state_factory(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    grid = data.draw(st_physical_grid(zaxis_length=(1, 1), dtype=dtype))
+    aligned_index = data.draw(st_one_of(conf_aligned_index))
+    so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
 
+    grid = data.draw(st_physical_grid(zaxis_length=(1, 1), storage_options=so))
     eps = DataArray(
         data.draw(st_floats(min_value=-1e10, max_value=1e10)),
         attrs={"units": "m^2 s^-1"},
     )
-
     init_time = data.draw(hyp_st.datetimes())
-
-    default_origin = data.draw(st_one_of(conf_dorigin))
 
     # ========================================
     # test
     # ========================================
-    so = StorageOptions(dtype=dtype, default_origin=default_origin)
-
     zsf = ZhaoStateFactory(init_time, eps, backend=backend, storage_options=so)
 
     state = zsf(init_time, grid)
@@ -154,7 +153,7 @@ def test_zhao_state_factory(data, backend, dtype):
         * np.sin(np.pi * y)
         / (2.0 + np.sin(2.0 * np.pi * x) * np.sin(np.pi * y))
     )
-    compare_arrays(u, state["x_velocity"].values)
+    compare_arrays(u, state["x_velocity"].data)
 
     v = (
         -2.0
@@ -164,7 +163,7 @@ def test_zhao_state_factory(data, backend, dtype):
         * np.cos(np.pi * y)
         / (2.0 + np.sin(2.0 * np.pi * x) * np.sin(np.pi * y))
     )
-    compare_arrays(v, state["y_velocity"].values)
+    compare_arrays(v, state["y_velocity"].data)
 
 
 if __name__ == "__main__":

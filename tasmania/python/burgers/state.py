@@ -20,25 +20,15 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-import functools
 import numpy as np
 import pint
 from sympl import DataArray
 from typing import Optional, TYPE_CHECKING
 
-try:
-    import cupy as cp
-except ImportError:
-    cp = np
-
-from tasmania.python.framework.allocators import zeros
 from tasmania.python.framework.options import StorageOptions
 from tasmania.python.framework.stencil import StencilFactory
-from tasmania.python.utils import typing
-from tasmania.python.utils.storage import (
-    get_asarray_function,
-    get_dataarray_3d,
-)
+from tasmania.python.utils import typing as ty
+from tasmania.python.utils.storage import get_dataarray_3d
 
 if TYPE_CHECKING:
     from tasmania.python.domain.grid import Grid
@@ -47,9 +37,7 @@ if TYPE_CHECKING:
 class ZhaoSolutionFactory:
     """Factory of valid velocity fields for the Zhao test case."""
 
-    def __init__(
-        self, initial_time: typing.datetime_t, eps: DataArray
-    ) -> None:
+    def __init__(self, initial_time: ty.Datetime, eps: DataArray) -> None:
         """
         Parameters
         ----------
@@ -61,12 +49,11 @@ class ZhaoSolutionFactory:
         """
         self._itime = initial_time
         self._eps = eps.to_units("m^2 s^-1").values.item()
-
         self._ureg = pint.UnitRegistry()
 
     def __call__(
         self,
-        time: typing.datetime_t,
+        time: ty.Datetime,
         grid: "Grid",
         slice_x: Optional[slice] = None,
         slice_y: Optional[slice] = None,
@@ -165,7 +152,7 @@ class ZhaoStateFactory(StencilFactory):
 
     def __init__(
         self,
-        initial_time: typing.datetime_t,
+        initial_time: ty.Datetime,
         eps: DataArray,
         *,
         backend: str = "numpy",
@@ -187,9 +174,7 @@ class ZhaoStateFactory(StencilFactory):
         super().__init__(backend=backend, storage_options=storage_options)
         self._solution_factory = ZhaoSolutionFactory(initial_time, eps)
 
-    def __call__(
-        self, time: typing.datetime_t, grid: "Grid"
-    ) -> typing.dataarray_dict_t:
+    def __call__(self, time: ty.Datetime, grid: "Grid") -> ty.DataArrayDict:
         """
         Parameters
         ----------
@@ -205,11 +190,9 @@ class ZhaoStateFactory(StencilFactory):
         """
         nx, ny = grid.nx, grid.ny
 
-        asarray = self.asarray()
-
         u = self.zeros(shape=(nx, ny, 1))
-        u[...] = asarray(
-            self._solution_factory(time, grid, field_name="x_velocity")
+        u[...] = self.as_storage(
+            data=self._solution_factory(time, grid, field_name="x_velocity")
         )
         u_da = get_dataarray_3d(
             u, grid, "m s^-1", "x_velocity", set_coordinates=False
@@ -218,8 +201,8 @@ class ZhaoStateFactory(StencilFactory):
         # u_da.attrs["default_origin"] = default_origin
 
         v = self.zeros(shape=(nx, ny, 1))
-        v[...] = asarray(
-            self._solution_factory(time, grid, field_name="y_velocity")
+        v[...] = self.as_storage(
+            data=self._solution_factory(time, grid, field_name="y_velocity")
         )
         v_da = get_dataarray_3d(
             v, grid, "m s^-1", "y_velocity", set_coordinates=False

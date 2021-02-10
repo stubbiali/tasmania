@@ -22,7 +22,6 @@
 #
 from datetime import datetime, timedelta
 from hypothesis import (
-    assume,
     given,
     reproduce_failure,
     strategies as hyp_st,
@@ -30,13 +29,13 @@ from hypothesis import (
 import pytest
 
 from tasmania.python.burgers.dynamics.dycore import BurgersDynamicalCore
+from tasmania.python.framework.generic_functions import to_numpy
 from tasmania.python.framework.options import BackendOptions, StorageOptions
-from tasmania.python.utils.backend import is_gt
 
 from tests.conf import (
+    aligned_index as conf_aligned_index,
     backend as conf_backend,
     dtype as conf_dtype,
-    default_origin as conf_dorigin,
     nb as conf_nb,
 )
 from tests.burgers.test_burgers_advection import (
@@ -61,7 +60,11 @@ def test_forward_euler(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+    aligned_index = data.draw(
+        st_one_of(conf_aligned_index), label="aligned_index"
+    )
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
 
     nb = data.draw(
         hyp_st.integers(min_value=1, max_value=max(1, conf_nb)), label="nb"
@@ -73,11 +76,11 @@ def test_forward_euler(data, backend, dtype):
             zaxis_length=(1, 1),
             nb=nb,
             backend=backend,
-            dtype=dtype,
+            backend_options=bo,
+            storage_options=so,
         ),
         label="domain",
     )
-    assume(domain.horizontal_boundary.type != "relaxed" or not is_gt(backend))
     grid = domain.numerical_grid
 
     state = data.draw(
@@ -85,7 +88,7 @@ def test_forward_euler(data, backend, dtype):
             grid,
             time=datetime(year=1992, month=2, day=20),
             backend=backend,
-            default_origin=default_origin,
+            storage_options=so,
         ),
         label="state",
     )
@@ -100,9 +103,6 @@ def test_forward_euler(data, backend, dtype):
     # ========================================
     # test
     # ========================================
-    bo = BackendOptions(rebuild=False)
-    so = StorageOptions(dtype=dtype, default_origin=default_origin)
-
     dycore = BurgersDynamicalCore(
         domain,
         intermediate_tendency_component=None,
@@ -127,8 +127,8 @@ def test_forward_euler(data, backend, dtype):
     dt = timestep.total_seconds()
     dx = grid.dx.to_units("m").values.item()
     dy = grid.dy.to_units("m").values.item()
-    u0 = state["x_velocity"].to_units("m s^-1").data
-    v0 = state["y_velocity"].to_units("m s^-1").data
+    u0 = to_numpy(state["x_velocity"].to_units("m s^-1").data)
+    v0 = to_numpy(state["y_velocity"].to_units("m s^-1").data)
 
     adv_u_x, adv_u_y = first_order_advection(dx, dy, u0, v0, u0)
     adv_v_x, adv_v_y = first_order_advection(dx, dy, u0, v0, v0)
@@ -136,27 +136,25 @@ def test_forward_euler(data, backend, dtype):
     u1 = u0 - dt * (adv_u_x + adv_u_y)
     v1 = v0 - dt * (adv_v_x + adv_v_y)
 
-    hb = domain.horizontal_boundary
+    hb = domain.copy(backend="numpy").horizontal_boundary
     hb.enforce_field(
         u1,
         field_name="x_velocity",
         field_units="m s^-1",
         time=new_state["time"],
-        grid=grid,
     )
     hb.enforce_field(
         v1,
         field_name="y_velocity",
         field_units="m s^-1",
         time=new_state["time"],
-        grid=grid,
     )
 
     assert new_state["x_velocity"].attrs["units"] == "m s^-1"
-    compare_arrays(u1, new_state["x_velocity"])
+    compare_arrays(u1, new_state["x_velocity"].data)
 
     assert new_state["y_velocity"].attrs["units"] == "m s^-1"
-    compare_arrays(v1, new_state["y_velocity"])
+    compare_arrays(v1, new_state["y_velocity"].data)
 
 
 @hyp_settings
@@ -167,7 +165,11 @@ def test_rk2(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+    aligned_index = data.draw(
+        st_one_of(conf_aligned_index), label="aligned_index"
+    )
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
 
     nb = data.draw(
         hyp_st.integers(min_value=2, max_value=max(2, conf_nb)), label="nb"
@@ -179,11 +181,11 @@ def test_rk2(data, backend, dtype):
             zaxis_length=(1, 1),
             nb=nb,
             backend=backend,
-            dtype=dtype,
+            backend_options=bo,
+            storage_options=so,
         ),
         label="domain",
     )
-    assume(domain.horizontal_boundary.type != "relaxed" or not is_gt(backend))
     grid = domain.numerical_grid
 
     state = data.draw(
@@ -191,7 +193,7 @@ def test_rk2(data, backend, dtype):
             grid,
             time=datetime(year=1992, month=2, day=20),
             backend=backend,
-            default_origin=default_origin,
+            storage_options=so,
         ),
         label="state",
     )
@@ -206,9 +208,6 @@ def test_rk2(data, backend, dtype):
     # ========================================
     # test
     # ========================================
-    bo = BackendOptions(rebuild=False)
-    so = StorageOptions(dtype=dtype, default_origin=default_origin)
-
     dycore = BurgersDynamicalCore(
         domain,
         intermediate_tendency_component=None,
@@ -233,8 +232,8 @@ def test_rk2(data, backend, dtype):
     dt = timestep.total_seconds()
     dx = grid.dx.to_units("m").values.item()
     dy = grid.dy.to_units("m").values.item()
-    u0 = state["x_velocity"].to_units("m s^-1").data
-    v0 = state["y_velocity"].to_units("m s^-1").data
+    u0 = to_numpy(state["x_velocity"].to_units("m s^-1").data)
+    v0 = to_numpy(state["y_velocity"].to_units("m s^-1").data)
 
     adv_u_x, adv_u_y = third_order_advection(dx, dy, u0, v0, u0)
     adv_v_x, adv_v_y = third_order_advection(dx, dy, u0, v0, v0)
@@ -242,20 +241,18 @@ def test_rk2(data, backend, dtype):
     u1 = u0 - 0.5 * dt * (adv_u_x + adv_u_y)
     v1 = v0 - 0.5 * dt * (adv_v_x + adv_v_y)
 
-    hb = domain.horizontal_boundary
+    hb = domain.copy(backend="numpy").horizontal_boundary
     hb.enforce_field(
         u1,
         field_name="x_velocity",
         field_units="m s^-1",
         time=state["time"] + 0.5 * timestep,
-        grid=grid,
     )
     hb.enforce_field(
         v1,
         field_name="y_velocity",
         field_units="m s^-1",
         time=state["time"] + 0.5 * timestep,
-        grid=grid,
     )
 
     adv_u_x, adv_u_y = third_order_advection(dx, dy, u1, v1, u1)
@@ -269,21 +266,19 @@ def test_rk2(data, backend, dtype):
         field_name="x_velocity",
         field_units="m s^-1",
         time=state["time"] + timestep,
-        grid=grid,
     )
     hb.enforce_field(
         v2,
         field_name="y_velocity",
         field_units="m s^-1",
         time=state["time"] + timestep,
-        grid=grid,
     )
 
     assert new_state["x_velocity"].attrs["units"] == "m s^-1"
-    compare_arrays(u2, new_state["x_velocity"])
+    compare_arrays(u2, new_state["x_velocity"].data)
 
     assert new_state["y_velocity"].attrs["units"] == "m s^-1"
-    compare_arrays(v2, new_state["y_velocity"])
+    compare_arrays(v2, new_state["y_velocity"].data)
 
 
 @hyp_settings
@@ -294,7 +289,11 @@ def test_rk3ws(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+    aligned_index = data.draw(
+        st_one_of(conf_aligned_index), label="aligned_index"
+    )
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
 
     nb = data.draw(
         hyp_st.integers(min_value=3, max_value=max(3, conf_nb)), label="nb"
@@ -306,11 +305,11 @@ def test_rk3ws(data, backend, dtype):
             zaxis_length=(1, 1),
             nb=nb,
             backend=backend,
-            dtype=dtype,
+            backend_options=bo,
+            storage_options=so,
         ),
         label="domain",
     )
-    assume(domain.horizontal_boundary.type != "relaxed" or not is_gt(backend))
     grid = domain.numerical_grid
 
     state = data.draw(
@@ -318,7 +317,7 @@ def test_rk3ws(data, backend, dtype):
             grid,
             time=datetime(year=1992, month=2, day=20),
             backend=backend,
-            default_origin=default_origin,
+            storage_options=so,
         ),
         label="state",
     )
@@ -333,9 +332,6 @@ def test_rk3ws(data, backend, dtype):
     # ========================================
     # test
     # ========================================
-    bo = BackendOptions(rebuild=False)
-    so = StorageOptions(dtype=dtype, default_origin=default_origin)
-
     dycore = BurgersDynamicalCore(
         domain,
         intermediate_tendency_component=None,
@@ -360,8 +356,8 @@ def test_rk3ws(data, backend, dtype):
     dt = timestep.total_seconds()
     dx = grid.dx.to_units("m").values.item()
     dy = grid.dy.to_units("m").values.item()
-    u0 = state["x_velocity"].to_units("m s^-1").data
-    v0 = state["y_velocity"].to_units("m s^-1").data
+    u0 = to_numpy(state["x_velocity"].to_units("m s^-1").data)
+    v0 = to_numpy(state["y_velocity"].to_units("m s^-1").data)
 
     adv_u_x, adv_u_y = fifth_order_advection(dx, dy, u0, v0, u0)
     adv_v_x, adv_v_y = fifth_order_advection(dx, dy, u0, v0, v0)
@@ -369,20 +365,18 @@ def test_rk3ws(data, backend, dtype):
     u1 = u0 - 1.0 / 3.0 * dt * (adv_u_x + adv_u_y)
     v1 = v0 - 1.0 / 3.0 * dt * (adv_v_x + adv_v_y)
 
-    hb = domain.horizontal_boundary
+    hb = domain.copy(backend="numpy").horizontal_boundary
     hb.enforce_field(
         u1,
         field_name="x_velocity",
         field_units="m s^-1",
         time=state["time"] + 1.0 / 3.0 * timestep,
-        grid=grid,
     )
     hb.enforce_field(
         v1,
         field_name="y_velocity",
         field_units="m s^-1",
         time=state["time"] + 1.0 / 3.0 * timestep,
-        grid=grid,
     )
 
     adv_u_x, adv_u_y = fifth_order_advection(dx, dy, u1, v1, u1)
@@ -396,14 +390,12 @@ def test_rk3ws(data, backend, dtype):
         field_name="x_velocity",
         field_units="m s^-1",
         time=state["time"] + 0.5 * timestep,
-        grid=grid,
     )
     hb.enforce_field(
         v2,
         field_name="y_velocity",
         field_units="m s^-1",
         time=state["time"] + 0.5 * timestep,
-        grid=grid,
     )
 
     adv_u_x, adv_u_y = fifth_order_advection(dx, dy, u2, v2, u2)
@@ -417,22 +409,21 @@ def test_rk3ws(data, backend, dtype):
         field_name="x_velocity",
         field_units="m s^-1",
         time=state["time"] + timestep,
-        grid=grid,
     )
     hb.enforce_field(
         v3,
         field_name="y_velocity",
         field_units="m s^-1",
         time=state["time"] + timestep,
-        grid=grid,
     )
 
     assert new_state["x_velocity"].attrs["units"] == "m s^-1"
-    compare_arrays(u3, new_state["x_velocity"])
+    compare_arrays(u3, new_state["x_velocity"].data)
 
     assert new_state["y_velocity"].attrs["units"] == "m s^-1"
-    compare_arrays(v3, new_state["y_velocity"])
+    compare_arrays(v3, new_state["y_velocity"].data)
 
 
 if __name__ == "__main__":
-    pytest.main([__file__])
+    # pytest.main([__file__])
+    test_forward_euler("gt4py:gtx86", float)

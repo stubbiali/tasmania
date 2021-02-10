@@ -20,23 +20,22 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-import numpy as np
 from typing import Optional, TYPE_CHECKING
 
 from tasmania.python.burgers.dynamics.stepper import BurgersStepper
 from tasmania.python.framework.dycore import DynamicalCore
 from tasmania.python.utils import typing
-from tasmania.python.utils.storage import get_dataarray_3d, zeros
+from tasmania.python.utils.storage import get_dataarray_3d
 
 if TYPE_CHECKING:
     from tasmania.python.domain.domain import Domain
 
 
 class BurgersDynamicalCore(DynamicalCore):
-    """ The dynamical core for the inviscid 2-D Burgers equations. """
+    """The dynamical core for the inviscid 2-D Burgers equations."""
 
     def __init__(
-        self,
+        self: "BurgersDynamicalCore",
         domain: "Domain",
         intermediate_tendency_component: Optional[
             typing.tendency_component_t
@@ -175,7 +174,7 @@ class BurgersDynamicalCore(DynamicalCore):
     ) -> typing.array_dict_t:
         out_state = self._stepper(stage, raw_state, raw_tendencies, timestep)
 
-        self.horizontal_boundary.dmn_enforce_raw(
+        self.horizontal_boundary.enforce_raw(
             out_state,
             field_properties={
                 "x_velocity": {"units": "m s^-1"},
