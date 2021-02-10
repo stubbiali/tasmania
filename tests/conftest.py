@@ -24,11 +24,13 @@ import numpy as np
 import pytest
 from sympl import DataArray
 
+from gt4py import gtscript
+
 from tasmania.python.framework.base_components import TendencyComponent
+from tasmania.python.framework.tag import stencil_definition
 from tasmania.python.plot.contour import Contour
 from tasmania.python.plot.profile import LineProfile
 from tasmania.python.utils.io import load_netcdf_dataset
-from tasmania.python.utils.storage import zeros
 
 
 @pytest.fixture(scope="module")
@@ -105,8 +107,33 @@ def drawer_topography_2d():
 
 
 class FakeTendencyComponent1(TendencyComponent):
-    def __init__(self, domain, grid_type):
-        super().__init__(domain, grid_type)
+    def __init__(
+        self,
+        domain,
+        grid_type,
+        *,
+        backend,
+        backend_options,
+        storage_shape,
+        storage_options
+    ):
+        super().__init__(
+            domain,
+            grid_type,
+            backend=backend,
+            backend_options=backend_options,
+            storage_options=storage_options,
+        )
+
+        self.shape = self.get_storage_shape(storage_shape)
+        self.tnd_s = self.zeros(shape=self.shape)
+        self.tnd_su = self.zeros(shape=self.shape)
+        self.tnd_u = self.zeros(shape=self.shape)
+        self.fake = self.zeros(shape=self.shape)
+
+        dtype = self.storage_options.dtype
+        self.backend_options.dtypes = {"dtype": dtype}
+        self.stencil = self.compile("fake1")
 
     @property
     def input_properties(self):
@@ -161,6 +188,18 @@ class FakeTendencyComponent1(TendencyComponent):
         su = state["x_momentum_isentropic"]
         u = state["x_velocity_at_u_locations"]
 
+        self.stencil(
+            s=s,
+            su=su,
+            u=u,
+            tnd_s=self.tnd_s,
+            tnd_su=self.tnd_su,
+            tnd_u=self.tnd_u,
+            fake=self.fake,
+            origin=(0, 0, 0),
+            domain=self.shape,
+        )
+
         tendencies = {
             "air_isentropic_density": 1e-3 * s,
             "x_momentum_isentropic": 300 * su,
@@ -171,11 +210,55 @@ class FakeTendencyComponent1(TendencyComponent):
 
         return tendencies, diagnostics
 
+    @staticmethod
+    @stencil_definition(backend=("numpy", "cupy"), stencil="fake1")
+    def stencil_numpy(s, su, u, tnd_s, tnd_su, tnd_u, fake, *, origin, domain):
+        ib, jb, kb = origin
+        ie, je, ke = ib + domain[0], jb + domain[1], kb + domain[2]
+        i, j, k = slice(ib, ie), slice(jb, je), slice(kb, ke)
+
+        tnd_s[i, j, k] = 1e-3 * s[i, j, k]
+        tnd_su[i, j, k] = 300 * su[i, j, k]
+        tnd_u[i, j, k] = 50 * u[i, j, k] / 3.6
+        fake[i, j, k] = 2 * s[i, j, k]
+
+    @staticmethod
+    @stencil_definition(backend="gt4py*", stencil="fake1")
+    def stencil_gt4py(
+        s: gtscript.Field["dtype"],
+        su: gtscript.Field["dtype"],
+        u: gtscript.Field["dtype"],
+        tnd_s: gtscript.Field["dtype"],
+        tnd_su: gtscript.Field["dtype"],
+        tnd_u: gtscript.Field["dtype"],
+        fake: gtscript.Field["dtype"],
+    ):
+        with computation(PARALLEL), interval(...):
+            tnd_s = 1e-3 * s
+            tnd_su = 300 * su
+            tnd_u = 50 * u / 3.6
+            fake = 2 * s
+
 
 @pytest.fixture(scope="module")
 def make_fake_tendency_component_1():
-    def _make_fake_tendency_component_1(domain, grid_type):
-        return FakeTendencyComponent1(domain, grid_type)
+    def _make_fake_tendency_component_1(
+        domain,
+        grid_type,
+        *,
+        backend,
+        backend_options,
+        storage_shape,
+        storage_options
+    ):
+        return FakeTendencyComponent1(
+            domain,
+            grid_type,
+            backend=backend,
+            backend_options=backend_options,
+            storage_shape=storage_shape,
+            storage_options=storage_options,
+        )
 
     return _make_fake_tendency_component_1
 
@@ -231,15 +314,7 @@ class FakeTendencyComponent2(TendencyComponent):
             sv = 0.5 * 1e-6 * s * (v[:, :-1, :] / 3.6 + v[:, 1:, :] / 3.6)
         else:
             try:
-                backend = s.backend
-                dtype = s.dtype
-                default_origin = s.default_origin
-                sv = zeros(
-                    s.shape,
-                    backend=backend,
-                    dtype=dtype,
-                    default_origin=default_origin,
-                )
+                sv = self.zeros(shape=s.shape)
             except AttributeError:
                 sv = np.zeros_like(s, dtype=s.dtype)
 

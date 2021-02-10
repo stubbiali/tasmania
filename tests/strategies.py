@@ -28,8 +28,8 @@ from sympl import DataArray
 from sympl._core.units import clean_units
 
 import tasmania as taz
-from tasmania.python.framework.allocators import zeros
-from tasmania.python.framework.options import BackendOptions, StorageOptions
+from tasmania.python.framework.allocators import as_storage, zeros
+from tasmania.python.framework.options import StorageOptions
 from tasmania.python.utils.data import get_physical_constants
 from tasmania.python.utils.storage import (
     get_dataarray_2d,
@@ -569,7 +569,7 @@ def st_raw_field(
     """Draw a random array."""
     so = storage_options or StorageOptions()
     storage = zeros(backend, shape=shape, storage_options=so)
-    storage[...] = draw(
+    storage_np = draw(
         st_arrays(
             so.dtype,
             shape,
@@ -577,6 +577,7 @@ def st_raw_field(
             fill=None,  # fill=hyp_st.nothing(),
         )
     )
+    storage[...] = as_storage(backend, data=storage_np, storage_options=so)
     return storage
 
 
@@ -636,7 +637,7 @@ def st_field(
     storage_shape=None,
     storage_options=None,
 ):
-    """ Strategy drawing a random field for the variable `field_name`. """
+    """Strategy drawing a random field for the variable `field_name`."""
     properties_dict = eval(f"conf.{properties_name}")
     units = draw(st_one_of(properties_dict[name].keys()))
 
@@ -1584,9 +1585,9 @@ def st_isentropic_boussinesq_state_f(
 
 @hyp_st.composite
 def st_burgers_state(
-    draw, grid, *, time=None, backend="numpy", aligned_index=None
+    draw, grid, *, time=None, backend="numpy", storage_options=None
 ):
-    """ Strategy drawing a valid Burgers model state over `grid`. """
+    """Strategy drawing a valid Burgers model state over `grid`."""
     nx, ny, nz = grid.grid_xy.nx, grid.grid_xy.ny, grid.nz
     assert nz == 1
 
@@ -1603,9 +1604,9 @@ def st_burgers_state(
             grid,
             "burgers_state",
             "x_velocity",
-            backend=backend,
-            aligned_index=aligned_index,
             set_coordinates=True,
+            backend=backend,
+            storage_options=storage_options,
         )
     )
 
@@ -1615,9 +1616,9 @@ def st_burgers_state(
             grid,
             "burgers_state",
             "y_velocity",
-            backend=backend,
-            aligned_index=aligned_index,
             set_coordinates=True,
+            backend=backend,
+            storage_options=storage_options,
         )
     )
 
@@ -1626,7 +1627,7 @@ def st_burgers_state(
 
 @hyp_st.composite
 def st_burgers_tendency(
-    draw, grid, *, time=None, backend="numpy", aligned_index=None
+    draw, grid, *, time=None, backend="numpy", storage_options=None
 ):
     """
     Strategy drawing a set of tendencies for the variables whose evolution is
@@ -1649,8 +1650,8 @@ def st_burgers_tendency(
             "burgers_tendency",
             "x_velocity",
             backend=backend,
-            aligned_index=aligned_index,
             set_coordinates=True,
+            storage_options=storage_options,
         )
     )
 
@@ -1660,9 +1661,9 @@ def st_burgers_tendency(
             grid,
             "burgers_tendency",
             "y_velocity",
-            backend=backend,
-            aligned_index=aligned_index,
             set_coordinates=True,
+            backend=backend,
+            storage_options=storage_options,
         )
     )
 
