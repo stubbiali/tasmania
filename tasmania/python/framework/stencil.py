@@ -205,11 +205,11 @@ class StencilFactory(abc.ABC):
 
     def __init__(
         self: "StencilFactory",
-        backend: str = "numpy",
+        backend: Optional[str] = None,
         backend_options: Optional[BackendOptions] = None,
         storage_options: Optional[StorageOptions] = None,
     ) -> None:
-        self.backend = backend
+        self.backend = backend or "numpy"
         self.backend_options = backend_options or BackendOptions()
         self.storage_options = storage_options or StorageOptions()
 

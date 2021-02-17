@@ -90,28 +90,22 @@ class HorizontalDiffusion(StencilFactory, abc.ABC):
         self._dy = dy
 
         # initialize the diffusivity
-        gamma = self.zeros(
-            backend,
-            shape=shape,
-            # (1, 1, shape[2]), backend, dtype, default_origin,
-            # mask=[False, False, True]
-        )
-        gamma[...] = diffusion_coeff
-        self._gamma = gamma
+        dtype = self.storage_options.dtype
+        gamma = diffusion_coeff * np.ones((1, 1, shape[2]), dtype=dtype)
 
         # the diffusivity is monotonically increased towards the top of the
         # model, so to mimic the effect of a short-length wave absorber
-        dtype = self.storage_options.dtype
         n = diffusion_damp_depth
         if n > 0:
             pert = (
                 np.sin(0.5 * math.pi * (n - np.arange(0, n, dtype=dtype)) / n)
                 ** 2
             )
-            gamma[:, :, :n] = (
-                gamma[:, :, :n]
-                + (diffusion_coeff_max - diffusion_coeff) * pert
-            )
+            gamma[:, :, :n] += (diffusion_coeff_max - diffusion_coeff) * pert
+
+        # convert diffusivity to proper storage
+        self._gamma = self.zeros(backend, shape=shape)
+        self._gamma[...] = self.as_storage(data=gamma)
 
         # initialize the underlying stencil
         self.backend_options.dtypes = {"dtype": dtype}

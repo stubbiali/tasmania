@@ -25,7 +25,6 @@ from typing import Optional, Sequence, TYPE_CHECKING, Tuple
 from tasmania.python.dwarfs.diagnostics import HorizontalVelocity
 from tasmania.python.physics.turbulence import Smagorinsky2d
 from tasmania.python.utils import typing
-from tasmania.python.utils.storage import zeros
 
 if TYPE_CHECKING:
     from tasmania.python.domain.domain import Domain
