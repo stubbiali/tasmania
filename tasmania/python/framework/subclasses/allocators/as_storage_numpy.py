@@ -69,4 +69,5 @@ if gt:
         *,
         storage_options: Optional[StorageOptions] = None
     ) -> np.ndarray:
+        data.synchronize()
         return data.to_numpy()
