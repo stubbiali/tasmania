@@ -55,7 +55,7 @@ if gt:
         sync_state = SyncState()
         sync_state.state = 1
         return gt.storage.as_storage(
-            device_data=data,
+            data=data,
             dtype=so.dtype,
             aligned_index=so.aligned_index,
             defaults=defaults,
