@@ -61,16 +61,18 @@ if TYPE_CHECKING:
 
 Datatype = TypeVar("Datatype")
 Datetime = Union[dt.datetime, pd.Timestamp]
-datetime_t = Datetime
 Storage = TypeVar("Storage")
-ArrayDict = Dict[str, Union[Datetime, Storage]]
+StorageDict = Dict[str, Union[Datetime, Storage]]
 DataArrayDict = Dict[str, Union[Datetime, DataArray]]
 TimeDelta = Union[dt.timedelta, pd.Timedelta]
-timedelta_t = TimeDelta
+PropertiesDict = Dict[str, Dict[str, Any]]
 
 array_t = Union[np.ndarray, cp.ndarray, gt_storage.Storage]
 dataarray_t = DataArray
 gtstorage_t = gt_storage.Storage
+
+datetime_t = Datetime
+timedelta_t = TimeDelta
 
 array_dict_t = Dict[str, Union[timedelta_t, array_t]]
 dataarray_dict_t = Dict[str, Union[timedelta_t, dataarray_t]]
@@ -100,8 +102,8 @@ tendency_component_t = Union[
     TendencyComponentComposite,
     "BaseConcurrentCoupling",
 ]
-triplet_bool_t = Union[Tuple[bool, bool, bool], Sequence[bool]]
-triplet_int_t = Union[Tuple[int, int, int], Sequence[int]]
+TripletBool = Union[Tuple[bool, bool, bool], Sequence[bool]]
+TripletInt = Union[Tuple[int, int, int], Sequence[int]]
 
 component_t = Union[
     diagnostic_component_t, promoter_component_t, tendency_component_t

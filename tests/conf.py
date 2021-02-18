@@ -76,6 +76,8 @@ else:
     gt_gpu_backend = gtc_gpu_backend = dawn_gpu_backend = set()
     numba_gpu_backend = set()
 
+gtc_backend = gtc_cpu_backend.union(gtc_gpu_backend)
+dawn_backend = dawn_cpu_backend.union(dawn_gpu_backend)
 numba_backend = numba_cpu_backend.union(numba_gpu_backend)
 cpu_backend = cpu_backend.union(
     gt_cpu_backend, gtc_cpu_backend,  # dawn_cpu_backend, numba_cpu_backend
@@ -86,7 +88,7 @@ gpu_backend = gpu_backend.union(
 backend = cpu_backend  # .union(gpu_backend)
 
 # >>> storage info
-dtype = (np.float64, np.float32)
+dtype = (np.float64,)
 aligned_index = ((0, 0, 0), (1, 1, 0), (3, 3, 0), (2, 0, 1))
 
 # >>> x-axis
@@ -125,11 +127,7 @@ topography = {
 
 # >>> horizontal boundary
 nb = 4
-horizontal_boundary_types = (
-    "dirichlet",
-    "identity," "periodic",
-    "relaxed",
-)
+horizontal_boundary_types = ("dirichlet", "identity", "periodic", "relaxed")
 
 # >>> isentropic model
 isentropic_state = {

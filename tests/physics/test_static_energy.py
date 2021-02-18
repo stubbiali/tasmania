@@ -27,6 +27,7 @@ from hypothesis import (
 )
 import pytest
 
+from tasmania.python.framework.generic_functions import to_numpy
 from tasmania.python.framework.options import BackendOptions, StorageOptions
 from tasmania.python.physics.static_energy import (
     DryStaticEnergy,
@@ -34,11 +35,7 @@ from tasmania.python.physics.static_energy import (
 )
 from tasmania.python.utils.storage import get_dataarray_3d
 
-from tests.conf import (
-    backend as conf_backend,
-    dtype as conf_dtype,
-    default_origin as conf_dorigin,
-)
+from tests import conf
 from tests.strategies import st_domain, st_one_of, st_raw_field
 from tests.utilities import compare_dataarrays, hyp_settings
 
@@ -48,13 +45,17 @@ mfwv = "mass_fraction_of_water_vapor_in_air"
 
 @hyp_settings
 @given(data=hyp_st.data())
-@pytest.mark.parametrize("backend", conf_backend)
-@pytest.mark.parametrize("dtype", conf_dtype)
+@pytest.mark.parametrize("backend", conf.backend)
+@pytest.mark.parametrize("dtype", conf.dtype)
 def test_dry(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+    aligned_index = data.draw(
+        st_one_of(conf.aligned_index), label="aligned_index"
+    )
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
 
     domain = data.draw(
         st_domain(
@@ -62,7 +63,8 @@ def test_dry(data, backend, dtype):
             yaxis_length=(1, 30),
             zaxis_length=(1, 20),
             backend=backend,
-            dtype=dtype,
+            backend_options=bo,
+            storage_options=so,
         ),
         label="domain",
     )
@@ -83,23 +85,13 @@ def test_dry(data, backend, dtype):
 
     t = data.draw(
         st_raw_field(
-            storage_shape,
-            -1e3,
-            1e3,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
+            storage_shape, -1e3, 1e3, backend=backend, storage_options=so
         ),
         label="dse",
     )
     h = data.draw(
         st_raw_field(
-            storage_shape,
-            -1e3,
-            1e3,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
+            storage_shape, -1e3, 1e3, backend=backend, storage_options=so
         ),
         label="qv",
     )
@@ -109,9 +101,6 @@ def test_dry(data, backend, dtype):
     # ========================================
     # test bed
     # ========================================
-    bo = BackendOptions(rebuild=False)
-    so = StorageOptions(dtype=dtype, default_origin=default_origin)
-
     state = {
         "time": time,
         "air_temperature": get_dataarray_3d(
@@ -124,6 +113,7 @@ def test_dry(data, backend, dtype):
             h, grid, "m", grid_shape=(nx, ny, nz + 1), set_coordinates=False
         ),
     }
+    t_np, h_np = to_numpy(t), to_numpy(h)
 
     #
     # height
@@ -142,15 +132,16 @@ def test_dry(data, backend, dtype):
 
     assert "montgomery_potential" in diagnostics
     compare_dataarrays(
-        diagnostics["montgomery_potential"][:nx, :ny, :nz],
+        diagnostics["montgomery_potential"],
         get_dataarray_3d(
-            comp._cp * t[:nx, :ny, :nz] + comp._g * h[:nx, :ny, :nz],
+            comp._cp * t_np[:nx, :ny, :nz] + comp._g * h_np[:nx, :ny, :nz],
             grid,
             "m^2 s^-2",
             grid_shape=(nx, ny, nz),
             set_coordinates=False,
         ),
         compare_coordinate_values=False,
+        slice=(slice(0, nx), slice(0, ny), slice(0, nz)),
     )
 
     assert len(diagnostics) == 1
@@ -172,16 +163,19 @@ def test_dry(data, backend, dtype):
 
     assert "montgomery_potential" in diagnostics
     compare_dataarrays(
-        diagnostics["montgomery_potential"][:nx, :ny, :nz],
+        diagnostics["montgomery_potential"],
         get_dataarray_3d(
-            comp._cp * t[:nx, :ny, :nz]
-            + comp._g * 0.5 * (h[:nx, :ny, :nz] + h[:nx, :ny, 1 : nz + 1]),
+            comp._cp * t_np[:nx, :ny, :nz]
+            + comp._g
+            * 0.5
+            * (h_np[:nx, :ny, :nz] + h_np[:nx, :ny, 1 : nz + 1]),
             grid,
             "m^2 s^-2",
             grid_shape=(nx, ny, nz),
             set_coordinates=False,
         ),
         compare_coordinate_values=False,
+        slice=(slice(0, nx), slice(0, ny), slice(0, nz)),
     )
 
     assert len(diagnostics) == 1
@@ -189,13 +183,17 @@ def test_dry(data, backend, dtype):
 
 @hyp_settings
 @given(data=hyp_st.data())
-@pytest.mark.parametrize("backend", conf_backend)
-@pytest.mark.parametrize("dtype", conf_dtype)
+@pytest.mark.parametrize("backend", conf.backend)
+@pytest.mark.parametrize("dtype", conf.dtype)
 def test_moist(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+    aligned_index = data.draw(
+        st_one_of(conf.aligned_index), label="aligned_index"
+    )
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
 
     domain = data.draw(
         st_domain(
@@ -203,7 +201,8 @@ def test_moist(data, backend, dtype):
             yaxis_length=(1, 30),
             zaxis_length=(1, 20),
             backend=backend,
-            dtype=dtype,
+            backend_options=bo,
+            storage_options=so,
         ),
         label="domain",
     )
@@ -224,23 +223,13 @@ def test_moist(data, backend, dtype):
 
     dse = data.draw(
         st_raw_field(
-            storage_shape,
-            -1e3,
-            1e3,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
+            storage_shape, -1e3, 1e3, backend=backend, storage_options=so
         ),
         label="dse",
     )
     qv = data.draw(
         st_raw_field(
-            storage_shape,
-            -1e3,
-            1e3,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
+            storage_shape, -1e3, 1e3, backend=backend, storage_options=so
         ),
         label="qv",
     )
@@ -250,9 +239,6 @@ def test_moist(data, backend, dtype):
     # ========================================
     # test bed
     # ========================================
-    bo = BackendOptions(rebuild=False)
-    so = StorageOptions(dtype=dtype, default_origin=default_origin)
-
     state = {
         "time": time,
         "montgomery_potential": get_dataarray_3d(
@@ -266,6 +252,7 @@ def test_moist(data, backend, dtype):
             qv, grid, "g g^-1", grid_shape=(nx, ny, nz), set_coordinates=False
         ),
     }
+    dse_np, qv_np = to_numpy(dse), to_numpy(qv)
 
     comp = MoistStaticEnergy(
         domain,
@@ -280,15 +267,16 @@ def test_moist(data, backend, dtype):
 
     assert "moist_static_energy" in diagnostics
     compare_dataarrays(
-        diagnostics["moist_static_energy"][:nx, :ny, :nz],
+        diagnostics["moist_static_energy"],
         get_dataarray_3d(
-            dse + comp._lhvw * qv,
+            dse_np + comp._lhvw * qv_np,
             grid,
             "m^2 s^-2",
             grid_shape=(nx, ny, nz),
             set_coordinates=False,
-        )[:nx, :ny, :nz],
+        ),
         compare_coordinate_values=False,
+        slice=(slice(0, nx), slice(0, ny), slice(0, nz)),
     )
 
     assert len(diagnostics) == 1

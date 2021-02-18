@@ -28,8 +28,7 @@ from gt4py import gtscript
 
 from tasmania.python.framework.base_components import DiagnosticComponent
 from tasmania.python.framework.tag import stencil_definition
-from tasmania.python.utils import typing
-from tasmania.python.utils.data import get_physical_constants
+from tasmania.python.utils import typing as ty
 
 if TYPE_CHECKING:
     from tasmania.python.domain.domain import Domain
@@ -100,7 +99,7 @@ class DryStaticEnergy(DiagnosticComponent):
         self._stencil = self.compile("static_energy")
 
     @property
-    def input_properties(self) -> typing.properties_dict_t:
+    def input_properties(self) -> ty.PropertiesDict:
         g = self.grid
         dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
         dims_stgz = (g.x.dims[0], g.y.dims[0], g.z_on_interface_levels.dims[0])
@@ -117,7 +116,7 @@ class DryStaticEnergy(DiagnosticComponent):
         return return_dict
 
     @property
-    def diagnostic_properties(self) -> typing.properties_dict_t:
+    def diagnostic_properties(self) -> ty.PropertiesDict:
         g = self.grid
         dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
 
@@ -127,7 +126,7 @@ class DryStaticEnergy(DiagnosticComponent):
 
         return return_dict
 
-    def array_call(self, state: typing.array_dict_t) -> typing.array_dict_t:
+    def array_call(self, state: ty.StorageDict) -> ty.StorageDict:
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
 
         in_t = state["air_temperature"]
@@ -159,23 +158,20 @@ class DryStaticEnergy(DiagnosticComponent):
         in_h: np.ndarray,
         out_dse: np.ndarray,
         *,
-        origin: typing.triplet_int_t,
-        domain: typing.triplet_int_t,
-        **kwargs  # catch-all
+        origin: ty.TripletInt,
+        domain: ty.TripletInt
     ):
         i = slice(origin[0], origin[0] + domain[0])
         j = slice(origin[1], origin[1] + domain[1])
         k = slice(origin[2], origin[2] + domain[2])
         kp1 = slice(origin[2] + 1, origin[2] + domain[2] + 1)
 
-        if self._stgz:
-            out_dse[i, j, k] = self._cp * in_t[i, j, k] + self._g * 0.5 * (
+        if height_on_interface_levels:
+            out_dse[i, j, k] = cp * in_t[i, j, k] + g * 0.5 * (
                 in_h[i, j, k] + in_h[i, j, kp1]
             )
         else:
-            out_dse[i, j, k] = (
-                self._cp * in_t[i, j, k] + self._g * in_h[i, j, k]
-            )
+            out_dse[i, j, k] = cp * in_t[i, j, k] + g * in_h[i, j, k]
 
     @staticmethod
     @stencil_definition(backend="gt4py*", stencil="static_energy")
@@ -244,7 +240,7 @@ class MoistStaticEnergy(DiagnosticComponent):
         self._stencil = self.compile("static_energy")
 
     @property
-    def input_properties(self) -> typing.properties_dict_t:
+    def input_properties(self) -> ty.PropertiesDict:
         g = self.grid
         dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
 
@@ -259,7 +255,7 @@ class MoistStaticEnergy(DiagnosticComponent):
         return return_dict
 
     @property
-    def diagnostic_properties(self) -> typing.properties_dict_t:
+    def diagnostic_properties(self) -> ty.PropertiesDict:
         g = self.grid
         dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
 
@@ -269,7 +265,7 @@ class MoistStaticEnergy(DiagnosticComponent):
 
         return return_dict
 
-    def array_call(self, state: typing.array_dict_t) -> typing.array_dict_t:
+    def array_call(self, state: ty.StorageDict) -> ty.StorageDict:
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
 
         in_dse = state["montgomery_potential"]
@@ -297,15 +293,14 @@ class MoistStaticEnergy(DiagnosticComponent):
         in_qv: np.ndarray,
         out_mse: np.ndarray,
         *,
-        origin: typing.triplet_int_t,
-        domain: typing.triplet_int_t,
-        **kwargs  # catch-all
+        origin: ty.TripletInt,
+        domain: ty.TripletInt
     ):
         i = slice(origin[0], origin[0] + domain[0])
         j = slice(origin[1], origin[1] + domain[1])
         k = slice(origin[2], origin[2] + domain[2])
 
-        out_mse[i, j, k] = in_dse[i, j, k] + self._lhvw * in_qv[i, j, k]
+        out_mse[i, j, k] = in_dse[i, j, k] + lhvw * in_qv[i, j, k]
 
     @staticmethod
     @stencil_definition(backend="gt4py*", stencil="static_energy")

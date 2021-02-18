@@ -36,8 +36,7 @@ from tasmania.python.framework.tag import (
     stencil_definition,
     stencil_subroutine,
 )
-from tasmania.python.utils import typing
-from tasmania.python.utils.data import get_physical_constants
+from tasmania.python.utils import typing as ty
 from tasmania.python.framework.register import factorize
 
 if TYPE_CHECKING:
@@ -106,7 +105,7 @@ class Clipping(DiagnosticComponent):
         self._stencil = self.compile("clip")
 
     @property
-    def input_properties(self) -> typing.properties_dict_t:
+    def input_properties(self) -> ty.PropertiesDict:
         dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])
 
         return_dict = {}
@@ -116,7 +115,7 @@ class Clipping(DiagnosticComponent):
         return return_dict
 
     @property
-    def diagnostic_properties(self) -> typing.properties_dict_t:
+    def diagnostic_properties(self) -> ty.PropertiesDict:
         dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])
 
         return_dict = {}
@@ -125,7 +124,7 @@ class Clipping(DiagnosticComponent):
 
         return return_dict
 
-    def array_call(self, state: typing.array_dict_t) -> typing.array_dict_t:
+    def array_call(self, state: ty.StorageDict) -> ty.StorageDict:
         diagnostics = {}
 
         for name in self._names:
@@ -222,7 +221,7 @@ class Precipitation(ImplicitTendencyComponent):
         self._stencil = self.compile("accumulated_precipitation")
 
     @property
-    def input_properties(self) -> typing.properties_dict_t:
+    def input_properties(self) -> ty.PropertiesDict:
         g = self.grid
         dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
         dims2d = (
@@ -242,11 +241,11 @@ class Precipitation(ImplicitTendencyComponent):
         }
 
     @property
-    def tendency_properties(self) -> typing.properties_dict_t:
+    def tendency_properties(self) -> ty.PropertiesDict:
         return {}
 
     @property
-    def diagnostic_properties(self) -> typing.properties_dict_t:
+    def diagnostic_properties(self) -> ty.PropertiesDict:
         g = self.grid
         dims2d = (
             (g.x.dims[0], g.y.dims[0], g.z.dims[0] + "_at_surface_level")
@@ -260,8 +259,8 @@ class Precipitation(ImplicitTendencyComponent):
         }
 
     def array_call(
-        self, state: typing.array_dict_t, timestep: typing.timedelta_t
-    ) -> Tuple[typing.array_dict_t, typing.array_dict_t]:
+        self, state: ty.StorageDict, timestep: ty.TimeDelta
+    ) -> Tuple[ty.StorageDict, ty.StorageDict]:
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
 
         self._in_rho[...] = state["air_density"][:, :, nz - 1 : nz]
@@ -295,11 +294,11 @@ class Precipitation(ImplicitTendencyComponent):
 
         return tendencies, diagnostics
 
+    @staticmethod
     @stencil_definition(
         backend=("numpy", "cupy"), stencil="accumulated_precipitation"
     )
     def _stencil_numpy(
-        self,
         in_rho: np.ndarray,
         in_qr: np.ndarray,
         in_vt: np.ndarray,
@@ -308,20 +307,15 @@ class Precipitation(ImplicitTendencyComponent):
         out_accprec: np.ndarray,
         *,
         dt: float,
-        origin: typing.triplet_int_t,
-        domain: typing.triplet_int_t,
-        **kwargs  # catch-all
+        origin: ty.TripletInt,
+        domain: ty.TripletInt
     ) -> None:
         i = slice(origin[0], origin[0] + domain[0])
         j = slice(origin[1], origin[1] + domain[1])
         k = slice(origin[2], origin[2] + domain[2])
 
         out_prec[i, j, k] = (
-            3.6e6
-            * in_rho[i, j, k]
-            * in_qr[i, j, k]
-            * in_vt[i, j, k]
-            / self.rpc["density_of_liquid_water"]
+            3.6e6 * in_rho[i, j, k] * in_qr[i, j, k] * in_vt[i, j, k] / rhow
         )
         out_accprec[i, j, k] = (
             in_accprec[i, j, k] + dt * out_prec[i, j, k] / 3.6e3
@@ -372,11 +366,8 @@ class SedimentationFlux(StencilFactory, abc.ABC):
     @gtscript.function
     @abc.abstractmethod
     def call_gt4py(
-        rho: typing.gtfield_t,
-        h: typing.gtfield_t,
-        q: typing.gtfield_t,
-        vt: typing.gtfield_t,
-    ) -> typing.gtfield_t:
+        rho: ty.gtfield_t, h: ty.gtfield_t, q: ty.gtfield_t, vt: ty.gtfield_t,
+    ) -> ty.gtfield_t:
         """
         Get the vertical derivative of the sedimentation flux.
         As this method is marked as abstract, its implementation
@@ -402,7 +393,7 @@ class SedimentationFlux(StencilFactory, abc.ABC):
 
     @staticmethod
     def factory(
-        sedimentation_flux_type: str, backend: str
+        sedimentation_flux_type: str, *, backend: str
     ) -> "SedimentationFlux":
         """
         Static method returning an instance of the derived class

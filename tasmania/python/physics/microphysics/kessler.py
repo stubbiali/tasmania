@@ -38,7 +38,7 @@ from tasmania.python.framework.base_components import (
 )
 from tasmania.python.framework.tag import stencil_definition
 from tasmania.python.physics.microphysics.utils import SedimentationFlux
-from tasmania.python.utils import typing
+from tasmania.python.utils import typing as ty
 
 if TYPE_CHECKING:
     from tasmania.python.domain.domain import Domain
@@ -180,7 +180,7 @@ class KesslerMicrophysics(TendencyComponent):
         # shortcuts
         rd = self.rpc["gas_constant_of_dry_air"]
         rv = self.rpc["gas_constant_of_water_vapor"]
-        self._beta = rd / rv
+        beta = rd / rv
 
         # set the storage shape
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
@@ -198,7 +198,7 @@ class KesslerMicrophysics(TendencyComponent):
         self.backend_options.dtypes = {"dtype": dtype}
         self.backend_options.externals = {
             "air_pressure_on_interface_levels": air_pressure_on_interface_levels,
-            "beta": self._beta,
+            "beta": beta,
             "e": np.exp(1),
             "lhvw": self.rpc["latent_heat_of_vaporization_of_water"],
             "rain_evaporation": rain_evaporation,
@@ -206,7 +206,7 @@ class KesslerMicrophysics(TendencyComponent):
         self._stencil = self.compile("kessler")
 
     @property
-    def input_properties(self) -> typing.properties_dict_t:
+    def input_properties(self) -> ty.PropertiesDict:
         grid = self.grid
         dims = (grid.x.dims[0], grid.y.dims[0], grid.z.dims[0])
         dims_on_interface_levels = (
@@ -242,7 +242,7 @@ class KesslerMicrophysics(TendencyComponent):
         return return_dict
 
     @property
-    def tendency_properties(self) -> typing.properties_dict_t:
+    def tendency_properties(self) -> ty.PropertiesDict:
         grid = self._grid
         dims = (grid.x.dims[0], grid.y.dims[0], grid.z.dims[0])
 
@@ -263,7 +263,7 @@ class KesslerMicrophysics(TendencyComponent):
         return return_dict
 
     @property
-    def diagnostic_properties(self) -> typing.properties_dict_t:
+    def diagnostic_properties(self) -> ty.PropertiesDict:
         if self._rain_evaporation and self._pttd:
             grid = self._grid
             dims = (grid.x.dims[0], grid.y.dims[0], grid.z.dims[0])
@@ -277,8 +277,8 @@ class KesslerMicrophysics(TendencyComponent):
             return {}
 
     def array_call(
-        self, state: typing.array_dict_t
-    ) -> Tuple[typing.array_dict_t, typing.array_dict_t]:
+        self, state: ty.StorageDict
+    ) -> Tuple[ty.StorageDict, ty.StorageDict]:
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
 
         # extract the required model variables
@@ -340,9 +340,9 @@ class KesslerMicrophysics(TendencyComponent):
 
         return tendencies, diagnostics
 
+    @staticmethod
     @stencil_definition(backend=("numpy", "cupy"), stencil="kessler")
     def _stencil_numpy(
-        self,
         in_rho: np.ndarray,
         in_p: np.ndarray,
         in_t: np.ndarray,
@@ -358,9 +358,8 @@ class KesslerMicrophysics(TendencyComponent):
         a: float,
         k1: float,
         k2: float,
-        origin: typing.triplet_int_t,
-        domain: typing.triplet_int_t,
-        **kwargs  # catch-all
+        origin: ty.TripletInt,
+        domain: ty.TripletInt,
     ) -> None:
         i = slice(origin[0], origin[0] + domain[0])
         j = slice(origin[1], origin[1] + domain[1])
@@ -369,7 +368,7 @@ class KesslerMicrophysics(TendencyComponent):
 
         # interpolate the pressure and the Exner function at the vertical
         # main levels
-        if self._air_pressure_on_interface_levels:
+        if air_pressure_on_interface_levels:
             p = 0.5 * (in_p[i, j, k] + in_p[i, j, kp1])
             exn = 0.5 * (in_exn[i, j, k] + in_exn[i, j, kp1])
         else:
@@ -382,7 +381,7 @@ class KesslerMicrophysics(TendencyComponent):
         )
 
         # compute the saturation mixing ratio of water vapor
-        qvs = self._beta * ps / p
+        qvs = beta * ps / p
 
         # compute the contribution of autoconversion to rain development
         ar = k1 * np.where(in_qc[i, j, k] > a, in_qc[i, j, k] - a, 0.0)
@@ -394,7 +393,7 @@ class KesslerMicrophysics(TendencyComponent):
             * np.where(in_qr[i, j, k] > 0.0, in_qr[i, j, k] ** 0.875, 0.0)
         )
 
-        if self._rain_evaporation:  # compile-time if
+        if rain_evaporation:  # compile-time if
             # compute the contribution of evaporation to rain development
             er = np.where(
                 in_qr[i, j, k] > 0.0,
@@ -405,15 +404,13 @@ class KesslerMicrophysics(TendencyComponent):
             )
 
         # calculate the tendencies
-        if not self._rain_evaporation:
+        if not rain_evaporation:
             out_qc_tnd[i, j, k] = -(ar + cr)
             out_qr_tnd[i, j, k] = ar + cr
         else:
             out_qv_tnd[i, j, k] = er
             out_qc_tnd[i, j, k] = -(ar + cr)
             out_qr_tnd[i, j, k] = ar + cr - er
-
-            lhvw = self.rpc["latent_heat_of_vaporization_of_water"]
             out_theta_tnd[i, j, k] = -lhvw / exn * er
 
     @staticmethod
@@ -584,10 +581,8 @@ class KesslerSaturationAdjustmentDiagnostic(ImplicitTendencyComponent):
 
         # shortcuts
         rd = self.rpc["gas_constant_of_dry_air"]
-        self._rv = self.rpc["gas_constant_of_water_vapor"]
-        self._beta = rd / self._rv
-        self._lhvw = self.rpc["latent_heat_of_vaporization_of_water"]
-        self._cp = self.rpc["specific_heat_of_dry_air_at_constant_pressure"]
+        rv = self.rpc["gas_constant_of_water_vapor"]
+        beta = rd / rv
 
         # set the storage shape
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
@@ -604,16 +599,16 @@ class KesslerSaturationAdjustmentDiagnostic(ImplicitTendencyComponent):
         self.backend_options.dtypes = {"dtype": dtype}
         self.backend_options.externals = {
             "air_pressure_on_interface_levels": air_pressure_on_interface_levels,
-            "beta": self._beta,
+            "beta": beta,
             "e": np.exp(1),
-            "lhvw": self._lhvw,
-            "cp": self._cp,
-            "rv": self._rv,
+            "lhvw": self.rpc["latent_heat_of_vaporization_of_water"],
+            "cp": self.rpc["specific_heat_of_dry_air_at_constant_pressure"],
+            "rv": rv,
         }
         self._stencil = self.compile("saturation")
 
     @property
-    def input_properties(self) -> typing.properties_dict_t:
+    def input_properties(self) -> ty.PropertiesDict:
         grid = self.grid
         dims = (grid.x.dims[0], grid.y.dims[0], grid.z.dims[0])
         dims_on_interface_levels = (
@@ -647,7 +642,7 @@ class KesslerSaturationAdjustmentDiagnostic(ImplicitTendencyComponent):
         return return_dict
 
     @property
-    def tendency_properties(self) -> typing.properties_dict_t:
+    def tendency_properties(self) -> ty.PropertiesDict:
         grid = self.grid
         dims = (grid.x.dims[0], grid.y.dims[0], grid.z.dims[0])
 
@@ -658,7 +653,7 @@ class KesslerSaturationAdjustmentDiagnostic(ImplicitTendencyComponent):
         return return_dict
 
     @property
-    def diagnostic_properties(self) -> typing.properties_dict_t:
+    def diagnostic_properties(self) -> ty.PropertiesDict:
         grid = self.grid
         dims = (grid.x.dims[0], grid.y.dims[0], grid.z.dims[0])
 
@@ -671,8 +666,8 @@ class KesslerSaturationAdjustmentDiagnostic(ImplicitTendencyComponent):
         return return_dict
 
     def array_call(
-        self, state: typing.array_dict_t, timestep: typing.timedelta_t
-    ) -> Tuple[typing.array_dict_t, typing.array_dict_t]:
+        self, state: ty.StorageDict, timestep: ty.TimeDelta
+    ) -> Tuple[ty.StorageDict, ty.StorageDict]:
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
 
         # extract the required model variables
@@ -714,9 +709,9 @@ class KesslerSaturationAdjustmentDiagnostic(ImplicitTendencyComponent):
 
         return tendencies, diagnostics
 
+    @staticmethod
     @stencil_definition(backend=("numpy", "cupy"), stencil="saturation")
     def _stencil_numpy(
-        self,
         in_p: np.ndarray,
         in_t: np.ndarray,
         in_exn: np.ndarray,
@@ -728,9 +723,8 @@ class KesslerSaturationAdjustmentDiagnostic(ImplicitTendencyComponent):
         tnd_theta: np.ndarray,
         *,
         dt: float,
-        origin: typing.triplet_int_t,
-        domain: typing.triplet_int_t,
-        **kwargs  # catch-all
+        origin: ty.TripletInt,
+        domain: ty.TripletInt,
     ) -> None:
         i = slice(origin[0], origin[0] + domain[0])
         j = slice(origin[1], origin[1] + domain[1])
@@ -738,7 +732,7 @@ class KesslerSaturationAdjustmentDiagnostic(ImplicitTendencyComponent):
         kp1 = slice(origin[2] + 1, origin[2] + domain[2] + 1)
 
         # interpolate the pressure at the vertical main levels
-        if self._apoil:
+        if air_pressure_on_interface_levels:
             p = 0.5 * (in_p[i, j, k] + in_p[i, j, kp1])
             exn = 0.5 * (in_exn[i, j, k] + in_exn[i, j, kp1])
         else:
@@ -751,15 +745,12 @@ class KesslerSaturationAdjustmentDiagnostic(ImplicitTendencyComponent):
         )
 
         # compute the saturation mixing ratio of water vapor
-        qvs = self._beta * ps / p
+        qvs = beta * ps / p
 
         # compute the amount of latent heat released by the condensation of
         # cloud liquid water
         sat = (qvs - in_qv[i, j, k]) / (
-            1.0
-            + qvs
-            * (self._lhvw ** 2.0)
-            / (self._cp * self._rv * (in_t[i, j, k] ** 2.0))
+            1.0 + qvs * (lhvw ** 2.0) / (cp * rv * (in_t[i, j, k] ** 2.0))
         )
 
         # compute the source term representing the evaporation of
@@ -769,10 +760,10 @@ class KesslerSaturationAdjustmentDiagnostic(ImplicitTendencyComponent):
         # perform the adjustment
         out_qv[i, j, k] = in_qv[i, j, k] + dq
         out_qc[i, j, k] = in_qc[i, j, k] - dq
-        out_t[i, j, k] = in_t[i, j, k] - dq * self._lhvw / self._cp
+        out_t[i, j, k] = in_t[i, j, k] - dq * lhvw / cp
 
         # calculate the tendency of air potential temperature
-        tnd_theta[i, j, k] = (self._lhvw / exn) * (-dq / dt)
+        tnd_theta[i, j, k] = (lhvw / exn) * (-dq / dt)
 
     @staticmethod
     @stencil_definition(backend="gt4py*", stencil="saturation")
@@ -937,10 +928,8 @@ class KesslerSaturationAdjustmentPrognostic(TendencyComponent):
 
         # shortcuts
         rd = self.rpc["gas_constant_of_dry_air"]
-        self._rv = self.rpc["gas_constant_of_water_vapor"]
-        self._beta = rd / self._rv
-        self._lhvw = self.rpc["latent_heat_of_vaporization_of_water"]
-        self._cp = self.rpc["specific_heat_of_dry_air_at_constant_pressure"]
+        rv = self.rpc["gas_constant_of_water_vapor"]
+        beta = rd / rv
 
         # set the storage shape
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
@@ -956,16 +945,16 @@ class KesslerSaturationAdjustmentPrognostic(TendencyComponent):
         self.backend_options.dtypes = {"dtype": dtype}
         self.backend_options.externals = {
             "air_pressure_on_interface_levels": air_pressure_on_interface_levels,
-            "beta": self._beta,
+            "beta": beta,
             "e": np.exp(1),
-            "lhvw": self._lhvw,
-            "cp": self._cp,
-            "rv": self._rv,
+            "lhvw": self.rpc["latent_heat_of_vaporization_of_water"],
+            "cp": self.rpc["specific_heat_of_dry_air_at_constant_pressure"],
+            "rv": rv,
         }
         self._stencil = self.compile("saturation")
 
     @property
-    def input_properties(self) -> typing.properties_dict_t:
+    def input_properties(self) -> ty.PropertiesDict:
         grid = self.grid
         dims = (grid.x.dims[0], grid.y.dims[0], grid.z.dims[0])
         dims_on_interface_levels = (
@@ -999,7 +988,7 @@ class KesslerSaturationAdjustmentPrognostic(TendencyComponent):
         return return_dict
 
     @property
-    def tendency_properties(self) -> typing.properties_dict_t:
+    def tendency_properties(self) -> ty.PropertiesDict:
         grid = self.grid
         dims = (grid.x.dims[0], grid.y.dims[0], grid.z.dims[0])
 
@@ -1012,12 +1001,12 @@ class KesslerSaturationAdjustmentPrognostic(TendencyComponent):
         return return_dict
 
     @property
-    def diagnostic_properties(self) -> typing.properties_dict_t:
+    def diagnostic_properties(self) -> ty.PropertiesDict:
         return {}
 
     def array_call(
-        self, state: typing.gtstorage_dict_t
-    ) -> Tuple[typing.gtstorage_dict_t, typing.gtstorage_dict_t]:
+        self, state: ty.StorageDict,
+    ) -> Tuple[ty.StorageDict, ty.StorageDict]:
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
 
         # extract the required model variables
@@ -1058,9 +1047,9 @@ class KesslerSaturationAdjustmentPrognostic(TendencyComponent):
 
         return tendencies, diagnostics
 
+    @staticmethod
     @stencil_definition(backend=("numpy", "cupy"), stencil="saturation")
     def _stencil_numpy(
-        self,
         in_p: np.ndarray,
         in_t: np.ndarray,
         in_exn: np.ndarray,
@@ -1071,9 +1060,8 @@ class KesslerSaturationAdjustmentPrognostic(TendencyComponent):
         tnd_theta: np.ndarray,
         *,
         sr: float,
-        origin: typing.triplet_int_t,
-        domain: typing.triplet_int_t,
-        **kwargs  # catch-all
+        origin: ty.TripletInt,
+        domain: ty.TripletInt
     ) -> None:
         i = slice(origin[0], origin[0] + domain[0])
         j = slice(origin[1], origin[1] + domain[1])
@@ -1081,7 +1069,7 @@ class KesslerSaturationAdjustmentPrognostic(TendencyComponent):
         kp1 = slice(origin[2] + 1, origin[2] + domain[2] + 1)
 
         # interpolate the pressure at the vertical main levels
-        if self._apoil:  # compile-time if
+        if air_pressure_on_interface_levels:  # compile-time if
             p = 0.5 * (in_p[i, j, k] + in_p[i, j, kp1])
             exn = 0.5 * (in_exn[i, j, k] + in_exn[i, j, kp1])
         else:
@@ -1094,15 +1082,12 @@ class KesslerSaturationAdjustmentPrognostic(TendencyComponent):
         )
 
         # compute the saturation mixing ratio of water vapor
-        qvs = self._beta * ps / p
+        qvs = beta * ps / p
 
         # compute the amount of latent heat released by the condensation of
         # cloud liquid water
         sat = (qvs - in_qv[i, j, k]) / (
-            1.0
-            + qvs
-            * (self._lhvw ** 2.0)
-            / (self._cp * self._rv * (in_t[i, j, k] ** 2.0))
+            1.0 + qvs * (lhvw ** 2.0) / (cp * rv * (in_t[i, j, k] ** 2.0))
         )
 
         # compute the source term representing the evaporation of
@@ -1112,7 +1097,7 @@ class KesslerSaturationAdjustmentPrognostic(TendencyComponent):
         # calculate the tendencies
         tnd_qv[i, j, k] = sr * dq
         tnd_qc[i, j, k] = -sr * dq
-        tnd_theta[i, j, k] = -sr * (self._lhvw / exn) * dq
+        tnd_theta[i, j, k] = -sr * (lhvw / exn) * dq
 
     @staticmethod
     @stencil_definition(backend="gt4py*", stencil="saturation")
@@ -1226,7 +1211,7 @@ class KesslerFallVelocity(DiagnosticComponent):
         self._stencil = self.compile("fall_velocity")
 
     @property
-    def input_properties(self) -> typing.properties_dict_t:
+    def input_properties(self) -> ty.PropertiesDict:
         dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])
 
         return_dict = {
@@ -1237,7 +1222,7 @@ class KesslerFallVelocity(DiagnosticComponent):
         return return_dict
 
     @property
-    def diagnostic_properties(self) -> typing.properties_dict_t:
+    def diagnostic_properties(self) -> ty.PropertiesDict:
         dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])
 
         return_dict = {
@@ -1246,7 +1231,7 @@ class KesslerFallVelocity(DiagnosticComponent):
 
         return return_dict
 
-    def array_call(self, state: typing.array_dict_t) -> typing.array_dict_t:
+    def array_call(self, state: ty.array_dict_t) -> ty.array_dict_t:
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
 
         in_rho = state["air_density"]
@@ -1277,8 +1262,8 @@ class KesslerFallVelocity(DiagnosticComponent):
         in_qr: np.ndarray,
         out_vt: np.ndarray,
         *,
-        origin: typing.triplet_int_t,
-        domain: typing.triplet_int_t,
+        origin: ty.TripletInt,
+        domain: ty.TripletInt,
         **kwargs  # catch-all
     ) -> None:
         i = slice(origin[0], origin[0] + domain[0])
@@ -1366,8 +1351,8 @@ class KesslerSedimentation(ImplicitTendencyComponent):
             **kwargs
         )
 
-        self._sflux = SedimentationFlux.factory(
-            sedimentation_flux_scheme, backend
+        sflux = SedimentationFlux.factory(
+            sedimentation_flux_scheme, backend=backend
         )
 
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
@@ -1377,13 +1362,13 @@ class KesslerSedimentation(ImplicitTendencyComponent):
         dtype = self.storage_options.dtype
         self.backend_options.dtypes = {"dtype": dtype}
         self.backend_options.externals = {
-            "sflux": self._sflux.stencil_subroutine("flux"),
-            "sflux_extent": self._sflux.nb,
+            "sflux": sflux.stencil_subroutine("flux"),
+            "sflux_extent": sflux.nb,
         }
         self._stencil = self.compile("sedimentation")
 
     @property
-    def input_properties(self) -> typing.properties_dict_t:
+    def input_properties(self) -> ty.PropertiesDict:
         g = self.grid
         dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
         dims_z = (g.x.dims[0], g.y.dims[0], g.z_on_interface_levels.dims[0])
@@ -1396,19 +1381,19 @@ class KesslerSedimentation(ImplicitTendencyComponent):
         }
 
     @property
-    def tendency_properties(self) -> typing.properties_dict_t:
+    def tendency_properties(self) -> ty.PropertiesDict:
         g = self.grid
         dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
 
         return {mfpw: {"dims": dims, "units": "g g^-1 s^-1"}}
 
     @property
-    def diagnostic_properties(self) -> typing.properties_dict_t:
+    def diagnostic_properties(self) -> ty.PropertiesDict:
         return {}
 
     def array_call(
-        self, state: typing.array_dict_t, timestep: typing.timedelta_t
-    ) -> Tuple[typing.array_dict_t, typing.array_dict_t]:
+        self, state: ty.StorageDict, timestep: ty.TimeDelta
+    ) -> Tuple[ty.StorageDict, ty.StorageDict]:
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
         nbh = 0  # self.horizontal_boundary.nb if self.grid_type == "numerical" else 0
 
@@ -1416,14 +1401,6 @@ class KesslerSedimentation(ImplicitTendencyComponent):
         in_h = state["height_on_interface_levels"]
         in_qr = state[mfpw]
         in_vt = state["raindrop_fall_velocity"]
-
-        # dh = in_h[:, :, :-1] - in_h[:, :, 1:]
-        # idx = np.where(
-        #     in_vt[:-1, :-1, :-1] > 0.975 * dh[:-1, :-1] / timestep.total_seconds()
-        # )
-        # if idx[0].size > 0:
-        #     print("Number of gps violating vertical CFL: {:4d}".format(idx[0].size))
-        # in_vt[idx] = 0.975 * dh[idx] / timestep.total_seconds()
 
         self._stencil(
             in_rho=in_rho,
@@ -1442,18 +1419,17 @@ class KesslerSedimentation(ImplicitTendencyComponent):
 
         return tendencies, diagnostics
 
+    @staticmethod
     @stencil_definition(backend=("numpy", "cupy"), stencil="sedimentation")
     def _stencil_numpy(
-        self,
         in_rho: np.ndarray,
         in_h: np.ndarray,
         in_qr: np.ndarray,
         in_vt: np.ndarray,
         out_qr: np.ndarray,
         *,
-        origin: typing.triplet_int_t,
-        domain: typing.triplet_int_t,
-        **kwargs  # catch-all
+        origin: ty.TripletInt,
+        domain: ty.TripletInt
     ) -> None:
         i = slice(origin[0], origin[0] + domain[0])
         j = slice(origin[1], origin[1] + domain[1])
@@ -1461,15 +1437,15 @@ class KesslerSedimentation(ImplicitTendencyComponent):
 
         h = 0.5 * (in_h[i, j, kb:ke] + in_h[i, j, kb + 1 : ke + 1])
 
-        dfdz = self._sflux.stencil_subroutine("flux")(
+        dfdz = sflux(
             rho=in_rho[i, j, kb:ke],
             h=h,
             q=in_qr[i, j, kb:ke],
             vt=in_vt[i, j, kb:ke],
         )
-        out_qr[i, j, kb : kb + self._sflux.nb] = 0.0
-        out_qr[i, j, kb + self._sflux.nb : ke] = (
-            dfdz / in_rho[i, j, kb + self._sflux.nb : ke]
+        out_qr[i, j, kb : kb + sflux_extent] = 0.0
+        out_qr[i, j, kb + sflux_extent : ke] = (
+            dfdz / in_rho[i, j, kb + sflux_extent : ke]
         )
 
     @staticmethod

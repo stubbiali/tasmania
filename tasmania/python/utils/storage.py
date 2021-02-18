@@ -133,8 +133,8 @@ def get_dataarray_3d(
     grid: "Grid",
     units: str,
     name: Optional[str] = None,
-    grid_origin: Optional[typing.triplet_int_t] = None,
-    grid_shape: Optional[typing.triplet_int_t] = None,
+    grid_origin: Optional[typing.TripletInt] = None,
+    grid_shape: Optional[typing.TripletInt] = None,
     set_coordinates: bool = True,
 ) -> DataArray:
     """Create a DataArray out of a 3-D ndarray-like storage.
@@ -491,11 +491,11 @@ def get_storage_shape(
 
 
 def get_aligned_index(
-    aligned_index: typing.triplet_int_t,
-    storage_shape: typing.triplet_int_t,
-    min_aligned_index: Optional[typing.triplet_int_t] = None,
-    max_aligned_index: Optional[typing.triplet_int_t] = None,
-) -> typing.triplet_int_t:
+    aligned_index: typing.TripletInt,
+    storage_shape: typing.TripletInt,
+    min_aligned_index: Optional[typing.TripletInt] = None,
+    max_aligned_index: Optional[typing.TripletInt] = None,
+) -> typing.TripletInt:
     aligned_index = aligned_index or (0, 0, 0)
 
     max_aligned_index = max_aligned_index or aligned_index
