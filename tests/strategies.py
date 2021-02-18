@@ -29,6 +29,7 @@ from sympl._core.units import clean_units
 
 import tasmania as taz
 from tasmania.python.framework.allocators import as_storage, zeros
+from tasmania.python.framework.generic_functions import to_numpy
 from tasmania.python.framework.options import StorageOptions
 from tasmania.python.utils.data import get_physical_constants
 from tasmania.python.utils.storage import (
@@ -1211,26 +1212,25 @@ def st_isentropic_state_f(
 
     # x-momentum
     s = return_dict["air_isentropic_density"]
-    u = return_dict["x_velocity_at_u_locations"]
+    s_np = to_numpy(s.to_units("kg m^-2 K^-1").data)
     s_units = s.attrs["units"]
+    u = return_dict["x_velocity_at_u_locations"]
+    u_np = to_numpy(u.to_units("m s^-1").data)
     u_units = u.attrs["units"]
     su_units = clean_units(s_units + u_units)
-    su_raw = zeros(
-        storage_shape or (nx, ny, nz),
-        backend=backend,
-        dtype=dtype,
-        aligned_index=aligned_index,
-    )
-    su_raw[:nx, :ny, :nz] = (
-        s.to_units("kg m^-2 K^-1").data[:nx, :ny, :nz]
+    su_np = (
+        s_np[:nx, :ny, :nz]
         * 0.5
-        * (
-            u.to_units("m s^-1").data[:nx, :ny, :nz]
-            + u.to_units("m s^-1").data[1 : nx + 1, :ny, :nz]
-        )
+        * (u_np[:nx, :ny, :nz] + u_np[1 : nx + 1, :ny, :nz])
     )
+    su = zeros(
+        backend,
+        shape=storage_shape or (nx, ny, nz),
+        storage_options=storage_options,
+    )
+    su[:nx, :ny, :nz] = as_storage(backend, data=su_np)
     return_dict["x_momentum_isentropic"] = get_dataarray_3d(
-        su_raw,
+        su,
         grid,
         "kg m^-1 K^-1 s^-1",
         name="x_momentum_isentropic",
@@ -1245,8 +1245,7 @@ def st_isentropic_state_f(
             -1000,
             1000,
             backend=backend,
-            dtype=dtype,
-            aligned_index=aligned_index,
+            storage_options=storage_options,
         )
     )
     units = draw(
@@ -1263,24 +1262,22 @@ def st_isentropic_state_f(
 
     # y-momentum
     v = return_dict["y_velocity_at_v_locations"]
+    v_np = to_numpy(v.to_units("m s^-1").data)
     v_units = v.attrs["units"]
     sv_units = clean_units(s_units + v_units)
-    sv_raw = zeros(
-        storage_shape or (nx, ny, nz),
-        backend=backend,
-        dtype=dtype,
-        aligned_index=aligned_index,
-    )
-    sv_raw[:nx, :ny, :nz] = (
-        s.to_units("kg m^-2 K^-1").data[:nx, :ny, :nz]
+    sv_np = (
+        s_np[:nx, :ny, :nz]
         * 0.5
-        * (
-            v.to_units("m s^-1").data[:nx, :ny, :nz]
-            + v.to_units("m s^-1").data[:nx, 1 : ny + 1, :nz]
-        )
+        * (v_np[:nx, :ny, :nz] + v_np[:nx, 1 : ny + 1, :nz])
     )
+    sv = zeros(
+        backend,
+        shape=storage_shape or (nx, ny, nz),
+        storage_options=storage_options,
+    )
+    sv[:nx, :ny, :nz] = as_storage(backend, data=sv_np)
     return_dict["y_momentum_isentropic"] = get_dataarray_3d(
-        sv_raw,
+        sv,
         grid,
         "kg m^-1 K^-1 s^-1",
         name="y_momentum_isentropic",
@@ -1295,8 +1292,7 @@ def st_isentropic_state_f(
             1e-8,
             1000,
             backend=backend,
-            dtype=dtype,
-            aligned_index=aligned_index,
+            storage_options=storage_options,
         )
     )
     return_dict["air_pressure_on_interface_levels"] = get_dataarray_3d(
@@ -1315,8 +1311,7 @@ def st_isentropic_state_f(
             1e-8,
             1000,
             backend=backend,
-            dtype=dtype,
-            aligned_index=aligned_index,
+            storage_options=storage_options,
         )
     )
     return_dict["exner_function_on_interface_levels"] = get_dataarray_3d(
@@ -1335,8 +1330,7 @@ def st_isentropic_state_f(
             1e-8,
             1000,
             backend=backend,
-            dtype=dtype,
-            aligned_index=aligned_index,
+            storage_options=storage_options,
         )
     )
     return_dict["montgomery_potential"] = get_dataarray_3d(
@@ -1355,8 +1349,7 @@ def st_isentropic_state_f(
             1e-8,
             1000,
             backend=backend,
-            dtype=dtype,
-            aligned_index=aligned_index,
+            storage_options=storage_options,
         )
     )
     return_dict["height_on_interface_levels"] = get_dataarray_3d(
@@ -1376,8 +1369,7 @@ def st_isentropic_state_f(
                 1e-8,
                 1000,
                 backend=backend,
-                dtype=dtype,
-                aligned_index=aligned_index,
+                storage_options=storage_options,
             )
         )
         return_dict["air_density"] = get_dataarray_3d(
@@ -1396,8 +1388,7 @@ def st_isentropic_state_f(
                 1e-8,
                 1000,
                 backend=backend,
-                dtype=dtype,
-                aligned_index=aligned_index,
+                storage_options=storage_options,
             )
         )
         return_dict["air_temperature"] = get_dataarray_3d(
@@ -1416,8 +1407,7 @@ def st_isentropic_state_f(
                 0,
                 1000,
                 backend=backend,
-                dtype=dtype,
-                aligned_index=aligned_index,
+                storage_options=storage_options,
             )
         )
         units = draw(st_one_of(conf.isentropic_state[mfwv].keys()))
@@ -1437,8 +1427,7 @@ def st_isentropic_state_f(
                 0,
                 1000,
                 backend=backend,
-                dtype=dtype,
-                aligned_index=aligned_index,
+                storage_options=storage_options,
             )
         )
         units = draw(st_one_of(conf.isentropic_state[mfcw].keys()))
@@ -1458,8 +1447,7 @@ def st_isentropic_state_f(
                 0,
                 1000,
                 backend=backend,
-                dtype=dtype,
-                aligned_index=aligned_index,
+                storage_options=storage_options,
             )
         )
         units = draw(st_one_of(conf.isentropic_state[mfpw].keys()))
@@ -1482,8 +1470,7 @@ def st_isentropic_state_f(
                     0,
                     1000,
                     backend=backend,
-                    dtype=dtype,
-                    aligned_index=aligned_index,
+                    storage_options=storage_options,
                 )
             )
             units = draw(
@@ -1507,8 +1494,7 @@ def st_isentropic_state_f(
                     0,
                     1000,
                     backend=backend,
-                    dtype=dtype,
-                    aligned_index=aligned_index,
+                    storage_options=storage_options,
                 )
             )
             units = draw(

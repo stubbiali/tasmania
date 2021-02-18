@@ -24,7 +24,7 @@ from hypothesis import HealthCheck, settings
 import numpy as np
 from pint import UnitRegistry
 from sympl import DataArray
-from typing import Any, Optional, TYPE_CHECKING, Tuple
+from typing import Any, Optional, Sequence, TYPE_CHECKING, Tuple
 import xarray as xr
 
 from tasmania.python.domain.domain import Domain
@@ -66,6 +66,8 @@ def compare_datetimes(td1: ty.Datetime, td2: ty.Datetime) -> None:
 def compare_arrays(
     field_a: ty.Storage,
     field_b: ty.Storage,
+    *,
+    slice: Optional[Sequence[Optional[slice]]] = None,
     atol: float = 1e-8,
     rtol: float = 1e-5,
 ) -> None:
@@ -78,11 +80,12 @@ def compare_arrays(
     field_b_np = to_numpy(field_b)
 
     # compare
-    # np.testing.assert_allclose(
-    #     field_a_np, field_b_np, equal_nan=True, atol=atol, rtol=rtol
-    # )
     assert np.allclose(
-        field_a_np, field_b_np, equal_nan=True, atol=atol, rtol=rtol
+        field_a_np[slice] if slice is not None else field_a_np,
+        field_b_np[slice] if slice is not None else field_b_np,
+        equal_nan=True,
+        atol=atol,
+        rtol=rtol,
     )
 
 
@@ -90,8 +93,12 @@ def compare_dataarrays(
     da1: xr.DataArray,
     da2: xr.DataArray,
     compare_coordinate_values: bool = True,
+    *,
+    slice: Optional[Sequence[Optional[slice]]] = None,
+    atol: float = 1e-8,
+    rtol: float = 1e-5,
 ) -> None:
-    """ Assert whether two :class:`sympl.DataArray`\s are equal. """
+    """Assert whether two :class:`sympl.DataArray`\s are equal."""
     assert len(da1.dims) == len(da2.dims)
 
     assert all([dim1 == dim2 for dim1, dim2 in zip(da1.dims, da2.dims)])
@@ -119,7 +126,7 @@ def compare_dataarrays(
         da2.attrs["units"]
     )
 
-    compare_arrays(da1.data, da2.data)
+    compare_arrays(da1.data, da2.data, slice=slice, atol=atol, rtol=rtol)
 
 
 def get_float_width(dtype: ty.Datatype) -> int:

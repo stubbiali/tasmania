@@ -26,29 +26,70 @@ import numpy as np
 from tasmania.third_party import cupy, dawn4py, gt4py, numba
 
 
-# backend settings
-backend = ["numpy"]
+# >>> backends
+cpu_backend = {"numpy"}
+
 if gt4py:
-    backend += ["gt4py:numpy", "gt4py:gtx86", "gt4py:gtmc"]
-# if numba:
-#     backend += ["numba:cpu"]
-# if cupy:
-#     backend += ["cupy"]
-#     if gt4py:
-#         backend += "gt4py:gtcuda"
-#     if numba:
-#         backend += "numba:gpu"
-# if dawn4py:
-#     backend += [
-#         "gt4py:dawn:naive",
-#         "gt4py:dawn:cxxopt",
-#         "gt4py:dawn:gtx86",
-#         "gt4py:dawn:gtmc",
-#     ]
-dtype = (np.float64,)
+    gt_cpu_backend = {"gt4py:numpy", "gt4py:gtx86", "gt4py:gtmc"}
+    gtc_cpu_backend = {"gt4py:gtc:gt:cpu_ifirst", "gt4py:gtc:gt:cpu_kfirst"}
+
+    if dawn4py:
+        dawn_cpu_backend = {
+            "gt4py:dawn:naive",
+            "gt4py:dawn:cxxopt",
+            "gt4py:dawn:gtx86",
+            "gt4py:dawn:gtmc",
+        }
+    else:
+        dawn_cpu_backend = set()
+else:
+    gt_cpu_backend = gtc_cpu_backend = dawn_cpu_backend = set()
+
+if numba:
+    numba_cpu_backend = {"numba:cpu"}
+else:
+    numba_cpu_backend = set()
+
+if cupy:
+    gpu_backend = {"cupy"}
+
+    if gt4py:
+        gt_gpu_backend = {"gt4py:gtcuda"}
+        gtc_gpu_backend = {"gt4py:gtc:gt:gpu"}
+
+        if dawn4py:
+            dawn_gpu_backend = {
+                "gt4py:dawn:cuda",
+                "gt4py:dawn:gtcuda",
+            }
+        else:
+            dawn_gpu_backend = set()
+    else:
+        gt_gpu_backend = gtc_gpu_backend = dawn_gpu_backend = set()
+
+    if numba:
+        numba_gpu_backend = {"numba:gpu"}
+    else:
+        numba_gpu_backend = set()
+else:
+    gpu_backend = set()
+    gt_gpu_backend = gtc_gpu_backend = dawn_gpu_backend = set()
+    numba_gpu_backend = set()
+
+numba_backend = numba_cpu_backend.union(numba_gpu_backend)
+cpu_backend = cpu_backend.union(
+    gt_cpu_backend, gtc_cpu_backend,  # dawn_cpu_backend, numba_cpu_backend
+)
+gpu_backend = gpu_backend.union(
+    gt_gpu_backend, gtc_gpu_backend,  # dawn_gpu_backend, numba_gpu_backend
+)
+backend = cpu_backend  # .union(gpu_backend)
+
+# >>> storage info
+dtype = (np.float64, np.float32)
 aligned_index = ((0, 0, 0), (1, 1, 0), (3, 3, 0), (2, 0, 1))
 
-# x-axis
+# >>> x-axis
 axis_x = {
     "dims": ("x",),
     "units_to_range": {"km": (-100, 100), "m": (0, 2e5)},
@@ -56,7 +97,7 @@ axis_x = {
     "increasing": True,
 }
 
-# y-axis
+# >>> y-axis
 axis_y = {
     "dims": ("y",),
     "units_to_range": {"km": (-100, 100), "m": (0, 2e5)},
@@ -64,7 +105,7 @@ axis_y = {
     "increasing": True,
 }
 
-# z-axis
+# >>> z-axis
 axis_z = {
     "dims": ("air_potential_temperature",),
     "units_to_range": {"K": (270, 400), "degC": (-20, 40)},
@@ -72,7 +113,7 @@ axis_z = {
     "increasing": False,
 }
 
-# topography2d
+# >>> topography2d
 topography = {
     "type": ("flat", "gaussian", "schaer"),  # , "user_defined"
     "time": (timedelta(seconds=1), timedelta(minutes=60)),
@@ -82,50 +123,51 @@ topography = {
     "str": ("x + y",),
 }
 
-# horizontal boundary
+# >>> horizontal boundary
 nb = 4
 horizontal_boundary_types = (
+    "dirichlet",
+    "identity," "periodic",
     "relaxed",
-    "periodic",
-)  # "dirichlet", "identity", "periodic", "relaxed"
+)
 
-# isentropic_prognostic model
+# >>> isentropic model
 isentropic_state = {
     "air_isentropic_density": {"kg m^-2 K^-1": (10, 1000)},
     "x_velocity_at_u_locations": {
         "m s^-1": (-50, 50),
-        "km hr^-1": (-150, 150),
+        # "km hr^-1": (-150, 150),
     },
     "y_velocity_at_v_locations": {
         "m s^-1": (-50, 50),
-        "km hr^-1": (-150, 150),
+        # "km hr^-1": (-150, 150),
     },
     "mass_fraction_of_water_vapor_in_air": {
         "g g^-1": (0, 5),
-        "g kg^-1": (0, 5000),
+        # "g kg^-1": (0, 5000),
     },
     "mass_fraction_of_cloud_liquid_water_in_air": {
         "g g^-1": (0, 5),
-        "g kg^-1": (0, 5000),
+        # "g kg^-1": (0, 5000),
     },
     "mass_fraction_of_precipitation_water_in_air": {
         "g g^-1": (0, 5),
-        "g kg^-1": (0, 5000),
+        # "g kg^-1": (0, 5000),
     },
     "number_density_of_precipitation_water": {
         "g^-1": (0, 1e3),
-        "kg^-1": (0, 1e6),
+        # "kg^-1": (0, 1e6),
     },
     "precipitation": {"mm hr^-1": (0, 100)},
     "accumulated_precipitation": {"mm": (0, 100)},
 }
 
-# burgers model
+# >>> burgers model
 burgers_state = {
-    "x_velocity": {"m s^-1": (-50, 50), "km hr^-1": (-150, 150)},
-    "y_velocity": {"m s^-1": (-50, 50), "km hr^-1": (-150, 150)},
+    "x_velocity": {"m s^-1": (-50, 50)},  # , "km hr^-1": (-150, 150)},
+    "y_velocity": {"m s^-1": (-50, 50)},  # , "km hr^-1": (-150, 150)},
 }
 burgers_tendency = {
-    "x_velocity": {"m s^-2": (-50, 50), "km hr^-2": (-150, 150)},
-    "y_velocity": {"m s^-2": (-50, 50), "km hr^-2": (-150, 150)},
+    "x_velocity": {"m s^-2": (-50, 50)},  # , "km hr^-2": (-150, 150)},
+    "y_velocity": {"m s^-2": (-50, 50)},  # , "km hr^-2": (-150, 150)},
 }
