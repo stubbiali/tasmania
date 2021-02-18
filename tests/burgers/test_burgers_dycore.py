@@ -32,12 +32,7 @@ from tasmania.python.burgers.dynamics.dycore import BurgersDynamicalCore
 from tasmania.python.framework.generic_functions import to_numpy
 from tasmania.python.framework.options import BackendOptions, StorageOptions
 
-from tests.conf import (
-    aligned_index as conf_aligned_index,
-    backend as conf_backend,
-    dtype as conf_dtype,
-    nb as conf_nb,
-)
+from tests import conf
 from tests.burgers.test_burgers_advection import (
     first_order_advection,
     third_order_advection,
@@ -54,20 +49,20 @@ from tests.utilities import compare_arrays, hyp_settings
 
 @hyp_settings
 @given(data=hyp_st.data())
-@pytest.mark.parametrize("backend", conf_backend)
-@pytest.mark.parametrize("dtype", conf_dtype)
+@pytest.mark.parametrize("backend", conf.backend)
+@pytest.mark.parametrize("dtype", conf.dtype)
 def test_forward_euler(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
     aligned_index = data.draw(
-        st_one_of(conf_aligned_index), label="aligned_index"
+        st_one_of(conf.aligned_index), label="aligned_index"
     )
     bo = BackendOptions(rebuild=False)
     so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
 
     nb = data.draw(
-        hyp_st.integers(min_value=1, max_value=max(1, conf_nb)), label="nb"
+        hyp_st.integers(min_value=1, max_value=max(1, conf.nb)), label="nb"
     )
     domain = data.draw(
         st_domain(
@@ -159,20 +154,20 @@ def test_forward_euler(data, backend, dtype):
 
 @hyp_settings
 @given(data=hyp_st.data())
-@pytest.mark.parametrize("backend", conf_backend)
-@pytest.mark.parametrize("dtype", conf_dtype)
+@pytest.mark.parametrize("backend", conf.backend)
+@pytest.mark.parametrize("dtype", conf.dtype)
 def test_rk2(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
     aligned_index = data.draw(
-        st_one_of(conf_aligned_index), label="aligned_index"
+        st_one_of(conf.aligned_index), label="aligned_index"
     )
     bo = BackendOptions(rebuild=False)
     so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
 
     nb = data.draw(
-        hyp_st.integers(min_value=2, max_value=max(2, conf_nb)), label="nb"
+        hyp_st.integers(min_value=2, max_value=max(2, conf.nb)), label="nb"
     )
     domain = data.draw(
         st_domain(
@@ -283,20 +278,20 @@ def test_rk2(data, backend, dtype):
 
 @hyp_settings
 @given(data=hyp_st.data())
-@pytest.mark.parametrize("backend", conf_backend)
-@pytest.mark.parametrize("dtype", conf_dtype)
+@pytest.mark.parametrize("backend", conf.backend)
+@pytest.mark.parametrize("dtype", conf.dtype)
 def test_rk3ws(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
     aligned_index = data.draw(
-        st_one_of(conf_aligned_index), label="aligned_index"
+        st_one_of(conf.aligned_index), label="aligned_index"
     )
     bo = BackendOptions(rebuild=False)
     so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
 
     nb = data.draw(
-        hyp_st.integers(min_value=3, max_value=max(3, conf_nb)), label="nb"
+        hyp_st.integers(min_value=3, max_value=max(3, conf.nb)), label="nb"
     )
     domain = data.draw(
         st_domain(

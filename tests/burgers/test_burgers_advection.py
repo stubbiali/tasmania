@@ -42,11 +42,7 @@ from tasmania.python.framework.options import BackendOptions, StorageOptions
 from tasmania.python.framework.stencil import StencilFactory
 from tasmania.python.framework.tag import stencil_definition
 
-from tests.conf import (
-    aligned_index as conf_aligned_index,
-    backend as conf_backend,
-    dtype as conf_dtype,
-)
+from tests import conf
 from tests.strategies import st_burgers_state, st_one_of, st_physical_grid
 from tests.utilities import compare_arrays, hyp_settings
 
@@ -283,16 +279,18 @@ validation_functions = {
 @hyp_settings
 @given(data=hyp_st.data())
 @pytest.mark.parametrize("order", validation_functions.keys())
-@pytest.mark.parametrize("backend", conf_backend)
-@pytest.mark.parametrize("dtype", conf_dtype)
+@pytest.mark.parametrize("backend", conf.backend)
+@pytest.mark.parametrize("dtype", conf.dtype)
 def test(data, order, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
     aligned_index = data.draw(
-        st_one_of(conf_aligned_index), label="aligned_index"
+        st_one_of(conf.aligned_index), label="aligned_index"
     )
-    bo = BackendOptions(cache=True, nopython=True, rebuild=False)
+    bo = BackendOptions(
+        cache=True, check_rebuild=True, nopython=True, rebuild=False
+    )
     so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
 
     advection = BurgersAdvection.factory(order, backend)
@@ -391,4 +389,3 @@ def _test_performance(order, backend, dtype):
 
 if __name__ == "__main__":
     pytest.main([__file__])
-    # test("sixth_order", "gt4py:gtmc", float)

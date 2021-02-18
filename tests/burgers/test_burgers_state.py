@@ -33,19 +33,15 @@ from sympl import DataArray
 from tasmania.python.burgers.state import ZhaoSolutionFactory, ZhaoStateFactory
 from tasmania.python.framework.options import StorageOptions
 
-from tests.conf import (
-    aligned_index as conf_aligned_index,
-    backend as conf_backend,
-    dtype as conf_dtype,
-)
+from tests import conf
 from tests.strategies import st_floats, st_one_of, st_physical_grid
 from tests.utilities import compare_arrays, hyp_settings
 
 
 @hyp_settings
 @given(data=hyp_st.data())
-@pytest.mark.parametrize("backend", conf_backend)
-@pytest.mark.parametrize("dtype", conf_dtype)
+@pytest.mark.parametrize("backend", conf.backend)
+@pytest.mark.parametrize("dtype", conf.dtype)
 def test_zhao_solution_factory(data, backend, dtype):
     # ========================================
     # random data generation
@@ -108,13 +104,13 @@ def test_zhao_solution_factory(data, backend, dtype):
 
 @hyp_settings
 @given(data=hyp_st.data())
-@pytest.mark.parametrize("backend", conf_backend)
-@pytest.mark.parametrize("dtype", conf_dtype)
+@pytest.mark.parametrize("backend", conf.backend)
+@pytest.mark.parametrize("dtype", conf.dtype)
 def test_zhao_state_factory(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    aligned_index = data.draw(st_one_of(conf_aligned_index))
+    aligned_index = data.draw(st_one_of(conf.aligned_index))
     so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
 
     grid = data.draw(st_physical_grid(zaxis_length=(1, 1), storage_options=so))
