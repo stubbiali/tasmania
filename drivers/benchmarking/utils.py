@@ -56,7 +56,7 @@ def exec_info_to_csv(filename, backend, backend_options):
         df = pd.DataFrame()
 
         dct = backend_options.exec_info
-        gt_backend = get_gt_backend(backend)
+        gt_backend = get_gt_backend(backend).replace(":", "")
         rows = [key for key in dct if gt_backend in key]
         cols = [
             "ncalls",

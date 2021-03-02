@@ -45,7 +45,7 @@ nz = 60
 # horizontal boundary
 hb_type = "relaxed"
 nb = 3
-hb_kwargs = {"nr": 6}
+hb_kwargs = {"nr": 6, "nz": nz}
 
 # backend settings
 backend = "gt4py:gtmc"
@@ -98,7 +98,7 @@ horizontal_flux_scheme = "fifth_order_upwind"
 damp = True
 damp_type = "rayleigh"
 damp_depth = 15
-damp_max = 0.0002
+damp_max = 0.0005
 damp_at_every_stage = False
 
 # horizontal smoothing
@@ -123,15 +123,15 @@ niter = 100
 hostname = socket.gethostname()
 if "nid" in hostname:
     if os.path.exists("/scratch/snx3000"):
-        prefix = "/scratch/snx3000/subbiali/timing"
+        prefix = "/scratch/snx3000/subbiali/timing/protocol"
     else:
-        prefix = "/scratch/snx3000tds/subbiali/timing"
+        prefix = "/scratch/snx3000tds/subbiali/timing/protocol"
 elif "daint" in hostname:
-    prefix = "/scratch/snx3000/subbiali/timing"
+    prefix = "/scratch/snx3000/subbiali/timing/protocol"
 elif "dom" in hostname:
-    prefix = "/scratch/snx3000tds/subbiali/timing"
+    prefix = "/scratch/snx3000tds/subbiali/timing/protocol"
 else:
-    prefix = "../timing"
+    prefix = "../timing/protocol"
 exec_info_csv = os.path.join(prefix, f"isentropic_dry_exec_fc_{backend}.csv")
 run_info_csv = os.path.join(prefix, "isentropic_dry_run_fc.csv")
 log_txt = os.path.join(prefix, f"isentropic_dry_log_fc_{backend}.txt")

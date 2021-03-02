@@ -144,15 +144,15 @@ niter = 100
 hostname = socket.gethostname()
 if "nid" in hostname:
     if os.path.exists("/scratch/snx3000"):
-        prefix = "/scratch/snx3000/subbiali/timing"
+        prefix = "/scratch/snx3000/subbiali/timing/protocol"
     else:
-        prefix = "/scratch/snx3000tds/subbiali/timing"
+        prefix = "/scratch/snx3000tds/subbiali/timing/protocol"
 elif "daint" in hostname:
-    prefix = "/scratch/snx3000/subbiali/timing"
+    prefix = "/scratch/snx3000/subbiali/timing/protocol"
 elif "dom" in hostname:
-    prefix = "/scratch/snx3000tds/subbiali/timing"
+    prefix = "/scratch/snx3000tds/subbiali/timing/protocol"
 else:
-    prefix = "../timing"
+    prefix = "../timing/protocol"
 exec_info_csv = os.path.join(
     prefix, f"isentropic_moist_exec_sus_{backend}.csv"
 )

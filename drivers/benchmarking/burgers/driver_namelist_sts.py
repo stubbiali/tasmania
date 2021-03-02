@@ -23,8 +23,8 @@
 import click
 import gt4py as gt
 import numpy as np
-import tasmania.python.utils.time
 from sympl import DataArray
+
 import tasmania as taz
 
 from drivers.benchmarking.burgers import namelist_sts
@@ -44,10 +44,8 @@ from drivers.benchmarking.utils import (
     default="namelist_sts.py",
     help="The namelist file.",
 )
-@click.option(
-    "-o", "--output", type=bool, default=True, help="Output.",
-)
-def main(backend=None, namelist="namelist_sts.py", output=True):
+@click.option("--no-log", is_flag=True, help="Disable log.")
+def main(backend=None, namelist="namelist_sts.py", no_log=False):
     # ============================================================
     # The namelist
     # ============================================================
@@ -77,7 +75,7 @@ def main(backend=None, namelist="namelist_sts.py", output=True):
         storage_options=nl.so,
     )
     pgrid = domain.physical_grid
-    cgrid = domain.numerical_grid
+    ngrid = domain.numerical_grid
 
     # ============================================================
     # The initial state
@@ -89,7 +87,7 @@ def main(backend=None, namelist="namelist_sts.py", output=True):
         backend=nl.backend,
         storage_options=nl.so,
     )
-    state = zsf(nl.init_time, cgrid)
+    state = zsf(nl.init_time, ngrid)
 
     # set the initial state as reference state for the handler of
     # the lateral boundary conditions
@@ -148,7 +146,7 @@ def main(backend=None, namelist="namelist_sts.py", output=True):
 
     for i in range(nt):
         # start timing
-        tasmania.python.utils.time.Timer.start("compute_time")
+        taz.Timer.start("compute_time")
 
         # calculate the dynamics
         state_tmp = dycore(state, {}, dt)
@@ -161,7 +159,7 @@ def main(backend=None, namelist="namelist_sts.py", output=True):
         dict_op.copy(state, state_tmp)
 
         # stop timing
-        tasmania.python.utils.time.Timer.stop()
+        taz.Timer.stop()
 
     print("Simulation successfully completed. HOORAY!")
 
@@ -172,33 +170,26 @@ def main(backend=None, namelist="namelist_sts.py", output=True):
     gt.storage.restore_numpy()
 
     # compute the error
-    try:
-        u = np.asarray(state["x_velocity"].data)
-    except (TypeError, ValueError):
-        u = state["x_velocity"].data.get()
+    u = taz.to_numpy(state["x_velocity"].data)
     uex = zsof(
-        state["time"], cgrid, field_name="x_velocity", field_units="m s^-1"
+        state["time"], ngrid, field_name="x_velocity", field_units="m s^-1"
     )
-    print(
-        "RMSE(u) = {:.5E} m/s".format(
-            np.linalg.norm(u - uex) / np.sqrt(u.size)
-        )
-    )
+    print(f"RMSE(u) = {np.linalg.norm(u - uex) / np.sqrt(u.size):.5e} m/s")
 
     # print logs
     print(
-        f"Compute time: {tasmania.python.utils.time.Timer.get_time('compute_time', 's')} s."
+        f"Compute time: "
+        f"{taz.Timer.get_time('compute_time', 's'):.3f}"
+        f" s."
     )
 
-    if output:
+    if not no_log:
         # save to file
         exec_info_to_csv(nl.exec_info_csv, nl.backend, nl.bo)
         run_info_to_csv(
-            nl.run_info_csv,
-            backend,
-            tasmania.python.utils.time.Timer.get_time("compute_time", "s"),
+            nl.run_info_csv, backend, taz.Timer.get_time("compute_time", "s"),
         )
-        tasmania.python.utils.time.Timer.log(nl.log_txt, "s")
+        taz.Timer.log(nl.log_txt, "s")
 
 
 if __name__ == "__main__":
