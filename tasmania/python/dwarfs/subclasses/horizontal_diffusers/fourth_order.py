@@ -86,7 +86,9 @@ class FourthOrder(HorizontalDiffusion):
 
     @staticmethod
     @stencil_definition(backend=("numpy", "cupy"), stencil="diffusion")
-    def _stencil_numpy(in_phi, in_gamma, out_phi, *, dx, dy, origin, domain):
+    def _horizontal_diffusion_numpy(
+        in_phi, in_gamma, out_phi, *, dx, dy, origin, domain
+    ):
         i = slice(origin[0], origin[0] + domain[0])
         ip2 = slice(origin[0] + 2, origin[0] + domain[0] + 2)
         ip1 = slice(origin[0] + 1, origin[0] + domain[0] + 1)
@@ -119,7 +121,7 @@ class FourthOrder(HorizontalDiffusion):
 
     @staticmethod
     @stencil_definition(backend="gt4py*", stencil="diffusion")
-    def _stencil_gt4py(
+    def _horizontal_diffusion_gt4py(
         in_phi: gtscript.Field["dtype"],
         in_gamma: gtscript.Field["dtype"],
         out_phi: gtscript.Field["dtype"],
@@ -242,7 +244,7 @@ class FourthOrder1DX(HorizontalDiffusion):
 
     @staticmethod
     @stencil_definition(backend=("numpy", "cupy"), stencil="diffusion")
-    def _stencil_numpy(
+    def _horizontal_diffusion_numpy(
         in_phi, in_gamma, out_phi, *, dx, dy, origin, domain, **kwargs
     ):
         i = slice(origin[0], origin[0] + domain[0])
@@ -266,7 +268,7 @@ class FourthOrder1DX(HorizontalDiffusion):
 
     @staticmethod
     @stencil_definition(backend="gt4py*", stencil="diffusion")
-    def _stencil_gt4py(
+    def _horizontal_diffusion_gt4py(
         in_phi: gtscript.Field["dtype"],
         in_gamma: gtscript.Field["dtype"],
         out_phi: gtscript.Field["dtype"],
@@ -374,7 +376,7 @@ class FourthOrder1DY(HorizontalDiffusion):
 
     @staticmethod
     @stencil_definition(backend=("numpy", "cupy"), stencil="diffusion")
-    def _stencil_numpy(
+    def _horizontal_diffusion_numpy(
         in_phi, in_gamma, out_phi, *, dx, dy, origin, domain, **kwargs
     ):
         i = slice(origin[0], origin[0] + domain[0])
@@ -398,7 +400,7 @@ class FourthOrder1DY(HorizontalDiffusion):
 
     @staticmethod
     @stencil_definition(backend="gt4py*", stencil="diffusion")
-    def _stencil_gt4py(
+    def _horizontal_diffusion_gt4py(
         in_phi: gtscript.Field["dtype"],
         in_gamma: gtscript.Field["dtype"],
         out_phi: gtscript.Field["dtype"],

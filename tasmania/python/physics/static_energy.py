@@ -153,7 +153,7 @@ class DryStaticEnergy(DiagnosticComponent):
         return diagnostics
 
     @stencil_definition(backend=("numpy", "cupy"), stencil="static_energy")
-    def _stencil_numpy(
+    def _dry_static_energy_numpy(
         self,
         in_t: np.ndarray,
         in_h: np.ndarray,
@@ -179,7 +179,7 @@ class DryStaticEnergy(DiagnosticComponent):
 
     @staticmethod
     @stencil_definition(backend="gt4py*", stencil="static_energy")
-    def _stencil_gt4py(
+    def _dry_static_energy_gt4py(
         in_t: gtscript.Field["dtype"],
         in_h: gtscript.Field["dtype"],
         out_dse: gtscript.Field["dtype"],
@@ -291,7 +291,7 @@ class MoistStaticEnergy(DiagnosticComponent):
         return diagnostics
 
     @stencil_definition(backend=("numpy", "cupy"), stencil="static_energy")
-    def _stencil_numpy(
+    def _moist_static_energy_numpy(
         self,
         in_dse: np.ndarray,
         in_qv: np.ndarray,
@@ -309,7 +309,7 @@ class MoistStaticEnergy(DiagnosticComponent):
 
     @staticmethod
     @stencil_definition(backend="gt4py*", stencil="static_energy")
-    def _stencil_gt4py(
+    def _moist_static_energy_gt4py(
         in_dse: gtscript.Field["dtype"],
         in_qv: gtscript.Field["dtype"],
         out_mse: gtscript.Field["dtype"],

@@ -310,7 +310,7 @@ class IsentropicVerticalAdvection(TendencyComponent):
         return tendencies, {}
 
     @stencil_definition(backend=("numpy", "cupy"), stencil="stencil")
-    def _stencil_numpy(
+    def _vertical_advection_numpy(
         self,
         in_w: np.ndarray,
         in_s: np.ndarray,
@@ -419,7 +419,7 @@ class IsentropicVerticalAdvection(TendencyComponent):
 
     @staticmethod
     @stencil_definition(backend="gt4py*", stencil="stencil")
-    def _stencil_gt4py(
+    def _vertical_advection_gt4py(
         in_w: gtscript.Field["dtype"],
         in_s: gtscript.Field["dtype"],
         in_su: gtscript.Field["dtype"],

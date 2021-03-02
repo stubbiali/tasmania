@@ -86,7 +86,7 @@ class SecondOrder(HorizontalDiffusion):
 
     @staticmethod
     @stencil_definition(backend=("numpy", "cupy"), stencil="diffusion")
-    def _stencil_numpy(
+    def _horizontal_diffusion_numpy(
         in_phi, in_gamma, out_phi, *, dx, dy, origin, domain, **kwargs
     ):
         i = slice(origin[0], origin[0] + domain[0])
@@ -104,7 +104,7 @@ class SecondOrder(HorizontalDiffusion):
 
     @staticmethod
     @stencil_definition(backend="gt4py*", stencil="diffusion")
-    def _stencil_gt4py(
+    def _horizontal_diffusion_gt4py(
         in_phi: gtscript.Field["dtype"],
         in_gamma: gtscript.Field["dtype"],
         out_phi: gtscript.Field["dtype"],
@@ -227,7 +227,7 @@ class SecondOrder1DX(HorizontalDiffusion):
 
     @staticmethod
     @stencil_definition(backend=("numpy", "cupy"), stencil="diffusion")
-    def _stencil_numpy(
+    def _horizontal_diffusion_numpy(
         in_phi, in_gamma, out_phi, *, dx, dy, origin, domain, **kwargs
     ):
         i = slice(origin[0], origin[0] + domain[0])
@@ -243,7 +243,7 @@ class SecondOrder1DX(HorizontalDiffusion):
 
     @staticmethod
     @stencil_definition(backend="gt4py*", stencil="diffusion")
-    def _stencil_gt4py(
+    def _horizontal_diffusion_gt4py(
         in_phi: gtscript.Field["dtype"],
         in_gamma: gtscript.Field["dtype"],
         out_phi: gtscript.Field["dtype"],
@@ -337,7 +337,7 @@ class SecondOrder1DY(HorizontalDiffusion):
 
     @staticmethod
     @stencil_definition(backend=("numpy", "cupy"), stencil="diffusion")
-    def _stencil_numpy(
+    def _horizontal_diffusion_numpy(
         in_phi, in_gamma, out_phi, *, dx, dy, origin, domain, **kwargs
     ):
         i = slice(origin[0], origin[0] + domain[0])
@@ -353,7 +353,7 @@ class SecondOrder1DY(HorizontalDiffusion):
 
     @staticmethod
     @stencil_definition(backend="gt4py*", stencil="diffusion")
-    def _stencil_gt4py(
+    def _horizontal_diffusion_gt4py(
         in_phi: gtscript.Field["dtype"],
         in_gamma: gtscript.Field["dtype"],
         out_phi: gtscript.Field["dtype"],

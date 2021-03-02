@@ -257,7 +257,7 @@ class IsentropicImplicitVerticalAdvectionDiagnostic(ImplicitTendencyComponent):
         return {}, diagnostics
 
     @stencil_definition(backend=("numpy", "cupy"), stencil="stencil")
-    def _stencil_numpy(
+    def _implicit_vertical_advection_numpy(
         self,
         in_w: np.ndarray,
         in_s: np.ndarray,
@@ -387,7 +387,7 @@ class IsentropicImplicitVerticalAdvectionDiagnostic(ImplicitTendencyComponent):
 
     @staticmethod
     @stencil_definition(backend="gt4py*", stencil="stencil")
-    def _stencil_gt4py(
+    def _implicit_vertical_advection_gt4py(
         in_w: gtscript.Field["dtype"],
         in_s: gtscript.Field["dtype"],
         in_su: gtscript.Field["dtype"],
@@ -893,7 +893,7 @@ class IsentropicImplicitVerticalAdvectionPrognostic(ImplicitTendencyComponent):
         return tendencies, {}
 
     @stencil_definition(backend=("numpy", "cupy"), stencil="stencil")
-    def _stencil_numpy(
+    def _implicit_vertical_advection_numpy(
         self,
         in_w: np.ndarray,
         in_s: np.ndarray,
@@ -1038,7 +1038,7 @@ class IsentropicImplicitVerticalAdvectionPrognostic(ImplicitTendencyComponent):
 
     @staticmethod
     @stencil_definition(backend="gt4py*", stencil="stencil")
-    def _stencil_gt4py(
+    def _implicit_vertical_advection_gt4py(
         in_w: gtscript.Field["dtype"],
         in_s: gtscript.Field["dtype"],
         in_su: gtscript.Field["dtype"],

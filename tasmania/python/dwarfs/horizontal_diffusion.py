@@ -200,7 +200,7 @@ class HorizontalDiffusion(StencilFactory, abc.ABC):
     @staticmethod
     @stencil_definition(backend=("numpy", "cupy"), stencil="diffusion")
     @abc.abstractmethod
-    def _stencil_numpy(
+    def _horizontal_diffusion_numpy(
         in_phi: np.ndarray,
         in_gamma: np.ndarray,
         out_phi: np.ndarray,
@@ -215,7 +215,7 @@ class HorizontalDiffusion(StencilFactory, abc.ABC):
     @staticmethod
     @stencil_definition(backend="gt4py*", stencil="diffusion")
     @abc.abstractmethod
-    def _stencil_gt4py(
+    def _horizontal_diffusion_gt4py(
         in_phi: gtscript.Field["dtype"],
         in_gamma: gtscript.Field["dtype"],
         out_phi: gtscript.Field["dtype"],

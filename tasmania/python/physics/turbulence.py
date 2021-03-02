@@ -159,7 +159,7 @@ class Smagorinsky2d(TendencyComponent):
 
     @staticmethod
     @stencil_definition(backend=("numpy", "cupy"), stencil="smagorinsky")
-    def _stencil_numpy(
+    def _smagorkinsky2d_numpy(
         in_u: np.ndarray,
         in_v: np.ndarray,
         out_u_tnd: np.ndarray,
@@ -217,7 +217,7 @@ class Smagorinsky2d(TendencyComponent):
 
     @staticmethod
     @stencil_definition(backend="gt4py*", stencil="smagorinsky")
-    def _stencil_gt4py(
+    def _smagorinsky2d_gt4py(
         in_u: gtscript.Field["dtype"],
         in_v: gtscript.Field["dtype"],
         out_u_tnd: gtscript.Field["dtype"],

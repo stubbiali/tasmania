@@ -341,7 +341,7 @@ class KesslerMicrophysics(TendencyComponent):
         return tendencies, diagnostics
 
     @stencil_definition(backend=("numpy", "cupy"), stencil="kessler")
-    def _stencil_numpy(
+    def _kessler_numpy(
         self,
         in_rho: np.ndarray,
         in_p: np.ndarray,
@@ -418,7 +418,7 @@ class KesslerMicrophysics(TendencyComponent):
 
     @staticmethod
     @stencil_definition(backend="gt4py*", stencil="kessler")
-    def _stencil_gt4py(
+    def _kessler_gt4py(
         in_rho: gtscript.Field["dtype"],
         in_p: gtscript.Field["dtype"],
         in_t: gtscript.Field["dtype"],
@@ -715,7 +715,7 @@ class KesslerSaturationAdjustmentDiagnostic(ImplicitTendencyComponent):
         return tendencies, diagnostics
 
     @stencil_definition(backend=("numpy", "cupy"), stencil="saturation")
-    def _stencil_numpy(
+    def _saturation_adjustment_diagnostic_numpy(
         self,
         in_p: np.ndarray,
         in_t: np.ndarray,
@@ -776,7 +776,7 @@ class KesslerSaturationAdjustmentDiagnostic(ImplicitTendencyComponent):
 
     @staticmethod
     @stencil_definition(backend="gt4py*", stencil="saturation")
-    def _stencil_gt4py(
+    def _saturation_adjustment_diagnostic_gt4py(
         in_p: gtscript.Field["dtype"],
         in_t: gtscript.Field["dtype"],
         in_exn: gtscript.Field["dtype"],
@@ -1059,7 +1059,7 @@ class KesslerSaturationAdjustmentPrognostic(TendencyComponent):
         return tendencies, diagnostics
 
     @stencil_definition(backend=("numpy", "cupy"), stencil="saturation")
-    def _stencil_numpy(
+    def _saturation_adjustment_prognostic_numpy(
         self,
         in_p: np.ndarray,
         in_t: np.ndarray,
@@ -1116,7 +1116,7 @@ class KesslerSaturationAdjustmentPrognostic(TendencyComponent):
 
     @staticmethod
     @stencil_definition(backend="gt4py*", stencil="saturation")
-    def _stencil_gt4py(
+    def _saturation_adjustment_prognostic_gt4py(
         in_p: gtscript.Field["dtype"],
         in_t: gtscript.Field["dtype"],
         in_exn: gtscript.Field["dtype"],
@@ -1271,7 +1271,7 @@ class KesslerFallVelocity(DiagnosticComponent):
 
     @staticmethod
     @stencil_definition(backend=("numpy", "cupy"), stencil="fall_velocity")
-    def _stencil_numpy(
+    def _fall_velocity_numpy(
         in_rho: np.ndarray,
         in_rho_s: np.ndarray,
         in_qr: np.ndarray,
@@ -1298,7 +1298,7 @@ class KesslerFallVelocity(DiagnosticComponent):
 
     @staticmethod
     @stencil_definition(backend="gt4py*", stencil="fall_velocity")
-    def _stencil_gt4py(
+    def _fall_velocity_gt4py(
         in_rho: gtscript.Field["dtype"],
         in_rho_s: gtscript.Field["dtype"],
         in_qr: gtscript.Field["dtype"],
@@ -1443,7 +1443,7 @@ class KesslerSedimentation(ImplicitTendencyComponent):
         return tendencies, diagnostics
 
     @stencil_definition(backend=("numpy", "cupy"), stencil="sedimentation")
-    def _stencil_numpy(
+    def _sedimentation_numpy(
         self,
         in_rho: np.ndarray,
         in_h: np.ndarray,
@@ -1474,7 +1474,7 @@ class KesslerSedimentation(ImplicitTendencyComponent):
 
     @staticmethod
     @stencil_definition(backend="gt4py*", stencil="sedimentation")
-    def _stencil_gt4py(
+    def _sedimentation_gt4py(
         in_rho: gtscript.Field["dtype"],
         in_h: gtscript.Field["dtype"],
         in_qr: gtscript.Field["dtype"],

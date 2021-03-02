@@ -269,7 +269,7 @@ class IsentropicVerticalAdvection(STSTendencyStepper, StencilFactory):
         return {}, out_state
 
     @stencil_definition(backend=("numpy", "cupy"), stencil="stencil")
-    def _stencil_numpy(
+    def _sts_implicit_vertical_advection_numpy(
         self,
         in_w: np.ndarray,
         in_s: np.ndarray,
@@ -493,7 +493,7 @@ class IsentropicVerticalAdvection(STSTendencyStepper, StencilFactory):
 
     @staticmethod
     @stencil_definition(backend="gt4py:*", stencil="stencil")
-    def _stencil_gt4py(
+    def _sts_implicit_vertical_advection_gt4py(
         in_w: gtscript.Field["dtype"],
         in_s: gtscript.Field["dtype"],
         in_s_prv: gtscript.Field["dtype"],

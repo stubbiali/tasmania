@@ -298,7 +298,7 @@ class Precipitation(ImplicitTendencyComponent):
     @stencil_definition(
         backend=("numpy", "cupy"), stencil="accumulated_precipitation"
     )
-    def _stencil_numpy(
+    def _accumulated_precipitation_numpy(
         self,
         in_rho: np.ndarray,
         in_qr: np.ndarray,
@@ -329,7 +329,7 @@ class Precipitation(ImplicitTendencyComponent):
 
     @staticmethod
     @stencil_definition(backend="gt4py*", stencil="accumulated_precipitation")
-    def _stencil_gt4py(
+    def _accumulated_precipitation_gt4py(
         in_rho: gtscript.Field["dtype"],
         in_qr: gtscript.Field["dtype"],
         in_vt: gtscript.Field["dtype"],

@@ -172,7 +172,7 @@ class IsentropicConservativeCoriolis(TendencyComponent):
 
     @staticmethod
     @stencil_definition(backend=("numpy", "cupy"), stencil="coriolis")
-    def _stencil_numpy(
+    def _coriolis_numpy(
         in_su: np.ndarray,
         in_sv: np.ndarray,
         tnd_su: np.ndarray,
@@ -192,7 +192,7 @@ class IsentropicConservativeCoriolis(TendencyComponent):
 
     @staticmethod
     @stencil_definition(backend="gt4py*", stencil="coriolis")
-    def _stencil_gt4py(
+    def _coriolis_gt4py(
         in_su: gtscript.Field["dtype"],
         in_sv: gtscript.Field["dtype"],
         tnd_su: gtscript.Field["dtype"],
