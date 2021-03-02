@@ -46,7 +46,7 @@ def get_third_order_upwind_flux_numpy(w, phi):
 def get_third_order_upwind_flux_gt4py(w, phi):
     flux = w[0, 0, 0] / 12.0 * (
         7.0 * (phi[0, 0, -1] + phi[0, 0, 0]) - (phi[0, 0, -2] + phi[0, 0, 1])
-    ) - (w[0, 0, 0] if w[0, 0, 0] > 0 else -w[0, 0, 0]) / 12.0 * (
+    ) - abs(w) / 12.0 * (
         3.0 * (phi[0, 0, -1] - phi[0, 0, 0]) - (phi[0, 0, -2] - phi[0, 0, 1])
     )
     return flux
