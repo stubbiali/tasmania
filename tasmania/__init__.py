@@ -61,7 +61,7 @@ from tasmania.python.dwarfs.vertical_damping import VerticalDamping
 
 # framework
 from tasmania.python.framework import tag
-from tasmania.python.framework.allocators import empty, ones, zeros
+from tasmania.python.framework.allocators import as_storage, empty, ones, zeros
 from tasmania.python.framework.base_components import (
     DiagnosticComponent,
     ImplicitTendencyComponent,
@@ -71,6 +71,7 @@ from tasmania.python.framework.base_components import (
 from tasmania.python.framework.composite import DiagnosticComponentComposite
 from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
 from tasmania.python.framework.dycore import DynamicalCore
+from tasmania.python.framework.generic_functions import to_numpy
 from tasmania.python.framework.offline_diagnostics import (
     OfflineDiagnosticComponent,
     RMSD,

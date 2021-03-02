@@ -128,7 +128,63 @@ class Zeros(Allocator):
     function = "zeros"
 
 
+class AsStorage(abc.ABC):
+    """A class to centrally manage objects allocating storages."""
+
+    # the dictionary of registered objects
+    registry = Registry()
+
+    def __new__(
+        cls: Type["AsStorage"],
+        backend: str,
+        stencil: str = prt.wildcard,
+        *,
+        data: "Storage",
+        storage_options: Optional["StorageOptions"] = None
+    ) -> "Storage":
+        """Dispatch the call to the proper registered object."""
+        key = ("as_storage", backend, stencil)
+        try:
+            obj = cls.registry[key]
+        except KeyError:
+            raise FactoryRegistryError(
+                f"No storage converter registered for the backend '{backend}'."
+            )
+        set_runtime_attribute(
+            obj,
+            "function",
+            "as_storage",
+            "backend",
+            backend,
+            "stencil",
+            stencil,
+        )
+        return obj(data, storage_options=storage_options)
+
+    @classmethod
+    def register(
+        cls: Type["Allocator"],
+        handle: Optional[Callable] = None,
+        backend: Union[str, Sequence[str]] = prt.wildcard,
+        stencil: Union[str, Sequence[str]] = prt.wildcard,
+    ) -> Callable:
+        """Decorator to register an object."""
+        return multiregister(
+            handle,
+            cls.registry,
+            (
+                "function",
+                "as_storage",
+                "backend",
+                backend,
+                "stencil",
+                stencil,
+            ),
+        )
+
+
 # numpy-compliant aliases
+as_storage = AsStorage
 empty = Empty
 ones = Ones
 zeros = Zeros
