@@ -42,7 +42,7 @@ nz = 60
 # horizontal boundary
 hb_type = "relaxed"
 nb = 3
-hb_kwargs = {"nr": 6, "nz": nz}
+hb_kwargs = {"nr": 6}
 
 # backend settings
 backend_kwargs = {

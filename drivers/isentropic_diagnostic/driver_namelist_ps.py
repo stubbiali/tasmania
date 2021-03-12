@@ -71,14 +71,14 @@ domain = taz.Domain(
     dtype=nl.gt_kwargs["dtype"],
 )
 pgrid = domain.physical_grid
-cgrid = domain.numerical_grid
-nl.gt_kwargs["storage_shape"] = (cgrid.nx + 1, cgrid.ny + 1, cgrid.nz + 1)
+ngrid = domain.numerical_grid
+nl.gt_kwargs["storage_shape"] = (ngrid.nx + 1, ngrid.ny + 1, ngrid.nz + 1)
 
 # ============================================================
 # The initial state
 # ============================================================
 state = taz.get_isentropic_state_from_brunt_vaisala_frequency(
-    cgrid,
+    ngrid,
     nl.init_time,
     nl.x_velocity,
     nl.y_velocity,
@@ -105,9 +105,9 @@ state["tendency_of_air_potential_temperature"] = taz.get_dataarray_3d(
         default_origin=nl.gt_kwargs["default_origin"],
         managed_memory=nl.gt_kwargs["managed_memory"],
     ),
-    cgrid,
+    ngrid,
     "K s^-1",
-    grid_shape=(cgrid.nx, cgrid.ny, cgrid.nz),
+    grid_shape=(ngrid.nx, ngrid.ny, ngrid.nz),
     set_coordinates=False,
 )
 
@@ -229,7 +229,10 @@ if nl.diff:
 if nl.turbulence:
     # component implementing the Smagorinsky turbulence model
     turb = taz.IsentropicSmagorinsky(
-        domain, nl.smagorinsky_constant, gt_powered=nl.gt_powered, **nl.gt_kwargs
+        domain,
+        nl.smagorinsky_constant,
+        gt_powered=nl.gt_powered,
+        **nl.gt_kwargs
     )
     args.append(
         {
@@ -411,7 +414,9 @@ if nl.sedimentation:
     )
 
     # component calculating the accumulated precipitation
-    ap = taz.Precipitation(domain, "numerical", gt_powered=nl.gt_powered, **nl.gt_kwargs)
+    ap = taz.Precipitation(
+        domain, "numerical", gt_powered=nl.gt_powered, **nl.gt_kwargs
+    )
     args.append(
         {
             "component": taz.DiagnosticComponentComposite(

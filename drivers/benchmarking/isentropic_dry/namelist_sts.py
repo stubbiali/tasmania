@@ -64,7 +64,7 @@ bo = taz.BackendOptions(
     parallel=True,
 )
 so = taz.StorageOptions(
-    dtype=np.float64, default_origin=(nb, nb, 0), managed_memory=False
+    dtype=np.float64, aligned_index=(nb, nb, 0), managed="gt4py"
 )
 
 # topography
@@ -124,15 +124,15 @@ niter = 100
 hostname = socket.gethostname()
 if "nid" in hostname:
     if os.path.exists("/scratch/snx3000"):
-        prefix = "/scratch/snx3000/subbiali/timing"
+        prefix = "/scratch/snx3000/subbiali/timing/oop"
     else:
-        prefix = "/scratch/snx3000tds/subbiali/timing"
+        prefix = "/scratch/snx3000tds/subbiali/timing/oop"
 elif "daint" in hostname:
-    prefix = "/scratch/snx3000/subbiali/timing"
+    prefix = "/scratch/snx3000/subbiali/timing/oop"
 elif "dom" in hostname:
-    prefix = "/scratch/snx3000tds/subbiali/timing"
+    prefix = "/scratch/snx3000tds/subbiali/timing/oop"
 else:
-    prefix = "../timing"
+    prefix = "../timing/oop"
 exec_info_csv = os.path.join(prefix, f"isentropic_dry_exec_sts_{backend}.csv")
 run_info_csv = os.path.join(prefix, "isentropic_dry_run_sts.csv")
 log_txt = os.path.join(prefix, f"isentropic_dry_log_sts_{backend}.txt")

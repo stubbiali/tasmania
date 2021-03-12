@@ -21,6 +21,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 import click
+import sympl
 import tasmania as taz
 import tasmania.python.utils.time
 
@@ -41,10 +42,8 @@ from drivers.benchmarking.utils import (
     default="namelist_fc.py",
     help="The namelist file.",
 )
-@click.option(
-    "-o", "--output", type=bool, default=True, help="Output.",
-)
-def main(backend=None, namelist="namelist_fc.py", output=True):
+@click.option("--no-log", is_flag=True, help="Disable log.")
+def main(backend=None, namelist="namelist_fc.py", no_log=False):
     # ============================================================
     # The namelist
     # ============================================================
@@ -75,14 +74,14 @@ def main(backend=None, namelist="namelist_fc.py", output=True):
         storage_options=nl.so,
     )
     pgrid = domain.physical_grid
-    cgrid = domain.numerical_grid
-    storage_shape = (cgrid.nx + 1, cgrid.ny + 1, cgrid.nz + 1)
+    ngrid = domain.numerical_grid
+    storage_shape = (ngrid.nx + 1, ngrid.ny + 1, ngrid.nz + 1)
 
     # ============================================================
     # The initial state
     # ============================================================
     state = taz.get_isentropic_state_from_brunt_vaisala_frequency(
-        cgrid,
+        ngrid,
         nl.init_time,
         nl.x_velocity,
         nl.y_velocity,
@@ -135,7 +134,10 @@ def main(backend=None, namelist="namelist_fc.py", output=True):
     # The intermediate diagnostics
     # ============================================================
     # component retrieving the diagnostic variables
-    pt = state["air_pressure_on_interface_levels"][0, 0, 0]
+    pt = sympl.DataArray(
+        state["air_pressure_on_interface_levels"].data[0, 0, 0],
+        attrs={"units": "Pa"},
+    )
     dv = taz.IsentropicDiagnostics(
         domain,
         grid_type="numerical",
@@ -255,12 +257,21 @@ def main(backend=None, namelist="namelist_fc.py", output=True):
     # ============================================================
     # Post-processing
     # ============================================================
+    # print umax and vmax for validation
+    u = taz.to_numpy(state["x_velocity_at_u_locations"].data)
+    umax = u[:, :-1, :-1].max()
+    v = taz.to_numpy(state["y_velocity_at_v_locations"].data)
+    vmax = v[:-1, :, :-1].max()
+    print(f"Validation: umax = {umax:.5f}, vmax = {vmax:.5f}")
+
     # print logs
     print(
-        f"Compute time: {tasmania.python.utils.time.Timer.get_time('compute_time', 's')} s."
+        f"Compute time: "
+        f"{tasmania.python.utils.time.Timer.get_time('compute_time', 's'):.3f}"
+        f" s."
     )
 
-    if output:
+    if not no_log:
         # save to file
         exec_info_to_csv(nl.exec_info_csv, nl.backend, nl.bo)
         run_info_to_csv(

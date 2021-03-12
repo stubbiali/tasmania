@@ -20,27 +20,27 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+from tasmania.python.framework.generic_functions import to_numpy
+
+
 def print_info(dt, i, nl, pgrid, state):
-    if (nl.print_dry_frequency > 0) and ((i + 1) % nl.print_dry_frequency == 0):
-        u = (
-            state["x_momentum_isentropic"]
-            .to_units("kg m^-1 K^-1 s^-1")
-            .values[3:-4, 3:-4, :-1]
-            / state["air_isentropic_density"]
-            .to_units("kg m^-2 K^-1")
-            .values[3:-4, 3:-4, :-1]
+    if (nl.print_dry_frequency > 0) and (
+        (i + 1) % nl.print_dry_frequency == 0
+    ):
+        s = to_numpy(
+            state["air_isentropic_density"].to_units("kg m^-2 K^-1").data
         )
-        v = (
-            state["y_momentum_isentropic"]
-            .to_units("kg m^-1 K^-1 s^-1")
-            .values[3:-4, 3:-4, :-1]
-            / state["air_isentropic_density"]
-            .to_units("kg m^-2 K^-1")
-            .values[3:-4, 3:-4, :-1]
+        su = to_numpy(
+            state["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").data
+        )
+        sv = to_numpy(
+            state["y_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").data
         )
 
-        umax, umin = u.max().item(), u.min().item()
-        vmax, vmin = v.max().item(), v.min().item()
+        u = su[3:-4, 3:-4, :-1] / s[3:-4, 3:-4, :-1]
+        v = sv[3:-4, 3:-4, :-1] / s[3:-4, 3:-4, :-1]
+        umax, umin = u.max(), u.min()
+        vmax, vmin = v.max(), v.min()
         cfl = max(
             umax * dt.total_seconds() / pgrid.dx.to_units("m").values.item(),
             vmax * dt.total_seconds() / pgrid.dy.to_units("m").values.item(),
@@ -48,53 +48,53 @@ def print_info(dt, i, nl, pgrid, state):
 
         # print useful info
         print(
-            "Iteration {:6d}: CFL = {:4f}, umax = {:10.8f} m/s, umin = {:10.8f} m/s, "
-            "vmax = {:10.8f} m/s, vmin = {:10.8f} m/s".format(
-                i + 1, cfl, umax, umin, vmax, vmin
-            )
+            f"Iteration {i+1:6d}: CFL = {cfl:4f}, "
+            f"umax = {umax:10.8f} m/s, umin = {umin:10.8f} m/s, "
+            f"vmax = {vmax:10.8f} m/s, vmin = {vmin:10.8f} m/s"
         )
 
-    if (nl.print_moist_frequency > 0) and ((i + 1) % nl.print_moist_frequency == 0):
-        qv_max = (
+    if (nl.print_moist_frequency > 0) and (
+        (i + 1) % nl.print_moist_frequency == 0
+    ):
+        qv = to_numpy(
             state["mass_fraction_of_water_vapor_in_air"]
-            .values[3:-4, 3:-4, :-1]
-            .max()
-            .item()
-            * 1e3
+            .to_units("g g^-1")
+            .data
         )
-        qc_max = (
+        qv_max = qv[3:-4, 3:-4, :-1].max() * 1e3
+        qc = to_numpy(
             state["mass_fraction_of_cloud_liquid_water_in_air"]
-            .values[3:-4, 3:-4, :-1]
-            .max()
-            .item()
-            * 1e3
+            .to_units("g g^-1")
+            .data
         )
-        qr_max = (
+        qc_max = qc[3:-4, 3:-4, :-1].max() * 1e3
+        qr = to_numpy(
             state["mass_fraction_of_precipitation_water_in_air"]
-            .values[3:-4, 3:-4, :-1]
-            .max()
-            .item()
-            * 1e3
+            .to_units("g g^-1")
+            .data
         )
+        qr_max = qr[3:-4, 3:-4, :-1].max() * 1e3
+
         if "precipitation" in state:
-            prec_max = (
-                state["precipitation"].to_units("mm hr^-1").values[3:-4, 3:-4].max()
+            prec = to_numpy(state["precipitation"].to_units("mm hr^-1").data)
+            prec_max = prec[3:-4, 3:-4].max()
+            accprec = to_numpy(
+                state["accumulated_precipitation"].to_units("mm").data
             )
-            accprec_max = (
-                state["accumulated_precipitation"]
-                .to_units("mm")
-                .values[3:-4, 3:-4]
-                .max()
-                .item()
-            )
+            accprec_max = accprec[3:-4, 3:-4].max()
+
             print(
-                "Iteration {:6d}: qvmax = {:10.8f} g/kg, qcmax = {:10.8f} g/kg, "
-                "qrmax = {:10.8f} g/kg, prec_max = {:10.8f} mm/hr, accprec_max = {:10.8f} mm".format(
-                    i + 1, qv_max, qc_max, qr_max, prec_max, accprec_max
-                )
+                f"Iteration {i+1:6d}: "
+                f"qvmax = {qv_max:10.8f} g/kg, "
+                f"qcmax = {qc_max:10.8f} g/kg, "
+                f"qrmax = {qr_max:10.8f} g/kg, "
+                f"prec_max = {prec_max:10.8f} mm/hr, "
+                f"accprec_max = {accprec_max:10.8f} mm"
             )
         else:
             print(
-                "Iteration {:6d}: qvmax = {:10.8f} g/kg, qcmax = {:10.8f} g/kg, "
-                "qrmax = {:10.8f} g/kg".format(i + 1, qv_max, qc_max, qr_max)
+                f"Iteration {i+1:6d}: "
+                f"qvmax = {qv_max:10.8f} g/kg, "
+                f"qcmax = {qc_max:10.8f} g/kg, "
+                f"qrmax = {qr_max:10.8f} g/kg"
             )

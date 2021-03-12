@@ -41,10 +41,8 @@ from drivers.benchmarking.utils import (
     default="namelist_lfc.py",
     help="The namelist file.",
 )
-@click.option(
-    "-o", "--output", type=bool, default=True, help="Output.",
-)
-def main(backend=None, namelist="namelist_lfc.py", output=True):
+@click.option("--no-log", is_flag=True, help="Disable log.")
+def main(backend=None, namelist="namelist_lfc.py", no_log=False):
     # ============================================================
     # The namelist
     # ============================================================
@@ -260,12 +258,21 @@ def main(backend=None, namelist="namelist_lfc.py", output=True):
     # ============================================================
     # Post-processing
     # ============================================================
+    # print umax and vmax for validation
+    u = taz.to_numpy(state["x_velocity_at_u_locations"].data)
+    umax = u[:, :-1, :-1].max()
+    v = taz.to_numpy(state["y_velocity_at_v_locations"].data)
+    vmax = v[:-1, :, :-1].max()
+    print(f"Validation: umax = {umax:.5f}, vmax = {vmax:.5f}")
+
     # print logs
     print(
-        f"Compute time: {tasmania.python.utils.time.Timer.get_time('compute_time', 's')} s."
+        f"Compute time: "
+        f"{tasmania.python.utils.time.Timer.get_time('compute_time', 's'):.3f}"
+        f" s."
     )
 
-    if output:
+    if not no_log:
         # save to file
         exec_info_to_csv(nl.exec_info_csv, nl.backend, nl.bo)
         run_info_to_csv(
