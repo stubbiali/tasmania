@@ -164,7 +164,7 @@ class LineProfile(Drawer):
 
     def __call__(
         self,
-        state: typing.dataarray_dict_t,
+        state: typing.DataArrayDict,
         fig: Optional[plt.Figure] = None,
         ax: Optional[plt.Axes] = None,
     ) -> Tuple[np.ndarray, np.ndarray]:
@@ -194,7 +194,7 @@ def make_xplot(
     grid: "Grid",
     axis_units: str,
     field_retriever: DataRetriever,
-    state: typing.dataarray_dict_t,
+    state: typing.DataArrayDict,
     ax: Optional[plt.Axes] = None,
     **kwargs
 ) -> Tuple[np.ndarray, np.ndarray]:
@@ -215,7 +215,7 @@ def make_yplot(
     grid: "Grid",
     axis_units: str,
     field_retriever: DataRetriever,
-    state: typing.dataarray_dict_t,
+    state: typing.DataArrayDict,
     ax: Optional[plt.Axes] = None,
     **kwargs
 ) -> Tuple[np.ndarray, np.ndarray]:
@@ -236,7 +236,7 @@ def make_zplot(
     grid: "Grid",
     axis_units: str,
     field_retriever: DataRetriever,
-    state: typing.dataarray_dict_t,
+    state: typing.DataArrayDict,
     ax: Optional[plt.Axes] = None,
     **kwargs
 ) -> Tuple[np.ndarray, np.ndarray]:
@@ -256,7 +256,7 @@ def make_zplot(
 def make_hplot(
     axis_retriever: DataRetriever,
     field_retriever: DataRetriever,
-    state: typing.dataarray_dict_t,
+    state: typing.DataArrayDict,
     ax: Optional[plt.Axes] = None,
     **kwargs
 ) -> Tuple[np.ndarray, np.ndarray]:

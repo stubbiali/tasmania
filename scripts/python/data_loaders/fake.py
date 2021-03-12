@@ -20,8 +20,9 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from tasmania import taz_types
 from typing import Optional
+
+from tasmania.python.utils import typing as ty
 
 from scripts.python.data_loaders.base import BaseLoader
 
@@ -39,5 +40,5 @@ class FakeLoader(BaseLoader):
     def get_initial_time(self) -> None:
         raise NotImplementedError()
 
-    def get_state(self, tlevel: int) -> taz_types.dataarray_dict_t:
+    def get_state(self, tlevel: int) -> ty.DataArrayDict:
         return {}

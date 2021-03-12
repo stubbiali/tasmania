@@ -20,12 +20,15 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+import click
 from datetime import datetime
 import json
 from matplotlib import pyplot as plt
-from tasmania import PlotComposite, taz_types
-from tasmania.python.utils.utils import assert_sequence
 from typing import List, Optional, Sequence, Tuple, Union
+
+from tasmania.python.plot.monitors import PlotComposite
+from tasmania.python.utils import typing as ty
+from tasmania.python.utils.utils import assert_sequence
 
 
 class PlotCompositeWrapper:
@@ -40,9 +43,13 @@ class PlotCompositeWrapper:
                 wrapper_classname = plot_data["wrapper_classname"]
                 wrapper_config = plot_data["wrapper_config"]
 
-                import_str = "from {} import {}".format(wrapper_module, wrapper_classname)
+                import_str = "from {} import {}".format(
+                    wrapper_module, wrapper_classname
+                )
                 exec(import_str)
-                self.plot_wrappers.append(locals()[wrapper_classname](wrapper_config))
+                self.plot_wrappers.append(
+                    locals()[wrapper_classname](wrapper_config)
+                )
 
             nrows = data["nrows"]
             ncols = data["ncols"]
@@ -81,10 +88,12 @@ class PlotCompositeWrapper:
 
     def get_states(
         self, tlevels: Optional[Union[int, Sequence[int]]] = None
-    ) -> Tuple[Union[taz_types.dataarray_dict_t, Sequence[taz_types.dataarray_dict_t]]]:
+    ) -> Tuple[Union[ty.DataArrayDict, Sequence[ty.DataArrayDict]]]:
         tlevels = self.tlevels if tlevels is None else tlevels
         tlevels = (
-            (tlevels,) * len(self.plot_wrappers) if isinstance(tlevels, int) else tlevels
+            (tlevels,) * len(self.plot_wrappers)
+            if isinstance(tlevels, int)
+            else tlevels
         )
         assert_sequence(tlevels, reflen=len(self.plot_wrappers), reftype=int)
 
@@ -102,26 +111,43 @@ class PlotCompositeWrapper:
         show: bool = False,
     ) -> plt.Figure:
         states = self.get_states(tlevels)
-        return self.core.store(*states, fig=fig, save_dest=self.save_dest, show=show)
+        return self.core.store(
+            *states, fig=fig, save_dest=self.save_dest, show=show
+        )
+
+
+@click.command()
+@click.option(
+    "-j", "--jsonfile", type=str, default=None, help="JSON configuration file."
+)
+@click.option(
+    "--no-show",
+    is_flag=True,
+    help="Disable visualization of generated figure.",
+)
+def main(jsonfile, no_show=False):
+    plot_wrapper = PlotCompositeWrapper(jsonfile)
+    plot_wrapper.store(show=not no_show)
 
 
 if __name__ == "__main__":
-    import argparse
-
-    parser = argparse.ArgumentParser(
-        description="Generate a figure with multiple panels."
-    )
-    parser.add_argument(
-        "configfile", metavar="configfile", type=str, help="JSON configuration file."
-    )
-    parser.add_argument(
-        "--no-show",
-        dest="show",
-        action="store_const",
-        const=0,
-        default=1,
-        help="Do not show the generated plot.",
-    )
-    args = parser.parse_args()
-    plot_wrapper = PlotCompositeWrapper(args.configfile)
-    plot_wrapper.store(show=args.show)
+    # import argparse
+    #
+    # parser = argparse.ArgumentParser(
+    #     description="Generate a figure with multiple panels."
+    # )
+    # parser.add_argument(
+    #     "configfile", metavar="configfile", type=str, help="JSON configuration file."
+    # )
+    # parser.add_argument(
+    #     "--no-show",
+    #     dest="show",
+    #     action="store_const",
+    #     const=0,
+    #     default=1,
+    #     help="Do not show the generated plot.",
+    # )
+    # args = parser.parse_args()
+    # plot_wrapper = PlotCompositeWrapper(args.configfile)
+    # plot_wrapper.store(show=args.show)
+    main()

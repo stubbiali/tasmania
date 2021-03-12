@@ -308,7 +308,7 @@ class Quiver(Drawer):
                     )
 
     def __call__(
-        self, state: typing.dataarray_dict_t, fig: plt.Figure, ax: plt.Axes
+        self, state: typing.DataArrayDict, fig: plt.Figure, ax: plt.Axes
     ) -> None:
         """ Call operator generating the quiver plot. """
         self._slave(state, fig, ax)
@@ -321,7 +321,7 @@ def make_quiver_xy(
     xcomp_retriever: DataRetriever,
     ycomp_retriever: DataRetriever,
     scalar_retriever: DataRetriever,
-    state: typing.dataarray_dict_t,
+    state: typing.DataArrayDict,
     fig: plt.Figure,
     ax: plt.Axes,
     **kwargs
@@ -403,7 +403,7 @@ def make_quiver_xz(
     xcomp_retriever: DataRetriever,
     zcomp_retriever: DataRetriever,
     scalar_retriever: DataRetriever,
-    state: typing.dataarray_dict_t,
+    state: typing.DataArrayDict,
     fig: plt.Figure,
     ax: plt.Axes,
     **kwargs
@@ -485,7 +485,7 @@ def make_quiver_xh(
     xcomp_retriever: DataRetriever,
     zcomp_retriever: DataRetriever,
     scalar_retriever: DataRetriever,
-    state: typing.dataarray_dict_t,
+    state: typing.DataArrayDict,
     fig: plt.Figure,
     ax: plt.Axes,
     **kwargs
@@ -500,7 +500,7 @@ def make_quiver_yz(
     ycomp_retriever: DataRetriever,
     zcomp_retriever: DataRetriever,
     scalar_retriever: DataRetriever,
-    state: typing.dataarray_dict_t,
+    state: typing.DataArrayDict,
     fig: plt.Figure,
     ax: plt.Axes,
     **kwargs
@@ -582,7 +582,7 @@ def make_quiver_yh(
     ycomp_retriever: DataRetriever,
     zcomp_retriever: DataRetriever,
     scalar_retriever: DataRetriever,
-    state: typing.dataarray_dict_t,
+    state: typing.DataArrayDict,
     fig: plt.Figure,
     ax: plt.Axes,
     **kwargs

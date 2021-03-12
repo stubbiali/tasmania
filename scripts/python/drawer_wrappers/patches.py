@@ -21,7 +21,8 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 import json
-from tasmania import Annotation, Circle, Rectangle, Segment
+
+from tasmania.python.plot.patches import Annotation, Circle, Rectangle, Segment
 
 from scripts.python.data_loaders.base import BaseLoader
 from scripts.python.drawer_wrappers.base import DrawerWrapper

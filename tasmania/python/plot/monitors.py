@@ -41,10 +41,10 @@ SequenceType = (tuple, list)
 
 def get_time(
     states: Union[
-        Sequence[typing.dataarray_dict_t],
-        Sequence[Sequence[typing.dataarray_dict_t]],
+        Sequence[typing.DataArrayDict],
+        Sequence[Sequence[typing.DataArrayDict]],
     ]
-) -> typing.datetime_t:
+) -> typing.Datetime:
     for level0 in states:
         if isinstance(level0, dict):  # level0 is a state dictionary
             if "time" in level0:
@@ -88,7 +88,7 @@ class Plot(Monitor):
         *drawers: Drawer,
         interactive: bool = True,
         print_time: Optional[str] = None,
-        init_time: Optional[typing.datetime_t] = None,
+        init_time: Optional[typing.Datetime] = None,
         figure_properties: Optional[typing.options_dict_t] = None,
         axes_properties: Optional[typing.options_dict_t] = None
     ) -> None:
@@ -164,7 +164,7 @@ class Plot(Monitor):
 
     def store(
         self,
-        *states: typing.dataarray_dict_t,
+        *states: typing.DataArrayDict,
         fig: Optional[plt.Figure] = None,
         ax: Optional[plt.Axes] = None,
         save_dest: Optional[str] = None,
@@ -314,7 +314,7 @@ class PlotComposite:
         ncols: int = 1,
         interactive: bool = True,
         print_time: Optional[str] = None,
-        init_time: Optional[typing.datetime_t] = None,
+        init_time: Optional[typing.Datetime] = None,
         figure_properties: Optional[typing.options_dict_t] = None
     ) -> None:
         """
@@ -415,9 +415,7 @@ class PlotComposite:
 
     def store(
         self,
-        *states: Union[
-            typing.dataarray_dict_t, Sequence[typing.dataarray_dict_t]
-        ],
+        *states: Union[typing.DataArrayDict, Sequence[typing.DataArrayDict]],
         fig: Optional[plt.Figure] = None,
         save_dest: Optional[str] = None,
         show: bool = False

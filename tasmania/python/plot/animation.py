@@ -57,7 +57,7 @@ class Animation:
         # initialize the list of states
         self._states = []
 
-    def store(self, *states: typing.dataarray_dict_t) -> None:
+    def store(self, *states: typing.DataArrayDict) -> None:
         """
         Append a new state (respectively, a list of states), to the list of
         states (resp., lists of states) stored in this object.

@@ -50,7 +50,7 @@ class Drawer(abc.ABC):
 
     @abc.abstractmethod
     def __call__(
-        self, state: typing.dataarray_dict_t, fig: plt.Figure, ax: plt.Axes
+        self, state: typing.DataArrayDict, fig: plt.Figure, ax: plt.Axes
     ) -> None:
         """ Call operator generating the plot.
 

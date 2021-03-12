@@ -47,7 +47,7 @@ class TimeSeries(Drawer):
         y: int = 0,
         z: int = 0,
         time_mode: str = "elapsed",
-        init_time: Optional[typing.datetime_t] = None,
+        init_time: Optional[typing.Datetime] = None,
         time_units: str = "s",
         time_on_xaxis: bool = True,
         properties: Optional[typing.options_dict_t] = None,
@@ -117,7 +117,7 @@ class TimeSeries(Drawer):
 
     def __call__(
         self,
-        state: typing.dataarray_dict_t,
+        state: typing.DataArrayDict,
         fig: Optional[plt.Figure] = None,
         ax: Optional[plt.Axes] = None,
     ) -> None:
@@ -158,7 +158,7 @@ class HovmollerDiagram(Drawer):
         axis_y: Optional[int] = None,
         axis_z: Optional[int] = None,
         time_mode: str = "elapsed",
-        init_time: Optional[typing.datetime_t] = None,
+        init_time: Optional[typing.Datetime] = None,
         time_units: str = "s",
         properties: Optional[typing.options_dict_t] = None,
     ) -> None:
@@ -279,7 +279,7 @@ class HovmollerDiagram(Drawer):
 
     def __call__(
         self,
-        state: typing.dataarray_dict_t,
+        state: typing.DataArrayDict,
         fig: Optional[plt.Figure] = None,
         ax: Optional[plt.Axes] = None,
     ) -> None:

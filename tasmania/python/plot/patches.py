@@ -53,7 +53,7 @@ class Annotation(Drawer):
         super().__init__(properties)
 
     def __call__(
-        self, state: typing.dataarray_dict_t, fig: plt.Figure, ax: plt.Axes
+        self, state: typing.DataArrayDict, fig: plt.Figure, ax: plt.Axes
     ) -> None:
         add_annotation(ax, **self.properties)
 
@@ -75,7 +75,7 @@ class Circle(Drawer):
         super().__init__(properties)
 
     def __call__(
-        self, state: typing.dataarray_dict_t, fig: plt.Figure, ax: plt.Axes
+        self, state: typing.DataArrayDict, fig: plt.Figure, ax: plt.Axes
     ) -> None:
         make_circle(ax, **self.properties)
 
@@ -97,7 +97,7 @@ class Rectangle(Drawer):
         super().__init__(properties)
 
     def __call__(
-        self, state: typing.dataarray_dict_t, fig: plt.Figure, ax: plt.Axes
+        self, state: typing.DataArrayDict, fig: plt.Figure, ax: plt.Axes
     ) -> None:
         make_rectangle(ax, **self.properties)
 
@@ -131,7 +131,7 @@ class Segment(Drawer):
         super().__init__(properties)
 
     def __call__(
-        self, state: typing.dataarray_dict_t, fig: plt.Figure, ax: plt.Axes
+        self, state: typing.DataArrayDict, fig: plt.Figure, ax: plt.Axes
     ) -> None:
         make_lineplot(
             np.array(self.x), np.array(self.y), ax, **self.properties

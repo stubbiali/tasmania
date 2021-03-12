@@ -248,7 +248,7 @@ class Contourf(Drawer):
                     )
 
     def __call__(
-        self, state: typing.dataarray_dict_t, fig: plt.Figure, ax: plt.Axes
+        self, state: typing.DataArrayDict, fig: plt.Figure, ax: plt.Axes
     ) -> None:
         """
         Call operator generating the contourf plot.
@@ -261,7 +261,7 @@ def make_contourf_xy(
     xaxis_units: str,
     yaxis_units: str,
     field_retriever: DataRetriever,
-    state: typing.dataarray_dict_t,
+    state: typing.DataArrayDict,
     fig: plt.Figure,
     ax: plt.Axes,
     **kwargs
@@ -289,7 +289,7 @@ def make_contourf_xz(
     xaxis_units: str,
     zaxis_units: str,
     field_retriever: DataRetriever,
-    state: typing.dataarray_dict_t,
+    state: typing.DataArrayDict,
     fig: plt.Figure,
     ax: plt.Axes,
     **kwargs
@@ -317,7 +317,7 @@ def make_contourf_xh(
     xaxis_units: str,
     zaxis_retriever: DataRetriever,
     field_retriever: DataRetriever,
-    state: typing.dataarray_dict_t,
+    state: typing.DataArrayDict,
     fig: plt.Figure,
     ax: plt.Axes,
     **kwargs
@@ -353,7 +353,7 @@ def make_contourf_yz(
     yaxis_units: str,
     zaxis_units: str,
     field_retriever: DataRetriever,
-    state: typing.dataarray_dict_t,
+    state: typing.DataArrayDict,
     fig: plt.Figure,
     ax: plt.Axes,
     **kwargs
@@ -381,7 +381,7 @@ def make_contourf_yh(
     yaxis_units: str,
     zaxis_retriever: DataRetriever,
     field_retriever: DataRetriever,
-    state: typing.dataarray_dict_t,
+    state: typing.DataArrayDict,
     fig: plt.Figure,
     ax: plt.Axes,
     **kwargs

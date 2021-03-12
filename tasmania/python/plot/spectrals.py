@@ -84,7 +84,7 @@ class CDF(Drawer):
 
     def __call__(
         self,
-        state: typing.dataarray_dict_t,
+        state: typing.DataArrayDict,
         fig: Optional[plt.Figure] = None,
         ax: Optional[plt.Axes] = None,
     ) -> None:

@@ -23,8 +23,10 @@
 import json
 import numpy as np
 from sympl import DataArray
-from tasmania import Grid, taz_types
-from typing import List, Tuple
+from typing import List
+
+from tasmania.python.domain.grid import Grid
+from tasmania.python.utils import typing as ty
 
 from scripts.python.data_loaders.base import BaseLoader
 from scripts.python.data_loaders.diff import RMSDLoader
@@ -60,13 +62,13 @@ class CompositeLoader(BaseLoader):
             nts.append(slave.get_nt())
         return nts
 
-    def get_initial_time(self) -> List[taz_types.datetime_t]:
+    def get_initial_time(self) -> List[ty.Datetime]:
         itimes = []
         for slave in self.slaves:
             itimes.append(slave.get_initial_time())
         return itimes
 
-    def get_state(self, tlevel) -> List[taz_types.dataarray_dict_t]:
+    def get_state(self, tlevel) -> List[ty.DataArrayDict]:
         tlevel = [tlevel] if isinstance(tlevel, int) else tlevel
         tlevels = tlevel * len(self.slaves) if len(tlevel) == 1 else tlevel
         assert len(tlevels) == len(self.slaves)
@@ -114,10 +116,10 @@ class PolynomialInterpolationLoader(BaseLoader):
     def get_nt(self) -> int:
         return self.slaves[0].get_nt()
 
-    def get_initial_time(self) -> taz_types.datetime_t:
+    def get_initial_time(self) -> ty.Datetime:
         return self.slaves[0].get_nt()
 
-    def get_state(self, tlevel: int) -> taz_types.dataarray_dict_t:
+    def get_state(self, tlevel: int) -> ty.DataArrayDict:
         slaves = self.slaves
         x, y, z = self.x, self.y, self.z
         fname, funits = self.fname, self.funits
@@ -129,7 +131,8 @@ class PolynomialInterpolationLoader(BaseLoader):
         for slave, i, j, k in zip(slaves, x, y, z):
             state = slave.get_state(tlevel)
             data_y.append(state[fname].to_units(funits).values[i, j, k].item())
-        data_x = tuple(data_y[0] / 2 ** i for i in range(len(slaves)))
+        data_y = np.log2(np.array(data_y))
+        data_x = np.arange(len(slaves), 0, -1)
 
         try:
             fit = np.polyfit(data_x, data_y, deg)
@@ -137,7 +140,8 @@ class PolynomialInterpolationLoader(BaseLoader):
             fit = [0] * (deg + 1)
 
         return_state["polyfit_of_" + fname] = DataArray(
-            np.array(fit[0])[np.newaxis, np.newaxis, np.newaxis], attrs={"units": funits}
+            np.array(fit[0])[np.newaxis, np.newaxis, np.newaxis],
+            attrs={"units": "1"},
         )
 
         return return_state
@@ -157,10 +161,10 @@ class EOCLoader(BaseLoader):
     def get_nt(self) -> int:
         return self.loader_f.get_nt()
 
-    def get_initial_time(self) -> taz_types.datetime_t:
+    def get_initial_time(self) -> ty.Datetime:
         return self.loader_f.get_initial_time()
 
-    def get_state(self, tlevel) -> taz_types.dataarray_dict_t:
+    def get_state(self, tlevel) -> ty.DataArrayDict:
         state_c = self.loader_c.get_state(tlevel)
         state_f = self.loader_f.get_state(tlevel)
 
@@ -169,9 +173,11 @@ class EOCLoader(BaseLoader):
 
         eoc = np.log2(
             state_c["rmsd_of_" + fname].to_units(funits).values[0, 0, 0]
-            / state_f["rmsd_of_" + fname].values[0, 0, 0])
+            / state_f["rmsd_of_" + fname].values[0, 0, 0]
+        )
         state_f["eoc_of_" + fname] = DataArray(
-            np.array(eoc)[np.newaxis, np.newaxis, np.newaxis], attrs={"units": "1"}
+            np.array(eoc)[np.newaxis, np.newaxis, np.newaxis],
+            attrs={"units": "1"},
         )
 
         return state_f

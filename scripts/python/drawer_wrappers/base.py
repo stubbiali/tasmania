@@ -21,8 +21,9 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 import abc
-from tasmania import taz_types
+
 from tasmania.python.plot.drawer import Drawer
+from tasmania.python.utils import typing as ty
 
 from scripts.python.data_loaders.base import BaseLoader
 
@@ -35,8 +36,8 @@ class DrawerWrapper(abc.ABC):
     def get_drawer(self) -> Drawer:
         return self.core
 
-    def get_initial_time(self) -> taz_types.datetime_t:
+    def get_initial_time(self) -> ty.Datetime:
         return self.loader.get_initial_time()
 
-    def get_state(self, tlevel: int) -> taz_types.dataarray_dict_t:
+    def get_state(self, tlevel: int) -> ty.DataArrayDict:
         return self.loader.get_state(tlevel)

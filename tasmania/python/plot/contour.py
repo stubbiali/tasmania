@@ -245,7 +245,7 @@ class Contour(Drawer):
                     )
 
     def __call__(
-        self, state: typing.dataarray_dict_t, fig: plt.Figure, ax: plt.Axes
+        self, state: typing.DataArrayDict, fig: plt.Figure, ax: plt.Axes
     ) -> None:
         """
         Call operator generating the contour plot.
@@ -258,7 +258,7 @@ def make_contour_xy(
     xaxis_units: str,
     yaxis_units: str,
     field_retriever: DataRetriever,
-    state: typing.dataarray_dict_t,
+    state: typing.DataArrayDict,
     ax: plt.Axes,
     **kwargs
 ) -> None:
@@ -285,7 +285,7 @@ def make_contour_xz(
     xaxis_units: str,
     zaxis_units: str,
     field_retriever: DataRetriever,
-    state: typing.dataarray_dict_t,
+    state: typing.DataArrayDict,
     ax: plt.Axes,
     **kwargs
 ) -> None:
@@ -312,7 +312,7 @@ def make_contour_xh(
     xaxis_units: str,
     zaxis_retriever: DataRetriever,
     field_retriever: DataRetriever,
-    state: typing.dataarray_dict_t,
+    state: typing.DataArrayDict,
     ax: plt.Axes,
     **kwargs
 ) -> None:
@@ -347,7 +347,7 @@ def make_contour_yz(
     yaxis_units: str,
     zaxis_units: str,
     field_retriever: DataRetriever,
-    state: typing.dataarray_dict_t,
+    state: typing.DataArrayDict,
     ax: plt.Axes,
     **kwargs
 ):
@@ -374,7 +374,7 @@ def make_contour_yh(
     yaxis_units: str,
     zaxis_retriever: DataRetriever,
     field_retriever: DataRetriever,
-    state: typing.dataarray_dict_t,
+    state: typing.DataArrayDict,
     ax: plt.Axes,
     **kwargs
 ) -> None:

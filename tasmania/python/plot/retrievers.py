@@ -72,7 +72,7 @@ class DataRetriever:
         self.y = y if y is not None else slice(0, None)
         self.z = z if z is not None else slice(0, None)
 
-    def __call__(self, state: typing.dataarray_dict_t) -> typing.array_t:
+    def __call__(self, state: typing.DataArrayDict) -> typing.array_t:
         """
         Retrieve the field.
 
@@ -550,9 +550,7 @@ class DataRetrieverComposite:
 
     def __call__(
         self,
-        *args: Union[
-            typing.dataarray_dict_t, Sequence[typing.dataarray_dict_t]
-        ]
+        *args: Union[typing.DataArrayDict, Sequence[typing.DataArrayDict]]
     ) -> List[typing.array_t]:
         """
         Retrieve the field(s).
