@@ -86,6 +86,7 @@ gpu_backend = gpu_backend.union(
     gt_gpu_backend, gtc_gpu_backend,  # dawn_gpu_backend, numba_gpu_backend
 )
 backend = cpu_backend  # .union(gpu_backend)
+backend_debug = ("numpy",)
 
 # >>> storage info
 dtype = (np.float64,)

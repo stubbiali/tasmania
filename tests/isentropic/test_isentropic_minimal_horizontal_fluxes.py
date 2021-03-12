@@ -38,12 +38,7 @@ from tasmania.python.isentropic.dynamics.subclasses.minimal_horizontal_fluxes im
     FifthOrderUpwind,
 )
 
-from tests.conf import (
-    backend as conf_backend,
-    dtype as conf_dtype,
-    default_origin as conf_dorigin,
-    nb as conf_nb,
-)
+from tests import conf
 from tests.isentropic.test_isentropic_horizontal_fluxes import (
     get_centered_fluxes,
     get_fifth_order_upwind_fluxes,
@@ -103,25 +98,31 @@ flux_properties = {
 
 @hyp_settings
 @given(data=hyp_st.data())
-@pytest.mark.parametrize("backend", conf_backend)
-@pytest.mark.parametrize("dtype", conf_dtype)
-def test_upwind(data, backend, dtype):
+@pytest.mark.parametrize("flux_scheme", flux_properties.keys())
+@pytest.mark.parametrize("backend", conf.backend)
+@pytest.mark.parametrize("dtype", conf.dtype)
+def test(data, flux_scheme, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+    aligned_index = data.draw(
+        st_one_of(conf.aligned_index), label="aligned_index"
+    )
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
 
     nb = data.draw(
-        hyp_st.integers(min_value=1, max_value=max(1, conf_nb)), label="nb"
+        hyp_st.integers(min_value=3, max_value=max(3, conf.nb)), label="nb"
     )
     domain = data.draw(
         st_domain(
-            xaxis_length=(1, 20),
-            yaxis_length=(1, 20),
-            zaxis_length=(1, 20),
+            xaxis_length=(1, 30),
+            yaxis_length=(1, 30),
+            zaxis_length=(1, 30),
             nb=nb,
             backend=backend,
-            dtype=dtype,
+            backend_options=bo,
+            storage_options=so,
         ),
         label="domain",
     )
@@ -134,8 +135,7 @@ def test_upwind(data, backend, dtype):
             -1e4,
             1e4,
             backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
+            storage_options=so,
         ),
         label="field",
     )
@@ -147,11 +147,9 @@ def test_upwind(data, backend, dtype):
     # ========================================
     # test bed
     # ========================================
-    bo = BackendOptions(rebuild=False)
-    so = StorageOptions(dtype=dtype, default_origin=default_origin)
     validation(
         IsentropicMinimalHorizontalFlux,
-        "upwind",
+        flux_scheme,
         domain,
         field,
         timestep,
@@ -163,16 +161,18 @@ def test_upwind(data, backend, dtype):
 
 @hyp_settings
 @given(data=hyp_st.data())
-@pytest.mark.parametrize("backend", conf_backend)
-@pytest.mark.parametrize("dtype", conf_dtype)
+@pytest.mark.parametrize("backend", conf.backend)
+@pytest.mark.parametrize("dtype", conf.dtype)
 def test_centered(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+    aligned_index = data.draw(
+        st_one_of(conf.aligned_index), label="aligned_index"
+    )
 
     nb = data.draw(
-        hyp_st.integers(min_value=1, max_value=max(1, conf_nb)), label="nb"
+        hyp_st.integers(min_value=1, max_value=max(1, conf.nb)), label="nb"
     )
     domain = data.draw(
         st_domain(
@@ -195,7 +195,7 @@ def test_centered(data, backend, dtype):
             1e4,
             backend=backend,
             dtype=dtype,
-            default_origin=default_origin,
+            aligned_index=aligned_index,
         ),
         label="field",
     )
@@ -208,7 +208,7 @@ def test_centered(data, backend, dtype):
     # test bed
     # ========================================
     bo = BackendOptions(rebuild=False)
-    so = StorageOptions(dtype=dtype, default_origin=default_origin)
+    so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
     validation(
         IsentropicMinimalHorizontalFlux,
         "centered",
@@ -223,16 +223,18 @@ def test_centered(data, backend, dtype):
 
 @hyp_settings
 @given(data=hyp_st.data())
-@pytest.mark.parametrize("backend", conf_backend)
-@pytest.mark.parametrize("dtype", conf_dtype)
+@pytest.mark.parametrize("backend", conf.backend)
+@pytest.mark.parametrize("dtype", conf.dtype)
 def test_third_order_upwind(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+    aligned_index = data.draw(
+        st_one_of(conf.aligned_index), label="aligned_index"
+    )
 
     nb = data.draw(
-        hyp_st.integers(min_value=2, max_value=max(2, conf_nb)), label="nb"
+        hyp_st.integers(min_value=2, max_value=max(2, conf.nb)), label="nb"
     )
     domain = data.draw(
         st_domain(
@@ -255,7 +257,7 @@ def test_third_order_upwind(data, backend, dtype):
             1e4,
             backend=backend,
             dtype=dtype,
-            default_origin=default_origin,
+            aligned_index=aligned_index,
         ),
         label="field",
     )
@@ -268,7 +270,7 @@ def test_third_order_upwind(data, backend, dtype):
     # test bed
     # ========================================
     bo = BackendOptions(rebuild=False)
-    so = StorageOptions(dtype=dtype, default_origin=default_origin)
+    so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
     validation(
         IsentropicMinimalHorizontalFlux,
         "third_order_upwind",
@@ -283,16 +285,18 @@ def test_third_order_upwind(data, backend, dtype):
 
 @hyp_settings
 @given(data=hyp_st.data())
-@pytest.mark.parametrize("backend", conf_backend)
-@pytest.mark.parametrize("dtype", conf_dtype)
+@pytest.mark.parametrize("backend", conf.backend)
+@pytest.mark.parametrize("dtype", conf.dtype)
 def test_fifth_order_upwind(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+    aligned_index = data.draw(
+        st_one_of(conf.aligned_index), label="aligned_index"
+    )
 
     nb = data.draw(
-        hyp_st.integers(min_value=3, max_value=max(3, conf_nb)), label="nb"
+        hyp_st.integers(min_value=3, max_value=max(3, conf.nb)), label="nb"
     )
     domain = data.draw(
         st_domain(
@@ -315,7 +319,7 @@ def test_fifth_order_upwind(data, backend, dtype):
             1e4,
             backend=backend,
             dtype=dtype,
-            default_origin=default_origin,
+            aligned_index=aligned_index,
         ),
         label="field",
     )
@@ -328,7 +332,7 @@ def test_fifth_order_upwind(data, backend, dtype):
     # test bed
     # ========================================
     bo = BackendOptions(rebuild=False)
-    so = StorageOptions(dtype=dtype, default_origin=default_origin)
+    so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
     validation(
         IsentropicMinimalHorizontalFlux,
         "fifth_order_upwind",

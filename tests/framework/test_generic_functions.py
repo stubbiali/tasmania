@@ -26,11 +26,11 @@ from tasmania.python.framework.allocators import zeros
 from tasmania.python.framework.generic_functions import to_numpy
 from tasmania.python.framework.options import StorageOptions
 
-from tests.conf import backend as conf_backend, dtype as conf_dtype
+from tests import conf
 
 
-@pytest.mark.parametrize("backend", conf_backend)
-@pytest.mark.parametrize("dtype", conf_dtype)
+@pytest.mark.parametrize("backend", conf.backend)
+@pytest.mark.parametrize("dtype", conf.dtype)
 def test_to_numpy(backend, dtype):
     # ========================================
     # random data generation

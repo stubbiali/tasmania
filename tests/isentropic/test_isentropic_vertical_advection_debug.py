@@ -38,7 +38,7 @@ from tasmania.python.isentropic.physics.vertical_advection import (
 )
 from tasmania.python.utils.storage import get_dataarray_3d
 
-from tests.conf import default_origin as conf_dorigin, dtype as conf_dtype
+from tests import conf
 from tests.isentropic.test_isentropic_vertical_advection import validation
 from tests.strategies import (
     st_domain,
@@ -154,13 +154,15 @@ class DebugIsentropicVerticalAdvection(IsentropicVerticalAdvection):
 )
 @given(data=hyp_st.data())
 @pytest.mark.parametrize("flux_scheme", ("upwind",))
-@pytest.mark.parametrize("dtype", conf_dtype)
+@pytest.mark.parametrize("dtype", conf.dtype)
 def test(data, flux_scheme, dtype, subtests):
     # ========================================
     # random data generation
     # ========================================
     backend = "gt4py:gtmc"
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+    aligned_index = data.draw(
+        st_one_of(conf.aligned_index), label="aligned_index"
+    )
 
     domain = data.draw(
         st_domain(zaxis_length=(5, 20), backend=backend, dtype=dtype),
@@ -175,7 +177,7 @@ def test(data, flux_scheme, dtype, subtests):
             grid,
             moist=True,
             backend=backend,
-            default_origin=default_origin,
+            aligned_index=aligned_index,
             storage_shape=storage_shape,
         ),
         label="state",
@@ -187,7 +189,7 @@ def test(data, flux_scheme, dtype, subtests):
             1e4,
             backend=backend,
             dtype=dtype,
-            default_origin=default_origin,
+            aligned_index=aligned_index,
         ),
         label="field",
     )
@@ -208,7 +210,7 @@ def test(data, flux_scheme, dtype, subtests):
     # test bed
     # ========================================
     bo = BackendOptions(rebuild=False)
-    so = StorageOptions(dtype=dtype, default_origin=default_origin)
+    so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
     validation(
         domain,
         flux_scheme,
@@ -228,7 +230,7 @@ def test(data, flux_scheme, dtype, subtests):
         True,
         gt_powered,
         backend,
-        default_origin,
+        aligned_index,
         False,
         state,
         backend,
@@ -244,7 +246,7 @@ def test(data, flux_scheme, dtype, subtests):
         False,
         gt_powered,
         backend,
-        default_origin,
+        aligned_index,
         False,
         state,
         backend,
@@ -260,7 +262,7 @@ def test(data, flux_scheme, dtype, subtests):
         True,
         gt_powered,
         backend,
-        default_origin,
+        aligned_index,
         False,
         state,
         backend,

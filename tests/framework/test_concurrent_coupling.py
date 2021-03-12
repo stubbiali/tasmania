@@ -20,27 +20,23 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from copy import deepcopy
 from datetime import timedelta
 from hypothesis import (
     given,
     strategies as hyp_st,
     reproduce_failure,
 )
+import numpy as np
 import pytest
 from sympl._core.exceptions import InvalidStateError
 
 from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
+from tasmania.python.framework.generic_functions import to_numpy
 from tasmania.python.framework.options import BackendOptions, StorageOptions
 from tasmania.python.framework.promoters import Tendency2Diagnostic
 from tasmania.python.utils.storage import deepcopy_dataarray_dict
-from tasmania.python.utils.backend import is_gt
 
-from tests.conf import (
-    backend as conf_backend,
-    dtype as conf_dtype,
-    default_origin as conf_dorigin,
-)
+from tests import conf
 from tests.strategies import (
     st_domain,
     st_isentropic_state_f,
@@ -59,16 +55,17 @@ def test_compatibility(
     # random data generation
     # ========================================
     domain = data.draw(st_domain(), label="domain")
-    cgrid = domain.numerical_grid
-    nx, ny, nz = cgrid.nx, cgrid.ny, cgrid.nz
+    ngrid = domain.numerical_grid
+    nx, ny, nz = ngrid.nx, ngrid.ny, ngrid.nz
+    shape = (nx + 1, ny + 1, nz + 1)
 
     state = data.draw(
         st_isentropic_state_f(
-            cgrid,
+            ngrid,
             moist=True,
             precipitation=True,
             backend="numpy",
-            storage_shape=(nx + 1, ny + 1, nz + 1),
+            storage_shape=shape,
         ),
         label="state",
     )
@@ -82,8 +79,12 @@ def test_compatibility(
     # ========================================
     # test bed
     # ========================================
-    tc1 = make_fake_tendency_component_1(domain, "numerical")
-    tc2 = make_fake_tendency_component_2(domain, "numerical")
+    tc1 = make_fake_tendency_component_1(
+        domain, "numerical", backend="numpy", storage_shape=shape
+    )
+    tc2 = make_fake_tendency_component_2(
+        domain, "numerical", backend="numpy", storage_shape=shape
+    )
 
     #
     # failing
@@ -121,8 +122,8 @@ def test_compatibility(
 
 @hyp_settings
 @given(data=hyp_st.data())
-@pytest.mark.parametrize("backend", conf_backend)
-@pytest.mark.parametrize("dtype", conf_dtype)
+@pytest.mark.parametrize("backend", conf.backend)
+@pytest.mark.parametrize("dtype", conf.dtype)
 def test_serial(
     data,
     backend,
@@ -133,8 +134,11 @@ def test_serial(
     # ========================================
     # random data generation
     # ========================================
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-    same_shape = data.draw(hyp_st.booleans(), label="same_shape")
+    aligned_index = data.draw(
+        st_one_of(conf.aligned_index), label="aligned_index"
+    )
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
 
     domain = data.draw(
         st_domain(
@@ -142,25 +146,26 @@ def test_serial(
             yaxis_length=(1, 20),
             zaxis_length=(1, 20),
             backend=backend,
-            dtype=dtype,
+            backend_options=bo,
+            storage_options=so,
         ),
         label="domain",
     )
-    cgrid = domain.numerical_grid
-
-    dnx = data.draw(hyp_st.integers(min_value=0, max_value=3), label="dnx")
-    dny = data.draw(hyp_st.integers(min_value=0, max_value=3), label="dny")
-    dnz = data.draw(hyp_st.integers(min_value=0, max_value=3), label="dnz")
-    storage_shape = (cgrid.nx + dnx, cgrid.ny + dny, cgrid.nz + dnz)
+    ngrid = domain.numerical_grid
+    nx, ny, nz = ngrid.nx, ngrid.ny, ngrid.nz
+    dnx = data.draw(hyp_st.integers(min_value=1, max_value=3), label="dnx")
+    dny = data.draw(hyp_st.integers(min_value=1, max_value=3), label="dny")
+    dnz = data.draw(hyp_st.integers(min_value=1, max_value=3), label="dnz")
+    storage_shape = (nx + dnx, ny + dny, nz + dnz)
 
     state = data.draw(
         st_isentropic_state_f(
-            cgrid,
+            ngrid,
             moist=False,
             precipitation=False,
             backend=backend,
-            default_origin=default_origin,
-            storage_shape=storage_shape if same_shape else None,
+            storage_shape=storage_shape,
+            storage_options=so,
         ),
         label="state",
     )
@@ -174,11 +179,22 @@ def test_serial(
     # ========================================
     # test bed
     # ========================================
-    bo = BackendOptions(rebuild=False)
-    so = StorageOptions(dtype=dtype, default_origin=default_origin)
-
-    tc1 = make_fake_tendency_component_1(domain, "numerical")
-    tc2 = make_fake_tendency_component_2(domain, "numerical")
+    tc1 = make_fake_tendency_component_1(
+        domain,
+        "numerical",
+        backend=backend,
+        backend_options=bo,
+        storage_shape=storage_shape,
+        storage_options=so,
+    )
+    tc2 = make_fake_tendency_component_2(
+        domain,
+        "numerical",
+        backend=backend,
+        backend_options=bo,
+        storage_shape=storage_shape,
+        storage_options=so,
+    )
 
     cc = ConcurrentCoupling(
         tc1,
@@ -191,9 +207,10 @@ def test_serial(
     tendencies, diagnostics = cc(state, dt)
 
     assert "fake_variable" in diagnostics
-    s = state["air_isentropic_density"].to_units("kg m^-2 K^-1").data
-    f = diagnostics["fake_variable"].to_units("kg m^-2 K^-1").data
-    compare_arrays(f, 2 * s)
+    s = to_numpy(state["air_isentropic_density"].to_units("kg m^-2 K^-1").data)
+    f = to_numpy(diagnostics["fake_variable"].to_units("kg m^-2 K^-1").data)
+    i, j, k = slice(0, nx), slice(0, ny), slice(0, nz)
+    compare_arrays(f, 2 * s, slice=(i, j, k))
 
     assert "air_isentropic_density" in tendencies
     compare_arrays(
@@ -201,42 +218,34 @@ def test_serial(
         .to_units("kg m^-2 K^-1 s^-1")
         .data,
         1e-3 * s + 1e-2 * f,
+        slice=(i, j, k),
     )
 
     assert "x_momentum_isentropic" in tendencies
-    su = state["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").data
+    su = to_numpy(
+        state["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").data
+    )
     compare_arrays(
         tendencies["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-2").data,
         300 * su,
+        slice=(i, j, k),
     )
 
     assert "y_momentum_isentropic" in tendencies
-    v = state["y_velocity_at_v_locations"].to_units("m s^-1").data
-    if same_shape or is_gt(backend):
-        v_val = deepcopy(v)
-        v_val[:-1, :-1, :-1] = (
-            0.5 * s[:-1, :-1, :-1] * (v[:-1, :-1, :-1] + v[:-1, 1:, :-1])
-        )
-        compare_arrays(
-            tendencies["y_momentum_isentropic"]
-            .to_units("kg m^-1 K^-1 s^-2")
-            .data[:-1, :-1, :-1],
-            v_val[:-1, :-1, :-1],
-        )
-    else:
-        v_val = 0.5 * s * (v[:, :-1] + v[:, 1:])
-        compare_arrays(
-            tendencies["y_momentum_isentropic"]
-            .to_units("kg m^-1 K^-1 s^-2")
-            .data,
-            v_val,
-        )
-
-    assert "x_velocity_at_u_locations" in tendencies
-    u = state["x_velocity_at_u_locations"].to_units("m s^-1").data
+    v = to_numpy(state["y_velocity_at_v_locations"].to_units("m s^-1").data)
+    v_val = 0.5 * s[:, :-1] * (v[:, :-1] + v[:, 1:])
     compare_arrays(
-        tendencies["x_velocity_at_u_locations"].to_units("m s^-2").data,
-        50 * u,
+        tendencies["y_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-2").data,
+        v_val,
+        slice=(i, j, k),
+    )
+
+    assert "x_velocity" in tendencies
+    u = to_numpy(state["x_velocity_at_u_locations"].to_units("m s^-1").data)
+    compare_arrays(
+        tendencies["x_velocity"].to_units("m s^-2").data,
+        50 * (u[:-1] + u[1:]),
+        slice=(i, j, k),
     )
 
 
@@ -248,17 +257,16 @@ class FakeTendency2Diagnostic(Tendency2Diagnostic):
     def input_properties(self):
         g = self.grid
         dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
-        dims_stgx = (g.x_at_u_locations.dims[0], g.y.dims[0], g.z.dims[0])
 
         return_dict = {
             "air_isentropic_density": {
                 "dims": dims,
                 "units": "kg m^-2 K^-1 s^-1",
             },
-            "x_velocity_at_u_locations": {
-                "dims": dims_stgx,
+            "x_velocity": {
+                "dims": dims,
                 "units": "m s^-2",
-                "diagnostic_name": "tnd_of_x_velocity_at_u_locations",
+                "diagnostic_name": "tnd_of_x_velocity",
             },
         }
 
@@ -267,8 +275,8 @@ class FakeTendency2Diagnostic(Tendency2Diagnostic):
 
 @hyp_settings
 @given(data=hyp_st.data())
-@pytest.mark.parametrize("backend", conf_backend)
-@pytest.mark.parametrize("dtype", conf_dtype)
+@pytest.mark.parametrize("backend", conf.backend)
+@pytest.mark.parametrize("dtype", conf.dtype)
 def test_tendency_to_diagnostic(
     data,
     backend,
@@ -279,8 +287,11 @@ def test_tendency_to_diagnostic(
     # ========================================
     # random data generation
     # ========================================
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-    same_shape = data.draw(hyp_st.booleans(), label="same_shape")
+    aligned_index = data.draw(
+        st_one_of(conf.aligned_index), label="aligned_index"
+    )
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
 
     domain = data.draw(
         st_domain(
@@ -288,25 +299,26 @@ def test_tendency_to_diagnostic(
             yaxis_length=(1, 20),
             zaxis_length=(1, 20),
             backend=backend,
-            dtype=dtype,
+            backend_options=bo,
+            storage_options=so,
         ),
         label="domain",
     )
-    cgrid = domain.numerical_grid
-
-    dnx = data.draw(hyp_st.integers(min_value=0, max_value=3), label="dnx")
-    dny = data.draw(hyp_st.integers(min_value=0, max_value=3), label="dny")
-    dnz = data.draw(hyp_st.integers(min_value=0, max_value=3), label="dnz")
-    storage_shape = (cgrid.nx + dnx, cgrid.ny + dny, cgrid.nz + dnz)
+    ngrid = domain.numerical_grid
+    nx, ny, nz = ngrid.nx, ngrid.ny, ngrid.nz
+    dnx = data.draw(hyp_st.integers(min_value=1, max_value=3), label="dnx")
+    dny = data.draw(hyp_st.integers(min_value=1, max_value=3), label="dny")
+    dnz = data.draw(hyp_st.integers(min_value=1, max_value=3), label="dnz")
+    storage_shape = (nx + dnx, ny + dny, nz + dnz)
 
     state = data.draw(
         st_isentropic_state_f(
-            cgrid,
+            ngrid,
             moist=False,
             precipitation=False,
             backend=backend,
-            default_origin=default_origin,
-            storage_shape=storage_shape if same_shape else None,
+            storage_shape=storage_shape,
+            storage_options=so,
         ),
         label="state",
     )
@@ -320,11 +332,22 @@ def test_tendency_to_diagnostic(
     # ========================================
     # test bed
     # ========================================
-    bo = BackendOptions(rebuild=False)
-    so = StorageOptions(dtype=dtype, default_origin=default_origin)
-
-    tc1 = make_fake_tendency_component_1(domain, "numerical")
-    tc2 = make_fake_tendency_component_2(domain, "numerical")
+    tc1 = make_fake_tendency_component_1(
+        domain,
+        "numerical",
+        backend=backend,
+        backend_options=bo,
+        storage_shape=storage_shape,
+        storage_options=so,
+    )
+    tc2 = make_fake_tendency_component_2(
+        domain,
+        "numerical",
+        backend=backend,
+        backend_options=bo,
+        storage_shape=storage_shape,
+        storage_options=so,
+    )
     t2d = FakeTendency2Diagnostic(domain)
 
     cc = ConcurrentCoupling(
@@ -339,9 +362,10 @@ def test_tendency_to_diagnostic(
     tendencies, diagnostics = cc(state, dt)
 
     assert "fake_variable" in diagnostics
-    s = state["air_isentropic_density"].to_units("kg m^-2 K^-1").data
-    f = diagnostics["fake_variable"].to_units("kg m^-2 K^-1").data
-    compare_arrays(f, 2 * s)
+    s = to_numpy(state["air_isentropic_density"].to_units("kg m^-2 K^-1").data)
+    f = to_numpy(diagnostics["fake_variable"].to_units("kg m^-2 K^-1").data)
+    i, j, k = slice(0, nx), slice(0, ny), slice(0, nz)
+    compare_arrays(f, 2 * s, slice=(i, j, k))
 
     assert "air_isentropic_density" in tendencies
     compare_arrays(
@@ -349,6 +373,7 @@ def test_tendency_to_diagnostic(
         .to_units("kg m^-2 K^-1 s^-1")
         .data,
         1e-3 * s + 1e-2 * f,
+        slice=(i, j, k),
     )
 
     assert "tendency_of_air_isentropic_density" in diagnostics
@@ -357,51 +382,41 @@ def test_tendency_to_diagnostic(
         .to_units("kg m^-2 K^-1 s^-1")
         .data,
         1e-3 * s + 1e-2 * f,
+        slice=(i, j, k),
     )
 
     assert "x_momentum_isentropic" in tendencies
-    su = state["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").data
+    su = to_numpy(
+        state["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").data
+    )
     compare_arrays(
         tendencies["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-2").data,
         300 * su,
+        slice=(i, j, k),
     )
 
     assert "y_momentum_isentropic" in tendencies
-    v = state["y_velocity_at_v_locations"].to_units("m s^-1").data
-    if same_shape or is_gt(backend):
-        v_val = deepcopy(v)
-        v_val[:-1, :-1, :-1] = (
-            0.5 * s[:-1, :-1, :-1] * (v[:-1, :-1, :-1] + v[:-1, 1:, :-1])
-        )
-        compare_arrays(
-            tendencies["y_momentum_isentropic"]
-            .to_units("kg m^-1 K^-1 s^-2")
-            .data[:-1, :-1, :-1],
-            v_val[:-1, :-1, :-1],
-        )
-    else:
-        v_val = 0.5 * s * (v[:, :-1] + v[:, 1:])
-        compare_arrays(
-            tendencies["y_momentum_isentropic"]
-            .to_units("kg m^-1 K^-1 s^-2")
-            .data,
-            v_val,
-        )
-
-    assert "x_velocity_at_u_locations" in tendencies
-    u = state["x_velocity_at_u_locations"].to_units("m s^-1").data
+    v = to_numpy(state["y_velocity_at_v_locations"].to_units("m s^-1").data)
+    v_val = 0.5 * s[:, :-1] * (v[:, :-1] + v[:, 1:])
     compare_arrays(
-        tendencies["x_velocity_at_u_locations"].to_units("m s^-2").data,
-        50 * u,
+        tendencies["y_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-2").data,
+        v_val,
+        slice=(i, j, k),
     )
 
-    assert "tnd_of_x_velocity_at_u_locations" in diagnostics
-    u = state["x_velocity_at_u_locations"].to_units("m s^-1").data
+    assert "x_velocity" in tendencies
+    u = to_numpy(state["x_velocity_at_u_locations"].to_units("m s^-1").data)
     compare_arrays(
-        diagnostics["tnd_of_x_velocity_at_u_locations"]
-        .to_units("m s^-2")
-        .data,
-        50 * u,
+        tendencies["x_velocity"].to_units("m s^-2").data,
+        50 * (u[:-1] + u[1:]),
+        slice=(i, j, k),
+    )
+
+    assert "tnd_of_x_velocity" in diagnostics
+    compare_arrays(
+        diagnostics["tnd_of_x_velocity"].to_units("m s^-2").data,
+        50 * (u[:-1] + u[1:]),
+        slice=(i, j, k),
     )
 
     assert len(tendencies) == 5

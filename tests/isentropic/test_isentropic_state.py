@@ -34,31 +34,26 @@ from tasmania.python.isentropic.state import (
     get_isentropic_state_from_brunt_vaisala_frequency,
 )
 
-from tests.conf import (
-    backend as conf_backend,
-    dtype as conf_dtype,
-    aligned_index as conf_aligned_index,
-    nb as conf_nb,
-)
+from tests import conf
 from tests.strategies import st_one_of, st_domain
 from tests.utilities import hyp_settings
 
 
 @hyp_settings
 @given(data=hyp_st.data())
-@pytest.mark.parametrize("backend", conf_backend)
-@pytest.mark.parametrize("dtype", conf_dtype)
+@pytest.mark.parametrize("backend", conf.backend)
+@pytest.mark.parametrize("dtype", conf.dtype)
 def test_brunt_vaisala(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
     aligned_index = data.draw(
-        st_one_of(conf_aligned_index), label="aligned_index"
+        st_one_of(conf.aligned_index), label="aligned_index"
     )
     so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
 
     nb = data.draw(
-        hyp_st.integers(min_value=3, max_value=max(3, conf_nb)), label="nb"
+        hyp_st.integers(min_value=3, max_value=max(3, conf.nb)), label="nb"
     )
     domain = data.draw(
         st_domain(

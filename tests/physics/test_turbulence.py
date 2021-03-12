@@ -71,7 +71,7 @@ def smagorinsky2d_validation(dx, dy, cs, u, v):
 
 @hyp_settings
 @given(data=hyp_st.data())
-@pytest.mark.parametrize("backend", conf.backend.difference(conf.gtc_backend))
+@pytest.mark.parametrize("backend", conf.backend)
 @pytest.mark.parametrize("dtype", conf.dtype)
 def test_smagorinsky2d(data, backend, dtype):
     # ========================================

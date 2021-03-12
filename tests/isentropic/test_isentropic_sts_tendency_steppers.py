@@ -39,11 +39,7 @@ from tasmania.python.isentropic.physics.sts_tendency_stepper import (
 )
 from tasmania.python.utils.storage import get_dataarray_3d
 
-from tests.conf import (
-    backend as conf_backend,
-    dtype as conf_dtype,
-    default_origin as conf_dorigin,
-)
+from tests import conf
 from tests.utils.test_gtscript_utils import thomas_validation
 from tests.strategies import (
     st_domain,
@@ -298,13 +294,15 @@ def validation(
 
 @hyp_settings
 @given(data=hyp_st.data())
-@pytest.mark.parametrize("backend", conf_backend)
-@pytest.mark.parametrize("dtype", conf_dtype)
+@pytest.mark.parametrize("backend", conf.backend)
+@pytest.mark.parametrize("dtype", conf.dtype)
 def test_isentropic_vertical_advection_dry(data, backend, dtype, subtests):
     # ========================================
     # random data generation
     # ========================================
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+    aligned_index = data.draw(
+        st_one_of(conf.aligned_index), label="aligned_index"
+    )
 
     domain = data.draw(
         st_domain(zaxis_length=(2, None), backend=backend, dtype=dtype),
@@ -320,7 +318,7 @@ def test_isentropic_vertical_advection_dry(data, backend, dtype, subtests):
             moist=False,
             precipitation=False,
             backend=backend,
-            default_origin=default_origin,
+            aligned_index=aligned_index,
             storage_shape=storage_shape,
         ),
         label="state",
@@ -332,7 +330,7 @@ def test_isentropic_vertical_advection_dry(data, backend, dtype, subtests):
             1e4,
             backend=backend,
             dtype=dtype,
-            default_origin=default_origin,
+            aligned_index=aligned_index,
         ),
         label="field",
     )
@@ -355,7 +353,7 @@ def test_isentropic_vertical_advection_dry(data, backend, dtype, subtests):
             moist=False,
             precipitation=False,
             backend=backend,
-            default_origin=default_origin,
+            aligned_index=aligned_index,
             storage_shape=storage_shape,
         ),
         label="prv_state",
@@ -402,13 +400,15 @@ def test_isentropic_vertical_advection_dry(data, backend, dtype, subtests):
 
 @hyp_settings
 @given(data=hyp_st.data())
-@pytest.mark.parametrize("backend", conf_backend)
-@pytest.mark.parametrize("dtype", conf_dtype)
+@pytest.mark.parametrize("backend", conf.backend)
+@pytest.mark.parametrize("dtype", conf.dtype)
 def test_isentropic_vertical_advection_moist(data, backend, dtype, subtests):
     # ========================================
     # random data generation
     # ========================================
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+    aligned_index = data.draw(
+        st_one_of(conf.aligned_index), label="aligned_index"
+    )
 
     domain = data.draw(
         st_domain(zaxis_length=(2, None), backend=backend, dtype=dtype),
@@ -424,7 +424,7 @@ def test_isentropic_vertical_advection_moist(data, backend, dtype, subtests):
             moist=True,
             precipitation=False,
             backend=backend,
-            default_origin=default_origin,
+            aligned_index=aligned_index,
             storage_shape=storage_shape,
         ),
         label="state",
@@ -436,7 +436,7 @@ def test_isentropic_vertical_advection_moist(data, backend, dtype, subtests):
             1e4,
             backend=backend,
             dtype=dtype,
-            default_origin=default_origin,
+            aligned_index=aligned_index,
         ),
         label="field",
     )
@@ -459,7 +459,7 @@ def test_isentropic_vertical_advection_moist(data, backend, dtype, subtests):
             moist=True,
             precipitation=False,
             backend=backend,
-            default_origin=default_origin,
+            aligned_index=aligned_index,
             storage_shape=storage_shape,
         ),
         label="prv_state",

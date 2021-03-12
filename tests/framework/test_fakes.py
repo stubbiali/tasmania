@@ -22,24 +22,18 @@
 #
 from datetime import timedelta
 from hypothesis import (
-    assume,
     given,
     strategies as hyp_st,
     reproduce_failure,
 )
 import pytest
 
-import gt4py as gt
-
 from tasmania.python.framework.fakes import FakeTendencyComponent
+from tasmania.python.framework.options import BackendOptions, StorageOptions
 from tasmania.python.framework.sts_tendency_stepper import STSTendencyStepper
 from tasmania.python.framework.tendency_stepper import TendencyStepper
 
-from tests.conf import (
-    backend as conf_backend,
-    dtype as conf_dtype,
-    default_origin as conf_dorigin,
-)
+from tests import conf
 from tests.strategies import (
     st_domain,
     st_isentropic_state_f,
@@ -51,18 +45,20 @@ from tests.utilities import hyp_settings
 
 @hyp_settings
 @given(data=hyp_st.data())
-@pytest.mark.parametrize("backend", conf_backend)
-@pytest.mark.parametrize("dtype", conf_dtype)
-def test_fake_tendency_component(
-    data, backend, dtype, make_fake_tendency_component_1
-):
+@pytest.mark.parametrize("backend", conf.backend)
+@pytest.mark.parametrize("dtype", conf.dtype)
+def test_fake_tendency_component(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+    aligned_index = data.draw(
+        st_one_of(conf.aligned_index), label="aligned_index"
+    )
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
 
     domain = data.draw(
-        st_domain(backend=backend, dtype=dtype),
+        st_domain(backend=backend, backend_options=bo, storage_options=so),
         label="domain",
     )
     grid_type = data.draw(
@@ -80,7 +76,7 @@ def test_fake_tendency_component(
             moist=False,
             precipitation=False,
             backend=backend,
-            default_origin=default_origin,
+            storage_options=so,
         ),
         label="state",
     )
@@ -101,18 +97,20 @@ def test_fake_tendency_component(
 
 @hyp_settings
 @given(data=hyp_st.data())
-@pytest.mark.parametrize("backend", conf_backend)
-@pytest.mark.parametrize("dtype", conf_dtype)
-def test_fake_tendency_component_tendency_stepper(
-    data, backend, dtype, make_fake_tendency_component_1
-):
+@pytest.mark.parametrize("backend", conf.backend)
+@pytest.mark.parametrize("dtype", conf.dtype)
+def test_fake_tendency_component_tendency_stepper(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+    aligned_index = data.draw(
+        st_one_of(conf.aligned_index), label="aligned_index"
+    )
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
 
     domain = data.draw(
-        st_domain(backend=backend, dtype=dtype),
+        st_domain(backend=backend, backend_options=bo, storage_options=so),
         label="domain",
     )
     grid_type = data.draw(
@@ -130,7 +128,7 @@ def test_fake_tendency_component_tendency_stepper(
             moist=False,
             precipitation=False,
             backend=backend,
-            default_origin=default_origin,
+            storage_options=so,
         ),
         label="state",
     )
@@ -194,18 +192,20 @@ def test_fake_tendency_component_tendency_stepper(
 
 @hyp_settings
 @given(data=hyp_st.data())
-@pytest.mark.parametrize("backend", conf_backend)
-@pytest.mark.parametrize("dtype", conf_dtype)
-def test_fake_tendency_component_sts_tendency_stepper(
-    data, backend, dtype, make_fake_tendency_component_1
-):
+@pytest.mark.parametrize("backend", conf.backend)
+@pytest.mark.parametrize("dtype", conf.dtype)
+def test_fake_tendency_component_sts_tendency_stepper(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+    aligned_index = data.draw(
+        st_one_of(conf.aligned_index), label="aligned_index"
+    )
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
 
     domain = data.draw(
-        st_domain(backend=backend, dtype=dtype),
+        st_domain(backend=backend, backend_options=bo, storage_options=so),
         label="domain",
     )
     grid_type = data.draw(
@@ -223,7 +223,7 @@ def test_fake_tendency_component_sts_tendency_stepper(
             moist=False,
             precipitation=False,
             backend=backend,
-            default_origin=default_origin,
+            storage_options=so,
         ),
         label="state",
     )

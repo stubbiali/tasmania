@@ -97,7 +97,7 @@ def kessler_validation(
 
 @hyp_settings
 @given(data=hyp_st.data())
-@pytest.mark.parametrize("backend", conf.backend.difference(conf.gtc_backend))
+@pytest.mark.parametrize("backend", conf.backend)
 @pytest.mark.parametrize("dtype", conf.dtype)
 def test_kessler_microphysics(data, backend, dtype, subtests):
     # ========================================
@@ -138,6 +138,7 @@ def test_kessler_microphysics(data, backend, dtype, subtests):
     apoif = data.draw(hyp_st.booleans(), label="apoif")
     toaptid = data.draw(hyp_st.booleans(), label="toaptid")
     re = data.draw(hyp_st.booleans(), label="re")
+    re = False
 
     a = data.draw(hyp_st.floats(min_value=0, max_value=10), label="a")
     k1 = data.draw(hyp_st.floats(min_value=0, max_value=10), label="k1")
@@ -364,7 +365,7 @@ def kessler_saturation_adjustment_diagnostic_validation(
 
 @hyp_settings
 @given(data=hyp_st.data())
-@pytest.mark.parametrize("backend", conf.backend.difference(conf.gtc_backend))
+@pytest.mark.parametrize("backend", conf.backend)
 @pytest.mark.parametrize("dtype", conf.dtype)
 def test_kessler_saturation_adjustment_diagnostic(data, backend, dtype):
     # ========================================
@@ -588,7 +589,7 @@ def kessler_saturation_adjustment_prognostic_validation(
 
 @hyp_settings
 @given(data=hyp_st.data())
-@pytest.mark.parametrize("backend", conf.backend.difference(conf.gtc_backend))
+@pytest.mark.parametrize("backend", conf.backend)
 @pytest.mark.parametrize("dtype", conf.dtype)
 def test_kessler_saturation_adjustment_prognostic(data, backend, dtype):
     # ========================================
@@ -790,7 +791,7 @@ def kessler_fall_velocity_validation(rho, qr):
 
 @hyp_settings
 @given(data=hyp_st.data())
-@pytest.mark.parametrize("backend", conf.backend.difference(conf.gtc_backend))
+@pytest.mark.parametrize("backend", conf.backend)
 @pytest.mark.parametrize("dtype", conf.dtype)
 def test_kessler_fall_velocity(data, backend, dtype):
     # ========================================
@@ -875,7 +876,7 @@ def test_kessler_fall_velocity(data, backend, dtype):
 
 @hyp_settings
 @given(data=hyp_st.data())
-@pytest.mark.parametrize("backend", conf.backend.difference(conf.gtc_backend))
+@pytest.mark.parametrize("backend", conf.backend)
 @pytest.mark.parametrize("dtype", conf.dtype)
 def test_kessler_sedimentation(data, backend, dtype):
     # ========================================
@@ -999,5 +1000,5 @@ def test_kessler_sedimentation(data, backend, dtype):
 
 
 if __name__ == "__main__":
-    pytest.main([__file__])
-    # test_kessler_microphysics("gt4py:gtx86", np.float32, None)
+    # pytest.main([__file__])
+    test_kessler_microphysics("gt4py:gtx86", float, None)

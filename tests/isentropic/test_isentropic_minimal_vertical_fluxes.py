@@ -45,11 +45,7 @@ from tasmania.python.isentropic.dynamics.subclasses.minimal_vertical_fluxes impo
 )
 from tasmania.python.utils.backend import is_gt, get_gt_backend
 
-from tests.conf import (
-    backend as conf_backend,
-    dtype as conf_dtype,
-    default_origin as conf_dorigin,
-)
+from tests import conf
 from tests.strategies import st_domain, st_floats, st_one_of, st_raw_field
 from tests.utilities import compare_arrays, hyp_settings
 
@@ -437,13 +433,15 @@ def validation(
         if scheme != "fifth_order_upwind"
     ),
 )
-@pytest.mark.parametrize("backend", conf_backend)
-@pytest.mark.parametrize("dtype", conf_dtype)
+@pytest.mark.parametrize("backend", conf.backend)
+@pytest.mark.parametrize("dtype", conf.dtype)
 def test_numerics(data, scheme, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+    aligned_index = data.draw(
+        st_one_of(conf.aligned_index), label="aligned_index"
+    )
 
     domain = data.draw(
         st_domain(zaxis_length=(4, 40), backend=backend, dtype=dtype),
@@ -459,7 +457,7 @@ def test_numerics(data, scheme, backend, dtype):
             1e4,
             backend=backend,
             dtype=dtype,
-            default_origin=default_origin,
+            aligned_index=aligned_index,
         )
     )
 
@@ -469,7 +467,7 @@ def test_numerics(data, scheme, backend, dtype):
     # test bed
     # ========================================
     bo = BackendOptions(rebuild=False)
-    so = StorageOptions(dtype=dtype, default_origin=default_origin)
+    so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
     validation(
         IsentropicMinimalVerticalFlux,
         scheme,

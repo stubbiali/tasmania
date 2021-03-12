@@ -854,25 +854,41 @@ def st_isentropic_state(
             storage_options=storage_options,
         )
     )
+    u = return_dict["x_velocity_at_u_locations"]
+    u_units = u.attrs["units"]
+    u_np = to_numpy(u.to_units("m s^-1").data)
+    vx_raw = zeros(
+        backend,
+        shape=storage_shape or (nx, ny, nz),
+        storage_options=storage_options,
+    )
+    vx_raw[:nx, :ny, :nz] = as_storage(
+        backend, data=0.5 * (u_np[:nx, :ny, :nz] + u_np[1 : nx + 1, :ny, :nz])
+    )
+    return_dict["x_velocity"] = get_dataarray_3d(
+        vx_raw,
+        grid,
+        "m s^-1",
+        name="x_velocity",
+        grid_shape=(nx, ny, nz),
+        set_coordinates=False,
+    ).to_units(u_units)
 
     # x-momentum
     s = return_dict["air_isentropic_density"]
-    u = return_dict["x_velocity_at_u_locations"]
     s_units = s.attrs["units"]
-    u_units = u.attrs["units"]
+    s_np = to_numpy(s.to_units("kg m^-2 K^-1").data)
     su_units = clean_units(s_units + u_units)
     su_raw = zeros(
         backend,
         shape=storage_shape or (nx, ny, nz),
         storage_options=storage_options,
     )
-    su_raw[:nx, :ny, :nz] = (
-        s.to_units("kg m^-2 K^-1").data[:nx, :ny, :nz]
+    su_raw[:nx, :ny, :nz] = as_storage(
+        backend,
+        data=s_np[:nx, :ny, :nz]
         * 0.5
-        * (
-            u.to_units("m s^-1").data[:nx, :ny, :nz]
-            + u.to_units("m s^-1").data[1 : nx + 1, :ny, :nz]
-        )
+        * (u_np[:nx, :ny, :nz] + u_np[1 : nx + 1, :ny, :nz]),
     )
     return_dict["x_momentum_isentropic"] = get_dataarray_3d(
         su_raw,
@@ -896,23 +912,38 @@ def st_isentropic_state(
             storage_options=storage_options,
         )
     )
-
-    # y-momentum
     v = return_dict["y_velocity_at_v_locations"]
     v_units = v.attrs["units"]
+    v_np = to_numpy(v.to_units("m s^-1").data)
+    vy_raw = zeros(
+        backend,
+        shape=storage_shape or (nx, ny, nz),
+        storage_options=storage_options,
+    )
+    vy_raw[:nx, :ny, :nz] = as_storage(
+        backend, data=0.5 * (v_np[:nx, :ny, :nz] + v_np[:nx, 1 : ny + 1, :nz])
+    )
+    return_dict["y_velocity"] = get_dataarray_3d(
+        vy_raw,
+        grid,
+        "m s^-1",
+        name="y_velocity",
+        grid_shape=(nx, ny, nz),
+        set_coordinates=False,
+    ).to_units(v_units)
+
+    # y-momentum
     sv_units = clean_units(s_units + v_units)
     sv_raw = zeros(
         backend,
         shape=storage_shape or (nx, ny, nz),
         storage_options=storage_options,
     )
-    sv_raw[:nx, :ny, :nz] = (
-        s.to_units("kg m^-2 K^-1").data[:nx, :ny, :nz]
+    sv_raw[:nx, :ny, :nz] = as_storage(
+        backend,
+        data=s_np[:nx, :ny, :nz]
         * 0.5
-        * (
-            v.to_units("m s^-1").data[:nx, :ny, :nz]
-            + v.to_units("m s^-1").data[:nx, 1 : ny + 1, :nz]
-        )
+        * (v_np[:nx, :ny, :nz] + v_np[:nx, 1 : ny + 1, :nz]),
     )
     return_dict["y_momentum_isentropic"] = get_dataarray_3d(
         sv_raw,
@@ -931,35 +962,28 @@ def st_isentropic_state(
     cp = pcs["specific_heat_of_dry_air_at_constant_pressure"]
 
     # air pressure
-    p = zeros(
-        backend,
+    p_np = zeros(
+        "numpy",
         shape=storage_shape or (nx, ny, nz + 1),
         storage_options=storage_options,
     )
-    p[:, :, 0] = 20
+    p_np[:nx, :ny, 0] = 20
     for k in range(0, nz):
-        p[:, :, k + 1] = (
-            p[:, :, k] + g * dz * s.to_units("kg m^-2 K^-1").data[:, :, k]
-        )
+        p_np[:nx, :ny, k + 1] = p_np[:nx, :ny, k] + g * dz * s_np[:nx, :ny, k]
+    p_np[np.where(p_np <= 0)] = 1.0
     return_dict["air_pressure_on_interface_levels"] = get_dataarray_3d(
-        p,
+        as_storage(backend, data=p_np),
         grid,
         "Pa",
         name="air_pressure_on_interface_levels",
         grid_shape=(nx, ny, nz + 1),
         set_coordinates=False,
     )
-    p[np.where(p <= 0)] = 1.0
 
     # exner function
-    exn = zeros(
-        backend,
-        shape=storage_shape or (nx, ny, nz + 1),
-        storage_options=storage_options,
-    )
-    exn[...] = cp * (p / pref) ** (Rd / cp)
+    exn_np = cp * (p_np / pref) ** (Rd / cp)
     return_dict["exner_function_on_interface_levels"] = get_dataarray_3d(
-        exn,
+        as_storage(backend, data=exn_np),
         grid,
         "J kg^-1 K^-1",
         name="exner_function_on_interface_levels",
@@ -968,20 +992,23 @@ def st_isentropic_state(
     )
 
     # montgomery potential
-    mtg = zeros(
-        backend,
+    mtg_s = (
+        grid.z_on_interface_levels.to_units("K").data[-1]
+        * exn_np[:nx, :ny, nz]
+        + g * grid.topography.profile.to_units("m").data[:nx, :ny]
+    )
+    mtg_np = zeros(
+        "numpy",
         shape=storage_shape or (nx, ny, nz),
         storage_options=storage_options,
     )
-    mtg_s = (
-        grid.z_on_interface_levels.to_units("K").data[-1] * exn[:nx, :ny, nz]
-        + g * grid.topography.profile.to_units("m").data[:nx, :ny]
-    )
-    mtg[:nx, :ny, nz - 1] = mtg_s + 0.5 * dz * exn[:nx, :ny, nz]
-    for k in range(nz - 1, 0, -1):
-        mtg[:, :, k - 1] = mtg[:, :, k] + dz * exn[:, :, k]
+    mtg_np[:nx, :ny, nz - 1] = mtg_s + 0.5 * dz * exn_np[:nx, :ny, nz]
+    for k in reversed(range(1, nz)):
+        mtg_np[:nx, :ny, k - 1] = (
+            mtg_np[:nx, :ny, k] + dz * exn_np[:nx, :ny, k]
+        )
     return_dict["montgomery_potential"] = get_dataarray_3d(
-        mtg,
+        as_storage(backend, data=mtg_np),
         grid,
         "m^2 s^-2",
         name="montgomery_potential",
@@ -992,21 +1019,21 @@ def st_isentropic_state(
     # height
     theta1d = grid.z_on_interface_levels.to_units("K").data
     theta = np.tile(theta1d[np.newaxis, np.newaxis, :], (nx, ny, 1))
-    h = zeros(
-        backend,
-        shape=storage_shape or (nx, ny, nz + 1),
+    h_np = zeros(
+        "numpy",
+        shape=storage_shape or (nx, ny, nz),
         storage_options=storage_options,
     )
-    h[:nx, :ny, nz] = grid.topography.profile.to_units("m").data[:nx, :ny]
-    for k in range(nz, 0, -1):
-        h[:nx, :ny, k - 1] = h[:nx, :ny, k] - Rd * (
-            theta[:, :, k - 1] * exn[:nx, :ny, k - 1]
-            + theta[:, :, k] * exn[:nx, :ny, k]
-        ) * (p[:nx, :ny, k - 1] - p[:nx, :ny, k]) / (
-            cp * g * (p[:nx, :ny, k - 1] + p[:nx, :ny, k])
+    h_np[:nx, :ny, nz] = grid.topography.profile.to_units("m").data[:nx, :ny]
+    for k in reversed(range(1, nz + 1)):
+        h_np[:nx, :ny, k - 1] = h_np[:nx, :ny, k] - Rd * (
+            theta[:nx, :ny, k - 1] * exn_np[:nx, :ny, k - 1]
+            + theta[:nx, :ny, k] * exn_np[:nx, :ny, k]
+        ) * (p_np[:nx, :ny, k - 1] - p_np[:nx, :ny, k]) / (
+            cp * g * (p_np[:nx, :ny, k - 1] + p_np[:nx, :ny, k])
         )
     return_dict["height_on_interface_levels"] = get_dataarray_3d(
-        h,
+        as_storage(backend, data=h_np),
         grid,
         "m",
         name="height_on_interface_levels",
@@ -1016,18 +1043,18 @@ def st_isentropic_state(
 
     if moist:
         # air density
-        rho = zeros(
-            backend,
+        rho_np = zeros(
+            "numpy",
             shape=storage_shape or (nx, ny, nz),
             storage_options=storage_options,
         )
-        rho[:nx, :ny, :nz] = (
-            s.to_units("kg m^-2 K^-1").data[:nx, :ny, :nz]
+        rho_np[:nx, :ny, :nz] = (
+            s_np[:nx, :ny, :nz]
             * (theta[:, :, :-1] - theta[:, :, 1:])
-            / (h[:nx, :ny, :nz] - h[:nx, :ny, 1 : nz + 1])
+            / (h_np[:nx, :ny, :nz] - h_np[:nx, :ny, 1 : nz + 1])
         )
         return_dict["air_density"] = get_dataarray_3d(
-            rho,
+            as_storage(backend, data=rho_np),
             grid,
             "kg m^-3",
             name="air_density",
@@ -1036,21 +1063,21 @@ def st_isentropic_state(
         )
 
         # air temperature
-        temp = zeros(
-            backend,
+        t_np = zeros(
+            "numpy",
             shape=storage_shape or (nx, ny, nz),
             storage_options=storage_options,
         )
-        temp[:nx, :ny, :nz] = (
+        t_np[:nx, :ny, :nz] = (
             0.5
             * (
-                theta[:, :, 1:] * exn[:nx, :ny, 1 : nz + 1]
-                + theta[:, :, -1:] * exn[:nx, :ny, :nz]
+                theta[:, :, 1:] * exn_np[:nx, :ny, 1 : nz + 1]
+                + theta[:, :, -1:] * exn_np[:nx, :ny, :nz]
             )
             / cp
         )
         return_dict["air_temperature"] = get_dataarray_3d(
-            temp,
+            as_storage(backend, data=t_np),
             grid,
             "K",
             name="air_temperature",
@@ -1189,7 +1216,7 @@ def st_isentropic_state_f(
     )
 
     # x-velocity
-    u = draw(
+    u_raw = draw(
         st_raw_field(
             storage_shape or (nx + 1, ny, nz),
             -1000,
@@ -1202,21 +1229,37 @@ def st_isentropic_state_f(
         st_one_of(conf.isentropic_state["x_velocity_at_u_locations"].keys())
     )
     return_dict["x_velocity_at_u_locations"] = get_dataarray_3d(
-        u,
+        u_raw,
         grid,
         units,
         name="x_velocity_at_u_locations",
         grid_shape=(nx + 1, ny, nz),
         set_coordinates=False,
     )
+    u = return_dict["x_velocity_at_u_locations"]
+    u_units = u.attrs["units"]
+    u_np = to_numpy(u.to_units("m s^-1").data)
+    vx_raw = zeros(
+        backend,
+        shape=storage_shape or (nx, ny, nz),
+        storage_options=storage_options,
+    )
+    vx_raw[:nx, :ny, :nz] = as_storage(
+        backend, data=0.5 * (u_np[:nx, :ny, :nz] + u_np[1 : nx + 1, :ny, :nz])
+    )
+    return_dict["x_velocity"] = get_dataarray_3d(
+        vx_raw,
+        grid,
+        "m s^-1",
+        name="x_velocity",
+        grid_shape=(nx, ny, nz),
+        set_coordinates=False,
+    ).to_units(u_units)
 
     # x-momentum
     s = return_dict["air_isentropic_density"]
-    s_np = to_numpy(s.to_units("kg m^-2 K^-1").data)
     s_units = s.attrs["units"]
-    u = return_dict["x_velocity_at_u_locations"]
-    u_np = to_numpy(u.to_units("m s^-1").data)
-    u_units = u.attrs["units"]
+    s_np = to_numpy(s.to_units("kg m^-2 K^-1").data)
     su_units = clean_units(s_units + u_units)
     su_np = (
         s_np[:nx, :ny, :nz]
@@ -1239,7 +1282,7 @@ def st_isentropic_state_f(
     ).to_units(su_units)
 
     # y-velocity
-    v = draw(
+    v_raw = draw(
         st_raw_field(
             storage_shape or (nx, ny + 1, nz),
             -1000,
@@ -1252,18 +1295,34 @@ def st_isentropic_state_f(
         st_one_of(conf.isentropic_state["y_velocity_at_v_locations"].keys())
     )
     return_dict["y_velocity_at_v_locations"] = get_dataarray_3d(
-        v,
+        v_raw,
         grid,
         units,
         name="y_velocity_at_v_locations",
         grid_shape=(nx, ny + 1, nz),
         set_coordinates=False,
     )
+    v = return_dict["y_velocity_at_v_locations"]
+    v_units = v.attrs["units"]
+    v_np = to_numpy(v.to_units("m s^-1").data)
+    vy_raw = zeros(
+        backend,
+        shape=storage_shape or (nx, ny, nz),
+        storage_options=storage_options,
+    )
+    vy_raw[:nx, :ny, :nz] = as_storage(
+        backend, data=0.5 * (v_np[:nx, :ny, :nz] + v_np[:nx, 1 : ny + 1, :nz])
+    )
+    return_dict["y_velocity"] = get_dataarray_3d(
+        vy_raw,
+        grid,
+        units,
+        name="y_velocity",
+        grid_shape=(nx, ny, nz),
+        set_coordinates=False,
+    )
 
     # y-momentum
-    v = return_dict["y_velocity_at_v_locations"]
-    v_np = to_numpy(v.to_units("m s^-1").data)
-    v_units = v.attrs["units"]
     sv_units = clean_units(s_units + v_units)
     sv_np = (
         s_np[:nx, :ny, :nz]

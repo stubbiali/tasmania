@@ -28,8 +28,10 @@ from hypothesis import (
 import numpy as np
 from pint import UnitRegistry
 import pytest
+import sympl
 
 from tasmania.python.framework.allocators import zeros
+from tasmania.python.framework.generic_functions import to_numpy
 from tasmania.python.framework.options import BackendOptions, StorageOptions
 from tasmania.python.isentropic.dynamics.diagnostics import (
     IsentropicDiagnostics as DynamicsIsentropicDiagnostics,
@@ -40,11 +42,7 @@ from tasmania.python.isentropic.physics.diagnostics import (
 )
 from tasmania.python.utils.storage import get_dataarray_3d
 
-from tests.conf import (
-    backend as conf_backend,
-    dtype as conf_dtype,
-    default_origin as conf_dorigin,
-)
+from tests import conf
 from tests.strategies import (
     st_floats,
     st_one_of,
@@ -58,16 +56,22 @@ from tests.utilities import compare_arrays, compare_dataarrays, hyp_settings
 
 @hyp_settings
 @given(data=hyp_st.data())
-@pytest.mark.parametrize("backend", conf_backend)
-@pytest.mark.parametrize("dtype", conf_dtype)
+@pytest.mark.parametrize("backend", conf.backend)
+@pytest.mark.parametrize("dtype", conf.dtype)
 def test_diagnostic_variables(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+    aligned_index = data.draw(
+        st_one_of(conf.aligned_index), label="aligned_index"
+    )
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
 
     grid = data.draw(
-        st_physical_grid(zaxis_name="z", zaxis_length=(2, 20), dtype=dtype),
+        st_physical_grid(
+            zaxis_name="z", zaxis_length=(2, 20), storage_options=so
+        ),
         label="grid",
     )
     nx, ny, nz = grid.nx, grid.ny, grid.nz
@@ -82,8 +86,7 @@ def test_diagnostic_variables(data, backend, dtype):
             min_value=1,
             max_value=1e4,
             backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
+            storage_options=so,
         ),
         label="s",
     )
@@ -92,9 +95,6 @@ def test_diagnostic_variables(data, backend, dtype):
     # ========================================
     # test bed
     # ========================================
-    bo = BackendOptions(rebuild=False)
-    so = StorageOptions(dtype=dtype, default_origin=default_origin)
-
     p = zeros(backend, shape=storage_shape, storage_options=so)
     exn = zeros(backend, shape=storage_shape, storage_options=so)
     mtg = zeros(backend, shape=storage_shape, storage_options=so)
@@ -118,10 +118,11 @@ def test_diagnostic_variables(data, backend, dtype):
     topo = grid.topography.profile.to_units("m").data
 
     # pressure
+    s_np = to_numpy(s)
     p_val = np.zeros((nx, ny, nz + 1), dtype=dtype)
     p_val[:, :, 0] = pt
     for k in range(1, nz + 1):
-        p_val[:, :, k] = p_val[:, :, k - 1] + g * dz * s[:nx, :ny, k - 1]
+        p_val[:, :, k] = p_val[:, :, k - 1] + g * dz * s_np[:nx, :ny, k - 1]
     compare_arrays(p[:nx, :ny, :], p_val)
 
     # exner
@@ -152,16 +153,22 @@ def test_diagnostic_variables(data, backend, dtype):
 
 @hyp_settings
 @given(data=hyp_st.data())
-@pytest.mark.parametrize("backend", conf_backend)
-@pytest.mark.parametrize("dtype", conf_dtype)
+@pytest.mark.parametrize("backend", conf.backend)
+@pytest.mark.parametrize("dtype", conf.dtype)
 def test_montgomery(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+    aligned_index = data.draw(
+        st_one_of(conf.aligned_index), label="aligned_index"
+    )
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
 
     grid = data.draw(
-        st_physical_grid(zaxis_name="z", zaxis_length=(2, 20), dtype=dtype),
+        st_physical_grid(
+            zaxis_name="z", zaxis_length=(2, 20), storage_options=so
+        ),
         label="grid",
     )
     nx, ny, nz = grid.nx, grid.ny, grid.nz
@@ -176,8 +183,7 @@ def test_montgomery(data, backend, dtype):
             min_value=1,
             max_value=1e4,
             backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
+            storage_options=so,
         ),
         label="s",
     )
@@ -186,9 +192,6 @@ def test_montgomery(data, backend, dtype):
     # ========================================
     # test bed
     # ========================================
-    bo = BackendOptions(rebuild=False)
-    so = StorageOptions(dtype=dtype, default_origin=default_origin)
-
     mtg = zeros(backend, shape=storage_shape, storage_options=so)
 
     did = DynamicsIsentropicDiagnostics(
@@ -209,10 +212,11 @@ def test_montgomery(data, backend, dtype):
     topo = grid.topography.profile.to_units("m").data
 
     # pressure
+    s_np = to_numpy(s)
     p_val = np.zeros((nx, ny, nz + 1), dtype=dtype)
     p_val[:, :, 0] = pt
     for k in range(1, nz + 1):
-        p_val[:, :, k] = p_val[:, :, k - 1] + g * dz * s[:nx, :ny, k - 1]
+        p_val[:, :, k] = p_val[:, :, k - 1] + g * dz * s_np[:nx, :ny, k - 1]
 
     # exner
     exn_val = cp * (p_val / p_ref) ** (rd / cp)
@@ -229,16 +233,22 @@ def test_montgomery(data, backend, dtype):
 
 @hyp_settings
 @given(data=hyp_st.data())
-@pytest.mark.parametrize("backend", conf_backend)
-@pytest.mark.parametrize("dtype", conf_dtype)
+@pytest.mark.parametrize("backend", conf.backend)
+@pytest.mark.parametrize("dtype", conf.dtype)
 def test_height(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+    aligned_index = data.draw(
+        st_one_of(conf.aligned_index), label="aligned_index"
+    )
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
 
     grid = data.draw(
-        st_physical_grid(zaxis_name="z", zaxis_length=(2, 20), dtype=dtype),
+        st_physical_grid(
+            zaxis_name="z", zaxis_length=(2, 20), storage_options=so
+        ),
         label="grid",
     )
     nx, ny, nz = grid.nx, grid.ny, grid.nz
@@ -253,8 +263,7 @@ def test_height(data, backend, dtype):
             min_value=1,
             max_value=1e4,
             backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
+            storage_options=so,
         ),
         label="s",
     )
@@ -263,9 +272,6 @@ def test_height(data, backend, dtype):
     # ========================================
     # test bed
     # ========================================
-    bo = BackendOptions(rebuild=False)
-    so = StorageOptions(dtype=dtype, default_origin=default_origin)
-
     h = zeros(backend, shape=storage_shape, storage_options=so)
 
     did = DynamicsIsentropicDiagnostics(
@@ -286,10 +292,11 @@ def test_height(data, backend, dtype):
     topo = grid.topography.profile.to_units("m").data
 
     # pressure
+    s_np = to_numpy(s)
     p_val = np.zeros((nx, ny, nz + 1), dtype=dtype)
     p_val[:, :, 0] = pt
     for k in range(1, nz + 1):
-        p_val[:, :, k] = p_val[:, :, k - 1] + g * dz * s[:nx, :ny, k - 1]
+        p_val[:, :, k] = p_val[:, :, k - 1] + g * dz * s_np[:nx, :ny, k - 1]
 
     # exner
     exn_val = cp * (p_val / p_ref) ** (rd / cp)
@@ -309,16 +316,23 @@ def test_height(data, backend, dtype):
 
 @hyp_settings
 @given(data=hyp_st.data())
-@pytest.mark.parametrize("backend", conf_backend)
-@pytest.mark.parametrize("dtype", conf_dtype)
+@pytest.mark.parametrize("backend", conf.backend)
+@pytest.mark.parametrize("dtype", conf.dtype)
 def test_density_and_temperature(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+    aligned_index = data.draw(
+        st_one_of(conf.aligned_index), label="aligned_index"
+    )
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
 
     grid = data.draw(
-        st_physical_grid(zaxis_name="z", zaxis_length=(2, 20)), label="grid"
+        st_physical_grid(
+            zaxis_name="z", zaxis_length=(2, 20), storage_options=so
+        ),
+        label="grid",
     )
     nx, ny, nz = grid.nx, grid.ny, grid.nz
 
@@ -332,8 +346,7 @@ def test_density_and_temperature(data, backend, dtype):
             min_value=1,
             max_value=1e4,
             backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
+            storage_options=so,
         ),
         label="s",
     )
@@ -342,9 +355,6 @@ def test_density_and_temperature(data, backend, dtype):
     # ========================================
     # test bed
     # ========================================
-    bo = BackendOptions(rebuild=False)
-    so = StorageOptions(dtype=dtype, default_origin=default_origin)
-
     p = zeros(backend, shape=storage_shape, storage_options=so)
     exn = zeros(backend, shape=storage_shape, storage_options=so)
     mtg = zeros(backend, shape=storage_shape, storage_options=so)
@@ -371,10 +381,11 @@ def test_density_and_temperature(data, backend, dtype):
     topo = grid.topography.profile.to_units("m").data
 
     # pressure
+    s_np = to_numpy(s)
     p_val = np.zeros((nx, ny, nz + 1), dtype=dtype)
     p_val[:, :, 0] = pt
     for k in range(1, nz + 1):
-        p_val[:, :, k] = p_val[:, :, k - 1] + g * dz * s[:nx, :ny, k - 1]
+        p_val[:, :, k] = p_val[:, :, k - 1] + g * dz * s_np[:nx, :ny, k - 1]
     compare_arrays(p[:nx, :ny, :], p_val)
 
     # exner
@@ -405,7 +416,7 @@ def test_density_and_temperature(data, backend, dtype):
     # density
     theta = theta[np.newaxis, np.newaxis, :]
     rho_val = (
-        s[:nx, :ny, :nz]
+        s_np[:nx, :ny, :nz]
         * (theta[:, :, :-1] - theta[:, :, 1:])
         / (h_val[:, :, :-1] - h_val[:, :, 1:])
     )
@@ -428,15 +439,22 @@ unit_registry = UnitRegistry()
 
 @hyp_settings
 @given(data=hyp_st.data())
-@pytest.mark.parametrize("backend", conf_backend)
-@pytest.mark.parametrize("dtype", conf_dtype)
+@pytest.mark.parametrize("backend", conf.backend)
+@pytest.mark.parametrize("dtype", conf.dtype)
 def test_isentropic_diagnostics(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+    aligned_index = data.draw(
+        st_one_of(conf.aligned_index), label="aligned_index"
+    )
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
 
-    domain = data.draw(st_domain(backend=backend, dtype=dtype), label="domain")
+    domain = data.draw(
+        st_domain(backend=backend, backend_options=bo, storage_options=so),
+        label="domain",
+    )
     grid = domain.numerical_grid
 
     nx, ny, nz = grid.nx, grid.ny, grid.nz
@@ -447,8 +465,8 @@ def test_isentropic_diagnostics(data, backend, dtype):
             grid,
             moist=True,
             backend=backend,
-            default_origin=default_origin,
             storage_shape=storage_shape,
+            storage_options=so,
         ),
         label="state",
     )
@@ -456,9 +474,6 @@ def test_isentropic_diagnostics(data, backend, dtype):
     # ========================================
     # test bed
     # ========================================
-    bo = BackendOptions(rebuild=False)
-    so = StorageOptions(dtype=dtype, default_origin=default_origin)
-
     p = zeros(backend, shape=storage_shape, storage_options=so)
     exn = zeros(backend, shape=storage_shape, storage_options=so)
     mtg = zeros(backend, shape=storage_shape, storage_options=so)
@@ -475,9 +490,12 @@ def test_isentropic_diagnostics(data, backend, dtype):
     )
 
     s = state["air_isentropic_density"].to_units("kg m^-2 K^-1").data
-    pt = state["air_pressure_on_interface_levels"].to_units("Pa").data[0, 0, 0]
+    pt = sympl.DataArray(
+        state["air_pressure_on_interface_levels"].to_units("Pa").data[0, 0, 0],
+        attrs={"units": "Pa"},
+    )
 
-    did.get_diagnostic_variables(s, pt, p, exn, mtg, h)
+    did.get_diagnostic_variables(s, pt.data.item(), p, exn, mtg, h)
     did.get_density_and_temperature(s, exn, h, rho, t)
 
     #
@@ -487,7 +505,7 @@ def test_isentropic_diagnostics(data, backend, dtype):
         domain,
         "numerical",
         moist=False,
-        pt=state["air_pressure_on_interface_levels"][0, 0, 0],
+        pt=pt,
         backend=backend,
         backend_options=bo,
         storage_shape=storage_shape,
@@ -541,7 +559,7 @@ def test_isentropic_diagnostics(data, backend, dtype):
         domain,
         "numerical",
         moist=True,
-        pt=state["air_pressure_on_interface_levels"][0, 0, 0],
+        pt=pt,
         backend=backend,
         backend_options=bo,
         storage_shape=storage_shape,
@@ -582,15 +600,22 @@ def test_isentropic_diagnostics(data, backend, dtype):
 
 @hyp_settings
 @given(data=hyp_st.data())
-@pytest.mark.parametrize("backend", conf_backend)
-@pytest.mark.parametrize("dtype", conf_dtype)
+@pytest.mark.parametrize("backend", conf.backend)
+@pytest.mark.parametrize("dtype", conf.dtype)
 def test_horizontal_velocity(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+    aligned_index = data.draw(
+        st_one_of(conf.aligned_index), label="aligned_index"
+    )
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
 
-    domain = data.draw(st_domain(), label="domain")
+    domain = data.draw(
+        st_domain(backend=backend, backend_options=bo, storage_options=so),
+        label="domain",
+    )
     hb = domain.horizontal_boundary
     grid = domain.numerical_grid
 
@@ -602,8 +627,8 @@ def test_horizontal_velocity(data, backend, dtype):
             grid,
             moist=True,
             backend=backend,
-            default_origin=default_origin,
             storage_shape=storage_shape,
+            storage_options=so,
         ),
         label="state",
     )
@@ -613,9 +638,6 @@ def test_horizontal_velocity(data, backend, dtype):
     # ========================================
     # test bed
     # ========================================
-    bo = BackendOptions(rebuild=False)
-    so = StorageOptions(dtype=dtype, default_origin=default_origin)
-
     ivc = IsentropicVelocityComponents(
         domain,
         backend=backend,
@@ -626,16 +648,21 @@ def test_horizontal_velocity(data, backend, dtype):
 
     diags = ivc(state)
 
-    s = state["air_isentropic_density"].to_units("kg m^-2 K^-1").data
-    su = state["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").data
-    sv = state["y_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").data
+    s = to_numpy(state["air_isentropic_density"].to_units("kg m^-2 K^-1").data)
+    su = to_numpy(
+        state["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").data
+    )
+    sv = to_numpy(
+        state["y_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").data
+    )
 
-    u = zeros(backend, shape=storage_shape, storage_options=so)
-    v = zeros(backend, shape=storage_shape, storage_options=so)
+    u = zeros("numpy", shape=storage_shape, storage_options=so)
+    v = zeros("numpy", shape=storage_shape, storage_options=so)
 
     assert "x_velocity_at_u_locations" in diags
     u[1:-1, :] = (su[:-2, :] + su[1:-1, :]) / (s[:-2, :] + s[1:-1, :])
-    hb.dmn_set_outermost_layers_x(
+    hb_np = domain.copy(backend="numpy").horizontal_boundary
+    hb_np.set_outermost_layers_x(
         u,
         field_name="x_velocity_at_u_locations",
         field_units="m s^-1",
@@ -650,14 +677,15 @@ def test_horizontal_velocity(data, backend, dtype):
         set_coordinates=False,
     )
     compare_dataarrays(
-        diags["x_velocity_at_u_locations"][: nx + 1, :ny, :nz],
-        u_val[: nx + 1, :ny, :nz],
+        diags["x_velocity_at_u_locations"],
+        u_val,
         compare_coordinate_values=False,
+        slice=(slice(nx + 1), slice(ny), slice(nz)),
     )
 
     assert "y_velocity_at_v_locations" in diags
     v[:, 1:-1] = (sv[:, :-2] + sv[:, 1:-1]) / (s[:, :-2] + s[:, 1:-1])
-    hb.dmn_set_outermost_layers_y(
+    hb_np.set_outermost_layers_y(
         v,
         field_name="y_velocity_at_v_locations",
         field_units="m s^-1",
@@ -672,8 +700,9 @@ def test_horizontal_velocity(data, backend, dtype):
         set_coordinates=False,
     )
     compare_dataarrays(
-        diags["y_velocity_at_v_locations"][:nx, : ny + 1, :nz],
-        v_val[:nx, : ny + 1, :nz],
+        diags["y_velocity_at_v_locations"],
+        v_val,
+        slice=(slice(nx), slice(ny + 1), slice(nz)),
     )
 
 

@@ -20,15 +20,16 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from copy import deepcopy
 from hypothesis import (
     given,
     reproduce_failure,
     strategies as hyp_st,
 )
+import numpy as np
 import pytest
 
 from tasmania.python.framework.allocators import zeros
+from tasmania.python.framework.generic_functions import to_numpy
 from tasmania.python.framework.options import BackendOptions, StorageOptions
 from tasmania.python.isentropic.physics.vertical_advection import (
     IsentropicVerticalAdvection,
@@ -36,11 +37,7 @@ from tasmania.python.isentropic.physics.vertical_advection import (
 )
 from tasmania.python.utils.storage import get_dataarray_3d
 
-from tests.conf import (
-    backend as conf_backend,
-    dtype as conf_dtype,
-    default_origin as conf_dorigin,
-)
+from tests import conf
 from tests.isentropic.test_isentropic_minimal_vertical_fluxes import (
     get_upwind_flux,
     get_centered_flux,
@@ -63,7 +60,7 @@ mfpw = "mass_fraction_of_precipitation_water_in_air"
 
 
 def set_lower_layers_first_order(nb, dz, w, phi, out, staggering=False):
-    wm = deepcopy(w)
+    wm = np.zeros_like(w)
     wm[:, :, :-1] = (
         0.5 * (w[:, :, :-1] + w[:, :, 1:]) if staggering else w[:, :, :-1]
     )
@@ -78,10 +75,7 @@ def set_lower_layers_first_order(nb, dz, w, phi, out, staggering=False):
 
 
 def set_lower_layers_second_order(nb, dz, w, phi, out, staggering=False):
-    wm = (
-        w if w.shape[2] == phi.shape[2] else 0.5 * (w[:, :, :-1] + w[:, :, 1:])
-    )
-    wm = deepcopy(w)
+    wm = np.zeros_like(w)
     wm[:, :, :-1] = (
         0.5 * (w[:, :, :-1] + w[:, :, 1:]) if staggering else w[:, :, :-1]
     )
@@ -136,7 +130,6 @@ def validation(
     grid = domain.numerical_grid
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     dz = grid.dz.to_units("K").values.item()
-    dtype = grid.z.dtype
 
     nb = flux_properties[flux_scheme]["nb"]
     get_flux = flux_properties[flux_scheme]["get_flux"]
@@ -195,33 +188,37 @@ def validation(
 
     if toaptoil:
         name = "tendency_of_air_potential_temperature_on_interface_levels"
-        w = state[name].to_units("K s^-1").data
+        w = to_numpy(state[name].to_units("K s^-1").data)
         w_hl = w
     else:
         name = "tendency_of_air_potential_temperature"
-        w = state[name].to_units("K s^-1").data
+        w = to_numpy(state[name].to_units("K s^-1").data)
         w_hl = zeros(
-            backend,
+            "numpy",
             shape=(nx + 1, ny + 1, nz + 1),
             storage_options=storage_options,
         )
         w_hl[:, :, 1:-1] = 0.5 * (w[:, :, :-2] + w[:, :, 1:-1])
 
-    s = state["air_isentropic_density"].to_units("kg m^-2 K^-1").data
-    su = state["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").data
-    sv = state["y_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").data
+    s = to_numpy(state["air_isentropic_density"].to_units("kg m^-2 K^-1").data)
+    su = to_numpy(
+        state["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").data
+    )
+    sv = to_numpy(
+        state["y_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").data
+    )
     if moist:
-        qv = state[mfwv].to_units("g g^-1").data
+        qv = to_numpy(state[mfwv].to_units("g g^-1").data)
         sqv = s * qv
-        qc = state[mfcw].to_units("g g^-1").data
+        qc = to_numpy(state[mfcw].to_units("g g^-1").data)
         sqc = s * qc
-        qr = state[mfpw].to_units("g g^-1").data
+        qr = to_numpy(state[mfpw].to_units("g g^-1").data)
         sqr = s * qr
 
     tendencies, diagnostics = fluxer(state)
 
     out = zeros(
-        backend,
+        "numpy",
         shape=(nx + 1, ny + 1, nz + 1),
         storage_options=storage_options,
     )
@@ -232,28 +229,20 @@ def validation(
     out[:, :, up] = -(flux[:, :, up] - flux[:, :, down]) / dz
     # set_lower_layers(nb, dz, w, s, out, staggering=toaptoil)
     assert "air_isentropic_density" in tendencies
-    compare_arrays(
-        out[:nx, :ny, :nz],
-        tendencies["air_isentropic_density"].values[:nx, :ny, :nz],
-    )
+    slc = (slice(nx), slice(ny), slice(nz))
+    compare_arrays(out, tendencies["air_isentropic_density"].data, slice=slc)
 
     flux = get_flux(w_hl, su)
     out[:, :, up] = -(flux[:, :, up] - flux[:, :, down]) / dz
     # set_lower_layers(nb, dz, w, su, out, staggering=toaptoil)
     assert "x_momentum_isentropic" in tendencies
-    compare_arrays(
-        out[:nx, :ny, :nz],
-        tendencies["x_momentum_isentropic"].values[:nx, :ny, :nz],
-    )
+    compare_arrays(out, tendencies["x_momentum_isentropic"].data, slice=slc)
 
     flux = get_flux(w_hl, sv)
     out[:, :, up] = -(flux[:, :, up] - flux[:, :, down]) / dz
     # set_lower_layers(nb, dz, w, sv, out, staggering=toaptoil)
     assert "y_momentum_isentropic" in tendencies
-    compare_arrays(
-        out[:nx, :ny, :nz],
-        tendencies["y_momentum_isentropic"].values[:nx, :ny, :nz],
-    )
+    compare_arrays(out, tendencies["y_momentum_isentropic"].data, slice=slc)
 
     if moist:
         flux = get_flux(w_hl, sqv)
@@ -261,27 +250,21 @@ def validation(
         # set_lower_layers(nb, dz, w, sqv, out, staggering=toaptoil)
         out /= s
         assert mfwv in tendencies
-        compare_arrays(
-            out[:nx, :ny, :nz], tendencies[mfwv].values[:nx, :ny, :nz]
-        )
+        compare_arrays(out, tendencies[mfwv].data, slice=slc)
 
         flux = get_flux(w_hl, sqc)
         out[:, :, up] = -(flux[:, :, up] - flux[:, :, down]) / dz
         # set_lower_layers(nb, dz, w, sqc, out, staggering=toaptoil)
         out /= s
         assert mfcw in tendencies
-        compare_arrays(
-            out[:nx, :ny, :nz], tendencies[mfcw].values[:nx, :ny, :nz]
-        )
+        compare_arrays(out, tendencies[mfcw].data, slice=slc)
 
         flux = get_flux(w_hl, sqr)
         out[:, :, up] = -(flux[:, :, up] - flux[:, :, down]) / dz
         # set_lower_layers(nb, dz, w, sqr, out, staggering=toaptoil)
         out /= s
         assert mfpw in tendencies
-        compare_arrays(
-            out[:nx, :ny, :nz], tendencies[mfpw].values[:nx, :ny, :nz]
-        )
+        compare_arrays(out, tendencies[mfpw].data, slice=slc)
 
     assert len(tendencies) == len(output_names)
 
@@ -291,21 +274,29 @@ def validation(
 @hyp_settings
 @given(data=hyp_st.data())
 @pytest.mark.parametrize("flux_scheme", flux_properties.keys())
-@pytest.mark.parametrize("backend", conf_backend)
-@pytest.mark.parametrize("dtype", conf_dtype)
+@pytest.mark.parametrize("backend", conf.backend)
+@pytest.mark.parametrize("dtype", conf.dtype)
 def test(data, flux_scheme, backend, dtype, subtests):
     # ========================================
     # random data generation
     # ========================================
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+    aligned_index = data.draw(
+        st_one_of(conf.aligned_index), label="aligned_index"
+    )
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
 
     nb = flux_properties[flux_scheme]["nb"]
     domain = data.draw(
-        st_domain(zaxis_length=(2 * nb + 1, 20), backend=backend, dtype=dtype),
+        st_domain(
+            zaxis_length=(2 * nb + 1, 50),
+            backend=backend,
+            backend_options=bo,
+            storage_options=so,
+        ),
         label="domain",
     )
     grid = domain.numerical_grid
-
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     storage_shape = (nx + 1, ny + 1, nz + 1)
 
@@ -314,19 +305,14 @@ def test(data, flux_scheme, backend, dtype, subtests):
             grid,
             moist=True,
             backend=backend,
-            default_origin=default_origin,
             storage_shape=storage_shape,
+            storage_options=so,
         ),
         label="state",
     )
     field = data.draw(
         st_raw_field(
-            storage_shape,
-            -1e4,
-            1e4,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
+            storage_shape, -1e4, 1e4, backend=backend, storage_options=so
         ),
         label="field",
     )
@@ -346,8 +332,6 @@ def test(data, flux_scheme, backend, dtype, subtests):
     # ========================================
     # test bed
     # ========================================
-    bo = BackendOptions(rebuild=False)
-    so = StorageOptions(dtype=dtype, default_origin=default_origin)
     validation(
         domain,
         flux_scheme,
@@ -396,8 +380,8 @@ def test(data, flux_scheme, backend, dtype, subtests):
 
 # @hyp_settings
 # @given(data=hyp_st.data())
-# @pytest.mark.parametrize("backend", conf_backend)
-# @pytest.mark.parametrize("dtype", conf_dtype)
+# @pytest.mark.parametrize("backend", conf.backend)
+# @pytest.mark.parametrize("dtype", conf.dtype)
 # def _test_prescribed_surface_heating(data):
 #     # ========================================
 #     # random data generation
@@ -440,7 +424,7 @@ def test(data, flux_scheme, backend, dtype, subtests):
 #         )
 #     )
 #
-#     backend = data.draw(st_one_of(conf_backend), label="backend")
+#     backend = data.draw(st_one_of(conf.backend), label="backend")
 #
 #     # ========================================
 #     # test bed

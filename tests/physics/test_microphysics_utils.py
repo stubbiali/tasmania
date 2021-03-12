@@ -174,7 +174,7 @@ def test_clipping(data, backend, dtype, subtests):
 
 @hyp_settings
 @given(data=hyp_st.data())
-@pytest.mark.parametrize("backend", conf.backend.difference(conf.gtc_backend))
+@pytest.mark.parametrize("backend", conf.backend)
 @pytest.mark.parametrize("dtype", conf.dtype)
 def test_precipitation(data, backend, dtype):
     # ========================================

@@ -37,12 +37,7 @@ from tasmania.python.isentropic.physics.horizontal_diffusion import (
 from tasmania.python.dwarfs.horizontal_diffusion import HorizontalDiffusion
 from tasmania.python.utils.storage import get_dataarray_3d
 
-from tests.conf import (
-    backend as conf_backend,
-    dtype as conf_dtype,
-    default_origin as conf_default_origin,
-    nb as conf_nb,
-)
+from tests import conf
 from tests.strategies import (
     st_domain,
     st_floats,
@@ -60,18 +55,20 @@ mfpw = "mass_fraction_of_precipitation_water_in_air"
 @hyp_settings
 @given(data=hyp_st.data())
 @pytest.mark.parametrize("diff_type", ("second_order", "fourth_order"))
-@pytest.mark.parametrize("backend", conf_backend)
-@pytest.mark.parametrize("dtype", conf_dtype)
+@pytest.mark.parametrize("backend", conf.backend)
+@pytest.mark.parametrize("dtype", conf.dtype)
 def test(data, diff_type, backend, dtype, subtests):
     # ========================================
     # random data generation
     # ========================================
-    default_origin = data.draw(
-        st_one_of(conf_default_origin), label="default_origin"
+    aligned_index = data.draw(
+        st_one_of(conf.aligned_index), label="aligned_index"
     )
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
 
     nb = data.draw(
-        hyp_st.integers(min_value=2, max_value=max(2, conf_nb)), label="nb"
+        hyp_st.integers(min_value=2, max_value=max(2, conf.nb)), label="nb"
     )
     domain = data.draw(
         st_domain(
@@ -80,7 +77,8 @@ def test(data, diff_type, backend, dtype, subtests):
             zaxis_length=(2, 20),
             nb=nb,
             backend=backend,
-            dtype=dtype,
+            backend_options=bo,
+            storage_options=so,
         ),
         label="domain",
     )
@@ -93,8 +91,8 @@ def test(data, diff_type, backend, dtype, subtests):
             grid,
             moist=True,
             backend=backend,
-            default_origin=default_origin,
             storage_shape=storage_shape,
+            storage_options=so,
         ),
         label="state",
     )
@@ -118,9 +116,6 @@ def test(data, diff_type, backend, dtype, subtests):
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     dx = grid.dx.to_units("m").values.item()
     dy = grid.dy.to_units("m").values.item()
-
-    bo = BackendOptions(rebuild=False)
-    so = StorageOptions(dtype=dtype, default_origin=default_origin)
 
     in_st = zeros(backend, shape=storage_shape, storage_options=so)
     out_st = zeros(backend, shape=storage_shape, storage_options=so)

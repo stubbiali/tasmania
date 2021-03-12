@@ -22,13 +22,14 @@
 #
 from datetime import timedelta
 from hypothesis import (
-    assume,
     given,
     reproduce_failure,
     strategies as hyp_st,
 )
+import numpy as np
 import pytest
 
+from tasmania.python.framework.generic_functions import to_numpy
 from tasmania.python.framework.options import (
     BackendOptions,
     StorageOptions,
@@ -38,14 +39,8 @@ from tasmania.python.framework.sequential_tendency_splitting import (
     SequentialTendencySplitting,
 )
 from tasmania.python.utils.storage import deepcopy_dataarray_dict
-from tasmania.python.utils.backend import is_gt
 
-from tests.conf import (
-    backend as conf_backend,
-    dtype as conf_dtype,
-    default_origin as conf_dorigin,
-    nb as conf_nb,
-)
+from tests import conf
 from tests.strategies import st_domain, st_isentropic_state_f, st_one_of
 from tests.utilities import compare_arrays, hyp_settings
 
@@ -80,28 +75,30 @@ def test_properties(
     assert "air_isentropic_density" in sts.input_properties
     assert "fake_variable" in sts.input_properties
     assert "x_momentum_isentropic" in sts.input_properties
+    assert "x_velocity" in sts.input_properties
     assert "x_velocity_at_u_locations" in sts.input_properties
     assert "y_momentum_isentropic" in sts.input_properties
     assert "y_velocity_at_v_locations" in sts.input_properties
-    assert len(sts.input_properties) == 6
+    assert len(sts.input_properties) == 7
 
     assert "air_isentropic_density" in sts.provisional_input_properties
     assert "x_momentum_isentropic" in sts.provisional_input_properties
-    assert "x_velocity_at_u_locations" in sts.provisional_input_properties
+    assert "x_velocity" in sts.provisional_input_properties
     assert "y_momentum_isentropic" in sts.provisional_input_properties
     assert len(sts.provisional_input_properties) == 4
 
     assert "air_isentropic_density" in sts.output_properties
     assert "fake_variable" in sts.output_properties
     assert "x_momentum_isentropic" in sts.output_properties
+    assert "x_velocity" in sts.output_properties
     assert "x_velocity_at_u_locations" in sts.output_properties
     assert "y_momentum_isentropic" in sts.output_properties
     assert "y_velocity_at_v_locations" in sts.output_properties
-    assert len(sts.output_properties) == 6
+    assert len(sts.output_properties) == 7
 
     assert "air_isentropic_density" in sts.provisional_output_properties
     assert "x_momentum_isentropic" in sts.provisional_output_properties
-    assert "x_velocity_at_u_locations" in sts.provisional_output_properties
+    assert "x_velocity" in sts.provisional_output_properties
     assert "y_momentum_isentropic" in sts.provisional_output_properties
     assert len(sts.provisional_output_properties) == 4
 
@@ -115,28 +112,30 @@ def test_properties(
 
     assert "air_isentropic_density" in sts.input_properties
     assert "x_momentum_isentropic" in sts.input_properties
+    assert "x_velocity" in sts.input_properties
     assert "x_velocity_at_u_locations" in sts.input_properties
     assert "y_momentum_isentropic" in sts.input_properties
     assert "y_velocity_at_v_locations" in sts.input_properties
-    assert len(sts.input_properties) == 5
+    assert len(sts.input_properties) == 6
 
     assert "air_isentropic_density" in sts.provisional_input_properties
     assert "x_momentum_isentropic" in sts.provisional_input_properties
-    assert "x_velocity_at_u_locations" in sts.provisional_input_properties
+    assert "x_velocity" in sts.provisional_input_properties
     assert "y_momentum_isentropic" in sts.provisional_input_properties
     assert len(sts.provisional_input_properties) == 4
 
     assert "air_isentropic_density" in sts.output_properties
     assert "fake_variable" in sts.output_properties
     assert "x_momentum_isentropic" in sts.output_properties
+    assert "x_velocity" in sts.output_properties
     assert "x_velocity_at_u_locations" in sts.output_properties
     assert "y_momentum_isentropic" in sts.output_properties
     assert "y_velocity_at_v_locations" in sts.output_properties
-    assert len(sts.output_properties) == 6
+    assert len(sts.output_properties) == 7
 
     assert "air_isentropic_density" in sts.provisional_output_properties
     assert "x_momentum_isentropic" in sts.provisional_output_properties
-    assert "x_velocity_at_u_locations" in sts.provisional_output_properties
+    assert "x_velocity" in sts.provisional_output_properties
     assert "y_momentum_isentropic" in sts.provisional_output_properties
     assert len(sts.provisional_output_properties) == 4
 
@@ -150,36 +149,38 @@ def test_properties(
 
     assert "air_isentropic_density" in sts.input_properties
     assert "x_momentum_isentropic" in sts.input_properties
+    assert "x_velocity" in sts.input_properties
     assert "x_velocity_at_u_locations" in sts.input_properties
     assert "y_momentum_isentropic" in sts.input_properties
     assert "y_velocity_at_v_locations" in sts.input_properties
-    assert len(sts.input_properties) == 5
+    assert len(sts.input_properties) == 6
 
     assert "air_isentropic_density" in sts.provisional_input_properties
     assert "x_momentum_isentropic" in sts.provisional_input_properties
-    assert "x_velocity_at_u_locations" in sts.provisional_input_properties
+    assert "x_velocity" in sts.provisional_input_properties
     assert "y_momentum_isentropic" in sts.provisional_input_properties
     assert len(sts.provisional_input_properties) == 4
 
     assert "air_isentropic_density" in sts.output_properties
     assert "fake_variable" in sts.output_properties
     assert "x_momentum_isentropic" in sts.output_properties
+    assert "x_velocity" in sts.output_properties
     assert "x_velocity_at_u_locations" in sts.output_properties
     assert "y_momentum_isentropic" in sts.output_properties
     assert "y_velocity_at_v_locations" in sts.output_properties
-    assert len(sts.output_properties) == 6
+    assert len(sts.output_properties) == 7
 
     assert "air_isentropic_density" in sts.provisional_output_properties
     assert "x_momentum_isentropic" in sts.provisional_output_properties
-    assert "x_velocity_at_u_locations" in sts.provisional_output_properties
+    assert "x_velocity" in sts.provisional_output_properties
     assert "y_momentum_isentropic" in sts.provisional_output_properties
     assert len(sts.provisional_output_properties) == 4
 
 
 @hyp_settings
 @given(data=hyp_st.data())
-@pytest.mark.parametrize("backend", conf_backend)
-@pytest.mark.parametrize("dtype", conf_dtype)
+@pytest.mark.parametrize("backend", conf.backend)
+@pytest.mark.parametrize("dtype", conf.dtype)
 def test_forward_euler(
     data,
     backend,
@@ -190,21 +191,14 @@ def test_forward_euler(
     # ========================================
     # random data generation
     # ========================================
-    backend_ts1 = (
-        backend
-        if data.draw(hyp_st.booleans(), label="same_backend_1")
-        else "numpy"
+    aligned_index = data.draw(
+        st_one_of(conf.aligned_index), label="aligned_index"
     )
-    backend_ts2 = (
-        backend
-        if data.draw(hyp_st.booleans(), label="same_backend_2")
-        else "numpy"
-    )
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-    same_shape = data.draw(hyp_st.booleans(), label="same_shape")
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
 
     nb = data.draw(
-        hyp_st.integers(min_value=3, max_value=max(3, conf_nb)), label="nb"
+        hyp_st.integers(min_value=1, max_value=max(3, conf.nb)), label="nb"
     )
     domain = data.draw(
         st_domain(
@@ -213,24 +207,25 @@ def test_forward_euler(
             zaxis_length=(1, 20),
             nb=nb,
             backend=backend,
-            dtype=dtype,
+            backend_options=bo,
+            storage_options=so,
         ),
         label="domain",
     )
     grid = domain.numerical_grid
-
-    dnx = data.draw(hyp_st.integers(min_value=0, max_value=3), label="dnx")
-    dny = data.draw(hyp_st.integers(min_value=0, max_value=3), label="dny")
-    dnz = data.draw(hyp_st.integers(min_value=0, max_value=3), label="dnz")
-    storage_shape = (grid.nx + dnx, grid.ny + dny, grid.nz + dnz)
+    nx, ny, nz = grid.nx, grid.ny, grid.nz
+    dnx = data.draw(hyp_st.integers(min_value=1, max_value=3), label="dnx")
+    dny = data.draw(hyp_st.integers(min_value=1, max_value=3), label="dny")
+    dnz = data.draw(hyp_st.integers(min_value=1, max_value=3), label="dnz")
+    storage_shape = (nx + dnx, ny + dny, nz + dnz)
 
     state = data.draw(
         st_isentropic_state_f(
             grid,
             moist=True,
             backend=backend,
-            default_origin=default_origin,
-            storage_shape=storage_shape if same_shape else None,
+            storage_shape=storage_shape,
+            storage_options=so,
         ),
         label="state",
     )
@@ -239,8 +234,8 @@ def test_forward_euler(
             grid,
             moist=True,
             backend=backend,
-            default_origin=default_origin,
-            storage_shape=storage_shape if same_shape else None,
+            storage_shape=storage_shape,
+            storage_options=so,
         ),
         label="state_prv",
     )
@@ -255,11 +250,24 @@ def test_forward_euler(
     # ========================================
     # test bed
     # ========================================
-    bo = BackendOptions(rebuild=False)
-    so = StorageOptions(dtype=dtype, default_origin=default_origin)
+    slc = (slice(nx), slice(ny), slice(nz))
 
-    tendency1 = make_fake_tendency_component_1(domain, "numerical")
-    tendency2 = make_fake_tendency_component_2(domain, "numerical")
+    tendency1 = make_fake_tendency_component_1(
+        domain,
+        "numerical",
+        backend=backend,
+        backend_options=bo,
+        storage_shape=storage_shape,
+        storage_options=so,
+    )
+    tendency2 = make_fake_tendency_component_2(
+        domain,
+        "numerical",
+        backend=backend,
+        backend_options=bo,
+        storage_shape=storage_shape,
+        storage_options=so,
+    )
 
     state_dc = deepcopy_dataarray_dict(state)
     state_prv_dc = deepcopy_dataarray_dict(state_prv)
@@ -268,14 +276,14 @@ def test_forward_euler(
         TimeIntegrationOptions(
             tendency1,
             scheme="forward_euler",
-            backend=backend_ts1,
+            backend=backend,
             backend_options=bo,
             storage_options=so,
         ),
         TimeIntegrationOptions(
             tendency2,
             scheme="forward_euler",
-            backend=backend_ts2,
+            backend=backend,
             backend_options=bo,
             storage_options=so,
         ),
@@ -283,19 +291,25 @@ def test_forward_euler(
     sts(state, state_prv, timestep)
 
     assert "fake_variable" in state
-    s0 = state_dc["air_isentropic_density"].to_units("kg m^-2 K^-1").data
-    f1 = state["fake_variable"].data
-    compare_arrays(f1, 2 * s0)
+    s0 = to_numpy(
+        state_dc["air_isentropic_density"].to_units("kg m^-2 K^-1").data
+    )
+    f1 = to_numpy(state["fake_variable"].data)
+    compare_arrays(f1, 2 * s0, slice=slc)
 
     assert "air_isentropic_density" in state_prv
-    s1 = state_prv_dc["air_isentropic_density"].to_units("kg m^-2 K^-1").data
+    s1 = to_numpy(
+        state_prv_dc["air_isentropic_density"].to_units("kg m^-2 K^-1").data
+    )
     s2 = s1 + timestep.total_seconds() * 0.001 * s0
     s3 = s2 + timestep.total_seconds() * 0.01 * f1
-    compare_arrays(state_prv["air_isentropic_density"].data, s3)
+    compare_arrays(state_prv["air_isentropic_density"].data, s3, slice=slc)
 
     assert "x_momentum_isentropic" in state_prv
-    su0 = state_dc["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").data
-    su1 = (
+    su0 = to_numpy(
+        state_dc["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").data
+    )
+    su1 = to_numpy(
         state_prv_dc["x_momentum_isentropic"]
         .to_units("kg m^-1 K^-1 s^-1")
         .data
@@ -304,39 +318,44 @@ def test_forward_euler(
     compare_arrays(
         state_prv["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").data,
         su2,
+        slice=slc,
     )
 
-    assert "x_velocity_at_u_locations" in state_prv
-    u0 = state_dc["x_velocity_at_u_locations"].to_units("m s^-1").data
-    u1 = state_prv_dc["x_velocity_at_u_locations"].to_units("m s^-1").data
-    u2 = u1 + timestep.total_seconds() * 50 * u0
+    assert "x_velocity" in state_prv
+    u0 = to_numpy(
+        state_dc["x_velocity_at_u_locations"].to_units("m s^-1").data
+    )
+    vx1 = to_numpy(state_prv_dc["x_velocity"].to_units("m s^-1").data)
+    vx2 = np.zeros_like(vx1)
+    vx2[:nx, :ny, :nz] = vx1[:nx, :ny, :nz] + timestep.total_seconds() * 50 * (
+        u0[:nx, :ny, :nz] + u0[1 : nx + 1, :ny, :nz]
+    )
     compare_arrays(
-        state_prv["x_velocity_at_u_locations"].to_units("m s^-1").data, u2
+        state_prv["x_velocity"].to_units("m s^-1").data, vx2, slice=slc
     )
 
     assert "y_momentum_isentropic" in state_prv
-    v0 = state_dc["y_velocity_at_v_locations"].to_units("m s^-1").data
-    sv1 = (
+    v0 = to_numpy(
+        state_dc["y_velocity_at_v_locations"].to_units("m s^-1").data
+    )
+    sv1 = to_numpy(
         state_prv_dc["y_momentum_isentropic"]
         .to_units("kg m^-1 K^-1 s^-1")
         .data
     )
-    if same_shape or is_gt(backend):
-        sv3 = sv1[:, :-1] + timestep.total_seconds() * 0.5 * s0[:, :-1] * (
-            v0[:, :-1] + v0[:, 1:]
-        )
-        compare_arrays(state_prv["y_momentum_isentropic"].data[:, :-1], sv3)
-    else:
-        sv3 = sv1 + timestep.total_seconds() * 0.5 * s0 * (
-            v0[:, :-1] + v0[:, 1:]
-        )
-        compare_arrays(state_prv["y_momentum_isentropic"].data, sv3)
+    sv3 = np.zeros_like(sv1)
+    sv3[:nx, :ny, :nz] = sv1[
+        :nx, :ny, :nz
+    ] + timestep.total_seconds() * 0.5 * s0[:nx, :ny, :nz] * (
+        v0[:nx, :ny, :nz] + v0[:nx, 1 : ny + 1, :nz]
+    )
+    compare_arrays(state_prv["y_momentum_isentropic"].data, sv3, slice=slc)
 
 
 @hyp_settings
 @given(data=hyp_st.data())
-@pytest.mark.parametrize("backend", conf_backend)
-@pytest.mark.parametrize("dtype", conf_dtype)
+@pytest.mark.parametrize("backend", conf.backend)
+@pytest.mark.parametrize("dtype", conf.dtype)
 def test_rk2(
     data,
     backend,
@@ -347,21 +366,14 @@ def test_rk2(
     # ========================================
     # random data generation
     # ========================================
-    backend_ts1 = (
-        backend
-        if data.draw(hyp_st.booleans(), label="same_backend_1")
-        else "numpy"
+    aligned_index = data.draw(
+        st_one_of(conf.aligned_index), label="aligned_index"
     )
-    backend_ts2 = (
-        backend
-        if data.draw(hyp_st.booleans(), label="same_backend_2")
-        else "numpy"
-    )
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-    same_shape = data.draw(hyp_st.booleans(), label="same_shape")
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
 
     nb = data.draw(
-        hyp_st.integers(min_value=3, max_value=max(3, conf_nb)), label="nb"
+        hyp_st.integers(min_value=1, max_value=max(3, conf.nb)), label="nb"
     )
     domain = data.draw(
         st_domain(
@@ -370,24 +382,25 @@ def test_rk2(
             zaxis_length=(1, 20),
             nb=nb,
             backend=backend,
-            dtype=dtype,
+            backend_options=bo,
+            storage_options=so,
         ),
         label="domain",
     )
     grid = domain.numerical_grid
-
-    dnx = data.draw(hyp_st.integers(min_value=0, max_value=3), label="dnx")
-    dny = data.draw(hyp_st.integers(min_value=0, max_value=3), label="dny")
-    dnz = data.draw(hyp_st.integers(min_value=0, max_value=3), label="dnz")
-    storage_shape = (grid.nx + dnx, grid.ny + dny, grid.nz + dnz)
+    nx, ny, nz = grid.nx, grid.ny, grid.nz
+    dnx = data.draw(hyp_st.integers(min_value=1, max_value=3), label="dnx")
+    dny = data.draw(hyp_st.integers(min_value=1, max_value=3), label="dny")
+    dnz = data.draw(hyp_st.integers(min_value=1, max_value=3), label="dnz")
+    storage_shape = (nx + dnx, ny + dny, nz + dnz)
 
     state = data.draw(
         st_isentropic_state_f(
             grid,
             moist=True,
             backend=backend,
-            default_origin=default_origin,
-            storage_shape=storage_shape if same_shape else None,
+            storage_shape=storage_shape,
+            storage_options=so,
         ),
         label="state",
     )
@@ -396,8 +409,8 @@ def test_rk2(
             grid,
             moist=True,
             backend=backend,
-            default_origin=default_origin,
-            storage_shape=storage_shape if same_shape else None,
+            storage_shape=storage_shape,
+            storage_options=so,
         ),
         label="state_prv",
     )
@@ -412,11 +425,24 @@ def test_rk2(
     # ========================================
     # test bed
     # ========================================
-    bo = BackendOptions(rebuild=False)
-    so = StorageOptions(dtype=dtype, default_origin=default_origin)
+    slc = (slice(nx), slice(ny), slice(nz))
 
-    tendency1 = make_fake_tendency_component_1(domain, "numerical")
-    tendency2 = make_fake_tendency_component_2(domain, "numerical")
+    tendency1 = make_fake_tendency_component_1(
+        domain,
+        "numerical",
+        backend=backend,
+        backend_options=bo,
+        storage_shape=storage_shape,
+        storage_options=so,
+    )
+    tendency2 = make_fake_tendency_component_2(
+        domain,
+        "numerical",
+        backend=backend,
+        backend_options=bo,
+        storage_shape=storage_shape,
+        storage_options=so,
+    )
 
     state_dc = deepcopy_dataarray_dict(state)
     state_prv_dc = deepcopy_dataarray_dict(state_prv)
@@ -425,14 +451,14 @@ def test_rk2(
         TimeIntegrationOptions(
             tendency1,
             scheme="rk2",
-            backend=backend_ts1,
+            backend=backend,
             backend_options=bo,
             storage_options=so,
         ),
         TimeIntegrationOptions(
             tendency2,
             scheme="rk2",
-            backend=backend_ts2,
+            backend=backend,
             backend_options=bo,
             storage_options=so,
         ),
@@ -441,23 +467,28 @@ def test_rk2(
     sts(state, state_prv, timestep)
 
     assert "fake_variable" in state
-    s0 = state_dc["air_isentropic_density"].to_units("kg m^-2 K^-1").data
-    f1 = state["fake_variable"].to_units("kg m^-2 K^-1").data
-    compare_arrays(f1, 2 * s0)
-
     assert "air_isentropic_density" in state_prv
+    s0 = to_numpy(
+        state_dc["air_isentropic_density"].to_units("kg m^-2 K^-1").data
+    )
     s1 = state_prv_dc["air_isentropic_density"].to_units("kg m^-2 K^-1").data
     s2b = 0.5 * (s0 + s1 + timestep.total_seconds() * 0.001 * s0)
     s2 = s1 + timestep.total_seconds() * 0.001 * s2b
-    s3b = 0.5 * (s0 + s2 + timestep.total_seconds() * 0.01 * f1)
-    s3 = s2 + timestep.total_seconds() * 0.01 * f1
+    f2 = to_numpy(state["fake_variable"].to_units("kg m^-2 K^-1").data)
+    compare_arrays(f2, 2 * s2b, slice=slc)
+    s3b = 0.5 * (s0 + s2 + timestep.total_seconds() * 0.01 * f2)
+    s3 = s2 + timestep.total_seconds() * 0.01 * f2
     compare_arrays(
-        state_prv["air_isentropic_density"].to_units("kg m^-2 K^-1").data, s3
+        state_prv["air_isentropic_density"].to_units("kg m^-2 K^-1").data,
+        s3,
+        slice=slc,
     )
 
     assert "x_momentum_isentropic" in state_prv
-    su0 = state_dc["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").data
-    su1 = (
+    su0 = to_numpy(
+        state_dc["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").data
+    )
+    su1 = to_numpy(
         state_prv_dc["x_momentum_isentropic"]
         .to_units("kg m^-1 K^-1 s^-1")
         .data
@@ -467,48 +498,50 @@ def test_rk2(
     compare_arrays(
         state_prv["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").data,
         su2,
+        slice=slc,
     )
 
-    assert "x_velocity_at_u_locations" in state_prv
-    u0 = state_dc["x_velocity_at_u_locations"].to_units("m s^-1").data
-    u1 = state_prv_dc["x_velocity_at_u_locations"].to_units("m s^-1").data
-    u2b = 0.5 * (u0 + u1 + timestep.total_seconds() * 50 * u0)
-    u2 = u1 + timestep.total_seconds() * 50 * u2b
+    assert "x_velocity" in state_prv
+    u0 = to_numpy(
+        state_dc["x_velocity_at_u_locations"].to_units("m s^-1").data
+    )
+    vx1 = to_numpy(state_prv_dc["x_velocity"].to_units("m s^-1").data)
+    vx2 = np.zeros_like(vx1)
+    vx2[:nx, :ny, :nz] = vx1[:nx, :ny, :nz] + timestep.total_seconds() * 50 * (
+        u0[:nx, :ny, :nz] + u0[1 : nx + 1, :ny, :nz]
+    )
     compare_arrays(
-        state_prv["x_velocity_at_u_locations"].to_units("m s^-1").data, u2
+        state_prv["x_velocity"].to_units("m s^-1").data, vx2, slice=slc
     )
 
     assert "y_momentum_isentropic" in state_prv
-    v0 = state_dc["y_velocity_at_v_locations"].to_units("m s^-1").data
-    sv0 = state_dc["y_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").data
-    sv1 = (
+    v0 = to_numpy(
+        state_dc["y_velocity_at_v_locations"].to_units("m s^-1").data
+    )
+    sv0 = to_numpy(
+        state_dc["y_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").data
+    )
+    sv1 = to_numpy(
         state_prv_dc["y_momentum_isentropic"]
         .to_units("kg m^-1 K^-1 s^-1")
         .data
     )
-    if same_shape or is_gt(backend):
-        sv3b = 0.5 * (
-            sv0[:, :-1]
-            + sv1[:, :-1]
-            + timestep.total_seconds()
-            * 0.5
-            * s0[:, :-1]
-            * (v0[:, :-1] + v0[:, 1:])
-        )
-        sv3 = sv1[:, :-1] + timestep.total_seconds() * 0.5 * s3b[:, :-1] * (
-            v0[:, :-1] + v0[:, 1:]
-        )
-        compare_arrays(state_prv["y_momentum_isentropic"].data[:, :-1], sv3)
-    else:
-        sv3b = 0.5 * (
-            sv0
-            + sv1
-            + timestep.total_seconds() * 0.5 * s0 * (v0[:, :-1] + v0[:, 1:])
-        )
-        sv3 = sv1 + timestep.total_seconds() * 0.5 * s3b * (
-            v0[:, :-1] + v0[:, 1:]
-        )
-        compare_arrays(state_prv["y_momentum_isentropic"].data, sv3)
+    sv3b = np.zeros_like(sv1)
+    sv3b[:nx, :ny, :nz] = 0.5 * (
+        sv0[:nx, :ny, :nz]
+        + sv1[:nx, :ny, :nz]
+        + timestep.total_seconds()
+        * 0.5
+        * s0[:nx, :ny, :nz]
+        * (v0[:nx, :ny, :nz] + v0[:nx, 1 : ny + 1, :nz])
+    )
+    sv3 = np.zeros_like(sv1)
+    sv3[:nx, :ny, :nz] = sv1[
+        :nx, :ny, :nz
+    ] + timestep.total_seconds() * 0.5 * s3b[:nx, :ny, :nz] * (
+        v0[:nx, :ny, :nz] + v0[:nx, 1 : ny + 1, :nz]
+    )
+    compare_arrays(state_prv["y_momentum_isentropic"].data, sv3, slice=slc)
 
 
 if __name__ == "__main__":

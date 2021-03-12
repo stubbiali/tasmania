@@ -20,7 +20,6 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from copy import deepcopy
 from datetime import timedelta
 from hypothesis import (
     given,
@@ -30,12 +29,14 @@ from hypothesis import (
 import numpy as np
 import pytest
 from sympl import DataArray
+from typing import TYPE_CHECKING
 
 from tasmania.python.dwarfs.horizontal_smoothing import HorizontalSmoothing
 from tasmania.python.dwarfs.vertical_damping import VerticalDamping
 from tasmania.python.domain.domain import Domain
-from tasmania.python.framework.allocators import zeros
+from tasmania.python.framework.allocators import as_storage, zeros
 from tasmania.python.framework.base_components import TendencyComponent
+from tasmania.python.framework.generic_functions import to_numpy
 from tasmania.python.framework.options import BackendOptions, StorageOptions
 from tasmania.python.isentropic.dynamics.diagnostics import (
     IsentropicDiagnostics as RawIsentropicDiagnostics,
@@ -48,18 +49,14 @@ from tasmania.python.isentropic.physics.coriolis import (
 from tasmania.python.isentropic.physics.diagnostics import (
     IsentropicDiagnostics,
 )
+from tasmania.python.utils import typing as ty
 from tasmania.python.utils.storage import (
     deepcopy_array_dict,
     deepcopy_dataarray,
     deepcopy_dataarray_dict,
 )
 
-from tests.conf import (
-    backend as conf_backend,
-    dtype as conf_dtype,
-    default_origin as conf_dorigin,
-    nb as conf_nb,
-)
+from tests import conf
 from tests.isentropic.test_isentropic_horizontal_fluxes import (
     get_fifth_order_upwind_fluxes,
 )
@@ -75,6 +72,11 @@ from tests.strategies import (
     st_isentropic_state_f,
 )
 from tests.utilities import compare_arrays, compare_datetimes, hyp_settings
+
+if TYPE_CHECKING:
+    from tasmania.python.domain.domain import Domain
+    from tasmania.python.domain.grid import Grid
+    from tasmania.python.domain.horizontal_boundary import HorizontalBoundary
 
 
 mfwv = "mass_fraction_of_water_vapor_in_air"
@@ -94,21 +96,27 @@ dummy_grid = dummy_domain.numerical_grid
 rid = RawIsentropicDiagnostics(dummy_grid)
 
 
-def get_density_of_water_constituent(s, q, sq, clipping=True):
-    sq[...] = s[...] * q[...]
+def get_density_of_water_constituent(
+    s: np.ndarray, q: np.ndarray, sq: np.ndarray, clipping: bool = True
+) -> None:
+    sq[...] = s * q
     if clipping:
         sq[sq < 0.0] = 0.0
         sq[np.isnan(sq)] = 0.0
 
 
-def get_mass_fraction_of_water_constituent_in_air(s, sq, q, clipping=True):
-    q[...] = sq[...] / s[...]
+def get_mass_fraction_of_water_constituent_in_air(
+    s: np.ndarray, sq: np.ndarray, q: np.ndarray, clipping: bool = True
+) -> None:
+    q[...] = sq / s
     if clipping:
         q[q < 0.0] = 0.0
         q[np.isnan(q)] = 0.0
 
 
-def get_montgomery_potential(grid, s, pt, mtg):
+def get_montgomery_potential(
+    grid: "Grid", s: np.ndarray, pt: float, mtg: np.ndarray
+) -> None:
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     dz = grid.dz.to_units("K").values.item()
     theta_s = grid.z_on_interface_levels.to_units("K").values[-1]
@@ -119,20 +127,28 @@ def get_montgomery_potential(grid, s, pt, mtg):
     g = rid.rpc["gravitational_acceleration"]
     cp = rid.rpc["specific_heat_of_dry_air_at_constant_pressure"]
 
-    p = deepcopy(s)
+    p = np.zeros_like(s)
     p[:nx, :ny, 0] = pt
     for k in range(1, nz + 1):
         p[:nx, :ny, k] = p[:nx, :ny, k - 1] + g * dz * s[:nx, :ny, k - 1]
 
     exn = cp * (p / pref) ** (rd / cp)
 
-    mtg_s = theta_s * exn[:nx, :ny, -1] + g * topo
-    mtg[:nx, :ny, -2] = mtg_s + 0.5 * dz * exn[:nx, :ny, -1]
-    for k in range(nz - 2, -1, -1):
+    mtg_s = theta_s * exn[:nx, :ny, nz] + g * topo[:nx, :ny]
+    mtg[:nx, :ny, nz - 1] = mtg_s + 0.5 * dz * exn[:nx, :ny, nz]
+    for k in reversed(range(0, nz - 1)):
         mtg[:nx, :ny, k] = mtg[:nx, :ny, k + 1] + dz * exn[:nx, :ny, k + 1]
 
 
-def get_velocity_components(nx, ny, s, su, sv, u, v):
+def get_velocity_components(
+    nx: int,
+    ny: int,
+    s: np.ndarray,
+    su: np.ndarray,
+    sv: np.ndarray,
+    u: np.ndarray,
+    v: np.ndarray,
+) -> None:
     u[1:nx, :] = (su[: nx - 1, :] + su[1:nx, :]) / (
         s[: nx - 1, :] + s[1:nx, :]
     )
@@ -141,9 +157,16 @@ def get_velocity_components(nx, ny, s, su, sv, u, v):
     )
 
 
-def apply_rayleigh_damping(vd, dt, phi_now, phi_new, phi_ref, phi_out):
+def apply_rayleigh_damping(
+    vd: VerticalDamping,
+    dt: timedelta,
+    phi_now: np.ndarray,
+    phi_new: np.ndarray,
+    phi_ref: np.ndarray,
+    phi_out: np.ndarray,
+) -> None:
     ni, nj, nk = phi_now.shape
-    rmat = vd._rmat[:ni, :nj, :nk]
+    rmat = to_numpy(vd._rmat)
     dnk = vd._damp_depth
     phi_out[:ni, :nj, :dnk] = phi_new[
         :ni, :nj, :dnk
@@ -152,114 +175,110 @@ def apply_rayleigh_damping(vd, dt, phi_now, phi_new, phi_ref, phi_out):
     )
 
 
-def apply_second_order_smoothing(hs, phi, phi_out):
+def apply_second_order_smoothing(
+    hs: HorizontalSmoothing, phi: np.ndarray, phi_out: np.ndarray,
+) -> None:
+    nb = hs._nb
+    g = to_numpy(hs._gamma)
     ni, nj, nk = phi.shape
 
-    g = hs._gamma[:ni, :nj, :nk]
+    i, j, k = slice(nb, ni - nb), slice(nb, nj - nb), slice(0, nk)
+    im1, ip1 = slice(nb - 1, ni - nb - 1), slice(nb + 1, ni - nb + 1)
+    im2, ip2 = slice(nb - 2, ni - nb - 2), slice(nb + 2, ni - nb + 2)
+    jm1, jp1 = slice(nb - 1, nj - nb - 1), slice(nb + 1, nj - nb + 1)
+    jm2, jp2 = slice(nb - 2, nj - nb - 2), slice(nb + 2, nj - nb + 2)
 
-    if ni < 5:
-        i, j, k = slice(0, ni), slice(2, nj - 2), slice(0, nk)
-        jm1, jp1 = slice(1, nj - 3), slice(3, nj - 1)
-        jm2, jp2 = slice(0, nj - 4), slice(4, nj)
-
-        phi_out[i, j, k] = (1 - 0.375 * g[i, j, k]) * phi[
-            i, j, k
-        ] + 0.0625 * g[i, j, k] * (
-            -phi[i, jm2, k]
-            + 4.0 * phi[i, jm1, k]
-            - phi[i, jp2, k]
-            + 4.0 * phi[i, jp1, k]
-        )
-    elif nj < 5:
-        i, j, k = slice(2, ni - 2), slice(0, nj), slice(0, nk)
-        im1, ip1 = slice(1, ni - 3), slice(3, ni - 1)
-        im2, ip2 = slice(0, ni - 4), slice(4, ni)
-
-        phi_out[i, j, k] = (1 - 0.375 * g[i, j, k]) * phi[
-            i, j, k
-        ] + 0.0625 * g[i, j, k] * (
-            -phi[im2, j, k]
-            + 4.0 * phi[im1, j, k]
-            - phi[ip2, j, k]
-            + 4.0 * phi[ip1, j, k]
-        )
-    else:
-        i, j, k = slice(2, ni - 2), slice(2, nj - 2), slice(0, nk)
-        im1, ip1 = slice(1, ni - 3), slice(3, ni - 1)
-        im2, ip2 = slice(0, ni - 4), slice(4, ni)
-        jm1, jp1 = slice(1, nj - 3), slice(3, nj - 1)
-        jm2, jp2 = slice(0, nj - 4), slice(4, nj)
-
-        phi_out[i, j, k] = (1 - 0.75 * g[i, j, k]) * phi[i, j, k] + 0.0625 * g[
-            i, j, k
-        ] * (
-            -phi[im2, j, k]
-            + 4.0 * phi[im1, j, k]
-            - phi[ip2, j, k]
-            + 4.0 * phi[ip1, j, k]
-            - phi[i, jm2, k]
-            + 4.0 * phi[i, jm1, k]
-            - phi[i, jp2, k]
-            + 4.0 * phi[i, jp1, k]
-        )
+    phi_out[i, j, k] = (1 - 0.75 * g[i, j, k]) * phi[i, j, k] + 0.0625 * g[
+        i, j, k
+    ] * (
+        -phi[im2, j, k]
+        + 4.0 * phi[im1, j, k]
+        - phi[ip2, j, k]
+        + 4.0 * phi[ip1, j, k]
+        - phi[i, jm2, k]
+        + 4.0 * phi[i, jm1, k]
+        - phi[i, jp2, k]
+        + 4.0 * phi[i, jp1, k]
+    )
+    phi_out[0:nb, j, k] = phi[0:nb, j, k]
+    phi_out[ni - nb : ni, j, k] = phi[ni - nb, j, k]
+    phi_out[0:ni, 0:nb, k] = phi[0:ni, 0:nb, k]
+    phi_out[0:ni, nj - nb : nj, k] = phi[0:ni, nj - nb : nj, k]
 
 
 def rk3wssi_stage(
-    stage,
-    timestep,
-    grid,
-    raw_state_now,
-    raw_state_int,
-    raw_state_ref,
-    raw_tendencies,
-    raw_state_new,
-    field_properties,
-    hb,
-    moist,
-    damp,
-    vd,
-    smooth,
-    hs,
-    eps,
-):
+    stage: int,
+    timestep: timedelta,
+    grid: "Grid",
+    raw_state_now: ty.StorageDict,
+    raw_state_int: ty.StorageDict,
+    raw_state_ref: ty.StorageDict,
+    raw_tendencies: ty.StorageDict,
+    raw_state_new: ty.StorageDict,
+    field_properties: ty.PropertiesDict,
+    hb: "HorizontalBoundary",
+    hb_np: "HorizontalBoundary",
+    moist: bool,
+    damp: bool,
+    vd: VerticalDamping,
+    smooth: bool,
+    hs: HorizontalSmoothing,
+    eps: float,
+    *,
+    backend: str,
+    storage_options: StorageOptions
+) -> None:
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     dx = grid.dx.to_units("m").values.item()
     dy = grid.dy.to_units("m").values.item()
 
-    u_int = raw_state_int["x_velocity_at_u_locations"]
-    v_int = raw_state_int["y_velocity_at_v_locations"]
+    u_int = to_numpy(raw_state_int["x_velocity_at_u_locations"])
+    v_int = to_numpy(raw_state_int["y_velocity_at_v_locations"])
 
+    s_int = to_numpy(raw_state_int["air_isentropic_density"])
     if moist:
-        get_density_of_water_constituent(
-            raw_state_int["air_isentropic_density"],
-            raw_state_int[mfwv],
-            raw_state_int["isentropic_density_of_water_vapor"],
-            clipping=True,
+        qv_int = to_numpy(raw_state_int[mfwv])
+        sqv_int = np.zeros_like(s_int)
+        get_density_of_water_constituent(s_int, qv_int, sqv_int, clipping=True)
+        raw_state_int["isentropic_density_of_water_vapor"] = as_storage(
+            backend, data=sqv_int, storage_options=storage_options
         )
-        get_density_of_water_constituent(
-            raw_state_int["air_isentropic_density"],
-            raw_state_int[mfcw],
-            raw_state_int["isentropic_density_of_cloud_liquid_water"],
-            clipping=True,
+
+        qc_int = to_numpy(raw_state_int[mfcw])
+        sqc_int = np.zeros_like(s_int)
+        get_density_of_water_constituent(s_int, qc_int, sqc_int, clipping=True)
+        raw_state_int["isentropic_density_of_cloud_liquid_water"] = as_storage(
+            backend, data=sqc_int, storage_options=storage_options
         )
-        get_density_of_water_constituent(
-            raw_state_int["air_isentropic_density"],
-            raw_state_int[mfpw],
-            raw_state_int["isentropic_density_of_precipitation_water"],
-            clipping=True,
-        )
+
+        qr_int = to_numpy(raw_state_int[mfpw])
+        sqr_int = np.zeros_like(s_int)
+        get_density_of_water_constituent(s_int, qr_int, sqr_int, clipping=True)
+        raw_state_int[
+            "isentropic_density_of_precipitation_water"
+        ] = as_storage(backend, data=sqr_int, storage_options=storage_options)
 
         if mfwv in raw_tendencies:
-            raw_tendencies["isentropic_density_of_water_vapor"] = (
-                raw_state_int["air_isentropic_density"] * raw_tendencies[mfwv]
+            raw_tendencies["isentropic_density_of_water_vapor"] = as_storage(
+                backend,
+                data=s_int * to_numpy(raw_tendencies[mfwv]),
+                storage_options=storage_options,
             )
         if mfcw in raw_tendencies:
-            raw_tendencies["isentropic_density_of_cloud_liquid_water"] = (
-                raw_state_int["air_isentropic_density"] * raw_tendencies[mfcw]
+            raw_tendencies[
+                "isentropic_density_of_cloud_liquid_water"
+            ] = as_storage(
+                backend,
+                data=s_int * to_numpy(raw_tendencies[mfcw]),
+                storage_options=storage_options,
             )
         if mfpw in raw_tendencies:
-            raw_tendencies["isentropic_density_of_precipitation_water"] = (
-                raw_state_int["air_isentropic_density"] * raw_tendencies[mfpw]
+            raw_tendencies[
+                "isentropic_density_of_precipitation_water"
+            ] = as_storage(
+                backend,
+                data=s_int * to_numpy(raw_tendencies[mfpw]),
+                storage_options=storage_options,
             )
 
     if stage == 0:
@@ -274,13 +293,17 @@ def rk3wssi_stage(
     dt = (fraction * timestep).total_seconds()
 
     # isentropic_prognostic density
-    s_now = raw_state_now["air_isentropic_density"]
-    s_int = raw_state_int["air_isentropic_density"]
+    s_now = to_numpy(raw_state_now["air_isentropic_density"])
     s_tnd = raw_tendencies.get("air_isentropic_density", None)
-    s_new = raw_state_new["air_isentropic_density"]
+    s_tnd = to_numpy(s_tnd) if s_tnd is not None else None
+    s_new = np.zeros_like(s_now)
     forward_euler_step(
         get_fifth_order_upwind_fluxes,
         "xy",
+        nx,
+        ny,
+        nz,
+        hb_np.nb,
         dx,
         dy,
         dt,
@@ -291,11 +314,14 @@ def rk3wssi_stage(
         s_tnd,
         s_new,
     )
-    hb.dmn_enforce_field(
+    hb_np.enforce_field(
         s_new,
         field_name="air_isentropic_density",
         field_units="kg m^-2 K^-1",
         time=raw_state_new["time"],
+    )
+    raw_state_new["air_isentropic_density"] = as_storage(
+        backend, data=s_new, storage_options=storage_options
     )
 
     if moist:
@@ -306,13 +332,18 @@ def rk3wssi_stage(
             "isentropic_density_of_precipitation_water",
         ]
         for name in names:
-            sq_now = raw_state_now[name]
-            sq_int = raw_state_int[name]
+            sq_now = to_numpy(raw_state_now[name])
+            sq_int = to_numpy(raw_state_int[name])
             sq_tnd = raw_tendencies.get(name, None)
-            sq_new = raw_state_new[name]
+            sq_tnd = to_numpy(sq_tnd) if sq_tnd is not None else None
+            sq_new = np.zeros_like(sq_now)
             forward_euler_step(
                 get_fifth_order_upwind_fluxes,
                 "xy",
+                nx,
+                ny,
+                nz,
+                hb_np.nb,
                 dx,
                 dy,
                 dt,
@@ -323,46 +354,33 @@ def rk3wssi_stage(
                 sq_tnd,
                 sq_new,
             )
+            raw_state_new[name] = as_storage(
+                backend, data=sq_new, storage_options=storage_options
+            )
 
     # montgomery potential
-    pt = raw_state_now["air_pressure_on_interface_levels"][0, 0, 0]
-    mtg_new = raw_state_new["montgomery_potential"]
+    pt = raw_state_now["air_pressure_on_interface_levels"].data[0, 0, 0]
+    mtg_new = np.zeros_like(s_now)
     get_montgomery_potential(grid, s_new, pt, mtg_new)
+    raw_state_new["montgomery_potential"] = as_storage(
+        backend, data=mtg_new, storage_options=storage_options
+    )
 
     # x-momentum
-    nb = hb.nb
-    mtg_now = raw_state_now["montgomery_potential"]
-    su_now = raw_state_now["x_momentum_isentropic"]
-    su_int = raw_state_int["x_momentum_isentropic"]
+    mtg_now = to_numpy(raw_state_now["montgomery_potential"])
+    su_now = to_numpy(raw_state_now["x_momentum_isentropic"])
+    su_int = to_numpy(raw_state_int["x_momentum_isentropic"])
     su_tnd = raw_tendencies.get("x_momentum_isentropic", None)
-    su_new = raw_state_new["x_momentum_isentropic"]
-    # forward_euler_step(
-    #     get_fifth_order_upwind_fluxes,
-    #     "xy",
-    #     dx,
-    #     dy,
-    #     dt,
-    #     u_int,
-    #     v_int,
-    #     su_now,
-    #     su_int,
-    #     su_tnd,
-    #     su_new,
-    # )
-    # su_new[nb:-nb, nb:-nb] -= dt * (
-    #         (1 - eps)
-    #         * s_now[nb:-nb, nb:-nb]
-    #         * (mtg_now[nb + 1 : -nb + 1, nb:-nb] - mtg_now[nb - 1 : -nb - 1, nb:-nb])
-    #         / (2.0 * dx)
-    #         + eps
-    #         * s_new[nb:-nb, nb:-nb]
-    #         * (mtg_new[nb + 1 : -nb + 1, nb:-nb] - mtg_new[nb - 1 : -nb - 1, nb:-nb])
-    #         / (2.0 * dx)
-    # )
+    su_tnd = to_numpy(su_tnd) if su_tnd is not None else None
+    su_new = np.zeros_like(su_now)
     forward_euler_step_momentum_x(
         get_fifth_order_upwind_fluxes,
         "xy",
         eps,
+        nx,
+        ny,
+        nz,
+        hb_np.nb,
         dx,
         dy,
         dt,
@@ -377,39 +395,24 @@ def rk3wssi_stage(
         su_tnd,
         su_new,
     )
+    raw_state_new["x_momentum_isentropic"] = as_storage(
+        backend, data=su_new, storage_options=storage_options
+    )
 
     # y-momentum
-    sv_now = raw_state_now["y_momentum_isentropic"]
-    sv_int = raw_state_int["y_momentum_isentropic"]
+    sv_now = to_numpy(raw_state_now["y_momentum_isentropic"])
+    sv_int = to_numpy(raw_state_int["y_momentum_isentropic"])
     sv_tnd = raw_tendencies.get("y_momentum_isentropic", None)
-    sv_new = raw_state_new["y_momentum_isentropic"]
-    # forward_euler_step(
-    #     get_fifth_order_upwind_fluxes,
-    #     "xy",
-    #     dx,
-    #     dy,
-    #     dt,
-    #     u_int,
-    #     v_int,
-    #     sv_now,
-    #     sv_int,
-    #     sv_tnd,
-    #     sv_new,
-    # )
-    # sv_new[nb:-nb, nb:-nb] -= dt * (
-    #         (1 - eps)
-    #         * s_now[nb:-nb, nb:-nb]
-    #         * (mtg_now[nb:-nb, nb + 1 : -nb + 1] - mtg_now[nb:-nb, nb - 1 : -nb - 1])
-    #         / (2.0 * dy)
-    #         + eps
-    #         * s_new[nb:-nb, nb:-nb]
-    #         * (mtg_new[nb:-nb, nb + 1 : -nb + 1] - mtg_new[nb:-nb, nb - 1 : -nb - 1])
-    #         / (2.0 * dy)
-    # )
+    sv_tnd = to_numpy(sv_tnd) if sv_tnd is not None else None
+    sv_new = np.zeros_like(sv_now)
     forward_euler_step_momentum_y(
         get_fifth_order_upwind_fluxes,
         "xy",
         eps,
+        nx,
+        ny,
+        nz,
+        hb_np.nb,
         dx,
         dy,
         dt,
@@ -424,28 +427,43 @@ def rk3wssi_stage(
         sv_tnd,
         sv_new,
     )
+    raw_state_new["y_momentum_isentropic"] = as_storage(
+        backend, data=sv_new, storage_options=storage_options
+    )
 
     if moist:
+        sqv_new = to_numpy(raw_state_new["isentropic_density_of_water_vapor"])
+        qv_new = np.zeros_like(sv_now)
         get_mass_fraction_of_water_constituent_in_air(
-            raw_state_new["air_isentropic_density"],
-            raw_state_new["isentropic_density_of_water_vapor"],
-            raw_state_new[mfwv],
-            clipping=True,
+            s_new, sqv_new, qv_new, clipping=True,
         )
-        get_mass_fraction_of_water_constituent_in_air(
-            raw_state_new["air_isentropic_density"],
-            raw_state_new["isentropic_density_of_cloud_liquid_water"],
-            raw_state_new[mfcw],
-            clipping=True,
-        )
-        get_mass_fraction_of_water_constituent_in_air(
-            raw_state_new["air_isentropic_density"],
-            raw_state_new["isentropic_density_of_precipitation_water"],
-            raw_state_new[mfpw],
-            clipping=True,
+        raw_state_new[mfwv] = as_storage(
+            backend, data=qv_new, storage_options=storage_options
         )
 
-    hb.dmn_enforce_raw(raw_state_new, field_properties=field_properties)
+        sqc_new = to_numpy(
+            raw_state_new["isentropic_density_of_cloud_liquid_water"]
+        )
+        qc_new = np.zeros_like(sv_now)
+        get_mass_fraction_of_water_constituent_in_air(
+            s_new, sqc_new, qc_new, clipping=True,
+        )
+        raw_state_new[mfcw] = as_storage(
+            backend, data=qc_new, storage_options=storage_options
+        )
+
+        sqr_new = to_numpy(
+            raw_state_new["isentropic_density_of_precipitation_water"]
+        )
+        qr_new = np.zeros_like(sv_now)
+        get_mass_fraction_of_water_constituent_in_air(
+            s_new, sqr_new, qr_new, clipping=True,
+        )
+        raw_state_new[mfpw] = as_storage(
+            backend, data=qr_new, storage_options=storage_options
+        )
+
+    hb.enforce_raw(raw_state_new, field_properties=field_properties)
 
     if damp:
         names = [
@@ -454,71 +472,78 @@ def rk3wssi_stage(
             "y_momentum_isentropic",
         ]
         for name in names:
-            phi_now = raw_state_now[name]
-            phi_new = raw_state_new[name]
-            phi_ref = raw_state_ref[name]
-            phi_out = raw_state_new[name]
+            phi_now = to_numpy(raw_state_now[name])
+            phi_new = to_numpy(raw_state_new[name])
+            phi_ref = to_numpy(raw_state_ref[name])
+            phi_out = to_numpy(raw_state_new[name])
             apply_rayleigh_damping(
                 vd, timestep, phi_now, phi_new, phi_ref, phi_out
+            )
+            raw_state_new[name] = as_storage(
+                backend, data=phi_out, storage_options=storage_options
             )
 
     if smooth:
         for name in field_properties:
-            phi = raw_state_new[name]
-            phi_out = raw_state_new[name]
+            phi = to_numpy(raw_state_new[name])
+            phi_out = np.zeros_like(phi)
             apply_second_order_smoothing(hs, phi, phi_out)
-            hb.dmn_enforce_field(
+            hb.enforce_field(
                 phi_out,
                 field_name=name,
                 field_units=field_properties[name]["units"],
                 time=raw_state_new["time"],
             )
+            raw_state_new[name] = as_storage(
+                backend, data=phi_out, storage_options=storage_options
+            )
 
-    get_velocity_components(
-        nx,
-        ny,
-        raw_state_new["air_isentropic_density"],
-        raw_state_new["x_momentum_isentropic"],
-        raw_state_new["y_momentum_isentropic"],
-        raw_state_new["x_velocity_at_u_locations"],
-        raw_state_new["y_velocity_at_v_locations"],
-    )
-    hb.dmn_set_outermost_layers_x(
-        raw_state_new["x_velocity_at_u_locations"],
+    s_new = to_numpy(raw_state_new["air_isentropic_density"])
+    su_new = to_numpy(raw_state_new["x_momentum_isentropic"])
+    sv_new = to_numpy(raw_state_new["y_momentum_isentropic"])
+    u_new = np.zeros_like(s_new)
+    v_new = np.zeros_like(s_new)
+    get_velocity_components(nx, ny, s_new, su_new, sv_new, u_new, v_new)
+    hb_np.set_outermost_layers_x(
+        u_new,
         field_name="x_velocity_at_u_locations",
         field_units="m s^-1",
         time=raw_state_new["time"],
     )
-    hb.dmn_set_outermost_layers_y(
-        raw_state_new["y_velocity_at_v_locations"],
+    hb_np.set_outermost_layers_y(
+        v_new,
         field_name="y_velocity_at_v_locations",
         field_units="m s^-1",
         time=raw_state_new["time"],
     )
+    raw_state_new["x_velocity_at_u_locations"] = as_storage(
+        backend, data=u_new, storage_options=storage_options
+    )
+    raw_state_new["y_velocity_at_v_locations"] = as_storage(
+        backend, data=v_new, storage_options=storage_options
+    )
 
 
 def rk3ws_step(
-    domain,
-    moist,
-    timestep,
-    raw_state_0,
-    raw_tendencies,
-    damp,
-    damp_at_every_stage,
-    vd,
-    smooth,
-    smooth_at_every_stage,
-    hs,
-    eps,
-):
-    grid, hb = domain.numerical_grid, domain.horizontal_boundary
-    s = raw_state_0["air_isentropic_density"]
-
-    if moist:
-
-        raw_state_0["isentropic_density_of_water_vapor"] = deepcopy(s)
-        raw_state_0["isentropic_density_of_cloud_liquid_water"] = deepcopy(s)
-        raw_state_0["isentropic_density_of_precipitation_water"] = deepcopy(s)
+    domain: "Domain",
+    moist: bool,
+    timestep: timedelta,
+    raw_state_0: ty.StorageDict,
+    raw_tendencies: ty.StorageDict,
+    damp: bool,
+    damp_at_every_stage: bool,
+    vd: VerticalDamping,
+    smooth: bool,
+    smooth_at_every_stage: bool,
+    hs: HorizontalSmoothing,
+    eps: float,
+    *,
+    backend: str,
+    storage_options: StorageOptions
+) -> ty.StorageDict:
+    grid = domain.numerical_grid
+    hb = domain.horizontal_boundary
+    hb_np = domain.copy(backend="numpy").horizontal_boundary
 
     raw_state_1 = deepcopy_array_dict(raw_state_0)
     raw_state_2 = deepcopy_array_dict(raw_state_0)
@@ -559,12 +584,15 @@ def rk3ws_step(
         raw_state_1,
         field_properties,
         hb,
+        hb_np,
         moist,
         _damp,
         vd,
         _smooth,
         hs,
         eps,
+        backend=backend,
+        storage_options=storage_options,
     )
 
     # stage 1
@@ -579,12 +607,15 @@ def rk3ws_step(
         raw_state_2,
         field_properties,
         hb,
+        hb_np,
         moist,
         _damp,
         vd,
         _smooth,
         hs,
         eps,
+        backend=backend,
+        storage_options=storage_options,
     )
 
     # stage 2
@@ -599,12 +630,15 @@ def rk3ws_step(
         raw_state_3,
         field_properties,
         hb,
+        hb_np,
         moist,
         damp,
         vd,
         smooth,
         hs,
         eps,
+        backend=backend,
+        storage_options=storage_options,
     )
 
     return raw_state_3
@@ -612,8 +646,8 @@ def rk3ws_step(
 
 @hyp_settings
 @given(data=hyp_st.data())
-@pytest.mark.parametrize("backend", conf_backend)
-@pytest.mark.parametrize("dtype", conf_dtype)
+@pytest.mark.parametrize("backend", conf.backend)
+@pytest.mark.parametrize("dtype", conf.dtype)
 def test1(data, backend, dtype, subtests):
     """
     - Slow tendencies: no
@@ -624,36 +658,41 @@ def test1(data, backend, dtype, subtests):
     # ========================================
     # random data generation
     # ========================================
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+    aligned_index = data.draw(
+        st_one_of(conf.aligned_index), label="aligned_index"
+    )
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
 
     nb = data.draw(
-        hyp_st.integers(min_value=3, max_value=max(3, conf_nb)), label="nb"
+        hyp_st.integers(min_value=3, max_value=max(3, conf.nb)), label="nb"
     )
     domain = data.draw(
         st_domain(
-            xaxis_length=(1, 25),
-            yaxis_length=(1, 25),
-            zaxis_length=(2, 15),
+            xaxis_length=(1, 50),
+            yaxis_length=(1, 50),
+            zaxis_length=(2, 50),
             nb=nb,
             backend=backend,
-            dtype=dtype,
+            backend_options=bo,
+            storage_options=so,
         ),
         label="domain",
     )
     grid = domain.numerical_grid
-    hb = domain.horizontal_boundary
-
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     storage_shape = (nx + 1, ny + 1, nz + 1)
+    hb = domain.horizontal_boundary
 
     moist = data.draw(hyp_st.booleans(), label="moist")
+
     state = data.draw(
         st_isentropic_state_f(
             grid,
             moist=moist,
             backend=backend,
-            default_origin=default_origin,
             storage_shape=storage_shape,
+            storage_options=so,
         ),
         label="state",
     )
@@ -686,9 +725,6 @@ def test1(data, backend, dtype, subtests):
     # ========================================
     # test bed
     # ========================================
-    bo = BackendOptions(rebuild=False)
-    so = StorageOptions(dtype=dtype, default_origin=default_origin)
-
     domain.horizontal_boundary.reference_state = state
 
     vd = VerticalDamping.factory(
@@ -714,6 +750,14 @@ def test1(data, backend, dtype, subtests):
         storage_options=so,
     )
 
+    pt_raw = state["air_pressure_on_interface_levels"].data[0, 0, 0]
+    pt = DataArray(
+        pt_raw,
+        attrs={
+            "units": state["air_pressure_on_interface_levels"].attrs["units"]
+        },
+    )
+
     dycore = IsentropicDynamicalCore(
         domain,
         intermediate_tendency_component=None,
@@ -723,10 +767,7 @@ def test1(data, backend, dtype, subtests):
         moist=moist,
         time_integration_scheme="rk3ws_si",
         horizontal_flux_scheme="fifth_order_upwind",
-        time_integration_properties={
-            "pt": state["air_pressure_on_interface_levels"][0, 0, 0],
-            "eps": eps,
-        },
+        time_integration_properties={"pt": pt, "eps": eps},
         damp=damp,
         damp_type="rayleigh",
         damp_depth=damp_depth,
@@ -841,22 +882,25 @@ def test1(data, backend, dtype, subtests):
         smooth_at_every_stage,
         hs,
         eps,
+        backend=backend,
+        storage_options=so,
     )
 
     for name in state_new:
         # with subtests.test(name=name):
         if name != "time":
             compare_arrays(
-                state_new[name].data[:-1, :-1, :-1],
-                raw_state_new_val[name][:-1, :-1, :-1],
+                state_new[name].data,
+                raw_state_new_val[name],
+                slice=(slice(nx), slice(ny), slice(nz)),
                 # atol=1e-6,
             )
 
 
 @hyp_settings
 @given(data=hyp_st.data())
-@pytest.mark.parametrize("backend", conf_backend)
-@pytest.mark.parametrize("dtype", conf_dtype)
+@pytest.mark.parametrize("backend", conf.backend)
+@pytest.mark.parametrize("dtype", conf.dtype)
 def test2(data, backend, dtype, subtests):
     """
     - Slow tendencies: yes
@@ -867,39 +911,45 @@ def test2(data, backend, dtype, subtests):
     # ========================================
     # random data generation
     # ========================================
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+    aligned_index = data.draw(
+        st_one_of(conf.aligned_index), label="aligned_index"
+    )
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
 
     nb = data.draw(
-        hyp_st.integers(min_value=3, max_value=max(3, conf_nb)), label="nb"
+        hyp_st.integers(min_value=3, max_value=max(3, conf.nb)), label="nb"
     )
     domain = data.draw(
         st_domain(
-            xaxis_length=(1, 25),
-            yaxis_length=(1, 25),
-            zaxis_length=(2, 15),
+            xaxis_length=(1, 50),
+            yaxis_length=(1, 50),
+            zaxis_length=(2, 50),
             nb=nb,
             backend=backend,
-            dtype=dtype,
+            backend_options=bo,
+            storage_options=so,
         ),
         label="domain",
     )
     grid = domain.numerical_grid
-    hb = domain.horizontal_boundary
-
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     storage_shape = (nx + 1, ny + 1, nz + 1)
+    hb = domain.horizontal_boundary
 
     moist = data.draw(hyp_st.booleans(), label="moist")
+
     state = data.draw(
         st_isentropic_state_f(
             grid,
             moist=moist,
             backend=backend,
-            default_origin=default_origin,
             storage_shape=storage_shape,
+            storage_options=so,
         ),
         label="state",
     )
+
     timestep = data.draw(
         hyp_st.timedeltas(
             min_value=timedelta(seconds=0), max_value=timedelta(hours=1)
@@ -962,9 +1012,6 @@ def test2(data, backend, dtype, subtests):
     # ========================================
     # test bed
     # ========================================
-    bo = BackendOptions(rebuild=False)
-    so = StorageOptions(dtype=dtype, default_origin=default_origin)
-
     domain.horizontal_boundary.reference_state = state
 
     vd = VerticalDamping.factory(
@@ -990,6 +1037,14 @@ def test2(data, backend, dtype, subtests):
         storage_options=so,
     )
 
+    pt_raw = state["air_pressure_on_interface_levels"].data[0, 0, 0]
+    pt = DataArray(
+        pt_raw,
+        attrs={
+            "units": state["air_pressure_on_interface_levels"].attrs["units"]
+        },
+    )
+
     dycore = IsentropicDynamicalCore(
         domain,
         intermediate_tendency_component=None,
@@ -999,10 +1054,7 @@ def test2(data, backend, dtype, subtests):
         moist=moist,
         time_integration_scheme="rk3ws_si",
         horizontal_flux_scheme="fifth_order_upwind",
-        time_integration_properties={
-            "pt": state["air_pressure_on_interface_levels"][0, 0, 0],
-            "eps": eps,
-        },
+        time_integration_properties={"pt": pt, "eps": eps},
         damp=damp,
         damp_type="rayleigh",
         damp_depth=damp_depth,
@@ -1124,22 +1176,25 @@ def test2(data, backend, dtype, subtests):
         smooth_at_every_stage,
         hs,
         eps,
+        backend=backend,
+        storage_options=so,
     )
 
     for name in state_new:
         # with subtests.test(name=name):
         if name != "time":
             compare_arrays(
-                state_new[name].data[:-1, :-1, :-1],
-                raw_state_new_val[name][:-1, :-1, :-1],
+                state_new[name].data,
+                raw_state_new_val[name],
+                slice=(slice(nx), slice(ny), slice(nz)),
                 # atol=1e-6,
             )
 
 
 @hyp_settings
 @given(data=hyp_st.data())
-@pytest.mark.parametrize("backend", conf_backend)
-@pytest.mark.parametrize("dtype", conf_dtype)
+@pytest.mark.parametrize("backend", conf.backend)
+@pytest.mark.parametrize("dtype", conf.dtype)
 def test3(data, backend, dtype, subtests):
     """
     - Slow tendencies: yes
@@ -1150,10 +1205,14 @@ def test3(data, backend, dtype, subtests):
     # ========================================
     # random data generation
     # ========================================
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+    aligned_index = data.draw(
+        st_one_of(conf.aligned_index), label="aligned_index"
+    )
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
 
     nb = data.draw(
-        hyp_st.integers(min_value=3, max_value=max(3, conf_nb)), label="nb"
+        hyp_st.integers(min_value=3, max_value=max(3, conf.nb)), label="nb"
     )
     domain = data.draw(
         st_domain(
@@ -1162,27 +1221,29 @@ def test3(data, backend, dtype, subtests):
             zaxis_length=(2, 15),
             nb=nb,
             backend=backend,
-            dtype=dtype,
+            backend_options=bo,
+            storage_options=so,
         ),
         label="domain",
     )
     grid = domain.numerical_grid
-    hb = domain.horizontal_boundary
-
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     storage_shape = (nx + 1, ny + 1, nz + 1)
+    hb = domain.horizontal_boundary
 
     moist = data.draw(hyp_st.booleans(), label="moist")
+
     state = data.draw(
         st_isentropic_state_f(
             grid,
             moist=moist,
             backend=backend,
-            default_origin=default_origin,
             storage_shape=storage_shape,
+            storage_options=so,
         ),
         label="state",
     )
+
     timestep = data.draw(
         hyp_st.timedeltas(
             min_value=timedelta(seconds=0), max_value=timedelta(hours=1)
@@ -1245,10 +1306,8 @@ def test3(data, backend, dtype, subtests):
     # ========================================
     # test bed
     # ========================================
-    bo = BackendOptions(rebuild=False)
-    so = StorageOptions(dtype=dtype, default_origin=default_origin)
-
     domain.horizontal_boundary.reference_state = state
+    hb_np = domain.copy(backend="numpy").horizontal_boundary
 
     vd = VerticalDamping.factory(
         "rayleigh",
@@ -1283,6 +1342,14 @@ def test3(data, backend, dtype, subtests):
     )
     cfv = cf._f
 
+    pt_raw = state["air_pressure_on_interface_levels"].data[0, 0, 0]
+    pt = DataArray(
+        pt_raw,
+        attrs={
+            "units": state["air_pressure_on_interface_levels"].attrs["units"]
+        },
+    )
+
     dycore = IsentropicDynamicalCore(
         domain,
         intermediate_tendency_component=cf,
@@ -1292,10 +1359,7 @@ def test3(data, backend, dtype, subtests):
         moist=moist,
         time_integration_scheme="rk3ws_si",
         horizontal_flux_scheme="fifth_order_upwind",
-        time_integration_properties={
-            "pt": state["air_pressure_on_interface_levels"][0, 0, 0],
-            "eps": eps,
-        },
+        time_integration_properties={"pt": pt, "eps": eps},
         damp=damp,
         damp_type="rayleigh",
         damp_depth=damp_depth,
@@ -1372,7 +1436,7 @@ def test3(data, backend, dtype, subtests):
         if key == "time":
             compare_datetimes(state["time"], state_dc["time"])
         else:
-            compare_arrays(state[key], state_dc[key])
+            compare_arrays(state[key].data, state_dc[key].data)
 
     assert "time" in state_new
     compare_datetimes(state_new["time"], state["time"] + timestep)
@@ -1466,13 +1530,17 @@ def test3(data, backend, dtype, subtests):
     #
     # stage 0
     #
-    su0 = raw_state_0["x_momentum_isentropic"]
-    sv0 = raw_state_0["y_momentum_isentropic"]
-    raw_tendencies["x_momentum_isentropic"][...] = (
-        raw_tendencies_dc["x_momentum_isentropic"] + cfv * sv0[...]
+    raw_tendencies["x_momentum_isentropic"][...] = as_storage(
+        backend,
+        data=to_numpy(raw_tendencies_dc["x_momentum_isentropic"])
+        + cfv * to_numpy(raw_state_0["y_momentum_isentropic"]),
+        storage_options=so,
     )
-    raw_tendencies["y_momentum_isentropic"][...] = (
-        raw_tendencies_dc["y_momentum_isentropic"] - cfv * su0[...]
+    raw_tendencies["y_momentum_isentropic"][...] = as_storage(
+        backend,
+        data=to_numpy(raw_tendencies_dc["y_momentum_isentropic"])
+        - cfv * to_numpy(raw_state_0["x_momentum_isentropic"]),
+        storage_options=so,
     )
 
     _damp = damp and damp_at_every_stage
@@ -1488,24 +1556,31 @@ def test3(data, backend, dtype, subtests):
         raw_state_1,
         field_properties,
         hb,
+        hb_np,
         moist,
         _damp,
         vd,
         _smooth,
         hs,
         eps,
+        backend=backend,
+        storage_options=so,
     )
 
     #
     # stage 1
     #
-    su1 = raw_state_1["x_momentum_isentropic"]
-    sv1 = raw_state_1["y_momentum_isentropic"]
-    raw_tendencies["x_momentum_isentropic"][...] = (
-        raw_tendencies_dc["x_momentum_isentropic"] + cfv * sv1[...]
+    raw_tendencies["x_momentum_isentropic"][...] = as_storage(
+        backend,
+        data=to_numpy(raw_tendencies_dc["x_momentum_isentropic"])
+        + cfv * to_numpy(raw_state_1["y_momentum_isentropic"]),
+        storage_options=so,
     )
-    raw_tendencies["y_momentum_isentropic"][...] = (
-        raw_tendencies_dc["y_momentum_isentropic"] - cfv * su1[...]
+    raw_tendencies["y_momentum_isentropic"][...] = as_storage(
+        backend,
+        data=to_numpy(raw_tendencies_dc["y_momentum_isentropic"])
+        - cfv * to_numpy(raw_state_1["x_momentum_isentropic"]),
+        storage_options=so,
     )
 
     _damp = damp and damp_at_every_stage
@@ -1521,24 +1596,31 @@ def test3(data, backend, dtype, subtests):
         raw_state_2,
         field_properties,
         hb,
+        hb_np,
         moist,
         _damp,
         vd,
         _smooth,
         hs,
         eps,
+        backend=backend,
+        storage_options=so,
     )
 
     #
     # stage 2
     #
-    su2 = raw_state_2["x_momentum_isentropic"]
-    sv2 = raw_state_2["y_momentum_isentropic"]
-    raw_tendencies["x_momentum_isentropic"][...] = (
-        raw_tendencies_dc["x_momentum_isentropic"] + cfv * sv2[...]
+    raw_tendencies["x_momentum_isentropic"][...] = as_storage(
+        backend,
+        data=to_numpy(raw_tendencies_dc["x_momentum_isentropic"])
+        + cfv * to_numpy(raw_state_2["y_momentum_isentropic"]),
+        storage_options=so,
     )
-    raw_tendencies["y_momentum_isentropic"][...] = (
-        raw_tendencies_dc["y_momentum_isentropic"] - cfv * su2[...]
+    raw_tendencies["y_momentum_isentropic"][...] = as_storage(
+        backend,
+        data=to_numpy(raw_tendencies_dc["y_momentum_isentropic"])
+        - cfv * to_numpy(raw_state_2["x_momentum_isentropic"]),
+        storage_options=so,
     )
 
     rk3wssi_stage(
@@ -1552,28 +1634,32 @@ def test3(data, backend, dtype, subtests):
         raw_state_3,
         field_properties,
         hb,
+        hb_np,
         moist,
         damp,
         vd,
         smooth,
         hs,
         eps,
+        backend=backend,
+        storage_options=so,
     )
 
     for name in state_new:
         # with subtests.test(name=name):
         if name != "time":
             compare_arrays(
-                state_new[name].data[:-1, :-1, :-1],
-                raw_state_3[name][:-1, :-1, :-1],
+                state_new[name].data,
+                raw_state_3[name],
+                slice=(slice(nx), slice(ny), slice(nz)),
                 # atol=1e-6,
             )
 
 
 @hyp_settings
 @given(data=hyp_st.data())
-@pytest.mark.parametrize("backend", conf_backend)
-@pytest.mark.parametrize("dtype", conf_dtype)
+@pytest.mark.parametrize("backend", conf.backend)
+@pytest.mark.parametrize("dtype", conf.dtype)
 def test4(data, backend, dtype, subtests):
     """
     - Slow tendencies: yes
@@ -1584,39 +1670,45 @@ def test4(data, backend, dtype, subtests):
     # ========================================
     # random data generation
     # ========================================
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+    aligned_index = data.draw(
+        st_one_of(conf.aligned_index), label="aligned_index"
+    )
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
 
     nb = data.draw(
-        hyp_st.integers(min_value=3, max_value=max(3, conf_nb)), label="nb"
+        hyp_st.integers(min_value=3, max_value=max(3, conf.nb)), label="nb"
     )
     domain = data.draw(
         st_domain(
-            xaxis_length=(1, 25),
-            yaxis_length=(1, 25),
-            zaxis_length=(2, 15),
+            xaxis_length=(1, 50),
+            yaxis_length=(1, 50),
+            zaxis_length=(2, 50),
             nb=nb,
             backend=backend,
-            dtype=dtype,
+            backend_options=bo,
+            storage_options=so,
         ),
         label="domain",
     )
     grid = domain.numerical_grid
-    hb = domain.horizontal_boundary
-
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     storage_shape = (nx + 1, ny + 1, nz + 1)
+    hb = domain.horizontal_boundary
 
     moist = data.draw(hyp_st.booleans(), label="moist")
+
     state = data.draw(
         st_isentropic_state_f(
             grid,
             moist=moist,
             backend=backend,
-            default_origin=default_origin,
             storage_shape=storage_shape,
+            storage_options=so,
         ),
         label="state",
     )
+
     timestep = data.draw(
         hyp_st.timedeltas(
             min_value=timedelta(seconds=0), max_value=timedelta(hours=1)
@@ -1679,10 +1771,8 @@ def test4(data, backend, dtype, subtests):
     # ========================================
     # test bed
     # ========================================
-    bo = BackendOptions(rebuild=False)
-    so = StorageOptions(dtype=dtype, default_origin=default_origin)
-
     domain.horizontal_boundary.reference_state = state
+    hb_np = domain.copy(backend="numpy").horizontal_boundary
 
     vd = VerticalDamping.factory(
         "rayleigh",
@@ -1717,11 +1807,19 @@ def test4(data, backend, dtype, subtests):
     )
     cfv = cf._f
 
+    pt_raw = state["air_pressure_on_interface_levels"].data[0, 0, 0]
+    pt = DataArray(
+        pt_raw,
+        attrs={
+            "units": state["air_pressure_on_interface_levels"].attrs["units"]
+        },
+    )
+
     dv = IsentropicDiagnostics(
         domain,
         "numerical",
         moist,
-        state["air_pressure_on_interface_levels"][0, 0, 0],
+        pt,
         backend=backend,
         backend_options=bo,
         storage_shape=storage_shape,
@@ -1744,10 +1842,7 @@ def test4(data, backend, dtype, subtests):
         moist=moist,
         time_integration_scheme="rk3ws_si",
         horizontal_flux_scheme="fifth_order_upwind",
-        time_integration_properties={
-            "pt": state["air_pressure_on_interface_levels"][0, 0, 0],
-            "eps": eps,
-        },
+        time_integration_properties={"pt": pt, "eps": eps},
         damp=damp,
         damp_type="rayleigh",
         damp_depth=damp_depth,
@@ -1830,7 +1925,7 @@ def test4(data, backend, dtype, subtests):
         if key == "time":
             compare_datetimes(state["time"], state_dc["time"])
         else:
-            compare_arrays(state[key], state_dc[key])
+            compare_arrays(state[key].data, state_dc[key].data)
 
     assert "time" in state_new
     compare_datetimes(state_new["time"], state["time"] + timestep)
@@ -1927,13 +2022,17 @@ def test4(data, backend, dtype, subtests):
     #
     # stage 0
     #
-    su0 = raw_state_0["x_momentum_isentropic"]
-    sv0 = raw_state_0["y_momentum_isentropic"]
-    raw_tendencies["x_momentum_isentropic"][...] = (
-        raw_tendencies_dc["x_momentum_isentropic"] + cfv * sv0[...]
+    raw_tendencies["x_momentum_isentropic"][...] = as_storage(
+        backend,
+        data=to_numpy(raw_tendencies_dc["x_momentum_isentropic"])
+        + cfv * to_numpy(raw_state_0["y_momentum_isentropic"]),
+        storage_options=so,
     )
-    raw_tendencies["y_momentum_isentropic"][...] = (
-        raw_tendencies_dc["y_momentum_isentropic"] - cfv * su0[...]
+    raw_tendencies["y_momentum_isentropic"][...] = as_storage(
+        backend,
+        data=to_numpy(raw_tendencies_dc["y_momentum_isentropic"])
+        - cfv * to_numpy(raw_state_0["x_momentum_isentropic"]),
+        storage_options=so,
     )
 
     _damp = damp and damp_at_every_stage
@@ -1949,17 +2048,20 @@ def test4(data, backend, dtype, subtests):
         raw_state_1,
         field_properties,
         hb,
+        hb_np,
         moist,
         _damp,
         vd,
         _smooth,
         hs,
         eps,
+        backend=backend,
+        storage_options=so,
     )
 
     rdv.get_diagnostic_variables(
         raw_state_1["air_isentropic_density"],
-        raw_state_0["air_pressure_on_interface_levels"][0, 0, 0],
+        pt_raw,
         raw_state_1["air_pressure_on_interface_levels"],
         raw_state_1["exner_function_on_interface_levels"],
         raw_state_1["montgomery_potential"],
@@ -1977,13 +2079,17 @@ def test4(data, backend, dtype, subtests):
     #
     # stage 1
     #
-    su1 = raw_state_1["x_momentum_isentropic"]
-    sv1 = raw_state_1["y_momentum_isentropic"]
-    raw_tendencies["x_momentum_isentropic"][...] = (
-        raw_tendencies_dc["x_momentum_isentropic"] + cfv * sv1[...]
+    raw_tendencies["x_momentum_isentropic"][...] = as_storage(
+        backend,
+        data=to_numpy(raw_tendencies_dc["x_momentum_isentropic"])
+        + cfv * to_numpy(raw_state_1["y_momentum_isentropic"]),
+        storage_options=so,
     )
-    raw_tendencies["y_momentum_isentropic"][...] = (
-        raw_tendencies_dc["y_momentum_isentropic"] - cfv * su1[...]
+    raw_tendencies["y_momentum_isentropic"][...] = as_storage(
+        backend,
+        data=to_numpy(raw_tendencies_dc["y_momentum_isentropic"])
+        - cfv * to_numpy(raw_state_1["x_momentum_isentropic"]),
+        storage_options=so,
     )
 
     _damp = damp and damp_at_every_stage
@@ -1999,17 +2105,20 @@ def test4(data, backend, dtype, subtests):
         raw_state_2,
         field_properties,
         hb,
+        hb_np,
         moist,
         _damp,
         vd,
         _smooth,
         hs,
         eps,
+        backend=backend,
+        storage_options=so,
     )
 
     rdv.get_diagnostic_variables(
         raw_state_2["air_isentropic_density"],
-        raw_state_1["air_pressure_on_interface_levels"][0, 0, 0],
+        pt_raw,
         raw_state_2["air_pressure_on_interface_levels"],
         raw_state_2["exner_function_on_interface_levels"],
         raw_state_2["montgomery_potential"],
@@ -2027,13 +2136,17 @@ def test4(data, backend, dtype, subtests):
     #
     # stage 2
     #
-    su2 = raw_state_2["x_momentum_isentropic"]
-    sv2 = raw_state_2["y_momentum_isentropic"]
-    raw_tendencies["x_momentum_isentropic"][...] = (
-        raw_tendencies_dc["x_momentum_isentropic"] + cfv * sv2[...]
+    raw_tendencies["x_momentum_isentropic"][...] = as_storage(
+        backend,
+        data=to_numpy(raw_tendencies_dc["x_momentum_isentropic"])
+        + cfv * to_numpy(raw_state_2["y_momentum_isentropic"]),
+        storage_options=so,
     )
-    raw_tendencies["y_momentum_isentropic"][...] = (
-        raw_tendencies_dc["y_momentum_isentropic"] - cfv * su2[...]
+    raw_tendencies["y_momentum_isentropic"][...] = as_storage(
+        backend,
+        data=to_numpy(raw_tendencies_dc["y_momentum_isentropic"])
+        - cfv * to_numpy(raw_state_2["x_momentum_isentropic"]),
+        storage_options=so,
     )
 
     rk3wssi_stage(
@@ -2047,17 +2160,20 @@ def test4(data, backend, dtype, subtests):
         raw_state_3,
         field_properties,
         hb,
+        hb_np,
         moist,
         damp,
         vd,
         smooth,
         hs,
         eps,
+        backend=backend,
+        storage_options=so,
     )
 
     rdv.get_diagnostic_variables(
         raw_state_3["air_isentropic_density"],
-        raw_state_2["air_pressure_on_interface_levels"][0, 0, 0],
+        pt_raw,
         raw_state_3["air_pressure_on_interface_levels"],
         raw_state_3["exner_function_on_interface_levels"],
         raw_state_3["montgomery_potential"],
@@ -2076,8 +2192,9 @@ def test4(data, backend, dtype, subtests):
         # with subtests.test(name=name):
         if name != "time":
             compare_arrays(
-                state_new[name].data[:-1, :-1, :-1],
-                raw_state_3[name][:-1, :-1, :-1],
+                state_new[name].data,
+                raw_state_3[name],
+                slice=(slice(nx), slice(ny), slice(nz)),
                 # atol=1e-6,
             )
 
@@ -2137,8 +2254,8 @@ class FooTendencyComponent(TendencyComponent):
 
 @hyp_settings
 @given(data=hyp_st.data())
-@pytest.mark.parametrize("backend", conf_backend)
-@pytest.mark.parametrize("dtype", conf_dtype)
+@pytest.mark.parametrize("backend", conf.backend)
+@pytest.mark.parametrize("dtype", conf.dtype)
 def _test5(data, backend, dtype, subtests):
     """
     - Slow tendencies: yes
@@ -2149,10 +2266,12 @@ def _test5(data, backend, dtype, subtests):
     # ========================================
     # random data generation
     # ========================================
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+    aligned_index = data.draw(
+        st_one_of(conf.aligned_index), label="aligned_index"
+    )
 
     nb = data.draw(
-        hyp_st.integers(min_value=3, max_value=max(3, conf_nb)), label="nb"
+        hyp_st.integers(min_value=3, max_value=max(3, conf.nb)), label="nb"
     )
     domain = data.draw(
         st_domain(
@@ -2177,7 +2296,7 @@ def _test5(data, backend, dtype, subtests):
             grid,
             moist=moist,
             backend=backend,
-            default_origin=default_origin,
+            aligned_index=aligned_index,
             storage_shape=storage_shape,
         ),
         label="state",
@@ -2254,7 +2373,7 @@ def _test5(data, backend, dtype, subtests):
         "s",
         backend=backend,
         dtype=dtype,
-        default_origin=default_origin,
+        aligned_index=aligned_index,
         storage_shape=storage_shape,
     )
     hs = HorizontalSmoothing.factory(
@@ -2266,7 +2385,7 @@ def _test5(data, backend, dtype, subtests):
         hb.nb,
         backend=backend,
         dtype=dtype,
-        default_origin=default_origin,
+        aligned_index=aligned_index,
     )
 
     cf = IsentropicConservativeCoriolis(
@@ -2274,7 +2393,7 @@ def _test5(data, backend, dtype, subtests):
         grid_type="numerical",
         backend=backend,
         dtype=dtype,
-        default_origin=default_origin,
+        aligned_index=aligned_index,
         storage_shape=storage_shape,
     )
     cfv = cf._f
@@ -2313,7 +2432,7 @@ def _test5(data, backend, dtype, subtests):
         smooth_moist_at_every_stage=smooth_at_every_stage,
         backend=backend,
         dtype=dtype,
-        default_origin=default_origin,
+        aligned_index=aligned_index,
         rebuild=False,
         storage_shape=storage_shape,
     )
@@ -2403,19 +2522,19 @@ def _test5(data, backend, dtype, subtests):
             storage_shape,
             backend=backend,
             dtype=dtype,
-            default_origin=default_origin,
+            aligned_index=aligned_index,
         )
         raw_state_0["isentropic_density_of_cloud_liquid_water"] = zeros(
             storage_shape,
             backend=backend,
             dtype=dtype,
-            default_origin=default_origin,
+            aligned_index=aligned_index,
         )
         raw_state_0["isentropic_density_of_precipitation_water"] = zeros(
             storage_shape,
             backend=backend,
             dtype=dtype,
-            default_origin=default_origin,
+            aligned_index=aligned_index,
         )
 
     raw_tendencies = {}
@@ -2430,14 +2549,14 @@ def _test5(data, backend, dtype, subtests):
             storage_shape,
             backend=backend,
             dtype=dtype,
-            default_origin=default_origin,
+            aligned_index=aligned_index,
         )
     if "y_momentum_isentropic" not in raw_tendencies:
         raw_tendencies["y_momentum_isentropic"] = zeros(
             storage_shape,
             backend=backend,
             dtype=dtype,
-            default_origin=default_origin,
+            aligned_index=aligned_index,
         )
 
     tendencies_dc = deepcopy_dataarray_dict(tendencies)

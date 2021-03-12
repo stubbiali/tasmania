@@ -36,12 +36,7 @@ from tasmania.python.isentropic.physics.horizontal_smoothing import (
 from tasmania.python.dwarfs.horizontal_smoothing import HorizontalSmoothing
 from tasmania.python.utils.storage import get_dataarray_3d
 
-from tests.conf import (
-    backend as conf_backend,
-    dtype as conf_dtype,
-    default_origin as conf_dorigin,
-    nb as conf_nb,
-)
+from tests import conf
 from tests.strategies import (
     st_domain,
     st_floats,
@@ -61,16 +56,20 @@ mfpw = "mass_fraction_of_precipitation_water_in_air"
 @pytest.mark.parametrize(
     "smooth_type", ("first_order", "second_order", "third_order")
 )
-@pytest.mark.parametrize("backend", conf_backend)
-@pytest.mark.parametrize("dtype", conf_dtype)
+@pytest.mark.parametrize("backend", conf.backend)
+@pytest.mark.parametrize("dtype", conf.dtype)
 def test(data, smooth_type, backend, dtype, subtests):
     # ========================================
     # random data generation
     # ========================================
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+    aligned_index = data.draw(
+        st_one_of(conf.aligned_index), label="aligned_index"
+    )
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
 
     nb = data.draw(
-        hyp_st.integers(min_value=3, max_value=max(3, conf_nb)), label="nb"
+        hyp_st.integers(min_value=3, max_value=max(3, conf.nb)), label="nb"
     )
     domain = data.draw(
         st_domain(
@@ -78,6 +77,9 @@ def test(data, smooth_type, backend, dtype, subtests):
             yaxis_length=(1, 30),
             zaxis_length=(2, 20),
             nb=nb,
+            backend=backend,
+            backend_options=bo,
+            storage_options=so,
         ),
         label="domain",
     )
@@ -90,8 +92,8 @@ def test(data, smooth_type, backend, dtype, subtests):
             grid,
             moist=True,
             backend=backend,
-            default_origin=default_origin,
             storage_shape=storage_shape,
+            storage_options=so,
         ),
         label="state",
     )
@@ -114,9 +116,6 @@ def test(data, smooth_type, backend, dtype, subtests):
     # ========================================
     # test bed
     # ========================================
-    bo = BackendOptions(rebuild=False)
-    so = StorageOptions(dtype=dtype, default_origin=default_origin)
-
     in_st = zeros(backend, shape=storage_shape, storage_options=so)
     out_st = zeros(backend, shape=storage_shape, storage_options=so)
 
