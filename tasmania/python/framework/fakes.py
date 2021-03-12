@@ -23,7 +23,7 @@
 from typing import TYPE_CHECKING, Tuple
 
 from tasmania.python.framework.base_components import TendencyComponent
-from tasmania.python.utils import typing
+from tasmania.python.utils import typing as ty
 
 if TYPE_CHECKING:
     from tasmania.python.domain.domain import Domain
@@ -36,25 +36,25 @@ class FakeTendencyComponent(TendencyComponent):
         super().__init__(domain, grid_type, **kwargs)
 
     @property
-    def input_properties(self) -> typing.properties_dict_t:
+    def input_properties(self) -> ty.PropertiesDict:
         return {}
 
     @property
-    def tendency_properties(self) -> typing.properties_dict_t:
+    def tendency_properties(self) -> ty.PropertiesDict:
         return {}
 
     @property
-    def diagnostic_properties(self) -> typing.properties_dict_t:
+    def diagnostic_properties(self) -> ty.PropertiesDict:
         return {}
 
     def array_call(
-        self, state
-    ) -> Tuple[typing.array_dict_t, typing.array_dict_t]:
+        self, state: ty.StorageDict
+    ) -> Tuple[ty.StorageDict, ty.StorageDict]:
         return {}, {}
 
 
 class FakeComponent:
     def __init__(
-        self, real_component: typing.component_t, property_name: str
+        self, real_component: ty.Component, property_name: str
     ) -> None:
         self.input_properties = getattr(real_component, property_name)

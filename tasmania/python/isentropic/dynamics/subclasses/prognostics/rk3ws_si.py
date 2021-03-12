@@ -203,20 +203,12 @@ class RK3WSSI(IsentropicPrognostic):
         )
 
         # apply the boundary conditions on the stepped isentropic density
-        try:
-            self.horizontal_boundary.dmn_enforce_field(
-                self._s_new,
-                "air_isentropic_density",
-                "kg m^-2 K^-1",
-                time=state["time"] + dtr,
-            )
-        except AttributeError:
-            self.horizontal_boundary.enforce_field(
-                self._s_new,
-                "air_isentropic_density",
-                "kg m^-2 K^-1",
-                time=state["time"] + dtr,
-            )
+        self.horizontal_boundary.enforce_field(
+            self._s_new,
+            "air_isentropic_density",
+            "kg m^-2 K^-1",
+            time=state["time"] + dtr,
+        )
 
         # diagnose the Montgomery potential from the stepped isentropic density
         self._diagnostics.get_montgomery_potential(

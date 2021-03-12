@@ -27,7 +27,7 @@ from tasmania.python.utils.framework import get_increment
 
 @register(name="rk2")
 class RK2(STSTendencyStepper):
-    """ The two-stages second-order Runge-Kutta scheme.
+    """The two-stages second-order Runge-Kutta scheme.
 
     References
     ----------
@@ -74,9 +74,7 @@ class RK2(STSTendencyStepper):
         if self._enforce_hb:
             # enforce the boundary conditions on each prognostic variable
             self._hb.enforce(
-                out_state,
-                field_names=self.output_properties.keys(),
-                grid=self._grid,
+                out_state, field_names=self.output_properties.keys(),
             )
 
         # populate out_state with all other variables from state
@@ -108,9 +106,7 @@ class RK2(STSTendencyStepper):
         if self._enforce_hb:
             # enforce the boundary conditions on each prognostic variable
             self._hb.enforce(
-                out_state,
-                field_names=self.output_properties.keys(),
-                grid=self._grid,
+                out_state, field_names=self.output_properties.keys(),
             )
 
         # restore original units of the tendencies

@@ -129,7 +129,7 @@ class Smagorinsky2d(TendencyComponent):
 
     def array_call(
         self, state: ty.StorageDict
-    ) -> Tuple[ty.StorageDict, ty.array_dict_t]:
+    ) -> Tuple[ty.StorageDict, ty.StorageDict]:
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
         nb = self._nb
         dx = self.grid.dx.to_units("m").values.item()

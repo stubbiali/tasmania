@@ -30,7 +30,7 @@ class SubsetTendencyChecker(SymplTendencyChecker):
     Ensure that the input dictionary is a *subset* of `tendency_properties`.
     """
 
-    def __init__(self, component: typing.tendency_component_t) -> None:
+    def __init__(self, component: typing.TendencyComponent) -> None:
         super().__init__(component)
 
     def check_tendencies(
@@ -47,7 +47,7 @@ class SupersetTendencyChecker(SymplTendencyChecker):
     Ensure that the input dictionary is a *superset* of `tendency_properties`.
     """
 
-    def __init__(self, component: typing.tendency_component_t) -> None:
+    def __init__(self, component: typing.TendencyComponent) -> None:
         super().__init__(component)
 
     def check_tendencies(

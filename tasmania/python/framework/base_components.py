@@ -166,8 +166,8 @@ class DiagnosticComponent(
         super(StencilFactory, self).__init__()
 
     def __call__(
-        self: "DiagnosticComponent", state: typing.dataarray_dict_t
-    ) -> typing.dataarray_dict_t:
+        self: "DiagnosticComponent", state: typing.DataArrayDict
+    ) -> typing.DataArrayDict:
         Timer.start(label=self.__class__.__name__)
         out = super().__call__(state)
         Timer.stop()
@@ -232,9 +232,9 @@ class ImplicitTendencyComponent(
 
     def __call__(
         self: "ImplicitTendencyComponent",
-        state: typing.dataarray_dict_t,
-        timestep: typing.timedelta_t,
-    ) -> typing.dataarray_dict_t:
+        state: typing.DataArrayDict,
+        timestep: typing.TimeDelta,
+    ) -> typing.DataArrayDict:
         Timer.start(label=self.__class__.__name__)
         out = super().__call__(state, timestep)
         Timer.stop()
@@ -352,8 +352,8 @@ class TendencyComponent(
         super(StencilFactory, self).__init__(tendencies_in_diagnostics, name)
 
     def __call__(
-        self: "TendencyComponent", state: typing.dataarray_dict_t
-    ) -> typing.dataarray_dict_t:
+        self: "TendencyComponent", state: typing.DataArrayDict
+    ) -> typing.DataArrayDict:
         Timer.start(label=self.__class__.__name__)
         out = super().__call__(state)
         Timer.stop()

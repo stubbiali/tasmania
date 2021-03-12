@@ -46,7 +46,7 @@ class HorizontalDiffusion(StencilFactory, abc.ABC):
 
     def __init__(
         self: "HorizontalDiffusion",
-        shape: ty.triplet_int_t,
+        shape: ty.TripletInt,
         dx: float,
         dy: float,
         diffusion_coeff: float,
@@ -129,7 +129,7 @@ class HorizontalDiffusion(StencilFactory, abc.ABC):
     @staticmethod
     def factory(
         diffusion_type: str,
-        shape: ty.triplet_int_t,
+        shape: ty.TripletInt,
         dx: float,
         dy: float,
         diffusion_coeff: float,
@@ -198,8 +198,8 @@ class HorizontalDiffusion(StencilFactory, abc.ABC):
         *,
         dx: float,
         dy: float,
-        origin: ty.triplet_int_t,
-        domain: ty.triplet_int_t
+        origin: ty.TripletInt,
+        domain: ty.TripletInt
     ) -> None:
         pass
 
@@ -226,8 +226,8 @@ class HorizontalDiffusion(StencilFactory, abc.ABC):
         *,
         dx: float,
         dy: float,
-        origin: ty.triplet_int_t,
-        domain: ty.triplet_int_t
+        origin: ty.TripletInt,
+        domain: ty.TripletInt
     ) -> None:
         pass
 

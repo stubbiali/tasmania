@@ -230,7 +230,7 @@ class ParallelSplitting:
             storage_options=storage_options,
         )
 
-    def _init_input_properties(self) -> typing.properties_dict_t:
+    def _init_input_properties(self) -> typing.PropertiesDict:
         if not self._diagnostics_from_provisional:
             return get_input_properties(
                 tuple(
@@ -257,7 +257,7 @@ class ParallelSplitting:
                 )
             )
 
-    def _init_provisional_input_properties(self,) -> typing.properties_dict_t:
+    def _init_provisional_input_properties(self,) -> typing.PropertiesDict:
         # We require that all prognostic variables affected by the
         # parameterizations are included in the provisional state
         return_dict = get_input_properties(
@@ -293,7 +293,7 @@ class ParallelSplitting:
 
         return return_dict
 
-    def _init_output_properties(self) -> typing.properties_dict_t:
+    def _init_output_properties(self) -> typing.PropertiesDict:
         if not self._diagnostics_from_provisional:
             return get_output_properties(
                 tuple(
@@ -320,7 +320,7 @@ class ParallelSplitting:
                 )
             )
 
-    def _init_provisional_output_properties(self,) -> typing.properties_dict_t:
+    def _init_provisional_output_properties(self,) -> typing.PropertiesDict:
         return_dict = self.provisional_input_properties
 
         if self._diagnostics_from_provisional:
@@ -345,7 +345,7 @@ class ParallelSplitting:
     @property
     def component_list(
         self,
-    ) -> Tuple[Union[typing.diagnostic_component_t, TendencyStepper], ...]:
+    ) -> Tuple[Union[typing.DiagnosticComponent, TendencyStepper], ...]:
         """
         Return
         ------
@@ -358,7 +358,7 @@ class ParallelSplitting:
         self,
         state: typing.mutable_dataarray_dict_t,
         state_prv: typing.mutable_dataarray_dict_t,
-        timestep: typing.timedelta_t,
+        timestep: typing.TimeDelta,
     ) -> None:
         """
         Advance the model state one timestep forward in time by pursuing
@@ -394,7 +394,7 @@ class ParallelSplitting:
         self,
         state: typing.mutable_dataarray_dict_t,
         state_prv: typing.mutable_dataarray_dict_t,
-        timestep: typing.timedelta_t,
+        timestep: typing.TimeDelta,
     ) -> None:
         """ Process the components in 'serial' runtime mode. """
         for component, substeps in zip(self._component_list, self._substeps):
@@ -440,7 +440,7 @@ class ParallelSplitting:
         self,
         state: typing.mutable_dataarray_dict_t,
         state_prv: typing.mutable_dataarray_dict_t,
-        timestep: typing.timedelta_t,
+        timestep: typing.TimeDelta,
     ) -> None:
         """ Process the components in 'as_parallel' runtime mode. """
         agg_diagnostics = {}

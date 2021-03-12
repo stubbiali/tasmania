@@ -29,6 +29,12 @@ from typing import Dict, List, Optional, Sequence, Tuple
 import xarray as xr
 
 from tasmania.python.burgers.state import ZhaoSolutionFactory
+from tasmania.python.framework.base_components import (
+    DomainComponent,
+    GridComponent,
+)
+from tasmania.python.framework.options import StorageOptions
+from tasmania.python.framework.stencil import StencilFactory
 from tasmania.python.domain.domain import Domain
 from tasmania.python.utils import typing
 from tasmania.python.utils.storage import (
@@ -39,7 +45,7 @@ from tasmania.python.utils.storage import (
 from tasmania.python.utils.time import convert_datetime64_to_datetime
 
 
-class NetCDFMonitor(sympl.NetCDFMonitor):
+class NetCDFMonitor(DomainComponent, StencilFactory, sympl.NetCDFMonitor):
     """
     Customized version of :class:`sympl.NetCDFMonitor`, which
     caches stored states and then write them to a NetCDF file,
@@ -55,6 +61,9 @@ class NetCDFMonitor(sympl.NetCDFMonitor):
         store_names: Optional[Sequence[str]] = None,
         write_on_store: bool = False,
         aliases: Optional[Dict[str, str]] = None,
+        *,
+        backend: str = "numpy",
+        storage_options: Optional["StorageOptions"] = None
     ) -> None:
         """
         Parameters
@@ -79,14 +88,20 @@ class NetCDFMonitor(sympl.NetCDFMonitor):
         aliases : `dict[str, str]`, optional
             A dictionary of string replacements to apply to state variable
             names before saving them in netCDF files.
+        backend : `str`, optional
+            The backend.
+        storage_options : `StorageOptions`, optional
+            Storage-specific options.
         """
-        super().__init__(
+        super().__init__(domain, grid_type)
+        super(GridComponent, self).__init__(
+            backend=backend, storage_options=storage_options
+        )
+        super(StencilFactory, self).__init__(
             filename, time_units, store_names, write_on_store, aliases
         )
-        self._domain = domain
-        self._gtype = grid_type
 
-    def store(self, state: typing.dataarray_dict_t) -> None:
+    def store(self, state: typing.DataArrayDict) -> None:
         """
         If the state is defined over the numerical (respectively physical)
         grid but should be saved over the physical (resp. numerical) grid:
@@ -95,22 +110,21 @@ class NetCDFMonitor(sympl.NetCDFMonitor):
         If the state is already defined over the expected grid: make a deep copy
         of the input state before calling the parent's method.
         """
-        grid = (
-            self._domain.physical_grid
-            if self._gtype == "physical"
-            else self._domain.numerical_grid
-        )
+        grid = self.grid
         dims_x = (grid.x.dims[0], grid.x_at_u_locations.dims[0])
         dims_y = (grid.y.dims[0], grid.y_at_v_locations.dims[0])
 
-        if self._gtype == "physical":
+        if self.grid_type == "physical":
             names = tuple(key for key in state if key != "time")
             if not (
                 state[names[0]].dims[0] in dims_x
                 and state[names[0]].dims[1] in dims_y
             ):
                 to_save = get_physical_state(
-                    self._domain, state, self._store_names
+                    self.grid,
+                    self.horizontal_boundary,
+                    state,
+                    self._store_names,
                 )
             else:
                 to_save = state
@@ -121,15 +135,17 @@ class NetCDFMonitor(sympl.NetCDFMonitor):
                 and state[names[0]].dims[1] in dims_y
             ):
                 to_save = get_numerical_state(
-                    self._domain, state, self._store_names
+                    self.grid,
+                    self.horizontal_boundary,
+                    state,
+                    self._store_names,
                 )
             else:
                 to_save = state
 
-        to_save_cp = deepcopy_dataarray_dict(to_save)
-        for name in to_save_cp:
-            if name != "time":
-                to_save_cp[name].attrs.pop("gt_storage", None)
+        to_save_cp = deepcopy_dataarray_dict(
+            to_save, backend=self.backend, storage_options=self.storage_options
+        )
 
         super().store(to_save_cp)
 
@@ -141,7 +157,7 @@ class NetCDFMonitor(sympl.NetCDFMonitor):
         super().write()
 
         with nc4.Dataset(self._filename, "a") as dataset:
-            g = self._domain.physical_grid
+            g = self.grid
 
             dataset.createDimension("bool_dim", 1)
             dataset.createDimension("scalar_dim", 1)
@@ -159,7 +175,7 @@ class NetCDFMonitor(sympl.NetCDFMonitor):
 
             # type of the underlying grid over which the states are defined
             grid_type = dataset.createVariable("grid_type", str, ("str_dim",))
-            grid_type[:] = np.array([self._gtype], dtype="object")
+            grid_type[:] = np.array([self.grid_type], dtype="object")
 
             # x-axis
             dim1_name = dataset.createVariable("dim1_name", str, ("str_dim",))
@@ -228,7 +244,7 @@ class NetCDFMonitor(sympl.NetCDFMonitor):
             z_interface.setncattr("units", g.z_interface.attrs["units"])
 
             # type of horizontal boundary conditions
-            hb = self._domain.horizontal_boundary
+            hb = self.horizontal_boundary
             hb_type = dataset.createVariable(
                 "horizontal_boundary_type", str, ("str_dim",)
             )
@@ -251,16 +267,18 @@ class NetCDFMonitor(sympl.NetCDFMonitor):
                     )
                     var[:] = np.array([value], dtype=type(value))
                 elif isinstance(value, ZhaoSolutionFactory):
-                    # TODO: this actually does not work, because only primitive types
-                    # TODO: can be stored in a netCDF dataset
-                    # var    = dataset.createVariable(hb_key, ZhaoSolutionFactory, ('functor_dim',))
-                    # var[:] = np.array([value], dtype='object')
+                    # TODO: this actually does not work, because only primitive
+                    # TODO: types can be stored in a netCDF dataset
+                    # var = dataset.createVariable(
+                    #     hb_key, ZhaoSolutionFactory, ("functor_dim",)
+                    # )
+                    # var[:] = np.array([value], dtype="object")
                     pass
 
                 keys.append(hb_key)
 
-            # list of keyword parameter names used to instantiate the object handling
-            # the lateral boundary conditions
+            # list of keyword parameter names used to instantiate the object
+            # handling the lateral boundary conditions
             dataset.createDimension("strvec2_dim", len(keys))
             hb_kwargs = dataset.createVariable(
                 "horizontal_boundary_kwargs", str, ("strvec2_dim",)
@@ -313,7 +331,7 @@ class NetCDFMonitor(sympl.NetCDFMonitor):
 
 def load_netcdf_dataset(
     filename: str,
-) -> Tuple[Domain, str, List[typing.dataarray_dict_t]]:
+) -> Tuple[Domain, str, List[typing.DataArrayDict]]:
     """
     Load the sequence of states stored in a NetCDF dataset,
     and build the underlying domain.
@@ -435,7 +453,8 @@ def load_domain(dataset: xr.Dataset) -> Domain:
         horizontal_boundary_kwargs=hb_kwargs,
         topography_type=topo_type,
         topography_kwargs=topo_kwargs,
-        dtype=domain_x.values.dtype,
+        backend="numpy",
+        storage_options=StorageOptions(dtype=domain_x.values.dtype),
     )
 
 
@@ -443,7 +462,7 @@ def load_grid_type(dataset: xr.Dataset) -> str:
     return dataset.data_vars["grid_type"].values.item()
 
 
-def load_states(dataset: xr.Dataset) -> List[typing.dataarray_dict_t]:
+def load_states(dataset: xr.Dataset) -> List[typing.DataArrayDict]:
     names = dataset.data_vars["state_variable_names"].values
     nt = dataset.data_vars[names[0]].shape[0]
 

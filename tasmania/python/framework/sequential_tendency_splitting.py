@@ -144,7 +144,7 @@ class SequentialTendencySplitting:
             self._get_provisional_output_properties()
         )
 
-    def _get_input_properties(self) -> typing.properties_dict_t:
+    def _get_input_properties(self) -> typing.PropertiesDict:
         return get_input_properties(
             tuple(
                 {
@@ -157,7 +157,7 @@ class SequentialTendencySplitting:
             )
         )
 
-    def _get_provisional_input_properties(self) -> typing.properties_dict_t:
+    def _get_provisional_input_properties(self) -> typing.PropertiesDict:
         at_disposal = {}
         return_dict = {}
 
@@ -186,7 +186,7 @@ class SequentialTendencySplitting:
 
         return return_dict
 
-    def _get_output_properties(self) -> typing.properties_dict_t:
+    def _get_output_properties(self) -> typing.PropertiesDict:
         return_dict = self._get_input_properties()
         get_output_properties(
             tuple(
@@ -202,7 +202,7 @@ class SequentialTendencySplitting:
         )
         return return_dict
 
-    def _get_provisional_output_properties(self,) -> typing.properties_dict_t:
+    def _get_provisional_output_properties(self,) -> typing.PropertiesDict:
         return_dict = self._get_provisional_input_properties()
 
         for component in self._component_list:
@@ -221,9 +221,9 @@ class SequentialTendencySplitting:
 
     def __call__(
         self,
-        state: typing.dataarray_dict_t,
+        state: typing.DataArrayDict,
         state_prv: typing.mutable_dataarray_dict_t,
-        timestep: typing.timedelta_t,
+        timestep: typing.TimeDelta,
     ) -> None:
         """
         Advance the model state one timestep forward in time by pursuing

@@ -27,7 +27,7 @@ from tasmania.python.utils.framework import get_increment
 
 @register(name="implicit")
 class Implicit(TendencyStepper):
-    """ Interpret the diagnostics as the new values for the prognostic variables. """
+    """Interpret the diagnostics as the new values for the prognostic variables."""
 
     def __init__(
         self,

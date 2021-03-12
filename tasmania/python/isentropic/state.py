@@ -63,7 +63,7 @@ mfpw = "mass_fraction_of_precipitation_water_in_air"
 
 def get_isentropic_state_from_brunt_vaisala_frequency(
     grid: "Grid",
-    time: typing.datetime_t,
+    time: typing.Datetime,
     x_velocity: DataArray,
     y_velocity: DataArray,
     brunt_vaisala: DataArray,
@@ -75,7 +75,7 @@ def get_isentropic_state_from_brunt_vaisala_frequency(
     backend: str = "numpy",
     storage_shape: Optional[Sequence[int]] = None,
     storage_options: Optional["StorageOptions"] = None,
-) -> typing.dataarray_dict_t:
+) -> typing.DataArrayDict:
     """
     Compute a valid state for the isentropic model given
     the Brunt-Vaisala frequency.
@@ -309,9 +309,9 @@ def get_isentropic_state_from_brunt_vaisala_frequency(
         # diagnose the air density and temperature
         rho_np = allocate_numpy()
         rho_np[:nx, :ny, :nz] = (
-            s[:nx, :ny, :nz]
+            s_np[:nx, :ny, :nz]
             * dz
-            / (h[:nx, :ny, :nz] - h[:nx, :ny, 1 : nz + 1])
+            / (h_np[:nx, :ny, :nz] - h_np[:nx, :ny, 1 : nz + 1])
         )
         rho = from_numpy(rho_np)
         state["air_density"] = get_dataarray_3d(
@@ -422,7 +422,7 @@ def get_isentropic_state_from_brunt_vaisala_frequency(
 
 def get_isentropic_state_from_temperature(
     grid: "Grid",
-    time: typing.datetime_t,
+    time: typing.Datetime,
     x_velocity: DataArray,
     y_velocity: DataArray,
     background_temperature: DataArray,
@@ -438,7 +438,7 @@ def get_isentropic_state_from_temperature(
     backend: str = "numpy",
     storage_shape: Optional[Sequence[int]] = None,
     storage_options: Optional["StorageOptions"] = None,
-) -> typing.dataarray_dict_t:
+) -> typing.DataArrayDict:
     """
     Compute a valid state for the isentropic model given
     the air temperature.

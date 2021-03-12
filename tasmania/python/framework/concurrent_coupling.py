@@ -109,9 +109,9 @@ class ConcurrentCoupling(BaseConcurrentCoupling):
     def __init__(
         self,
         *args: Union[
-            typing.diagnostic_component_t,
-            typing.tendency_component_t,
-            typing.promoter_component_t,
+            typing.DiagnosticComponent,
+            typing.TendencyComponent,
+            typing.PromoterComponent,
         ],
         execution_policy: str = "serial",
         backend: str = "numpy",
@@ -196,7 +196,7 @@ class ConcurrentCoupling(BaseConcurrentCoupling):
             storage_options=storage_options,
         )
 
-    def _init_input_properties(self) -> typing.properties_dict_t:
+    def _init_input_properties(self) -> typing.PropertiesDict:
         t2d_type = Tendency2Diagnostic
         components_list = []
         for component in self.component_list:
@@ -211,11 +211,11 @@ class ConcurrentCoupling(BaseConcurrentCoupling):
             )
         return get_input_properties(components_list)
 
-    def _init_tendency_properties(self) -> typing.properties_dict_t:
+    def _init_tendency_properties(self) -> typing.PropertiesDict:
         t2d_type = Tendency2Diagnostic
         return get_tendency_properties(self.component_list, t2d_type)
 
-    def _init_diagnostic_properties(self) -> typing.properties_dict_t:
+    def _init_diagnostic_properties(self) -> typing.PropertiesDict:
         return combine_component_properties(
             self.component_list, "diagnostic_properties"
         )
@@ -225,9 +225,9 @@ class ConcurrentCoupling(BaseConcurrentCoupling):
         self,
     ) -> Tuple[
         Union[
-            typing.diagnostic_component_t,
-            typing.tendency_component_t,
-            typing.promoter_component_t,
+            typing.DiagnosticComponent,
+            typing.TendencyComponent,
+            typing.PromoterComponent,
         ]
     ]:
         """
@@ -239,8 +239,8 @@ class ConcurrentCoupling(BaseConcurrentCoupling):
         return self._component_list
 
     def __call__(
-        self, state: typing.dataarray_dict_t, timestep: typing.timedelta_t,
-    ) -> Tuple[typing.dataarray_dict_t, typing.dataarray_dict_t]:
+        self, state: typing.DataArrayDict, timestep: typing.TimeDelta,
+    ) -> Tuple[typing.DataArrayDict, typing.DataArrayDict]:
         """
         Execute the wrapped components to calculate tendencies and retrieve
         diagnostics with the help of the input state.
@@ -273,8 +273,8 @@ class ConcurrentCoupling(BaseConcurrentCoupling):
         return tendencies, diagnostics
 
     def _call_serial(
-        self, state: typing.dataarray_dict_t, timestep: typing.timedelta_t,
-    ) -> Tuple[typing.dataarray_dict_t, typing.dataarray_dict_t]:
+        self, state: typing.DataArrayDict, timestep: typing.TimeDelta,
+    ) -> Tuple[typing.DataArrayDict, typing.DataArrayDict]:
         """ Process the components in 'serial' runtime mode. """
         aux_state = {}
         aux_state.update(state)
@@ -322,8 +322,8 @@ class ConcurrentCoupling(BaseConcurrentCoupling):
         return out_tendencies, out_diagnostics
 
     def _call_asparallel(
-        self, state: typing.dataarray_dict_t, timestep: typing.timedelta_t,
-    ) -> Tuple[typing.dataarray_dict_t, typing.dataarray_dict_t]:
+        self, state: typing.DataArrayDict, timestep: typing.TimeDelta,
+    ) -> Tuple[typing.DataArrayDict, typing.DataArrayDict]:
         """ Process the components in 'as_parallel' runtime mode. """
         out_tendencies = {}
         out_diagnostics = {}

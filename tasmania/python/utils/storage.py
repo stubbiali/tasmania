@@ -30,24 +30,24 @@ try:
 except ImportError:
     cp = np
 
-import gt4py as gt
-
-from tasmania.python.utils import typing
-from tasmania.python.utils.backend import is_gt, get_gt_backend
+from tasmania.python.framework.allocators import as_storage
+from tasmania.python.utils import typing as ty
 
 if TYPE_CHECKING:
-    from tasmania.python.domain.grid import Grid
-    from tasmania.python.domain.horizontal_grid import HorizontalGrid
     from tasmania.python.domain.domain import Domain
+    from tasmania.python.domain.grid import Grid, NumericalGrid, PhysicalGrid
+    from tasmania.python.domain.horizontal_boundary import HorizontalBoundary
+    from tasmania.python.domain.horizontal_grid import HorizontalGrid
+    from tasmania.python.framework.options import StorageOptions
 
 
 def get_dataarray_2d(
-    array: typing.array_t,
+    array: ty.Storage,
     grid: "Union[Grid, HorizontalGrid]",
     units: str,
     name: Optional[str] = None,
-    grid_origin: Optional[typing.pair_int_t] = None,
-    grid_shape: Optional[typing.pair_int_t] = None,
+    grid_origin: Optional[ty.PairInt] = None,
+    grid_shape: Optional[ty.PairInt] = None,
     set_coordinates: bool = True,
 ) -> DataArray:
     """Create a DataArray out of a 2-D :class:`numpy.ndarray`-like storage.
@@ -129,12 +129,12 @@ def get_dataarray_2d(
 
 
 def get_dataarray_3d(
-    array: typing.array_t,
+    array: ty.Storage,
     grid: "Grid",
     units: str,
     name: Optional[str] = None,
-    grid_origin: Optional[typing.TripletInt] = None,
-    grid_shape: Optional[typing.TripletInt] = None,
+    grid_origin: Optional[ty.TripletInt] = None,
+    grid_shape: Optional[ty.TripletInt] = None,
     set_coordinates: bool = True,
 ) -> DataArray:
     """Create a DataArray out of a 3-D ndarray-like storage.
@@ -258,10 +258,8 @@ def get_dataarray_3d(
 
 
 def get_dataarray_dict(
-    array_dict: typing.array_dict_t,
-    grid: "Grid",
-    properties: typing.properties_dict_t,
-) -> typing.dataarray_dict_t:
+    array_dict: ty.StorageDict, grid: "Grid", properties: ty.PropertiesDict,
+) -> ty.DataArrayDict:
     """
     Parameters
     ----------
@@ -319,9 +317,8 @@ def get_dataarray_dict(
 
 
 def get_array_dict(
-    dataarray_dict: typing.dataarray_dict_t,
-    properties: typing.properties_dict_t,
-) -> typing.array_dict_t:
+    dataarray_dict: ty.DataArrayDict, properties: ty.PropertiesDict,
+) -> ty.StorageDict:
     """
     Parameters
     ----------
@@ -356,17 +353,16 @@ def get_array_dict(
 
 
 def get_physical_state(
-    domain: "Domain",
-    cstate: typing.dataarray_dict_t,
+    pgrid: "PhysicalGrid",
+    hb: "HorizontalBoundary",
+    cstate: ty.DataArrayDict,
     store_names: Optional[Sequence[str]] = None,
-) -> DataArray:
+) -> ty.DataArrayDict:
     """
     Given a state dictionary defined over the numerical grid, transpose
     that state over the corresponding physical grid.
     """
-    pgrid = domain.physical_grid
     nx, ny, nz = pgrid.nx, pgrid.ny, pgrid.nz
-    hb = domain.horizontal_boundary
 
     store_names = (
         store_names
@@ -409,17 +405,16 @@ def get_physical_state(
 
 
 def get_numerical_state(
-    domain: "Domain",
-    pstate: typing.dataarray_dict_t,
+    ngrid: "NumericalGrid",
+    hb: "HorizontalBoundary",
+    pstate: ty.DataArrayDict,
     store_names: Optional[Sequence[str]] = None,
-) -> typing.dataarray_dict_t:
+) -> ty.DataArrayDict:
     """
     Given a state defined over the physical grid, transpose that state
     over the corresponding numerical grid.
     """
-    ngrid = domain.numerical_grid
     nx, ny, nz = ngrid.nx, ngrid.ny, ngrid.nz
-    hb = domain.horizontal_boundary
 
     store_names = (
         store_names
@@ -491,11 +486,11 @@ def get_storage_shape(
 
 
 def get_aligned_index(
-    aligned_index: typing.TripletInt,
-    storage_shape: typing.TripletInt,
-    min_aligned_index: Optional[typing.TripletInt] = None,
-    max_aligned_index: Optional[typing.TripletInt] = None,
-) -> typing.TripletInt:
+    aligned_index: ty.TripletInt,
+    storage_shape: ty.TripletInt,
+    min_aligned_index: Optional[ty.TripletInt] = None,
+    max_aligned_index: Optional[ty.TripletInt] = None,
+) -> ty.TripletInt:
     aligned_index = aligned_index or (0, 0, 0)
 
     max_aligned_index = max_aligned_index or aligned_index
@@ -524,18 +519,37 @@ def get_aligned_index(
     return out
 
 
-def deepcopy_array_dict(src: typing.array_dict_t) -> typing.array_dict_t:
+def deepcopy_array_dict(
+    src: ty.StorageDict,
+    *,
+    backend: Optional[str] = None,
+    storage_options: Optional["StorageOptions"] = None
+) -> ty.StorageDict:
     dst = {"time": src["time"]} if "time" in src else {}
     for name in src:
         if name != "time":
-            dst[name] = deepcopy(src[name])
+            if backend is not None:
+                dst[name] = as_storage(
+                    backend, data=src[name], storage_options=storage_options
+                )
+            else:
+                dst[name] = deepcopy(src[name])
     return dst
 
 
-def deepcopy_dataarray(src: DataArray) -> DataArray:
+def deepcopy_dataarray(
+    src: DataArray,
+    *,
+    backend: Optional[str] = None,
+    storage_options: Optional["StorageOptions"] = None
+) -> DataArray:
+    raw_array = (
+        as_storage(backend, data=src.data, storage_options=storage_options)
+        if backend is not None
+        else deepcopy(src.data)
+    )
     return DataArray(
-        # deepcopy(src.values),
-        deepcopy(src.data),
+        raw_array,
         coords=src.coords,
         dims=src.dims,
         name=src.name,
@@ -544,10 +558,15 @@ def deepcopy_dataarray(src: DataArray) -> DataArray:
 
 
 def deepcopy_dataarray_dict(
-    src: typing.dataarray_dict_t,
-) -> typing.dataarray_dict_t:
+    src: ty.DataArrayDict,
+    *,
+    backend: Optional[str] = None,
+    storage_options: Optional["StorageOptions"] = None
+) -> ty.DataArrayDict:
     dst = {"time": src["time"]} if "time" in src else {}
     for name in src:
         if name != "time":
-            dst[name] = deepcopy_dataarray(src[name])
+            dst[name] = deepcopy_dataarray(
+                src[name], backend=backend, storage_options=storage_options
+            )
     return dst

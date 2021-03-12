@@ -322,7 +322,7 @@ class HorizontalBoundary(StencilFactory, abc.ABC):
 
     def enforce_raw(
         self: "HorizontalBoundary",
-        state: ty.ArrayDict,
+        state: ty.StorageDict,
         field_properties: Optional[ty.properties_mapping_t] = None,
     ) -> None:
         """Enforce the boundary conditions on a raw state.

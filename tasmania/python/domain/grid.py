@@ -227,7 +227,7 @@ class Grid:
         """
         return self._zi
 
-    def update_topography(self: "Grid", time: ty.datetime_t) -> None:
+    def update_topography(self: "Grid", time: ty.Datetime) -> None:
         """Update the underlying (time-dependent) :class:`~tasmania.Topography`.
 
         Parameters

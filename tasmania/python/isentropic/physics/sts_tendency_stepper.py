@@ -35,7 +35,7 @@ from tasmania.python.framework.tag import stencil_definition
 from tasmania.python.isentropic.physics.implicit_vertical_advection import (
     IsentropicImplicitVerticalAdvectionDiagnostic,
 )
-from tasmania.python.utils import typing
+from tasmania.python.utils import typing as ty
 
 
 mfwv = "mass_fraction_of_water_vapor_in_air"
@@ -75,11 +75,8 @@ def setup_tridiagonal_system_numpy(
 
 @gtscript.function
 def setup_tridiagonal_system(
-    gamma: float,
-    w: typing.gtfield_t,
-    phi: typing.gtfield_t,
-    phi_prv: typing.gtfield_t,
-) -> "Tuple[typing.gtfield_t, typing.gtfield_t, typing.gtfield_t]":
+    gamma: float, w: ty.gtfield_t, phi: ty.gtfield_t, phi_prv: ty.gtfield_t,
+) -> "Tuple[ty.gtfield_t, ty.gtfield_t, ty.gtfield_t]":
     a = gamma * w[0, 0, -1]
     c = -gamma * w[0, 0, 1]
     d = phi_prv[0, 0, 0] - gamma * (
@@ -90,8 +87,8 @@ def setup_tridiagonal_system(
 
 @gtscript.function
 def setup_tridiagonal_system_bc(
-    phi_prv: typing.gtfield_t,
-) -> "Tuple[typing.gtfield_t, typing.gtfield_t, typing.gtfield_t]":
+    phi_prv: ty.gtfield_t,
+) -> "Tuple[ty.gtfield_t, ty.gtfield_t, ty.gtfield_t]":
     a = 0.0
     c = 0.0
     d = phi_prv[0, 0, 0]
@@ -292,15 +289,15 @@ class IsentropicVerticalAdvection(STSTendencyStepper, StencilFactory):
         out_qr: Optional[np.ndarray] = None,
         *,
         gamma: float,
-        origin: typing.triplet_int_t,
-        domain: typing.triplet_int_t,
+        origin: ty.TripletInt,
+        domain: ty.TripletInt,
     ) -> None:
         i = slice(origin[0], origin[0] + domain[0])
         j = slice(origin[1], origin[1] + domain[1])
         kstart, kstop = origin[2], origin[2] + domain[2]
 
         # interpolate the velocity on the main levels
-        if self._stgz:
+        if vstaggering:
             w = np.zeros_like(in_w)
             w[i, j, kstart:kstop] = 0.5 * (
                 in_w[i, j, kstart:kstop] + in_w[i, j, kstart + 1 : kstop + 1]
@@ -309,7 +306,7 @@ class IsentropicVerticalAdvection(STSTendencyStepper, StencilFactory):
             w = in_w
 
         # compute the isentropic density of the water species
-        if self._moist:
+        if moist:
             sqv = np.zeros_like(in_qv)
             sqv_prv = np.zeros_like(in_qv)
             sqc = np.zeros_like(in_qc)
@@ -405,7 +402,7 @@ class IsentropicVerticalAdvection(STSTendencyStepper, StencilFactory):
         # solve the tridiagonal system
         thomas_numpy(a, b, c, d, out_sv, i=i, j=j, kstart=kstart, kstop=kstop)
 
-        if self._moist:
+        if moist:
             #
             # isentropic density of water vapor
             #

@@ -136,7 +136,7 @@ class SequentialUpdateSplitting:
             properties2_name="output_properties",
         )
 
-    def _init_input_properties(self) -> typing.properties_dict_t:
+    def _init_input_properties(self) -> typing.PropertiesDict:
         return get_input_properties(
             tuple(
                 {
@@ -148,7 +148,7 @@ class SequentialUpdateSplitting:
             )
         )
 
-    def _init_output_properties(self) -> typing.properties_dict_t:
+    def _init_output_properties(self) -> typing.PropertiesDict:
         return get_output_properties(
             tuple(
                 {
@@ -163,7 +163,7 @@ class SequentialUpdateSplitting:
     def __call__(
         self,
         state: typing.mutable_dataarray_dict_t,
-        timestep: typing.timedelta_t,
+        timestep: typing.TimeDelta,
     ) -> None:
         """
         Advance the model state one timestep forward in time by pursuing

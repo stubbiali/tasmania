@@ -72,7 +72,7 @@ class DiagnosticComponentComposite(BaseDiagnosticComponentComposite):
 
     def __init__(
         self,
-        *args: typing.diagnostic_component_t,
+        *args: typing.DiagnosticComponent,
         execution_policy: str = "serial"
     ) -> None:
         """
@@ -128,7 +128,7 @@ class DiagnosticComponentComposite(BaseDiagnosticComponentComposite):
         )
 
     def __call__(
-        self, state: typing.dataarray_dict_t, timestep: typing.timedelta_t,
+        self, state: typing.DataArrayDict, timestep: typing.TimeDelta,
     ):
         """
         Retrieve diagnostics from the input state by sequentially calling
@@ -154,7 +154,7 @@ class DiagnosticComponentComposite(BaseDiagnosticComponentComposite):
         return self._call(state, timestep)
 
     def _call_serial(
-        self, state: typing.dataarray_dict_t, timestep: typing.timedelta_t,
+        self, state: typing.DataArrayDict, timestep: typing.TimeDelta,
     ):
         return_dict = {}
 

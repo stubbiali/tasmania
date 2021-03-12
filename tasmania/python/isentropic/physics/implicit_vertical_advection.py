@@ -27,7 +27,7 @@ from gt4py import gtscript
 
 from tasmania.python.framework.base_components import ImplicitTendencyComponent
 from tasmania.python.framework.tag import stencil_definition
-from tasmania.python.utils import typing
+from tasmania.python.utils import typing as ty
 
 if TYPE_CHECKING:
     from tasmania.python.domain.domain import Domain
@@ -123,7 +123,7 @@ class IsentropicImplicitVerticalAdvectionDiagnostic(ImplicitTendencyComponent):
         self._stencil = self.compile("stencil")
 
     @property
-    def input_properties(self) -> typing.properties_dict_t:
+    def input_properties(self) -> ty.PropertiesDict:
         grid = self.grid
         dims = (grid.x.dims[0], grid.y.dims[0], grid.z.dims[0])
 
@@ -165,11 +165,11 @@ class IsentropicImplicitVerticalAdvectionDiagnostic(ImplicitTendencyComponent):
         return return_dict
 
     @property
-    def tendency_properties(self) -> typing.properties_dict_t:
+    def tendency_properties(self) -> ty.PropertiesDict:
         return {}
 
     @property
-    def diagnostic_properties(self) -> typing.properties_dict_t:
+    def diagnostic_properties(self) -> ty.PropertiesDict:
         grid = self.grid
         dims = (grid.x.dims[0], grid.y.dims[0], grid.z.dims[0])
 
@@ -192,8 +192,8 @@ class IsentropicImplicitVerticalAdvectionDiagnostic(ImplicitTendencyComponent):
         return return_dict
 
     def array_call(
-        self, state: typing.array_dict_t, timestep: typing.timedelta_t
-    ) -> Tuple[typing.array_dict_t, typing.array_dict_t]:
+        self, state: ty.StorageDict, timestep: ty.TimeDelta
+    ) -> Tuple[ty.StorageDict, ty.StorageDict]:
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
         dz = self.grid.dz.to_units("K").values.item()
 
@@ -274,16 +274,15 @@ class IsentropicImplicitVerticalAdvectionDiagnostic(ImplicitTendencyComponent):
         out_qr: np.ndarray = None,
         *,
         gamma: float,
-        origin: typing.triplet_int_t,
-        domain: typing.triplet_int_t,
-        **kwargs  # catch-all
+        origin: ty.TripletInt,
+        domain: ty.TripletInt
     ) -> None:
         i = slice(origin[0], origin[0] + domain[0])
         j = slice(origin[1], origin[1] + domain[1])
         kstart, kstop = origin[2], origin[2] + domain[2]
 
         # interpolate the velocity on the main levels
-        if self._stgz:
+        if vstaggering:
             w = np.zeros_like(in_w)
             w[i, j, kstart:kstop] = 0.5 * (
                 in_w[i, j, kstart:kstop] + in_w[i, j, kstart + 1 : kstop + 1]
@@ -292,7 +291,7 @@ class IsentropicImplicitVerticalAdvectionDiagnostic(ImplicitTendencyComponent):
             w = in_w
 
         # compute the isentropic density of the water species
-        if self._moist:
+        if moist:
             sqv = self.zeros(shape=in_qv.shape)
             sqv[i, j, kstart:kstop] = (
                 in_s[i, j, kstart:kstop] * in_qv[i, j, kstart:kstop]
@@ -341,7 +340,7 @@ class IsentropicImplicitVerticalAdvectionDiagnostic(ImplicitTendencyComponent):
         # solve the tridiagonal system
         thomas(a, b, c, d, out_sv, i=i, j=j, kstart=kstart, kstop=kstop)
 
-        if self._moist:
+        if moist:
             #
             # isentropic density of water vapor
             #
@@ -404,12 +403,7 @@ class IsentropicImplicitVerticalAdvectionDiagnostic(ImplicitTendencyComponent):
         *,
         gamma: float
     ) -> None:
-        from __externals__ import (
-            moist,
-            setup,
-            setup_bc,
-            vstaggering,
-        )
+        from __externals__ import moist, setup, setup_bc, vstaggering
 
         # interpolate the velocity on the main levels
         with computation(PARALLEL), interval(0, None):
@@ -755,7 +749,7 @@ class IsentropicImplicitVerticalAdvectionPrognostic(ImplicitTendencyComponent):
         self._stencil = self.compile("stencil")
 
     @property
-    def input_properties(self) -> typing.properties_dict_t:
+    def input_properties(self) -> ty.PropertiesDict:
         grid = self.grid
         dims = (grid.x.dims[0], grid.y.dims[0], grid.z.dims[0])
 
@@ -797,7 +791,7 @@ class IsentropicImplicitVerticalAdvectionPrognostic(ImplicitTendencyComponent):
         return return_dict
 
     @property
-    def tendency_properties(self) -> typing.properties_dict_t:
+    def tendency_properties(self) -> ty.PropertiesDict:
         grid = self.grid
         dims = (grid.x.dims[0], grid.y.dims[0], grid.z.dims[0])
 
@@ -823,12 +817,12 @@ class IsentropicImplicitVerticalAdvectionPrognostic(ImplicitTendencyComponent):
         return return_dict
 
     @property
-    def diagnostic_properties(self) -> typing.properties_dict_t:
+    def diagnostic_properties(self) -> ty.PropertiesDict:
         return {}
 
     def array_call(
-        self, state: typing.array_dict_t, timestep: typing.timedelta_t
-    ) -> Tuple[typing.array_dict_t, typing.array_dict_t]:
+        self, state: ty.StorageDict, timestep: ty.TimeDelta
+    ) -> Tuple[ty.StorageDict, ty.StorageDict]:
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
         dz = self.grid.dz.to_units("K").values.item()
 
@@ -911,16 +905,15 @@ class IsentropicImplicitVerticalAdvectionPrognostic(ImplicitTendencyComponent):
         *,
         dt: float,
         gamma: float,
-        origin: typing.triplet_int_t,
-        domain: typing.triplet_int_t,
-        **kwargs  # catch-all
+        origin: ty.TripletInt,
+        domain: ty.TripletInt
     ) -> None:
         i = slice(origin[0], origin[0] + domain[0])
         j = slice(origin[1], origin[1] + domain[1])
         kstart, kstop = origin[2], origin[2] + domain[2]
 
         # interpolate the velocity on the main levels
-        if self._stgz:
+        if vstaggering:
             w = self.zeros(shape=in_w.shape)
             w[i, j, kstart:kstop] = 0.5 * (
                 in_w[i, j, kstart:kstop] + in_w[i, j, kstart + 1 : kstop + 1]
@@ -929,7 +922,7 @@ class IsentropicImplicitVerticalAdvectionPrognostic(ImplicitTendencyComponent):
             w = in_w
 
         # compute the isentropic density of the water species
-        if self._moist:
+        if moist:
             sqv = self.zeros(shape=in_qv.shape)
             sqv[i, j, kstart:kstop] = (
                 in_s[i, j, kstart:kstop] * in_qv[i, j, kstart:kstop]
@@ -981,7 +974,7 @@ class IsentropicImplicitVerticalAdvectionPrognostic(ImplicitTendencyComponent):
         out_sv = self.zeros(shape=in_sv.shape)
         thomas(a, b, c, d, out_sv, i=i, j=j, kstart=kstart, kstop=kstop)
 
-        if self._moist:
+        if moist:
             #
             # isentropic density of water vapor
             #
@@ -1022,7 +1015,7 @@ class IsentropicImplicitVerticalAdvectionPrognostic(ImplicitTendencyComponent):
         tnd_sv[i, j, kstart:kstop] = (
             out_sv[i, j, kstart:kstop] - in_sv[i, j, kstart:kstop]
         ) / dt
-        if self._moist:
+        if moist:
             tnd_qv[i, j, kstart:kstop] = (
                 out_sqv[i, j, kstart:kstop] / out_s[i, j, kstart:kstop]
                 - in_qv[i, j, kstart:kstop]
@@ -1056,12 +1049,7 @@ class IsentropicImplicitVerticalAdvectionPrognostic(ImplicitTendencyComponent):
         dt: float,
         gamma: float
     ) -> None:
-        from __externals__ import (
-            moist,
-            setup,
-            setup_bc,
-            vstaggering,
-        )
+        from __externals__ import moist, setup, setup_bc, vstaggering
 
         # interpolate the velocity on the main levels
         with computation(PARALLEL), interval(0, None):

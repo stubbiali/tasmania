@@ -179,7 +179,7 @@ class Domain:
         """The :class:`~tasmania.PhysicalGrid`."""
         return self._pgrid
 
-    def update_topography(self: "Domain", time: ty.datetime_t) -> None:
+    def update_topography(self: "Domain", time: ty.Datetime) -> None:
         """Update the (time-dependent) :class:`~tasmania.Topography`.
 
         Parameters

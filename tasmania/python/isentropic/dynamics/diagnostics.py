@@ -33,7 +33,7 @@ from tasmania.python.framework.base_components import (
 )
 from tasmania.python.framework.stencil import StencilFactory
 from tasmania.python.framework.tag import stencil_definition
-from tasmania.python.utils import typing
+from tasmania.python.utils import typing as ty
 
 if TYPE_CHECKING:
     from tasmania.python.domain.grid import Grid
@@ -119,8 +119,8 @@ class IsentropicDiagnostics(
 
         # allocate auxiliary fields
         self._theta = self.zeros(shape=storage_shape)  # todo: mask
-        self._theta[:nx, :ny, : nz + 1] = self.asarray()(
-            grid.z_on_interface_levels.to_units("K").values[
+        self._theta[:nx, :ny, : nz + 1] = self.as_storage(
+            data=grid.z_on_interface_levels.to_units("K").values[
                 np.newaxis, np.newaxis, :
             ]
         )
@@ -148,12 +148,12 @@ class IsentropicDiagnostics(
 
     def get_diagnostic_variables(
         self,
-        s: typing.array_t,
+        s: ty.Storage,
         pt: float,
-        p: typing.array_t,
-        exn: typing.array_t,
-        mtg: typing.array_t,
-        h: typing.array_t,
+        p: ty.Storage,
+        exn: ty.Storage,
+        mtg: ty.Storage,
+        h: ty.Storage,
     ) -> None:
         """
         With the help of the isentropic density and the upper boundary
@@ -184,8 +184,8 @@ class IsentropicDiagnostics(
         dz = self._grid.dz.to_units("K").values.item()
 
         # set the topography
-        self._topo[:nx, :ny, nz] = self.asarray()(
-            self._grid.topography.profile.to_units("m").values
+        self._topo[:nx, :ny, nz] = self.as_storage(
+            data=self._grid.topography.profile.to_units("m").values
         )
 
         # retrieve all the diagnostic variables
@@ -206,7 +206,7 @@ class IsentropicDiagnostics(
         )
 
     def get_montgomery_potential(
-        self, s: typing.gtstorage_t, pt: float, mtg: typing.gtstorage_t
+        self, s: ty.Storage, pt: float, mtg: ty.Storage
     ) -> None:
         """
         With the help of the isentropic density and the upper boundary
@@ -229,8 +229,8 @@ class IsentropicDiagnostics(
         theta_s = self._grid.z_on_interface_levels.to_units("K").values[-1]
 
         # set the topography
-        self._topo[:nx, :ny, nz] = self.asarray()(
-            self._grid.topography.profile.to_units("m").values
+        self._topo[:nx, :ny, nz] = self.as_storage(
+            data=self._grid.topography.profile.to_units("m").values
         )
 
         # run the stencil
@@ -247,9 +247,7 @@ class IsentropicDiagnostics(
             validate_args=self.backend_options.validate_args,
         )
 
-    def get_height(
-        self, s: typing.gtstorage_t, pt: float, h: typing.gtstorage_t
-    ) -> None:
+    def get_height(self, s: ty.Storage, pt: float, h: ty.Storage) -> None:
         """
         With the help of the isentropic density and the upper boundary
         condition on the pressure distribution, diagnose the geometric
@@ -271,8 +269,8 @@ class IsentropicDiagnostics(
         dz = self._grid.dz.to_units("K").values.item()
 
         # set the topography
-        self._topo[:nx, :ny, nz] = self.asarray()(
-            self._grid.topography.profile.to_units("m").values
+        self._topo[:nx, :ny, nz] = self.as_storage(
+            data=self._grid.topography.profile.to_units("m").values
         )
 
         # run the stencil
@@ -291,11 +289,11 @@ class IsentropicDiagnostics(
 
     def get_density_and_temperature(
         self,
-        s: typing.gtstorage_t,
-        exn: typing.gtstorage_t,
-        h: typing.gtstorage_t,
-        rho: typing.gtstorage_t,
-        t: typing.gtstorage_t,
+        s: ty.Storage,
+        exn: ty.Storage,
+        h: ty.Storage,
+        rho: ty.Storage,
+        t: ty.Storage,
     ) -> None:
         """
         With the help of the isentropic density and the geometric height
@@ -332,11 +330,11 @@ class IsentropicDiagnostics(
             validate_args=self.backend_options.validate_args,
         )
 
+    @staticmethod
     @stencil_definition(
         backend=("numpy", "cupy"), stencil="diagnostic_variables"
     )
     def _diagnostic_variables_numpy(
-        self,
         in_theta: np.ndarray,
         in_hs: np.ndarray,
         in_s: np.ndarray,
@@ -347,15 +345,9 @@ class IsentropicDiagnostics(
         *,
         dz: float,
         pt: float,
-        origin: typing.triplet_int_t,
-        domain: typing.triplet_int_t,
-        **kwargs  # catch-all
+        origin: ty.TripletInt,
+        domain: ty.TripletInt
     ) -> None:
-        pref = self.rpc["air_pressure_at_sea_level"]
-        rd = self.rpc["gas_constant_of_dry_air"]
-        g = self.rpc["gravitational_acceleration"]
-        cp = self.rpc["specific_heat_of_dry_air_at_constant_pressure"]
-
         i = slice(origin[0], origin[0] + domain[0])
         j = slice(origin[1], origin[1] + domain[1])
         kstart, kstop = origin[2], origin[2] + domain[2]
@@ -444,25 +436,19 @@ class IsentropicDiagnostics(
                     cp * g * (inout_p[0, 0, 0] + inout_p[0, 0, 1])
                 )
 
+    @staticmethod
     @stencil_definition(backend=("numpy", "cupy"), stencil="montgomery")
     def _montgomery_numpy(
-        self,
-        in_hs: gtscript.Field["dtype"],
-        in_s: gtscript.Field["dtype"],
-        inout_mtg: gtscript.Field["dtype"],
+        in_hs: np.ndarray,
+        in_s: np.ndarray,
+        inout_mtg: np.ndarray,
         *,
         dz: float,
         pt: float,
         theta_s: float,
-        origin: typing.triplet_int_t,
-        domain: typing.triplet_int_t,
-        **kwargs  # catch-all
+        origin: ty.TripletInt,
+        domain: ty.TripletInt
     ) -> None:
-        pref = self.rpc["air_pressure_at_sea_level"]
-        rd = self.rpc["gas_constant_of_dry_air"]
-        g = self.rpc["gravitational_acceleration"]
-        cp = self.rpc["specific_heat_of_dry_air_at_constant_pressure"]
-
         i = slice(origin[0], origin[0] + domain[0])
         j = slice(origin[1], origin[1] + domain[1])
         kstart, kstop = origin[2], origin[2] + domain[2]
@@ -514,9 +500,9 @@ class IsentropicDiagnostics(
             with interval(0, -2):
                 inout_mtg = inout_mtg[0, 0, 1] + dz * out_exn[0, 0, 1]
 
+    @staticmethod
     @stencil_definition(backend=("numpy", "cupy"), stencil="height")
     def _height_numpy(
-        self,
         in_theta: np.ndarray,
         in_hs: np.ndarray,
         in_s: np.ndarray,
@@ -524,15 +510,9 @@ class IsentropicDiagnostics(
         *,
         dz: float,
         pt: float,
-        origin: typing.triplet_int_t,
-        domain: typing.triplet_int_t,
-        **kwargs  # catch-all
+        origin: ty.TripletInt,
+        domain: ty.TripletInt
     ) -> None:
-        pref = self.rpc["air_pressure_at_sea_level"]
-        rd = self.rpc["gas_constant_of_dry_air"]
-        g = self.rpc["gravitational_acceleration"]
-        cp = self.rpc["specific_heat_of_dry_air_at_constant_pressure"]
-
         i = slice(origin[0], origin[0] + domain[0])
         j = slice(origin[1], origin[1] + domain[1])
         kstart, kstop = origin[2], origin[2] + domain[2]
@@ -592,24 +572,21 @@ class IsentropicDiagnostics(
                     cp * g * (inout_p[0, 0, 0] + inout_p[0, 0, 1])
                 )
 
+    @staticmethod
     @stencil_definition(
         backend=("numpy", "cupy"), stencil="density_and_temperature"
     )
     def _density_and_temperature_numpy(
-        self,
-        in_theta: gtscript.Field["dtype"],
-        in_s: gtscript.Field["dtype"],
-        in_exn: gtscript.Field["dtype"],
-        in_h: gtscript.Field["dtype"],
-        out_rho: gtscript.Field["dtype"],
-        out_t: gtscript.Field["dtype"],
+        in_theta: np.ndarray,
+        in_s: np.ndarray,
+        in_exn: np.ndarray,
+        in_h: np.ndarray,
+        out_rho: np.ndarray,
+        out_t: np.ndarray,
         *,
-        origin: typing.triplet_int_t,
-        domain: typing.triplet_int_t,
-        **kwargs  # catch-all
+        origin: ty.TripletInt,
+        domain: ty.TripletInt,
     ) -> None:
-        cp = self.rpc["specific_heat_of_dry_air_at_constant_pressure"]
-
         i = slice(origin[0], origin[0] + domain[0])
         j = slice(origin[1], origin[1] + domain[1])
         k = slice(origin[2], origin[2] + domain[2])

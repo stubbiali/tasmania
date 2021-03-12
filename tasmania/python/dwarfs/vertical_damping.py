@@ -127,7 +127,7 @@ class VerticalDamping(GridComponent, StencilFactory, abc.ABC):
     @abc.abstractmethod
     def __call__(
         self: "VerticalDamping",
-        dt: ty.timedelta_t,
+        dt: ty.TimeDelta,
         field_now: ty.Storage,
         field_new: ty.Storage,
         field_ref: ty.Storage,
@@ -222,8 +222,8 @@ class VerticalDamping(GridComponent, StencilFactory, abc.ABC):
         out_phi: np.ndarray,
         *,
         dt: float,
-        origin: ty.triplet_int_t,
-        domain: ty.triplet_int_t
+        origin: ty.TripletInt,
+        domain: ty.TripletInt
     ) -> None:
         pass
 

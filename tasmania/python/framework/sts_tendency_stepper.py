@@ -38,7 +38,7 @@ from typing import Optional, TYPE_CHECKING, Tuple
 from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
 from tasmania.python.framework.fakes import FakeComponent
 from tasmania.python.framework.register import factorize
-from tasmania.python.utils import typing
+from tasmania.python.utils import typing as ty
 from tasmania.python.utils.dict import DataArrayDictOperator
 from tasmania.python.utils.framework import check_property_compatibility
 from tasmania.python.utils.storage import deepcopy_dataarray
@@ -70,7 +70,7 @@ class STSTendencyStepper(abc.ABC):
 
     def __init__(
         self,
-        *args: typing.tendency_component_t,
+        *args: ty.TendencyComponent,
         execution_policy: str = "serial",
         enforce_horizontal_boundary: bool = False,
         backend: str = "numpy",
@@ -138,7 +138,6 @@ class STSTendencyStepper(abc.ABC):
             found = False
             for prognostic in args:
                 if not found:
-
                     try:  # composite component
                         components = prognostic.component_list
                     except AttributeError:  # base component
@@ -177,7 +176,7 @@ class STSTendencyStepper(abc.ABC):
         """
         return self._prognostic
 
-    def _get_input_properties(self) -> typing.properties_dict_t:
+    def _get_input_properties(self) -> ty.PropertiesDict:
         """
         Return
         ------
@@ -211,7 +210,7 @@ class STSTendencyStepper(abc.ABC):
 
         return return_dict
 
-    def _get_provisional_input_properties(self) -> typing.properties_dict_t:
+    def _get_provisional_input_properties(self) -> ty.PropertiesDict:
         """
         Return
         ------
@@ -232,7 +231,7 @@ class STSTendencyStepper(abc.ABC):
 
         return return_dict
 
-    def _get_diagnostic_properties(self) -> typing.properties_dict_t:
+    def _get_diagnostic_properties(self) -> ty.PropertiesDict:
         """
         Return
         ------
@@ -244,7 +243,7 @@ class STSTendencyStepper(abc.ABC):
         """
         return self._prognostic.diagnostic_properties
 
-    def _get_output_properties(self) -> typing.properties_dict_t:
+    def _get_output_properties(self) -> ty.PropertiesDict:
         """
         Return
         ------
@@ -258,10 +257,10 @@ class STSTendencyStepper(abc.ABC):
 
     def __call__(
         self,
-        state: typing.dataarray_dict_t,
-        prv_state: typing.dataarray_dict_t,
-        timestep: typing.timedelta_t,
-    ) -> Tuple[typing.dataarray_dict_t, typing.dataarray_dict_t]:
+        state: ty.DataArrayDict,
+        prv_state: ty.DataArrayDict,
+        timestep: ty.TimeDelta,
+    ) -> Tuple[ty.DataArrayDict, ty.DataArrayDict]:
         """
         Step the model state.
 
@@ -301,7 +300,7 @@ class STSTendencyStepper(abc.ABC):
     @staticmethod
     def factory(
         scheme: str,
-        *args: typing.tendency_component_t,
+        *args: ty.TendencyComponent,
         execution_policy: str = "serial",
         enforce_horizontal_boundary: bool = False,
         backend: str = "numpy",
@@ -365,10 +364,10 @@ class STSTendencyStepper(abc.ABC):
     @abc.abstractmethod
     def _call(
         self,
-        state: typing.dataarray_dict_t,
-        prv_state: typing.dataarray_dict_t,
-        timestep: typing.timedelta_t,
-    ) -> Tuple[typing.dataarray_dict_t, typing.dataarray_dict_t]:
+        state: ty.DataArrayDict,
+        prv_state: ty.DataArrayDict,
+        timestep: ty.TimeDelta,
+    ) -> Tuple[ty.DataArrayDict, ty.DataArrayDict]:
         """
         Step the model state. As this method is marked as abstract,
         its implementation is delegated to the derived classes.
@@ -392,8 +391,8 @@ class STSTendencyStepper(abc.ABC):
         pass
 
     def _allocate_output_state(
-        self, state: typing.dataarray_dict_t
-    ) -> typing.dataarray_dict_t:
+        self, state: ty.DataArrayDict
+    ) -> ty.DataArrayDict:
         out_state = self._out_state or {}
 
         if not out_state:

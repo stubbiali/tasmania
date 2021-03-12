@@ -28,7 +28,7 @@ from gt4py import gtscript
 
 from tasmania.python.framework.base_components import TendencyComponent
 from tasmania.python.framework.tag import stencil_definition
-from tasmania.python.utils import typing
+from tasmania.python.utils import typing as ty
 
 if TYPE_CHECKING:
     from tasmania.python.domain.domain import Domain
@@ -105,7 +105,7 @@ class IsentropicConservativeCoriolis(TendencyComponent):
         self._stencil = self.compile("coriolis")
 
     @property
-    def input_properties(self) -> typing.properties_dict_t:
+    def input_properties(self) -> ty.PropertiesDict:
         g = self.grid
         dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
 
@@ -123,7 +123,7 @@ class IsentropicConservativeCoriolis(TendencyComponent):
         return return_dict
 
     @property
-    def tendency_properties(self) -> typing.properties_dict_t:
+    def tendency_properties(self) -> ty.PropertiesDict:
         g = self.grid
         dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
 
@@ -141,12 +141,12 @@ class IsentropicConservativeCoriolis(TendencyComponent):
         return return_dict
 
     @property
-    def diagnostic_properties(self) -> typing.properties_dict_t:
+    def diagnostic_properties(self) -> ty.PropertiesDict:
         return {}
 
     def array_call(
-        self, state: typing.array_dict_t
-    ) -> Tuple[typing.array_dict_t, typing.array_dict_t]:
+        self, state: ty.StorageDict
+    ) -> Tuple[ty.StorageDict, ty.StorageDict]:
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
         nb = self._nb
 
@@ -179,9 +179,8 @@ class IsentropicConservativeCoriolis(TendencyComponent):
         tnd_sv: np.ndarray,
         *,
         f: float,
-        origin: typing.triplet_int_t,
-        domain: typing.triplet_int_t,
-        **kwargs  # catch-all
+        origin: ty.TripletInt,
+        domain: ty.TripletInt
     ) -> None:
         i = slice(origin[0], origin[0] + domain[0])
         j = slice(origin[1], origin[1] + domain[1])

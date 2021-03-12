@@ -27,7 +27,7 @@ from tasmania.python.utils.framework import get_increment
 
 @register(name="rk3ws")
 class RK3WS(TendencyStepper):
-    """ The Wicker-Skamarock three-stages Runge-Kutta scheme.
+    """The Wicker-Skamarock three-stages Runge-Kutta scheme.
 
     References
     ----------
@@ -80,9 +80,7 @@ class RK3WS(TendencyStepper):
         if self._enforce_hb:
             # enforce the boundary conditions on each prognostic variable
             self._hb.enforce(
-                out_state,
-                field_names=self.output_properties.keys(),
-                grid=self._grid,
+                out_state, field_names=self.output_properties.keys(),
             )
 
         # populate out_state with all other variables from state
@@ -114,9 +112,7 @@ class RK3WS(TendencyStepper):
         if self._enforce_hb:
             # enforce the boundary conditions on each prognostic variable
             self._hb.enforce(
-                out_state,
-                field_names=self.output_properties.keys(),
-                grid=self._grid,
+                out_state, field_names=self.output_properties.keys(),
             )
 
         # populate out_state with all other variables from state
@@ -148,9 +144,7 @@ class RK3WS(TendencyStepper):
         if self._enforce_hb:
             # enforce the boundary conditions on each prognostic variable
             self._hb.enforce(
-                out_state,
-                field_names=self.output_properties.keys(),
-                grid=self._grid,
+                out_state, field_names=self.output_properties.keys(),
             )
 
         # restore original units for the tendencies

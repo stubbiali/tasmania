@@ -29,8 +29,6 @@ from gt4py import gtscript
 from tasmania.python.framework.register import factorize
 from tasmania.python.framework.stencil import StencilFactory
 from tasmania.python.framework.tag import stencil_subroutine
-from tasmania.python.utils import typing
-from tasmania.python.utils.backend import is_gt
 
 
 class IsentropicVerticalFlux(abc.ABC):
@@ -52,20 +50,20 @@ class IsentropicVerticalFlux(abc.ABC):
     def __call__(
         dt: float,
         dz: float,
-        w: typing.gtfield_t,
-        s: typing.gtfield_t,
-        s_prv: typing.gtfield_t,
-        su: typing.gtfield_t,
-        su_prv: typing.gtfield_t,
-        sv: typing.gtfield_t,
-        sv_prv: typing.gtfield_t,
-        sqv: "Optional[typing.gtfield_t]" = None,
-        sqv_prv: "Optional[typing.gtfield_t]" = None,
-        sqc: "Optional[typing.gtfield_t]" = None,
-        sqc_prv: "Optional[typing.gtfield_t]" = None,
-        sqr: "Optional[typing.gtfield_t]" = None,
-        sqr_prv: "Optional[typing.gtfield_t]" = None,
-    ) -> "Tuple[typing.gtfield_t, ...]":
+        w: gtscript.Field["dtype"],
+        s: gtscript.Field["dtype"],
+        s_prv: gtscript.Field["dtype"],
+        su: gtscript.Field["dtype"],
+        su_prv: gtscript.Field["dtype"],
+        sv: gtscript.Field["dtype"],
+        sv_prv: gtscript.Field["dtype"],
+        sqv: "Optional[gtscript.Field['dtype']]" = None,
+        sqv_prv: "Optional[gtscript.Field['dtype']]" = None,
+        sqc: "Optional[gtscript.Field['dtype']]" = None,
+        sqc_prv: "Optional[gtscript.Field['dtype']]" = None,
+        sqr: "Optional[gtscript.Field['dtype']]" = None,
+        sqr_prv: "Optional[gtscript.Field['dtype']]" = None,
+    ) -> "Tuple[gtscript.Field['dtype'], ...]":
         """
         This method returns the :class:`gt4py.gtscript.Field`\s representing
         the vertical fluxes for all the conservative model variables.
@@ -175,20 +173,20 @@ class IsentropicNonconservativeVerticalFlux(abc.ABC):
     def __call__(
         dt: float,
         dz: float,
-        w: typing.gtfield_t,
-        s: typing.gtfield_t,
-        s_prv: typing.gtfield_t,
-        u: typing.gtfield_t,
-        u_prv: typing.gtfield_t,
-        v: typing.gtfield_t,
-        v_prv: typing.gtfield_t,
-        qv: "Optional[typing.gtfield_t]" = None,
-        qv_prv: "Optional[typing.gtfield_t]" = None,
-        qc: "Optional[typing.gtfield_t]" = None,
-        qc_prv: "Optional[typing.gtfield_t]" = None,
-        qr: "Optional[typing.gtfield_t]" = None,
-        qr_prv: "Optional[typing.gtfield_t]" = None,
-    ) -> "Tuple[typing.gtfield_t, ...]":
+        w: gtscript.Field["dtype"],
+        s: gtscript.Field["dtype"],
+        s_prv: gtscript.Field["dtype"],
+        u: gtscript.Field["dtype"],
+        u_prv: gtscript.Field["dtype"],
+        v: gtscript.Field["dtype"],
+        v_prv: gtscript.Field["dtype"],
+        qv: "Optional[gtscript.Field['dtype']]" = None,
+        qv_prv: "Optional[gtscript.Field['dtype']]" = None,
+        qc: "Optional[gtscript.Field['dtype']]" = None,
+        qc_prv: "Optional[gtscript.Field['dtype']]" = None,
+        qr: "Optional[gtscript.Field['dtype']]" = None,
+        qr_prv: "Optional[gtscript.Field['dtype']]" = None,
+    ) -> "Tuple[gtscript.Field['dtype'], ...]":
         """
         Method returning the :class:`gt4py.gtscript.Field`\s representing
         the vertical flux for all the prognostic model variables.
@@ -327,11 +325,11 @@ class IsentropicMinimalVerticalFlux(StencilFactory, abc.ABC):
     def flux_dry_gt4py(
         dt: float,
         dz: float,
-        w: typing.gtfield_t,
-        s: typing.gtfield_t,
-        su: typing.gtfield_t,
-        sv: typing.gtfield_t,
-    ) -> "Tuple[typing.gtfield_t, ...]":
+        w: gtscript.Field["dtype"],
+        s: gtscript.Field["dtype"],
+        su: gtscript.Field["dtype"],
+        sv: gtscript.Field["dtype"],
+    ) -> "Tuple[gtscript.Field['dtype'], ...]":
         pass
 
     @staticmethod
@@ -341,11 +339,11 @@ class IsentropicMinimalVerticalFlux(StencilFactory, abc.ABC):
     def flux_moist_gt4py(
         dt: float,
         dz: float,
-        w: typing.gtfield_t,
-        sqv: typing.gtfield_t,
-        sqc: typing.gtfield_t,
-        sqr: typing.gtfield_t,
-    ) -> "Tuple[typing.gtfield_t, ...]":
+        w: gtscript.Field["dtype"],
+        sqv: gtscript.Field["dtype"],
+        sqc: gtscript.Field["dtype"],
+        sqr: gtscript.Field["dtype"],
+    ) -> "Tuple[gtscript.Field['dtype'], ...]":
         pass
 
     @staticmethod
@@ -400,15 +398,15 @@ class IsentropicBoussinesqMinimalVerticalFlux(abc.ABC):
     def __call__(
         dt: float,
         dz: float,
-        w: typing.gtfield_t,
-        s: typing.gtfield_t,
-        su: typing.gtfield_t,
-        sv: typing.gtfield_t,
-        ddmtg: typing.gtfield_t,
-        sqv: "Optional[typing.gtfield_t]" = None,
-        sqc: "Optional[typing.gtfield_t]" = None,
-        sqr: "Optional[typing.gtfield_t]" = None,
-    ) -> "Tuple[typing.gtfield_t, ...]":
+        w: gtscript.Field["dtype"],
+        s: gtscript.Field["dtype"],
+        su: gtscript.Field["dtype"],
+        sv: gtscript.Field["dtype"],
+        ddmtg: gtscript.Field["dtype"],
+        sqv: "Optional[gtscript.Field['dtype']]" = None,
+        sqc: "Optional[gtscript.Field['dtype']]" = None,
+        sqr: "Optional[gtscript.Field['dtype']]" = None,
+    ) -> "Tuple[gtscript.Field['dtype'], ...]":
         """
         This method returns the :class:`gt4py.gtscript.Field`\s representing
         the vertical flux for all the conservative model variables.

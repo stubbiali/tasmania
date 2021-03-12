@@ -38,7 +38,7 @@ class BurgersDynamicalCore(DynamicalCore):
         self: "BurgersDynamicalCore",
         domain: "Domain",
         intermediate_tendency_component: Optional[
-            typing.tendency_component_t
+            typing.TendencyComponent
         ] = None,
         time_integration_scheme: str = "forward_euler",
         flux_scheme: str = "upwind",
@@ -106,7 +106,7 @@ class BurgersDynamicalCore(DynamicalCore):
         )
 
     @property
-    def stage_input_properties(self) -> typing.properties_dict_t:
+    def stage_input_properties(self) -> typing.PropertiesDict:
         g = self.grid
         dims = (g.grid_xy.x.dims[0], g.grid_xy.y.dims[0], g.z.dims[0])
         return {
@@ -115,11 +115,11 @@ class BurgersDynamicalCore(DynamicalCore):
         }
 
     @property
-    def substep_input_properties(self) -> typing.properties_dict_t:
+    def substep_input_properties(self) -> typing.PropertiesDict:
         return {}
 
     @property
-    def stage_tendency_properties(self) -> typing.properties_dict_t:
+    def stage_tendency_properties(self) -> typing.PropertiesDict:
         g = self.grid
         dims = (g.grid_xy.x.dims[0], g.grid_xy.y.dims[0], g.z.dims[0])
         return {
@@ -128,11 +128,11 @@ class BurgersDynamicalCore(DynamicalCore):
         }
 
     @property
-    def substep_tendency_properties(self) -> typing.properties_dict_t:
+    def substep_tendency_properties(self) -> typing.PropertiesDict:
         return {}
 
     @property
-    def stage_output_properties(self) -> typing.properties_dict_t:
+    def stage_output_properties(self) -> typing.PropertiesDict:
         g = self.grid
         dims = (g.grid_xy.x.dims[0], g.grid_xy.y.dims[0], g.z.dims[0])
         return {
@@ -141,7 +141,7 @@ class BurgersDynamicalCore(DynamicalCore):
         }
 
     @property
-    def substep_output_properties(self) -> typing.properties_dict_t:
+    def substep_output_properties(self) -> typing.PropertiesDict:
         return {}
 
     @property
@@ -168,10 +168,10 @@ class BurgersDynamicalCore(DynamicalCore):
     def stage_array_call(
         self,
         stage: int,
-        raw_state: typing.array_dict_t,
-        raw_tendencies: typing.array_dict_t,
-        timestep: typing.timedelta_t,
-    ) -> typing.array_dict_t:
+        raw_state: typing.StorageDict,
+        raw_tendencies: typing.StorageDict,
+        timestep: typing.TimeDelta,
+    ) -> typing.StorageDict:
         out_state = self._stepper(stage, raw_state, raw_tendencies, timestep)
 
         self.horizontal_boundary.enforce_raw(
@@ -188,10 +188,10 @@ class BurgersDynamicalCore(DynamicalCore):
         self,
         stage: int,
         substep: int,
-        raw_state: typing.array_dict_t,
-        raw_stage_state: typing.array_dict_t,
-        raw_tmp_state: typing.array_dict_t,
-        raw_tendencies: typing.array_dict_t,
-        timestep: typing.timedelta_t,
+        raw_state: typing.StorageDict,
+        raw_stage_state: typing.StorageDict,
+        raw_tmp_state: typing.StorageDict,
+        raw_tendencies: typing.StorageDict,
+        timestep: typing.TimeDelta,
     ):
         raise NotImplementedError()

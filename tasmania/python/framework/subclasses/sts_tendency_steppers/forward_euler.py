@@ -27,7 +27,7 @@ from tasmania.python.utils.framework import get_increment
 
 @register(name="forward_euler")
 class ForwardEuler(STSTendencyStepper):
-    """ The forward Euler scheme. """
+    """The forward Euler scheme."""
 
     def __init__(
         self,
@@ -71,9 +71,7 @@ class ForwardEuler(STSTendencyStepper):
         if self._enforce_hb:
             # enforce the boundary conditions on each prognostic variable
             self._hb.enforce(
-                out_state,
-                field_names=self.output_properties.keys(),
-                grid=self._grid,
+                out_state, field_names=self.output_properties.keys(),
             )
 
         # restore original units of the tendencies

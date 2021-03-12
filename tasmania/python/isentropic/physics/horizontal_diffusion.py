@@ -20,13 +20,12 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-import numpy as np
 from sympl import DataArray
 from typing import Optional, Sequence, TYPE_CHECKING, Tuple
 
 from tasmania.python.dwarfs.horizontal_diffusion import HorizontalDiffusion
 from tasmania.python.framework.base_components import TendencyComponent
-from tasmania.python.utils import typing
+from tasmania.python.utils import typing as ty
 
 if TYPE_CHECKING:
     from tasmania.python.domain.domain import Domain
@@ -183,7 +182,7 @@ class IsentropicHorizontalDiffusion(TendencyComponent):
             self._qr_tnd = self.zeros(shape=shape)
 
     @property
-    def input_properties(self) -> typing.properties_dict_t:
+    def input_properties(self) -> ty.PropertiesDict:
         dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])
 
         return_dict = {
@@ -206,7 +205,7 @@ class IsentropicHorizontalDiffusion(TendencyComponent):
         return return_dict
 
     @property
-    def tendency_properties(self) -> typing.properties_dict_t:
+    def tendency_properties(self) -> ty.PropertiesDict:
         dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])
 
         return_dict = {
@@ -232,12 +231,12 @@ class IsentropicHorizontalDiffusion(TendencyComponent):
         return return_dict
 
     @property
-    def diagnostic_properties(self) -> typing.properties_dict_t:
+    def diagnostic_properties(self) -> ty.PropertiesDict:
         return {}
 
     def array_call(
-        self, state: typing.array_dict_t
-    ) -> Tuple[typing.array_dict_t, typing.array_dict_t]:
+        self, state: ty.StorageDict
+    ) -> Tuple[ty.StorageDict, ty.StorageDict]:
         in_s = state["air_isentropic_density"]
         in_su = state["x_momentum_isentropic"]
         in_sv = state["y_momentum_isentropic"]

@@ -109,7 +109,7 @@ class BurgersHorizontalDiffusion(TendencyComponent):
         self._out_v_tnd = self.zeros(shape=(nx, ny, 1))
 
     @property
-    def input_properties(self) -> typing.properties_dict_t:
+    def input_properties(self) -> typing.PropertiesDict:
         g = self.grid
         dims = (g.grid_xy.x.dims[0], g.grid_xy.y.dims[0], g.z.dims[0])
         return {
@@ -118,7 +118,7 @@ class BurgersHorizontalDiffusion(TendencyComponent):
         }
 
     @property
-    def tendency_properties(self) -> typing.properties_dict_t:
+    def tendency_properties(self) -> typing.PropertiesDict:
         g = self.grid
         dims = (g.grid_xy.x.dims[0], g.grid_xy.y.dims[0], g.z.dims[0])
         return {
@@ -127,12 +127,12 @@ class BurgersHorizontalDiffusion(TendencyComponent):
         }
 
     @property
-    def diagnostic_properties(self) -> typing.properties_dict_t:
+    def diagnostic_properties(self) -> typing.PropertiesDict:
         return {}
 
     def array_call(
-        self, state: typing.array_dict_t
-    ) -> Tuple[typing.array_dict_t, typing.array_dict_t]:
+        self, state: typing.StorageDict
+    ) -> Tuple[typing.StorageDict, typing.StorageDict]:
         self._diffuser(state["x_velocity"], self._out_u_tnd)
         self._diffuser(state["y_velocity"], self._out_v_tnd)
 

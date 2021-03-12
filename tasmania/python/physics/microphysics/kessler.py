@@ -342,7 +342,7 @@ class KesslerMicrophysics(TendencyComponent):
 
     @staticmethod
     @stencil_definition(backend=("numpy", "cupy"), stencil="kessler")
-    def _stencil_numpy(
+    def _kessler_numpy(
         in_rho: np.ndarray,
         in_p: np.ndarray,
         in_t: np.ndarray,
@@ -415,7 +415,7 @@ class KesslerMicrophysics(TendencyComponent):
 
     @staticmethod
     @stencil_definition(backend="gt4py*", stencil="kessler")
-    def _stencil_gt4py(
+    def _kessler_gt4py(
         in_rho: gtscript.Field["dtype"],
         in_p: gtscript.Field["dtype"],
         in_t: gtscript.Field["dtype"],
@@ -1132,7 +1132,7 @@ class KesslerSaturationAdjustmentPrognostic(TendencyComponent):
                 exn = in_exn
 
             # compute the saturation water vapor pressure using Tetens' formula
-            ps = 610.78 * e ** (17.27 * (in_t - 273.16) / (in_t - 35.86))
+            ps = 610.78 * (e ** (17.27 * (in_t - 273.16) / (in_t - 35.86)))
 
             # compute the saturation mixing ratio of water vapor
             qvs = beta * ps / p
@@ -1231,7 +1231,7 @@ class KesslerFallVelocity(DiagnosticComponent):
 
         return return_dict
 
-    def array_call(self, state: ty.array_dict_t) -> ty.array_dict_t:
+    def array_call(self, state: ty.StorageDict) -> ty.StorageDict:
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
 
         in_rho = state["air_density"]

@@ -29,7 +29,7 @@ from tasmania.python.framework._base import (
     BaseDiagnostic2Tendency,
     BaseTendency2Diagnostic,
 )
-from tasmania.python.utils import typing
+from tasmania.python.utils import typing as ty
 
 if TYPE_CHECKING:
     from tasmania.python.domain.domain import Domain
@@ -80,7 +80,7 @@ class Diagnostic2Tendency(BaseDiagnostic2Tendency):
 
     @property
     @abc.abstractmethod
-    def input_properties(self) -> typing.properties_dict_t:
+    def input_properties(self) -> ty.PropertiesDict:
         """
         Dictionary whose keys are strings identifying the fields to promote,
         and whose values are dictionaries specifying the following properties
@@ -96,7 +96,7 @@ class Diagnostic2Tendency(BaseDiagnostic2Tendency):
         pass
 
     @property
-    def tendency_properties(self) -> typing.properties_dict_t:
+    def tendency_properties(self) -> ty.PropertiesDict:
         """
         Dictionary whose keys are strings identifying the quantities returned when
         the object is called, and whose values are dictionaries specifying the
@@ -114,16 +114,14 @@ class Diagnostic2Tendency(BaseDiagnostic2Tendency):
         return return_dict
 
     @property
-    def diagnostic_properties(self) -> typing.properties_dict_t:
+    def diagnostic_properties(self) -> ty.PropertiesDict:
         """
         An empty dictionary. This property is provided only for compliance with
         :class:`~sympl.DiagnosticComponent.`
         """
         return {}
 
-    def __call__(
-        self, diagnostics: typing.mutable_dataarray_dict_t
-    ) -> typing.dataarray_dict_t:
+    def __call__(self, diagnostics: ty.DataArrayDict) -> ty.DataArrayDict:
         """
         Parameters
         ----------
@@ -203,7 +201,7 @@ class Tendency2Diagnostic(BaseTendency2Diagnostic):
 
     @property
     @abc.abstractmethod
-    def input_properties(self) -> typing.properties_dict_t:
+    def input_properties(self) -> ty.PropertiesDict:
         """
         Dictionary whose keys are strings identifying the fields to promote,
         and whose values are dictionaries specifying the following properties
@@ -219,7 +217,7 @@ class Tendency2Diagnostic(BaseTendency2Diagnostic):
         pass
 
     @property
-    def tendency_properties(self):
+    def tendency_properties(self) -> ty.PropertiesDict:
         """
         An empty dictionary. This property is provided only for compliance with
         :class:`~sympl.TendencyComponent.`
@@ -227,7 +225,7 @@ class Tendency2Diagnostic(BaseTendency2Diagnostic):
         return {}
 
     @property
-    def diagnostic_properties(self) -> typing.properties_dict_t:
+    def diagnostic_properties(self) -> ty.PropertiesDict:
         """
         Dictionary whose keys are strings identifying the quantities returned when
         the object is called, and whose values are dictionaries specifying the
@@ -242,9 +240,7 @@ class Tendency2Diagnostic(BaseTendency2Diagnostic):
             }
         return return_dict
 
-    def __call__(
-        self, tendencies: typing.mutable_dataarray_dict_t
-    ) -> typing.dataarray_dict_t:
+    def __call__(self, tendencies: ty.DataArrayDict) -> ty.DataArrayDict:
         """
         Parameters
         ----------

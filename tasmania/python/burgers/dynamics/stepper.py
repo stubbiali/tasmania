@@ -101,10 +101,10 @@ class BurgersStepper(StencilFactory, abc.ABC):
     def __call__(
         self: "BurgersStepper",
         stage: int,
-        state: ty.ArrayDict,
-        tendencies: ty.ArrayDict,
+        state: ty.StorageDict,
+        tendencies: ty.StorageDict,
         timestep: ty.TimeDelta,
-    ) -> ty.ArrayDict:
+    ) -> ty.StorageDict:
         """
         Performing a stage of the time integrator.
 
@@ -178,7 +178,7 @@ class BurgersStepper(StencilFactory, abc.ABC):
         return factorize(time_integration_scheme, BurgersStepper, args)
 
     def _stencil_initialize(
-        self: "BurgersStepper", tendencies: ty.ArrayDict
+        self: "BurgersStepper", tendencies: ty.StorageDict
     ) -> None:
         storage_shape = (self._grid_xy.nx, self._grid_xy.ny, 1)
 
@@ -212,8 +212,8 @@ class BurgersStepper(StencilFactory, abc.ABC):
         dt: float,
         dx: float,
         dy: float,
-        origin: ty.triplet_int_t,
-        domain: ty.triplet_int_t
+        origin: ty.TripletInt,
+        domain: ty.TripletInt
     ) -> None:
         istart, istop = origin[0], origin[0] + domain[0]
         i = slice(istart, istop)
@@ -298,8 +298,8 @@ class BurgersStepper(StencilFactory, abc.ABC):
         dt: float,
         dx: float,
         dy: float,
-        origin: ty.triplet_int_t,
-        domain: ty.triplet_int_t
+        origin: ty.TripletInt,
+        domain: ty.TripletInt
     ) -> None:
         # >>> stencil definitions
         def step_def(phi, adv_x, adv_y, dt):

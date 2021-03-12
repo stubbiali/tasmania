@@ -48,8 +48,8 @@ T = TypeVar("T")
 
 
 def check_properties_compatibility(
-    properties1: typing.properties_dict_t,
-    properties2: typing.properties_dict_t,
+    properties1: typing.PropertiesDict,
+    properties2: typing.PropertiesDict,
     to_append: Optional[str] = None,
     properties1_name: Optional[str] = None,
     properties2_name: Optional[str] = None,
@@ -120,8 +120,8 @@ def check_property_compatibility(
 
 
 def check_missing_properties(
-    properties1: typing.properties_dict_t,
-    properties2: typing.properties_dict_t,
+    properties1: typing.PropertiesDict,
+    properties2: typing.PropertiesDict,
     properties1_name: Optional[str] = None,
     properties2_name: Optional[str] = None,
 ) -> None:
@@ -142,16 +142,14 @@ def check_missing_properties(
 
 
 def resolve_aliases(
-    data_dict: typing.dataarray_dict_t,
-    properties_dict: typing.properties_dict_t,
-) -> typing.dataarray_dict_t:
+    data_dict: typing.DataArrayDict, properties_dict: typing.PropertiesDict,
+) -> typing.DataArrayDict:
     name_to_alias = _get_name_to_alias_map(data_dict, properties_dict)
     return _replace_aliases(data_dict, name_to_alias)
 
 
 def _get_name_to_alias_map(
-    data_dict: typing.dataarray_dict_t,
-    properties_dict: typing.properties_dict_t,
+    data_dict: typing.DataArrayDict, properties_dict: typing.PropertiesDict,
 ) -> Dict[str, str]:
     return_dict = {}
 
@@ -173,8 +171,8 @@ def _get_name_to_alias_map(
 
 
 def _replace_aliases(
-    data_dict: typing.dataarray_dict_t, name_to_alias: Mapping[str, str]
-) -> typing.dataarray_dict_t:
+    data_dict: typing.DataArrayDict, name_to_alias: Mapping[str, str]
+) -> typing.DataArrayDict:
     return_dict = {}
 
     for name in name_to_alias:
@@ -186,8 +184,8 @@ def _replace_aliases(
 
 def get_input_properties(
     components_list: Sequence[Dict[str, Any]],
-    return_dict: Optional[typing.properties_dict_t] = None,
-) -> typing.properties_dict_t:
+    return_dict: Optional[typing.PropertiesDict] = None,
+) -> typing.PropertiesDict:
     # Initialize the return dictionary, i.e., the list of requirements
     return_dict = return_dict or {}
 
@@ -264,9 +262,9 @@ def get_input_properties(
 
 
 def get_tendency_properties(
-    components_list: Sequence[typing.component_t],
+    components_list: Sequence[typing.Component],
     t2d_type: "Type[BaseTendency2Diagnostic]",
-) -> typing.properties_dict_t:
+) -> typing.PropertiesDict:
     """ Combine the tendency_properties dictionaries from multiple components. """
     return_dict = {}
 
@@ -297,8 +295,8 @@ def get_tendency_properties(
 
 def get_output_properties(
     components_list: Sequence[Dict[str, Any]],
-    return_dict: Optional[typing.properties_dict_t] = None,
-) -> typing.properties_dict_t:
+    return_dict: Optional[typing.PropertiesDict] = None,
+) -> typing.PropertiesDict:
     """
     Ansatz: the output property dictionary of a :class:`sympl.TendencyStepper`
     component is a subset of its input property component.
@@ -372,7 +370,7 @@ def get_output_properties(
 
 
 def check_t2d(
-    components_list: Sequence[typing.component_t],
+    components_list: Sequence[typing.Component],
     t2d_type: "Type[BaseTendency2Diagnostic]",
 ):
     """ Ensure that a tendency is actually computed before moving it around. """
@@ -392,10 +390,10 @@ def check_t2d(
 
 
 def get_increment(
-    state: typing.dataarray_dict_t,
-    timestep: typing.timedelta_t,
-    prognostic: typing.tendency_component_t,
-) -> Tuple[typing.dataarray_dict_t, typing.dataarray_dict_t]:
+    state: typing.DataArrayDict,
+    timestep: typing.TimeDelta,
+    prognostic: typing.TendencyComponent,
+) -> Tuple[typing.DataArrayDict, typing.DataArrayDict]:
     # calculate tendencies and retrieve diagnostics
     tendencies, diagnostics = prognostic(state, timestep)
 

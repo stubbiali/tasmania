@@ -46,7 +46,7 @@ class HorizontalSmoothing(StencilFactory, abc.ABC):
 
     def __init__(
         self: "HorizontalSmoothing",
-        shape: ty.triplet_int_t,
+        shape: ty.TripletInt,
         smooth_coeff: float,
         smooth_coeff_max: float,
         smooth_damp_depth: int,
@@ -121,7 +121,7 @@ class HorizontalSmoothing(StencilFactory, abc.ABC):
     @staticmethod
     def factory(
         smooth_type: str,
-        shape: ty.triplet_int_t,
+        shape: ty.TripletInt,
         smooth_coeff: float,
         smooth_coeff_max: float,
         smooth_damp_depth: int,
@@ -191,8 +191,8 @@ class HorizontalSmoothing(StencilFactory, abc.ABC):
         in_gamma: np.ndarray,
         out_phi: np.ndarray,
         *,
-        origin: ty.triplet_int_t,
-        domain: ty.triplet_int_t
+        origin: ty.TripletInt,
+        domain: ty.TripletInt
     ) -> None:
         pass
 

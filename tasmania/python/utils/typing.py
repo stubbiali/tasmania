@@ -58,6 +58,10 @@ if TYPE_CHECKING:
         BaseDiagnosticComponentComposite,
         BaseTendency2Diagnostic,
     )
+    from tasmania.python.framework.sts_tendency_stepper import (
+        STSTendencyStepper,
+    )
+    from tasmania.python.framework.tendency_stepper import TendencyStepper
 
 Datatype = TypeVar("Datatype")
 Datetime = Union[dt.datetime, pd.Timestamp]
@@ -71,31 +75,23 @@ array_t = Union[np.ndarray, cp.ndarray, gt_storage.Storage]
 dataarray_t = DataArray
 gtstorage_t = gt_storage.Storage
 
-datetime_t = Datetime
-timedelta_t = TimeDelta
-
-array_dict_t = Dict[str, Union[timedelta_t, array_t]]
-dataarray_dict_t = Dict[str, Union[timedelta_t, dataarray_t]]
-diagnostic_component_t = Union[
+DiagnosticComponent = Union[
     DiagnosticComponent,
     DiagnosticComponentComposite,
     "BaseDiagnosticComponentComposite",
 ]
 dtype_t = type
 gtfield_t = gtscript.Field["dtype"]
-gtstorage_dict_t = Dict[str, Union[timedelta_t, gtstorage_t]]
-mutable_array_dict_t = Dict[str, Union[timedelta_t, array_t]]
-mutable_dataarray_dict_t = Dict[str, Union[timedelta_t, dataarray_t]]
-mutable_gtstorage_dict_t = Dict[str, Union[timedelta_t, gtstorage_t]]
+gtstorage_dict_t = Dict[str, Union[TimeDelta, gtstorage_t]]
+mutable_array_dict_t = Dict[str, Union[TimeDelta, array_t]]
+mutable_dataarray_dict_t = Dict[str, Union[TimeDelta, dataarray_t]]
+mutable_gtstorage_dict_t = Dict[str, Union[TimeDelta, gtstorage_t]]
 mutable_options_dict_t = Dict[str, Any]
 options_dict_t = Dict[str, Any]
-pair_int_t = Tuple[int, int]
-promoter_component_t = Union[
-    "BaseDiagnostic2Tendency", "BaseTendency2Diagnostic"
-]
-properties_dict_t = Dict[str, Any]
+PairInt = Tuple[int, int]
+PromoterComponent = Union["BaseDiagnostic2Tendency", "BaseTendency2Diagnostic"]
 properties_mapping_t = Union[Mapping[str, Any], MutableMapping[str, Any]]
-tendency_component_t = Union[
+TendencyComponent = Union[
     ImplicitTendencyComponent,
     ImplicitTendencyComponentComposite,
     TendencyComponent,
@@ -105,6 +101,10 @@ tendency_component_t = Union[
 TripletBool = Union[Tuple[bool, bool, bool], Sequence[bool]]
 TripletInt = Union[Tuple[int, int, int], Sequence[int]]
 
-component_t = Union[
-    diagnostic_component_t, promoter_component_t, tendency_component_t
+Component = Union[
+    DiagnosticComponent,
+    PromoterComponent,
+    "STSTendencyStepper",
+    TendencyComponent,
+    "TendencyStepper",
 ]

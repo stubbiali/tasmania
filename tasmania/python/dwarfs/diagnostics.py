@@ -189,8 +189,8 @@ class HorizontalVelocity(GridComponent, StencilFactory):
         out_du: np.ndarray,
         out_dv: np.ndarray,
         *,
-        origin: ty.triplet_int_t,
-        domain: ty.triplet_int_t
+        origin: ty.TripletInt,
+        domain: ty.TripletInt
     ) -> None:
         i = slice(origin[0], origin[0] + domain[0])
         ip1 = slice(origin[0] + 1, origin[0] + domain[0] + 1)
@@ -235,8 +235,8 @@ class HorizontalVelocity(GridComponent, StencilFactory):
         in_du: np.ndarray,
         out_u: np.ndarray,
         *,
-        origin: ty.triplet_int_t,
-        domain: ty.triplet_int_t
+        origin: ty.TripletInt,
+        domain: ty.TripletInt
     ) -> None:
         i = slice(origin[0], origin[0] + domain[0])
         im1 = slice(origin[0] - 1, origin[0] + domain[0] - 1)
@@ -274,8 +274,8 @@ class HorizontalVelocity(GridComponent, StencilFactory):
         in_dv: np.ndarray,
         out_v: np.ndarray,
         *,
-        origin: ty.triplet_int_t,
-        domain: ty.triplet_int_t
+        origin: ty.TripletInt,
+        domain: ty.TripletInt
     ) -> None:
         i = slice(origin[0], origin[0] + domain[0])
         j = slice(origin[1], origin[1] + domain[1])
@@ -424,8 +424,8 @@ class WaterConstituent(GridComponent, StencilFactory):
         in_q: np.ndarray,
         out_dq: np.ndarray,
         *,
-        origin: ty.triplet_int_t,
-        domain: ty.triplet_int_t
+        origin: ty.TripletInt,
+        domain: ty.TripletInt
     ) -> None:
         i = slice(origin[0], origin[0] + domain[0])
         j = slice(origin[1], origin[1] + domain[1])
@@ -460,8 +460,8 @@ class WaterConstituent(GridComponent, StencilFactory):
         in_dq: np.ndarray,
         out_q: np.ndarray,
         *,
-        origin: ty.triplet_int_t,
-        domain: ty.triplet_int_t,
+        origin: ty.TripletInt,
+        domain: ty.TripletInt,
         **kwargs  # catch-all
     ) -> None:
         i = slice(origin[0], origin[0] + domain[0])

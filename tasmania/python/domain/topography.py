@@ -50,7 +50,7 @@ class Topography:
         self: "Topography",
         steady_profile: DataArray,
         profile: Optional[DataArray] = None,
-        time: Optional[ty.timedelta_t] = None,
+        time: Optional[ty.TimeDelta] = None,
     ) -> None:
         """
         Parameters
@@ -125,7 +125,7 @@ class PhysicalTopography(abc.ABC, Topography):
     def __init__(
         self,
         grid: "PhysicalHorizontalGrid",
-        time: ty.timedelta_t,
+        time: ty.TimeDelta,
         smooth: bool,
         **kwargs
     ) -> None:
@@ -210,7 +210,7 @@ class PhysicalTopography(abc.ABC, Topography):
     def factory(
         topography_type: str,
         grid: "PhysicalHorizontalGrid",
-        time: Optional[ty.timedelta_t] = None,
+        time: Optional[ty.TimeDelta] = None,
         smooth: bool = False,
         **kwargs
     ):
