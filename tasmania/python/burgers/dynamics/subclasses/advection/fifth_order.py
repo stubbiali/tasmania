@@ -87,8 +87,8 @@ class FifthOrder(BurgersAdvection):
     @stencil_subroutine(backend="gt4py*", stencil="advection")
     @gtscript.function
     def call_gt4py(dx, dy, u, v):
-        abs_u = u if u > 0 else -u
-        abs_v = v if v > 0 else -v
+        abs_u = abs(u)  # u if u > 0 else -u
+        abs_v = abs(v)  # v if v > 0 else -v
 
         adv_u_x = u[0, 0, 0] / (60.0 * dx) * (
             +45.0 * (u[+1, 0, 0] - u[-1, 0, 0])

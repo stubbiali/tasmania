@@ -20,6 +20,8 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+import numpy as np
+
 from gt4py import gtscript
 
 from tasmania.python.framework.stencil import stencil_definition
@@ -36,47 +38,44 @@ mfpw = "mass_fraction_of_precipitation_water_in_air"
     backend=("numpy", "cupy"), stencil="step_forward_euler"
 )
 def step_forward_euler_numpy(
-    s_now: gtscript.Field["dtype"],
-    s_int: gtscript.Field["dtype"],
-    s_new: gtscript.Field["dtype"],
-    u_int: gtscript.Field["dtype"],
-    v_int: gtscript.Field["dtype"],
-    su_int: gtscript.Field["dtype"] = None,
-    sv_int: gtscript.Field["dtype"] = None,
-    mtg_int: gtscript.Field["dtype"] = None,
-    sqv_now: gtscript.Field["dtype"] = None,
-    sqv_int: gtscript.Field["dtype"] = None,
-    sqv_new: gtscript.Field["dtype"] = None,
-    sqc_now: gtscript.Field["dtype"] = None,
-    sqc_int: gtscript.Field["dtype"] = None,
-    sqc_new: gtscript.Field["dtype"] = None,
-    sqr_now: gtscript.Field["dtype"] = None,
-    sqr_int: gtscript.Field["dtype"] = None,
-    sqr_new: gtscript.Field["dtype"] = None,
-    s_tnd: gtscript.Field["dtype"] = None,
-    qv_tnd: gtscript.Field["dtype"] = None,
-    qc_tnd: gtscript.Field["dtype"] = None,
-    qr_tnd: gtscript.Field["dtype"] = None,
+    s_now: np.ndarray,
+    s_int: np.ndarray,
+    s_new: np.ndarray,
+    u_int: np.ndarray,
+    v_int: np.ndarray,
+    su_int: np.ndarray = None,
+    sv_int: np.ndarray = None,
+    mtg_int: np.ndarray = None,
+    sqv_now: np.ndarray = None,
+    sqv_int: np.ndarray = None,
+    sqv_new: np.ndarray = None,
+    sqc_now: np.ndarray = None,
+    sqc_int: np.ndarray = None,
+    sqc_new: np.ndarray = None,
+    sqr_now: np.ndarray = None,
+    sqr_int: np.ndarray = None,
+    sqr_new: np.ndarray = None,
+    s_tnd: np.ndarray = None,
+    qv_tnd: np.ndarray = None,
+    qc_tnd: np.ndarray = None,
+    qr_tnd: np.ndarray = None,
     *,
     dt: float,
     dx: float,
     dy: float,
-    origin: typing.triplet_int_t,
-    domain: typing.triplet_int_t,
-    **kwargs  # catch-all
+    origin: typing.TripletInt,
+    domain: typing.TripletInt
 ) -> None:
     i = slice(origin[0], origin[0] + domain[0])
     j = slice(origin[1], origin[1] + domain[1])
     k = slice(origin[2], origin[2] + domain[2])
 
-    externals = step_forward_euler_numpy.__externals__
-    ne = externals["extent"]
-    ip_f = slice(origin[0] - ne + 1, origin[0] - ne + domain[0] + 1)
-    im_f = slice(origin[0] - ne, origin[0] - ne + domain[0])
-    jp_f = slice(origin[1] - ne + 1, origin[1] - ne + domain[1] + 1)
-    jm_f = slice(origin[1] - ne, origin[1] - ne + domain[1])
+    ip_f = slice(origin[0] - extent + 1, origin[0] - extent + domain[0] + 1)
+    im_f = slice(origin[0] - extent, origin[0] - extent + domain[0])
+    jp_f = slice(origin[1] - extent + 1, origin[1] - extent + domain[1] + 1)
+    jm_f = slice(origin[1] - extent, origin[1] - extent + domain[1])
 
-    flux_s_x, flux_s_y = externals["flux_dry"](
+    flux_s_x, flux_s_y = flux_dry(
         s=s_int,
         u=u_int,
         v=v_int,
@@ -96,8 +95,8 @@ def step_forward_euler_numpy(
         - (s_tnd[i, j, k] if s_tnd is not None else 0.0)
     )
 
-    if externals["moist"]:
-        fluxes = externals["flux_moist"](
+    if moist:
+        fluxes = flux_moist(
             s=s_int,
             u=u_int,
             v=v_int,
@@ -135,30 +134,29 @@ def step_forward_euler_numpy(
     backend=("numpy", "cupy"), stencil="step_forward_euler_momentum"
 )
 def step_forward_euler_momentum_numpy(
-    s_now: gtscript.Field["dtype"],
-    s_int: gtscript.Field["dtype"],
-    s_new: gtscript.Field["dtype"],
-    u_int: gtscript.Field["dtype"],
-    v_int: gtscript.Field["dtype"],
-    su_now: gtscript.Field["dtype"],
-    su_int: gtscript.Field["dtype"],
-    su_new: gtscript.Field["dtype"],
-    sv_now: gtscript.Field["dtype"],
-    sv_int: gtscript.Field["dtype"],
-    sv_new: gtscript.Field["dtype"],
-    mtg_now: gtscript.Field["dtype"],
-    mtg_new: gtscript.Field["dtype"],
-    mtg_int: gtscript.Field["dtype"] = None,
-    su_tnd: gtscript.Field["dtype"] = None,
-    sv_tnd: gtscript.Field["dtype"] = None,
+    s_now: np.ndarray,
+    s_int: np.ndarray,
+    s_new: np.ndarray,
+    u_int: np.ndarray,
+    v_int: np.ndarray,
+    su_now: np.ndarray,
+    su_int: np.ndarray,
+    su_new: np.ndarray,
+    sv_now: np.ndarray,
+    sv_int: np.ndarray,
+    sv_new: np.ndarray,
+    mtg_now: np.ndarray,
+    mtg_new: np.ndarray,
+    mtg_int: np.ndarray = None,
+    su_tnd: np.ndarray = None,
+    sv_tnd: np.ndarray = None,
     *,
     dt: float,
     dx: float,
     dy: float,
     eps: float,
-    origin: typing.triplet_int_t,
-    domain: typing.triplet_int_t,
-    **kwargs  # catch-all
+    origin: typing.TripletInt,
+    domain: typing.TripletInt
 ) -> None:
     i = slice(origin[0], origin[0] + domain[0])
     im1 = slice(origin[0] - 1, origin[0] + domain[0] - 1)
@@ -168,14 +166,12 @@ def step_forward_euler_momentum_numpy(
     jp1 = slice(origin[1] + 1, origin[1] + domain[1] + 1)
     k = slice(origin[2], origin[2] + domain[2])
 
-    externals = step_forward_euler_momentum_numpy.__externals__
-    ne = externals["extent"]
-    ip_f = slice(origin[0] - ne + 1, origin[0] - ne + domain[0] + 1)
-    im_f = slice(origin[0] - ne, origin[0] - ne + domain[0])
-    jp_f = slice(origin[1] - ne + 1, origin[1] - ne + domain[1] + 1)
-    jm_f = slice(origin[1] - ne, origin[1] - ne + domain[1])
+    ip_f = slice(origin[0] - extent + 1, origin[0] - extent + domain[0] + 1)
+    im_f = slice(origin[0] - extent, origin[0] - extent + domain[0])
+    jp_f = slice(origin[1] - extent + 1, origin[1] - extent + domain[1] + 1)
+    jm_f = slice(origin[1] - extent, origin[1] - extent + domain[1])
 
-    flux_su_x, flux_su_y, flux_sv_x, flux_sv_y = externals["flux_dry"](
+    flux_su_x, flux_su_y, flux_sv_x, flux_sv_y = flux_dry(
         dt=dt,
         dx=dx,
         dy=dy,
@@ -238,6 +234,8 @@ def step_forward_euler_gt4py(
     sqr_int: gtscript.Field["dtype"] = None,
     sqr_new: gtscript.Field["dtype"] = None,
     s_tnd: gtscript.Field["dtype"] = None,
+    su_tnd: gtscript.Field["dtype"] = None,
+    sv_tnd: gtscript.Field["dtype"] = None,
     qv_tnd: gtscript.Field["dtype"] = None,
     qc_tnd: gtscript.Field["dtype"] = None,
     qr_tnd: gtscript.Field["dtype"] = None,
@@ -258,6 +256,9 @@ def step_forward_euler_gt4py(
 
     with computation(PARALLEL), interval(...):
         flux_s_x, flux_s_y, _, _, _, _ = flux_dry(
+            dt=dt,
+            dx=dx,
+            dy=dy,
             s=s_int,
             u=u_int,
             v=v_int,
@@ -265,9 +266,8 @@ def step_forward_euler_gt4py(
             sv=sv_int,
             mtg=mtg_int,
             s_tnd=s_tnd,
-            dt=dt,
-            dx=dx,
-            dy=dy,
+            su_tnd=su_tnd,
+            sv_tnd=sv_tnd,
         )
 
         if __INLINED(s_tnd_on):  # compile-time if
@@ -291,6 +291,9 @@ def step_forward_euler_gt4py(
                 flux_sqr_x,
                 flux_sqr_y,
             ) = flux_moist(
+                dt=dt,
+                dx=dx,
+                dy=dy,
                 s=s_int,
                 u=u_int,
                 v=v_int,
@@ -300,9 +303,6 @@ def step_forward_euler_gt4py(
                 qv_tnd=qv_tnd,
                 qc_tnd=qc_tnd,
                 qr_tnd=qr_tnd,
-                dt=dt,
-                dx=dx,
-                dy=dy,
             )
 
             if __INLINED(qv_tnd_on):  # compile-time if
@@ -360,6 +360,7 @@ def step_forward_euler_momentum_gt4py(
     mtg_now: gtscript.Field["dtype"],
     mtg_new: gtscript.Field["dtype"],
     mtg_int: gtscript.Field["dtype"] = None,
+    s_tnd: gtscript.Field["dtype"] = None,
     su_tnd: gtscript.Field["dtype"] = None,
     sv_tnd: gtscript.Field["dtype"] = None,
     *,
@@ -381,6 +382,7 @@ def step_forward_euler_momentum_gt4py(
             su=su_int,
             sv=sv_int,
             mtg=mtg_int,
+            s_tnd=s_tnd,
             su_tnd=su_tnd,
             sv_tnd=sv_tnd,
         )

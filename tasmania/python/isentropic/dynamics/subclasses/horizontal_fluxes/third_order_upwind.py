@@ -81,9 +81,7 @@ def get_fourth_order_centered_flux_x_gt4py(u, phi):
 @gtscript.function
 def get_third_order_upwind_flux_x_gt4py(u, phi):
     flux4 = get_fourth_order_centered_flux_x_gt4py(u=u, phi=phi)
-    flux = flux4[0, 0, 0] - (
-        u[0, 0, 0] if u[0, 0, 0] > 0 else -u[0, 0, 0]
-    ) / 12.0 * (
+    flux = flux4[0, 0, 0] - abs(u) / 12.0 * (
         3.0 * (phi[0, 0, 0] - phi[-1, 0, 0]) - (phi[1, 0, 0] - phi[-2, 0, 0])
     )
     return flux
@@ -105,9 +103,7 @@ def get_fourth_order_centered_flux_y_gt4py(v, phi):
 @gtscript.function
 def get_third_order_upwind_flux_y_gt4py(v, phi):
     flux4 = get_fourth_order_centered_flux_y_gt4py(v=v, phi=phi)
-    flux = flux4[0, 0, 0] - (
-        v[0, 0, 0] if v[0, 0, 0] > 0 else -v[0, 0, 0]
-    ) / 12.0 * (
+    flux = flux4[0, 0, 0] - abs(v) / 12.0 * (
         3.0 * (phi[0, 0, 0] - phi[0, -1, 0]) - (phi[0, 1, 0] - phi[0, -2, 0])
     )
     return flux
@@ -115,7 +111,7 @@ def get_third_order_upwind_flux_y_gt4py(v, phi):
 
 @register(name="third_order_upwind")
 class ThirdOrderUpwind(IsentropicHorizontalFlux):
-    """ Third-order scheme. """
+    """Third-order scheme."""
 
     extent = 2
     order = 3

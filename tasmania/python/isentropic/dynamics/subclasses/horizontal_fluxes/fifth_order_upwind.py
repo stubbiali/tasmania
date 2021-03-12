@@ -94,9 +94,7 @@ def get_sixth_order_centered_flux_x_gt4py(u, phi):
 @gtscript.function
 def get_fifth_order_upwind_flux_x_gt4py(u, phi):
     flux6 = get_sixth_order_centered_flux_x_gt4py(u=u, phi=phi)
-    flux = flux6[0, 0, 0] - (
-        u[0, 0, 0] if u[0, 0, 0] > 0 else -u[0, 0, 0]
-    ) / 60.0 * (
+    flux = flux6[0, 0, 0] - abs(u) / 60.0 * (
         10.0 * (phi[0, 0, 0] - phi[-1, 0, 0])
         - 5.0 * (phi[1, 0, 0] - phi[-2, 0, 0])
         + (phi[2, 0, 0] - phi[-3, 0, 0])
@@ -121,9 +119,7 @@ def get_sixth_order_centered_flux_y_gt4py(v, phi):
 @gtscript.function
 def get_fifth_order_upwind_flux_y_gt4py(v, phi):
     flux6 = get_sixth_order_centered_flux_y_gt4py(v=v, phi=phi)
-    flux = flux6[0, 0, 0] - (
-        v[0, 0, 0] if v[0, 0, 0] > 0 else -v[0, 0, 0]
-    ) / 60.0 * (
+    flux = flux6[0, 0, 0] - abs(v) / 60.0 * (
         10.0 * (phi[0, 0, 0] - phi[0, -1, 0])
         - 5.0 * (phi[0, 1, 0] - phi[0, -2, 0])
         + (phi[0, 2, 0] - phi[0, -3, 0])
