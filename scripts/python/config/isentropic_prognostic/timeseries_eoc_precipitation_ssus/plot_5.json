@@ -42,7 +42,7 @@
 	},
 	"axes_properties": {
 		"fontsize": 16,
-		"title_center": "$\\mathbf{(e)}$ $\\Delta x = 0.275$km",
+		"title_center": "$\\mathbf{(d)}$ $\\Delta x = 0.275$km",
 		"title_left": "",
 		"title_right": "",
 		"x_label": "Time [min]",
@@ -75,7 +75,7 @@
 		"z_tickcolor": "",
 		"zaxis_minor_ticks_visible": true,
 		"zaxis_visible": true,
-		"legend_on": true,
+		"legend_on": false,
 		"legend_loc": "lower right",
 		"legend_bbox_to_anchor": null,
 		"legend_framealpha": 1.0,

@@ -111,7 +111,7 @@
 		"y_ticks": null,
 		"y_ticklabels": null,
 		"y_ticklabels_color": "",
-		"yaxis_minor_ticks_visible": true,
+		"yaxis_minor_ticks_visible": false,
 		"yaxis_visible": true,
 		"z_label": "",
 		"z_labelcolor": "",

@@ -42,7 +42,7 @@
 	},
 	"axes_properties": {
 		"fontsize": 16,
-		"title_center": "$\\mathbf{(c)}$ $\\Delta x = 1.1$km",
+		"title_center": "$\\mathbf{(b)}$ $\\Delta x = 1.1$km",
 		"title_left": "",
 		"title_right": "",
 		"x_label": "Time [min]",

@@ -3,11 +3,6 @@
 		{
 			"wrapper_module": "make_plot",
 			"wrapper_classname": "PlotWrapper",
-			"wrapper_config": "config/isentropic_prognostic/timeseries_eoc_precipitation_fc/plot_1.json"
-		},
-		{
-			"wrapper_module": "make_plot",
-			"wrapper_classname": "PlotWrapper",
 			"wrapper_config": "config/isentropic_prognostic/timeseries_eoc_precipitation_fc/plot_2.json"
 		},
 		{
@@ -24,6 +19,11 @@
 			"wrapper_module": "make_plot",
 			"wrapper_classname": "PlotWrapper",
 			"wrapper_config": "config/isentropic_prognostic/timeseries_eoc_precipitation_fc/plot_5.json"
+		},
+		{
+			"wrapper_module": "make_plot",
+			"wrapper_classname": "PlotWrapper",
+			"wrapper_config": "config/isentropic_prognostic/timeseries_eoc_precipitation_fc/plot_6.json"
 		}
 	],
 	"tlevels": 18,

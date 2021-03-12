@@ -42,7 +42,7 @@
 	},
 	"axes_properties": {
 		"fontsize": 16,
-		"title_center": "$\\mathbf{(b)}$ $\\Delta x = 2.2$km",
+		"title_center": "$\\mathbf{(a)}$ $\\Delta x = 2.2$km",
 		"title_left": "",
 		"title_right": "",
 		"x_label": "Time [min]",
@@ -55,7 +55,7 @@
 		"x_ticklabels_color": "",
 		"xaxis_minor_ticks_visible": false,
 		"xaxis_visible": true,
-		"y_label": "",
+		"y_label": "EOC precipitation [-]",
 		"y_labelcolor": "black",
 		"y_lim": [0, 3],
 		"invert_yaxis": false,
