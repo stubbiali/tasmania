@@ -131,23 +131,4 @@ def main(jsonfile, no_show=False):
 
 
 if __name__ == "__main__":
-    # import argparse
-    #
-    # parser = argparse.ArgumentParser(
-    #     description="Generate a figure with multiple panels."
-    # )
-    # parser.add_argument(
-    #     "configfile", metavar="configfile", type=str, help="JSON configuration file."
-    # )
-    # parser.add_argument(
-    #     "--no-show",
-    #     dest="show",
-    #     action="store_const",
-    #     const=0,
-    #     default=1,
-    #     help="Do not show the generated plot.",
-    # )
-    # args = parser.parse_args()
-    # plot_wrapper = PlotCompositeWrapper(args.configfile)
-    # plot_wrapper.store(show=args.show)
     main()
