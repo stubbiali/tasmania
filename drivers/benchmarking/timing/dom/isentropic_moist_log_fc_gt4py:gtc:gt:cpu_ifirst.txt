@@ -1,0 +1,33 @@
+compute_time: 46.871 s
+|- add_slow_inter_tends: 0.017 s
+|- get_inter_tends: 21.798 s
+|  |- IsentropicConservativeCoriolis: 0.708 s
+|  |- tendency_type, iadd: 3.192 s
+|  |- IsentropicSmagorinsky: 4.909 s
+|  |- KesslerMicrophysics: 2.598 s
+|  |- KesslerSaturationAdjustmentPrognostic: 2.443 s
+|  |- IsentropicVerticalAdvection: 3.876 s
+|  |- KesslerFallVelocity: 2.768 s
+|  |- KesslerSedimentation: 0.898 s
+|- get_raw_tmp_state: 0.105 s
+|- get_raw_tends: 0.039 s
+|- stage: 13.961 s
+|  |- set_reference_state: 0.802 s
+|  |- diagnose_sq: 1.076 s
+|  |- prognostic: 8.539 s
+|  |- diagnose_q: 1.009 s
+|  |- boundary_conditions: 1.164 s
+|  |- velocity: 0.865 s
+|  |- vertical_damping: 0.443 s
+|- get_stage_state: 0.101 s
+|- update_out_state: 2.171 s
+|  |- copy: 2.161 s
+|- compute_inter_diags: 3.420 s
+|  |- IsentropicDiagnostics: 3.403 s
+|- fill_inter_diags: 1.160 s
+|  |- copy: 1.147 s
+|- copy: 1.851 s
+|- KesslerFallVelocity: 0.921 s
+|- Precipitation: 0.107 s
+|- IsentropicHorizontalSmoothing: 0.590 s
+|- IsentropicVelocityComponents: 0.332 s

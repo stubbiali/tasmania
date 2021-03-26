@@ -1,0 +1,22 @@
+compute_time: 21.781 s
+|- add_slow_inter_tends: 0.017 s
+|- get_inter_tends: 5.865 s
+|  |- IsentropicConservativeCoriolis: 0.691 s
+|  |- tendency_type, iadd: 0.586 s
+|  |- IsentropicSmagorinsky: 4.500 s
+|- get_raw_tmp_state: 0.060 s
+|- get_raw_tends: 0.016 s
+|- stage: 8.607 s
+|  |- set_reference_state: 0.770 s
+|  |- prognostic: 5.950 s
+|  |- boundary_conditions: 0.562 s
+|- get_stage_state: 0.073 s
+|- update_out_state: 1.357 s
+|  |- copy: 1.346 s
+|- compute_inter_diags: 2.620 s
+|  |- IsentropicDiagnostics: 2.603 s
+|- fill_inter_diags: 0.711 s
+|  |- copy: 0.699 s
+|- copy: 1.310 s
+|- IsentropicHorizontalSmoothing: 0.592 s
+|- IsentropicVelocityComponents: 0.331 s
