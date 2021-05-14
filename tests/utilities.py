@@ -20,18 +20,20 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from hypothesis import HealthCheck, settings
+import abc
+from hypothesis import HealthCheck, given, settings, strategies as hyp_st
 import numpy as np
 from pint import UnitRegistry
-from sympl import DataArray
 from typing import Any, Optional, Sequence, TYPE_CHECKING, Tuple
 import xarray as xr
+
+from sympl import DataArray
 
 from tasmania.python.domain.domain import Domain
 from tasmania.python.framework.allocators import as_storage
 from tasmania.python.framework.generic_functions import to_numpy
 from tasmania.python.framework.options import StorageOptions
-from tasmania.python.utils import typing as ty
+from tasmania.python.utils import typingx as ty
 from tasmania.python.utils.storage import get_dataarray_3d
 
 if TYPE_CHECKING:
@@ -130,7 +132,7 @@ def compare_dataarrays(
 
 
 def get_float_width(dtype: ty.Datatype) -> int:
-    """ Get the number of bits used by ``dtype``. """
+    """Get the number of bits used by ``dtype``."""
     if dtype == np.float16:
         return 16
     elif dtype == np.float32:
@@ -142,7 +144,7 @@ def get_float_width(dtype: ty.Datatype) -> int:
 def get_interval(
     el0: float, el1: float, dims: str, units: str, increasing: bool
 ) -> xr.DataArray:
-    """ Generate a 2-elements DataArray representing a domain interval. """
+    """Generate a 2-elements DataArray representing a domain interval."""
     invert = ((el0 > el1) and increasing) or ((el0 < el1) and not increasing)
     return DataArray(
         [el1, el0] if invert else [el0, el1], dims=dims, attrs={"units": units}
@@ -150,7 +152,7 @@ def get_interval(
 
 
 def get_nanoseconds(secs: float) -> float:
-    """ Convert seconds in nanoseconds. """
+    """Convert seconds in nanoseconds."""
     return int((secs - int(secs * 1e9) * 1e-9) * 1e12)
 
 

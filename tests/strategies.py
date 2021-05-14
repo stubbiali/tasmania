@@ -24,7 +24,9 @@ from hypothesis.extra.numpy import arrays as st_arrays
 import numpy as np
 from pandas import Timedelta
 from pint import UnitRegistry
+
 from sympl import DataArray
+from sympl._core.static_operators import StaticComponentOperator
 from sympl._core.units import clean_units
 
 import tasmania as taz
@@ -1175,11 +1177,11 @@ def st_isentropic_state_f(
     storage_shape=None,
     storage_options=None
 ):
-    """ Strategy drawing a valid isentropic_prognostic model state over `grid`. """
+    """Strategy drawing a valid isentropic_prognostic model state over `grid`."""
     nx, ny, nz = grid.nx, grid.ny, grid.nz
-    if is_gt(backend) and storage_shape is None:
-        storage_shape = (nx + 1, ny + 1, nz + 1)
-    elif storage_shape is not None:
+    # if is_gt(backend) and storage_shape is None:
+    #     storage_shape = (nx + 1, ny + 1, nz + 1)
+    if storage_shape is not None:
         storage_shape = (
             max(nx + 1, storage_shape[0]),
             max(ny + 1, storage_shape[1]),
@@ -1520,12 +1522,17 @@ def st_isentropic_state_f(
         )
 
         if precipitation:
+            if storage_shape is None:
+                storage_shape_2d = (nx, ny, 1)
+            elif nz > 1:
+                storage_shape_2d = (storage_shape[0], storage_shape[1], 1)
+            else:
+                storage_shape_2d = storage_shape
+
             # precipitation
             pp = draw(
                 st_raw_field(
-                    (nx, ny, 1)
-                    if storage_shape is None
-                    else (storage_shape[0], storage_shape[1], 1),
+                    storage_shape_2d,
                     0,
                     1000,
                     backend=backend,
@@ -1547,9 +1554,7 @@ def st_isentropic_state_f(
             # accumulated precipitation
             app = draw(
                 st_raw_field(
-                    (nx, ny, 1)
-                    if storage_shape is None
-                    else (storage_shape[0], storage_shape[1], 1),
+                    storage_shape_2d,
                     0,
                     1000,
                     backend=backend,
@@ -1585,7 +1590,7 @@ def st_isentropic_boussinesq_state_f(
     aligned_index=None,
     storage_shape=None
 ):
-    """ Strategy drawing a valid isentropic_prognostic Boussinesq model state over `grid`. """
+    """Strategy drawing a valid isentropic_prognostic Boussinesq model state over `grid`."""
     return_dict = draw(
         st_isentropic_state_f(
             grid,
@@ -1713,3 +1718,69 @@ def st_burgers_tendency(
     )
 
     return return_dict
+
+
+@hyp_st.composite
+def st_out(draw, component, properties_name):
+    if draw(hyp_st.booleans(), label="return_none"):
+        return None
+
+    out = {}
+    sco = StaticComponentOperator.factory(properties_name)
+    properties = sco.get_properties(component)
+    for name in properties:
+        if draw(hyp_st.booleans(), label=f"out_{name}"):
+            grid_shape = component.get_field_grid_shape(name)
+            storage_shape = component.get_field_storage_shape(name)
+            array = draw(
+                st_raw_field(
+                    storage_shape,
+                    min_value=-1e6,
+                    max_value=1e6,
+                    backend=component.backend,
+                    storage_options=component.storage_options,
+                )
+            )
+            if len(storage_shape) == 2:
+                out[name] = get_dataarray_2d(
+                    array,
+                    component.grid,
+                    properties[name]["units"],
+                    grid_shape=grid_shape,
+                    set_coordinates=False,
+                )
+            else:
+                out[name] = get_dataarray_3d(
+                    array,
+                    component.grid,
+                    properties[name]["units"],
+                    grid_shape=grid_shape,
+                    set_coordinates=False,
+                )
+
+    return out
+
+
+@hyp_st.composite
+def st_out_tendencies(draw, component):
+    return draw(st_out(component, "tendency_properties"))
+
+
+@hyp_st.composite
+def st_out_diagnostics(draw, component):
+    return draw(st_out(component, "diagnostic_properties"))
+
+
+@hyp_st.composite
+def st_overwrite_tendencies(draw, component):
+    if draw(hyp_st.booleans(), label="return_none"):
+        return None
+
+    out = {}
+    sco = StaticComponentOperator.factory("tendency_properties")
+    properties = sco.get_properties(component)
+    for name in properties:
+        if draw(hyp_st.booleans()):
+            out[name] = draw(hyp_st.booleans(), label=f"overwrite_{name}")
+
+    return out
