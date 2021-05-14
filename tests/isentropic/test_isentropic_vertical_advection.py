@@ -26,11 +26,9 @@ from hypothesis import (
     strategies as hyp_st,
 )
 import numpy as np
+from property_cached import cached_property
 import pytest
 
-from tasmania.python.framework.allocators import zeros
-from tasmania.python.framework.generic_functions import to_numpy
-from tasmania.python.framework.options import BackendOptions, StorageOptions
 from tasmania.python.isentropic.physics.vertical_advection import (
     IsentropicVerticalAdvection,
     PrescribedSurfaceHeating,
@@ -45,13 +43,11 @@ from tests.isentropic.test_isentropic_minimal_vertical_fluxes import (
     get_fifth_order_upwind_flux,
 )
 from tests.strategies import (
-    st_domain,
-    st_floats,
     st_isentropic_state_f,
-    st_one_of,
     st_raw_field,
 )
-from tests.utilities import compare_arrays, compare_dataarrays, hyp_settings
+from tests.suites import DomainSuite, TendencyComponentTestSuite
+from tests.utilities import compare_arrays, hyp_settings
 
 
 mfwv = "mass_fraction_of_water_vapor_in_air"
@@ -59,323 +55,263 @@ mfcw = "mass_fraction_of_cloud_liquid_water_in_air"
 mfpw = "mass_fraction_of_precipitation_water_in_air"
 
 
-def set_lower_layers_first_order(nb, dz, w, phi, out, staggering=False):
-    wm = np.zeros_like(w)
-    wm[:, :, :-1] = (
-        0.5 * (w[:, :, :-1] + w[:, :, 1:]) if staggering else w[:, :, :-1]
-    )
-    out[:, :, -nb - 1 : -1] = (
-        1
-        / dz
-        * (
-            wm[:, :, -nb - 2 : -2] * phi[:, :, -nb - 2 : -2]
-            - wm[:, :, -nb - 1 : -1] * phi[:, :, -nb - 1 : -1]
-        )
-    )
-
-
-def set_lower_layers_second_order(nb, dz, w, phi, out, staggering=False):
-    wm = np.zeros_like(w)
-    wm[:, :, :-1] = (
-        0.5 * (w[:, :, :-1] + w[:, :, 1:]) if staggering else w[:, :, :-1]
-    )
-    out[:, :, -nb - 1 : -1] = (
-        0.5
-        * (
-            -3.0 * wm[:, :, -nb - 1 : -1] * phi[:, :, -nb - 1 : -1]
-            + 4.0 * wm[:, :, -nb - 2 : -2] * phi[:, :, -nb - 2 : -2]
-            - wm[:, :, -nb - 3 : -3] * phi[:, :, -nb - 3 : -3]
-        )
-        / dz
-    )
-
-
-flux_properties = {
-    "upwind": {
-        "nb": 1,
-        "get_flux": get_upwind_flux,
-        "set_lower_layers": set_lower_layers_first_order,
-    },
-    "centered": {
-        "nb": 1,
-        "get_flux": get_centered_flux,
-        "set_lower_layers": set_lower_layers_second_order,
-    },
-    "third_order_upwind": {
-        "nb": 2,
-        "get_flux": get_third_order_upwind_flux,
-        "set_lower_layers": set_lower_layers_second_order,
-    },
-    # "fifth_order_upwind": {
-    #     "nb": 3,
-    #     "get_flux": get_fifth_order_upwind_flux,
-    #     "set_lower_layers": set_lower_layers_second_order,
-    # },
-}
-
-
-def validation(
-    domain,
-    flux_scheme,
-    moist,
-    toaptoil,
-    state,
-    backend,
-    backend_options,
-    storage_options,
-    cls=IsentropicVerticalAdvection,
-    *,
-    subtests
-):
-    grid = domain.numerical_grid
-    nx, ny, nz = grid.nx, grid.ny, grid.nz
-    dz = grid.dz.to_units("K").values.item()
-
-    nb = flux_properties[flux_scheme]["nb"]
-    get_flux = flux_properties[flux_scheme]["get_flux"]
-    # set_lower_layers = flux_properties[flux_scheme]["set_lower_layers"]
-
-    storage_shape = state["air_isentropic_density"].shape
-
-    fluxer = cls(
-        domain,
+class IsentropicVerticalAdvectionTestSuite(TendencyComponentTestSuite):
+    def __init__(
+        self,
+        hyp_data,
+        domain_suite,
         flux_scheme,
         moist,
-        tendency_of_air_potential_temperature_on_interface_levels=toaptoil,
-        backend=backend,
-        backend_options=backend_options,
-        storage_shape=storage_shape,
-        storage_options=storage_options,
-    )
+        toaptoil,
+        *,
+        storage_shape
+    ):
+        self.flux_scheme = flux_scheme
+        self.moist = moist
+        self.toaptoil = toaptoil
+        self.storage_shape = storage_shape
+        super().__init__(hyp_data, domain_suite)
 
-    input_names = [
-        "air_isentropic_density",
-        "x_momentum_isentropic",
-        "y_momentum_isentropic",
-    ]
-    if toaptoil:
-        input_names.append(
+    @cached_property
+    def component(self):
+        return IsentropicVerticalAdvection(
+            self.ds.domain,
+            self.ds.grid_type,
+            self.flux_scheme,
+            self.moist,
+            tendency_of_air_potential_temperature_on_interface_levels=self.toaptoil,
+            backend=self.ds.backend,
+            backend_options=self.ds.bo,
+            storage_shape=self.storage_shape,
+            storage_options=self.ds.so,
+        )
+
+    def get_state(self):
+        state = self.hyp_data.draw(
+            st_isentropic_state_f(
+                self.ds.grid,
+                moist=True,
+                backend=self.ds.backend,
+                storage_shape=self.storage_shape,
+                storage_options=self.ds.so,
+            ),
+            label="state",
+        )
+        field = self.hyp_data.draw(
+            st_raw_field(
+                self.storage_shape,
+                -1e4,
+                1e4,
+                backend=self.ds.backend,
+                storage_options=self.ds.so,
+            ),
+            label="field",
+        )
+        state["tendency_of_air_potential_temperature"] = get_dataarray_3d(
+            field,
+            self.ds.grid,
+            "K s^-1",
+            grid_shape=(self.ds.grid.nx, self.ds.grid.ny, self.ds.grid.nz),
+            set_coordinates=False,
+        )
+        state[
             "tendency_of_air_potential_temperature_on_interface_levels"
+        ] = get_dataarray_3d(
+            field,
+            self.ds.grid,
+            "K s^-1",
+            grid_shape=(self.ds.grid.nx, self.ds.grid.ny, self.ds.grid.nz + 1),
+            set_coordinates=False,
         )
-    else:
-        input_names.append("tendency_of_air_potential_temperature")
-    if moist:
-        input_names.append(mfwv)
-        input_names.append(mfcw)
-        input_names.append(mfpw)
+        return state
 
-    output_names = [
-        "air_isentropic_density",
-        "x_momentum_isentropic",
-        "y_momentum_isentropic",
-    ]
-    if moist:
-        output_names.append(mfwv)
-        output_names.append(mfcw)
-        output_names.append(mfpw)
+    def get_tendencies_and_diagnostics(self, raw_state_np):
+        if self.toaptoil:
+            name = "tendency_of_air_potential_temperature_on_interface_levels"
+            w = raw_state_np[name]
+            w_hl = w
+        else:
+            name = "tendency_of_air_potential_temperature"
+            w = raw_state_np[name]
+            w_hl = np.zeros_like(w)
+            w_hl[:, :, 1:-1] = 0.5 * (w[:, :, :-2] + w[:, :, 1:-1])
 
-    for name in input_names:
-        # with subtests.test(name=name):
-        assert name in fluxer.input_properties
-    assert len(fluxer.input_properties) == len(input_names)
+        s = raw_state_np["air_isentropic_density"]
+        su = raw_state_np["x_momentum_isentropic"]
+        sv = raw_state_np["y_momentum_isentropic"]
+        if self.moist:
+            qv = raw_state_np[mfwv]
+            sqv = s * qv
+            qc = raw_state_np[mfcw]
+            sqc = s * qc
+            qr = raw_state_np[mfpw]
+            sqr = s * qr
 
-    for name in output_names:
-        # with subtests.test(name=name):
-        assert name in fluxer.tendency_properties
-    assert len(fluxer.tendency_properties) == len(output_names)
+        nb = self.flux_properties[self.flux_scheme]["nb"]
+        get_flux = self.flux_properties[self.flux_scheme]["get_flux"]
+        # set_lower_layers = self.flux_properties[self.flux_scheme]["set_lower_layers"]
+        nz = self.ds.grid.nz
+        up = slice(nb, nz - nb)
+        down = slice(nb + 1, nz - nb + 1)
+        dz = self.ds.grid.dz.to_units("K").values.item()
 
-    assert fluxer.diagnostic_properties == {}
+        tendencies, diagnostics = {}, {}
 
-    if toaptoil:
-        name = "tendency_of_air_potential_temperature_on_interface_levels"
-        w = to_numpy(state[name].to_units("K s^-1").data)
-        w_hl = w
-    else:
-        name = "tendency_of_air_potential_temperature"
-        w = to_numpy(state[name].to_units("K s^-1").data)
-        w_hl = zeros(
-            "numpy",
-            shape=(nx + 1, ny + 1, nz + 1),
-            storage_options=storage_options,
+        flux = get_flux(w_hl, s)
+        s_out = np.zeros_like(s)
+        s_out[:, :, up] = -(flux[:, :, up] - flux[:, :, down]) / dz
+        # set_lower_layers(nb, dz, w, s, out, staggering=toaptoil)
+        tendencies["air_isentropic_density"] = s_out
+
+        flux = get_flux(w_hl, su)
+        su_out = np.zeros_like(su)
+        su_out[:, :, up] = -(flux[:, :, up] - flux[:, :, down]) / dz
+        # set_lower_layers(nb, dz, w, su, out, staggering=toaptoil)
+        tendencies["x_momentum_isentropic"] = su_out
+
+        flux = get_flux(w_hl, sv)
+        sv_out = np.zeros_like(sv)
+        sv_out[:, :, up] = -(flux[:, :, up] - flux[:, :, down]) / dz
+        # set_lower_layers(nb, dz, w, sv, out, staggering=toaptoil)
+        tendencies["y_momentum_isentropic"] = sv_out
+
+        if self.moist:
+            flux = get_flux(w_hl, sqv)
+            out_qv = np.zeros_like(qv)
+            out_qv[:, :, up] = -(flux[:, :, up] - flux[:, :, down]) / dz
+            # set_lower_layers(nb, dz, w, sqv, out, staggering=toaptoil)
+            out_qv /= s
+            tendencies[mfwv] = out_qv
+
+            flux = get_flux(w_hl, sqc)
+            out_qc = np.zeros_like(qc)
+            out_qc[:, :, up] = -(flux[:, :, up] - flux[:, :, down]) / dz
+            # set_lower_layers(nb, dz, w, sqc, out, staggering=toaptoil)
+            out_qc /= s
+            tendencies[mfcw] = out_qc
+
+            flux = get_flux(w_hl, sqr)
+            out_qr = np.zeros_like(qr)
+            out_qr[:, :, up] = -(flux[:, :, up] - flux[:, :, down]) / dz
+            # set_lower_layers(nb, dz, w, sqr, out, staggering=toaptoil)
+            out_qr /= s
+            tendencies[mfpw] = out_qr
+
+        return tendencies, diagnostics
+
+    @cached_property
+    def flux_properties(self):
+        return {
+            "upwind": {
+                "nb": 1,
+                "get_flux": get_upwind_flux,
+                "set_lower_layers": self.set_lower_layers_first_order,
+            },
+            "centered": {
+                "nb": 1,
+                "get_flux": get_centered_flux,
+                "set_lower_layers": self.set_lower_layers_second_order,
+            },
+            "third_order_upwind": {
+                "nb": 2,
+                "get_flux": get_third_order_upwind_flux,
+                "set_lower_layers": self.set_lower_layers_second_order,
+            },
+            # "fifth_order_upwind": {
+            #     "nb": 3,
+            #     "get_flux": get_fifth_order_upwind_flux,
+            #     "set_lower_layers": self.set_lower_layers_second_order,
+            # },
+        }
+
+    @staticmethod
+    def set_lower_layers_first_order(nb, dz, w, phi, out, staggering=False):
+        wm = np.zeros_like(w)
+        wm[:, :, :-1] = (
+            0.5 * (w[:, :, :-1] + w[:, :, 1:]) if staggering else w[:, :, :-1]
         )
-        w_hl[:, :, 1:-1] = 0.5 * (w[:, :, :-2] + w[:, :, 1:-1])
+        out[:, :, -nb - 1 : -1] = (
+            1
+            / dz
+            * (
+                wm[:, :, -nb - 2 : -2] * phi[:, :, -nb - 2 : -2]
+                - wm[:, :, -nb - 1 : -1] * phi[:, :, -nb - 1 : -1]
+            )
+        )
 
-    s = to_numpy(state["air_isentropic_density"].to_units("kg m^-2 K^-1").data)
-    su = to_numpy(
-        state["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").data
-    )
-    sv = to_numpy(
-        state["y_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").data
-    )
-    if moist:
-        qv = to_numpy(state[mfwv].to_units("g g^-1").data)
-        sqv = s * qv
-        qc = to_numpy(state[mfcw].to_units("g g^-1").data)
-        sqc = s * qc
-        qr = to_numpy(state[mfpw].to_units("g g^-1").data)
-        sqr = s * qr
-
-    tendencies, diagnostics = fluxer(state)
-
-    out = zeros(
-        "numpy",
-        shape=(nx + 1, ny + 1, nz + 1),
-        storage_options=storage_options,
-    )
-    up = slice(nb, nz - nb)
-    down = slice(nb + 1, nz - nb + 1)
-
-    flux = get_flux(w_hl, s)
-    out[:, :, up] = -(flux[:, :, up] - flux[:, :, down]) / dz
-    # set_lower_layers(nb, dz, w, s, out, staggering=toaptoil)
-    assert "air_isentropic_density" in tendencies
-    slc = (slice(nx), slice(ny), slice(nz))
-    compare_arrays(out, tendencies["air_isentropic_density"].data, slice=slc)
-
-    flux = get_flux(w_hl, su)
-    out[:, :, up] = -(flux[:, :, up] - flux[:, :, down]) / dz
-    # set_lower_layers(nb, dz, w, su, out, staggering=toaptoil)
-    assert "x_momentum_isentropic" in tendencies
-    compare_arrays(out, tendencies["x_momentum_isentropic"].data, slice=slc)
-
-    flux = get_flux(w_hl, sv)
-    out[:, :, up] = -(flux[:, :, up] - flux[:, :, down]) / dz
-    # set_lower_layers(nb, dz, w, sv, out, staggering=toaptoil)
-    assert "y_momentum_isentropic" in tendencies
-    compare_arrays(out, tendencies["y_momentum_isentropic"].data, slice=slc)
-
-    if moist:
-        flux = get_flux(w_hl, sqv)
-        out[:, :, up] = -(flux[:, :, up] - flux[:, :, down]) / dz
-        # set_lower_layers(nb, dz, w, sqv, out, staggering=toaptoil)
-        out /= s
-        assert mfwv in tendencies
-        compare_arrays(out, tendencies[mfwv].data, slice=slc)
-
-        flux = get_flux(w_hl, sqc)
-        out[:, :, up] = -(flux[:, :, up] - flux[:, :, down]) / dz
-        # set_lower_layers(nb, dz, w, sqc, out, staggering=toaptoil)
-        out /= s
-        assert mfcw in tendencies
-        compare_arrays(out, tendencies[mfcw].data, slice=slc)
-
-        flux = get_flux(w_hl, sqr)
-        out[:, :, up] = -(flux[:, :, up] - flux[:, :, down]) / dz
-        # set_lower_layers(nb, dz, w, sqr, out, staggering=toaptoil)
-        out /= s
-        assert mfpw in tendencies
-        compare_arrays(out, tendencies[mfpw].data, slice=slc)
-
-    assert len(tendencies) == len(output_names)
-
-    assert diagnostics == {}
+    @staticmethod
+    def set_lower_layers_second_order(nb, dz, w, phi, out, staggering=False):
+        wm = np.zeros_like(w)
+        wm[:, :, :-1] = (
+            0.5 * (w[:, :, :-1] + w[:, :, 1:]) if staggering else w[:, :, :-1]
+        )
+        out[:, :, -nb - 1 : -1] = (
+            0.5
+            * (
+                -3.0 * wm[:, :, -nb - 1 : -1] * phi[:, :, -nb - 1 : -1]
+                + 4.0 * wm[:, :, -nb - 2 : -2] * phi[:, :, -nb - 2 : -2]
+                - wm[:, :, -nb - 3 : -3] * phi[:, :, -nb - 3 : -3]
+            )
+            / dz
+        )
 
 
 @hyp_settings
 @given(data=hyp_st.data())
-@pytest.mark.parametrize("flux_scheme", flux_properties.keys())
+@pytest.mark.parametrize(
+    "flux_scheme", ("upwind", "centered", "third_order_upwind")
+)
 @pytest.mark.parametrize("backend", conf.backend)
 @pytest.mark.parametrize("dtype", conf.dtype)
 def test(data, flux_scheme, backend, dtype, subtests):
     # ========================================
     # random data generation
     # ========================================
-    aligned_index = data.draw(
-        st_one_of(conf.aligned_index), label="aligned_index"
-    )
-    bo = BackendOptions(rebuild=False)
-    so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
-
-    nb = flux_properties[flux_scheme]["nb"]
-    domain = data.draw(
-        st_domain(
-            zaxis_length=(2 * nb + 1, 50),
-            backend=backend,
-            backend_options=bo,
-            storage_options=so,
-        ),
-        label="domain",
-    )
-    grid = domain.numerical_grid
-    nx, ny, nz = grid.nx, grid.ny, grid.nz
-    storage_shape = (nx + 1, ny + 1, nz + 1)
-
-    state = data.draw(
-        st_isentropic_state_f(
-            grid,
-            moist=True,
-            backend=backend,
-            storage_shape=storage_shape,
-            storage_options=so,
-        ),
-        label="state",
-    )
-    field = data.draw(
-        st_raw_field(
-            storage_shape, -1e4, 1e4, backend=backend, storage_options=so
-        ),
-        label="field",
-    )
-    state["tendency_of_air_potential_temperature"] = get_dataarray_3d(
-        field, grid, "K s^-1", grid_shape=(nx, ny, nz), set_coordinates=False
-    )
-    state[
-        "tendency_of_air_potential_temperature_on_interface_levels"
-    ] = get_dataarray_3d(
-        field,
-        grid,
-        "K s^-1",
-        grid_shape=(nx, ny, nz + 1),
-        set_coordinates=False,
-    )
+    ds = DomainSuite(data, backend, dtype, zaxis_length=(5, 50))
+    storage_shape = (ds.grid.nx + 1, ds.grid.ny + 1, ds.grid.nz + 1)
 
     # ========================================
     # test bed
     # ========================================
-    validation(
-        domain,
+    ts = IsentropicVerticalAdvectionTestSuite(
+        data,
+        ds,
         flux_scheme,
-        False,
-        False,
-        state,
-        backend,
-        bo,
-        so,
-        subtests=subtests,
+        moist=False,
+        toaptoil=False,
+        storage_shape=storage_shape,
     )
-    validation(
-        domain,
+    ts.run()
+
+    ts = IsentropicVerticalAdvectionTestSuite(
+        data,
+        ds,
         flux_scheme,
-        False,
-        True,
-        state,
-        backend,
-        bo,
-        so,
-        subtests=subtests,
+        moist=False,
+        toaptoil=True,
+        storage_shape=storage_shape,
     )
-    validation(
-        domain,
+    ts.run()
+
+    ts = IsentropicVerticalAdvectionTestSuite(
+        data,
+        ds,
         flux_scheme,
-        True,
-        False,
-        state,
-        backend,
-        bo,
-        so,
-        subtests=subtests,
+        moist=True,
+        toaptoil=False,
+        storage_shape=storage_shape,
     )
-    validation(
-        domain,
+    ts.run()
+
+    ts = IsentropicVerticalAdvectionTestSuite(
+        data,
+        ds,
         flux_scheme,
-        True,
-        True,
-        state,
-        backend,
-        bo,
-        so,
-        subtests=subtests,
+        moist=True,
+        toaptoil=True,
+        storage_shape=storage_shape,
     )
+    ts.run()
 
 
 # @hyp_settings
@@ -780,3 +716,4 @@ def test(data, flux_scheme, backend, dtype, subtests):
 
 if __name__ == "__main__":
     pytest.main([__file__])
+    # test("upwind", "numpy", float, None)

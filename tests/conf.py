@@ -80,13 +80,15 @@ gtc_backend = gtc_cpu_backend.union(gtc_gpu_backend)
 dawn_backend = dawn_cpu_backend.union(dawn_gpu_backend)
 numba_backend = numba_cpu_backend.union(numba_gpu_backend)
 cpu_backend = cpu_backend.union(
-    gt_cpu_backend, gtc_cpu_backend,  # dawn_cpu_backend, numba_cpu_backend
+    gt_cpu_backend,
+    gtc_cpu_backend,  # dawn_cpu_backend, numba_cpu_backend
 )
 gpu_backend = gpu_backend.union(
-    gt_gpu_backend, gtc_gpu_backend,  # dawn_gpu_backend, numba_gpu_backend
+    gt_gpu_backend,
+    gtc_gpu_backend,  # dawn_gpu_backend, numba_gpu_backend
 )
 backend = cpu_backend  # .union(gpu_backend)
-backend_debug = ("numpy",)
+backend_debug = {"numpy"}
 
 # >>> storage info
 dtype = (np.float64,)

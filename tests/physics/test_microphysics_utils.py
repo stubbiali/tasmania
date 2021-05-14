@@ -20,14 +20,13 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from copy import deepcopy
-from datetime import timedelta
 from hypothesis import (
     given,
     reproduce_failure,
     strategies as hyp_st,
 )
 import numpy as np
+from property_cached import cached_property
 import pytest
 
 from gt4py import gtscript
@@ -47,8 +46,6 @@ from tasmania.python.physics.microphysics.utils import (
     SedimentationFlux,
     Precipitation,
 )
-from tasmania.python.utils.storage import get_dataarray_3d
-from tasmania.python.utils.backend import is_gt, get_gt_backend
 
 from tests import conf
 from tests.strategies import (
@@ -57,7 +54,12 @@ from tests.strategies import (
     st_isentropic_state_f,
     st_raw_field,
 )
-from tests.utilities import compare_arrays, compare_dataarrays, hyp_settings
+from tests.suites import (
+    DiagnosticComponentTestSuite,
+    DomainSuite,
+    TendencyComponentTestSuite,
+)
+from tests.utilities import compare_arrays, hyp_settings
 
 
 mfwv = "mass_fraction_of_water_vapor_in_air"
@@ -66,18 +68,47 @@ mfpw = "mass_fraction_of_precipitation_water_in_air"
 ndpw = "number_density_of_precipitation_water"
 
 
-def precipitation_validation(state, timestep, maxcfl, rhow):
-    rho = to_numpy(state["air_density"].to_units("kg m^-3").data)
-    h = to_numpy(state["height_on_interface_levels"].to_units("m").data)
-    qr = to_numpy(state[mfpw].to_units("g g^-1").data)
-    vt = to_numpy(state["raindrop_fall_velocity"].to_units("m s^-1").data)
+class ClippingTestSuite(DiagnosticComponentTestSuite):
+    def __init__(self, domain_suite):
+        self.names = []
+        if domain_suite.hyp_data.draw(hyp_st.booleans(), label="if_qv"):
+            self.names.append(mfwv)
+        if domain_suite.hyp_data.draw(hyp_st.booleans(), label="if_qc"):
+            self.names.append(mfcw)
+        if domain_suite.hyp_data.draw(hyp_st.booleans(), label="if_qr"):
+            self.names.append(mfpw)
+        super().__init__(domain_suite)
 
-    dt = timestep.total_seconds()
-    dh = h[:, :, :-1] - h[:, :, 1:]
-    ids = np.where(vt > maxcfl * dh / dt)
-    vt[ids] = maxcfl * dh[ids] / dt
+    @cached_property
+    def component(self):
+        return Clipping(
+            self.ds.domain,
+            self.ds.grid_type,
+            self.names,
+            backend=self.ds.backend,
+            backend_options=self.ds.bo,
+            storage_shape=self.storage_shape,
+            storage_options=self.ds.so,
+        )
 
-    return 3.6e6 * rho * qr * vt / rhow
+    def get_state(self):
+        return self.hyp_data.draw(
+            st_isentropic_state_f(
+                self.ds.grid,
+                moist=True,
+                precipitation=False,
+                backend=self.ds.backend,
+                storage_shape=self.storage_shape,
+                storage_options=self.ds.so,
+            ),
+            label="state",
+        )
+
+    def get_diagnostics(self, raw_state_np):
+        return {
+            name: np.where(raw_state_np[name] < 0.0, 0.0, raw_state_np[name])
+            for name in self.names
+        }
 
 
 @hyp_settings
@@ -85,91 +116,78 @@ def precipitation_validation(state, timestep, maxcfl, rhow):
 @pytest.mark.parametrize("backend", conf.backend)
 @pytest.mark.parametrize("dtype", conf.dtype)
 def test_clipping(data, backend, dtype, subtests):
-    # ========================================
-    # random data generation
-    # ========================================
-    aligned_index = data.draw(
-        st_one_of(conf.aligned_index), label="aligned_index"
-    )
-    bo = BackendOptions(rebuild=False)
-    so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
+    ds = DomainSuite(data, backend, dtype)
+    ts = ClippingTestSuite(ds)
+    ts.run()
 
-    domain = data.draw(
-        st_domain(
-            zaxis_length=(2, 20),
-            backend=backend,
-            backend_options=bo,
-            storage_options=so,
-        ),
-        label="domain",
-    )
-    grid_type = data.draw(
-        st_one_of(("physical", "numerical")), label="grid_type"
-    )
-    grid = (
-        domain.physical_grid
-        if grid_type == "physical"
-        else domain.numerical_grid
-    )
 
-    nx, ny, nz = grid.nx, grid.ny, grid.nz
-    storage_shape = (nx + 1, ny + 1, nz + 1)
-
-    state = data.draw(
-        st_isentropic_state_f(
-            grid,
-            moist=True,
-            precipitation=False,
-            backend=backend,
-            storage_shape=storage_shape,
-            storage_options=so,
-        ),
-        label="state",
-    )
-
-    names = []
-    if data.draw(hyp_st.booleans(), label="if_qv"):
-        names.append(mfwv)
-    if data.draw(hyp_st.booleans(), label="if_qc"):
-        names.append(mfcw)
-    if data.draw(hyp_st.booleans(), label="if_qr"):
-        names.append(mfpw)
-
-    # ========================================
-    # test bed
-    # ========================================
-    clip = Clipping(
-        domain,
-        grid_type,
-        names,
-        backend=backend,
-        backend_options=bo,
-        storage_shape=storage_shape,
-        storage_options=so,
-    )
-
-    diagnostics = clip(state)
-
-    assert len(clip.input_properties) == len(names)
-    assert len(clip.diagnostic_properties) == len(names)
-
-    for name in names:
-        # with subtests.test(name=name):
-        assert name in clip.input_properties
-        assert name in clip.diagnostic_properties
-
-        q_np = to_numpy(state[name].to_units("g g^-1").data)
-        q_np[q_np < 0] = 0
-
-        assert name in diagnostics
-        compare_dataarrays(
-            get_dataarray_3d(q_np[:nx, :ny, :nz], grid, "g g^-1"),
-            diagnostics[name],
-            compare_coordinate_values=False,
-            slice=(slice(0, nx), slice(0, ny), slice(0, nz)),
+class PrecipitationTestSuite(TendencyComponentTestSuite):
+    @cached_property
+    def component(self):
+        return Precipitation(
+            self.ds.domain,
+            self.ds.grid_type,
+            backend=self.ds.backend,
+            backend_options=self.ds.bo,
+            storage_shape=self.storage_shape,
+            storage_options=self.ds.so,
         )
 
-    assert len(diagnostics) == len(names)
+    def assert_allclose(self, name, field_a, field_b):
+        try:
+            compare_arrays(
+                field_a,
+                field_b,
+                slice=(
+                    slice(self.ds.grid.nx),
+                    slice(self.ds.grid.ny),
+                    slice(1),
+                ),
+            )
+        except AssertionError:
+            raise RuntimeError(f"assert_allclose failed on {name}")
+
+    def get_state(self):
+        state = self.hyp_data.draw(
+            st_isentropic_state_f(
+                self.ds.grid,
+                moist=True,
+                precipitation=True,
+                backend=self.ds.backend,
+                storage_shape=self.storage_shape,
+                storage_options=self.ds.so,
+            ),
+            label="state",
+        )
+        rfv = KesslerFallVelocity(
+            self.ds.domain,
+            self.ds.grid_type,
+            backend=self.ds.backend,
+            backend_options=self.ds.bo,
+            storage_shape=self.storage_shape,
+            storage_options=self.ds.so,
+        )
+        state.update(rfv(state))
+        return state
+
+    def get_tendencies_and_diagnostics(self, raw_state_np, dt):
+        nz = self.ds.grid.nz
+        rho = raw_state_np["air_density"][:, :, nz - 1 : nz]
+        qr = raw_state_np[mfpw][:, :, nz - 1 : nz]
+        vt = raw_state_np["raindrop_fall_velocity"][:, :, nz - 1 : nz]
+        in_accprec = raw_state_np["accumulated_precipitation"]
+        rhow = self.component.rpc["density_of_liquid_water"]
+
+        prec = np.zeros_like(in_accprec)
+        prec[:, :, :1] = 3.6e6 * rho * qr * vt / rhow
+
+        tendencies = {}
+        diagnostics = {
+            "precipitation": prec,
+            "accumulated_precipitation": in_accprec + dt * prec / 3.6e3,
+        }
+
+        return tendencies, diagnostics
 
 
 @hyp_settings
@@ -177,112 +195,9 @@ def test_clipping(data, backend, dtype, subtests):
 @pytest.mark.parametrize("backend", conf.backend)
 @pytest.mark.parametrize("dtype", conf.dtype)
 def test_precipitation(data, backend, dtype):
-    # ========================================
-    # random data generation
-    # ========================================
-    aligned_index = data.draw(
-        st_one_of(conf.aligned_index), label="aligned_index"
-    )
-    bo = BackendOptions(rebuild=False)
-    so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
-
-    domain = data.draw(
-        st_domain(
-            zaxis_length=(2, 20),
-            backend=backend,
-            backend_options=bo,
-            storage_options=so,
-        ),
-        label="domain",
-    )
-    grid_type = data.draw(
-        st_one_of(("physical", "numerical")), label="grid_type"
-    )
-    grid = (
-        domain.physical_grid
-        if grid_type == "physical"
-        else domain.numerical_grid
-    )
-    nx, ny, nz = grid.nx, grid.ny, grid.nz
-    storage_shape = (nx + 1, ny + 1, nz + 1)
-
-    state = data.draw(
-        st_isentropic_state_f(
-            grid,
-            moist=True,
-            precipitation=True,
-            backend=backend,
-            storage_shape=storage_shape,
-            storage_options=so,
-        ),
-        label="state",
-    )
-
-    timestep = data.draw(
-        hyp_st.timedeltas(
-            min_value=timedelta(seconds=1e-6), max_value=timedelta(hours=1)
-        ),
-        label="timestep",
-    )
-
-    # ========================================
-    # test bed
-    # ========================================
-    rfv = KesslerFallVelocity(
-        domain,
-        grid_type,
-        backend=backend,
-        backend_options=bo,
-        storage_shape=storage_shape,
-        storage_options=so,
-    )
-    state.update(rfv(state))
-
-    comp = Precipitation(
-        domain,
-        grid_type,
-        backend=backend,
-        backend_options=bo,
-        storage_shape=storage_shape,
-        storage_options=so,
-    )
-
-    tendencies, diagnostics = comp(state, timestep)
-
-    assert len(tendencies) == 0
-
-    rho_np = to_numpy(state["air_density"].to_units("kg m^-3").data)[
-        :nx, :ny, nz - 1 : nz
-    ]
-    qr_np = to_numpy(state[mfpw].to_units("g g^-1").data)[
-        :nx, :ny, nz - 1 : nz
-    ]
-    vt_np = to_numpy(state["raindrop_fall_velocity"].to_units("m s^-1").data)[
-        :nx, :ny, nz - 1 : nz
-    ]
-    rhow = comp.rpc["density_of_liquid_water"]
-    prec = 3.6e6 * rho_np * qr_np * vt_np / rhow
-    assert "precipitation" in diagnostics
-    compare_dataarrays(
-        get_dataarray_3d(prec, grid, "mm hr^-1"),
-        diagnostics["precipitation"],
-        compare_coordinate_values=False,
-        slice=(slice(0, nx), slice(0, ny), slice(0, nz)),
-    )
-
-    accprec_np = to_numpy(
-        state["accumulated_precipitation"].to_units("mm").data
-    )[:nx, :ny]
-    accprec = accprec_np + timestep.total_seconds() * prec / 3.6e3
-    assert "accumulated_precipitation" in diagnostics
-    compare_dataarrays(
-        get_dataarray_3d(accprec, grid, "mm"),
-        diagnostics["accumulated_precipitation"],
-        compare_coordinate_values=False,
-        slice=(slice(0, nx), slice(0, ny), slice(0, nz)),
-    )
-
-    assert len(diagnostics) == 2
+    ds = DomainSuite(data, backend, dtype)
+    ts = PrecipitationTestSuite(ds)
+    ts.run()
 
 
 class WrappingStencil(StencilFactory):
@@ -473,7 +388,10 @@ def test_sedimentation_flux(data, backend, dtype, flux_type):
     # test bed
     # ========================================
     dfdz_val = flux_properties[flux_type]["validation"](
-        to_numpy(rho), to_numpy(h), to_numpy(qr), to_numpy(vt),
+        to_numpy(rho),
+        to_numpy(h),
+        to_numpy(qr),
+        to_numpy(vt),
     )
 
     core = SedimentationFlux.factory(flux_type, backend=backend)

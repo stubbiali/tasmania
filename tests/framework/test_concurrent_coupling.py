@@ -26,14 +26,14 @@ from hypothesis import (
     strategies as hyp_st,
     reproduce_failure,
 )
-import numpy as np
 import pytest
-from sympl._core.exceptions import InvalidStateError
+
+from sympl._core.exceptions import InvalidArrayDictError
 
 from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
 from tasmania.python.framework.generic_functions import to_numpy
 from tasmania.python.framework.options import BackendOptions, StorageOptions
-from tasmania.python.framework.promoters import Tendency2Diagnostic
+from tasmania.python.framework.promoter import Tendency2Diagnostic
 from tasmania.python.utils.storage import deepcopy_dataarray_dict
 
 from tests import conf
@@ -91,33 +91,23 @@ def test_compatibility(
     #
     state_dc = deepcopy_dataarray_dict(state)
     cc1 = ConcurrentCoupling(tc1, tc2, execution_policy="as_parallel")
-    try:
+    with pytest.raises(InvalidArrayDictError):
         cc1(state_dc, dt)
-        assert False
-    except InvalidStateError:
-        assert True
 
     #
     # failing
     #
     state_dc = deepcopy_dataarray_dict(state)
     cc2 = ConcurrentCoupling(tc2, tc1, execution_policy="serial")
-    try:
+    with pytest.raises(InvalidArrayDictError):
         cc2(state_dc, dt)
-        assert False
-    except InvalidStateError:
-        assert True
 
     #
     # successful
     #
     state_dc = deepcopy_dataarray_dict(state)
     cc3 = ConcurrentCoupling(tc1, tc2, execution_policy="serial")
-    try:
-        cc3(state_dc, dt)
-        assert True
-    except InvalidStateError:
-        assert False
+    cc3(state_dc, dt)
 
 
 @hyp_settings

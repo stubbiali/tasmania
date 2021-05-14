@@ -22,6 +22,7 @@
 #
 from datetime import timedelta
 from hypothesis import (
+    assume,
     given,
     reproduce_failure,
     strategies as hyp_st,
@@ -239,12 +240,15 @@ def forward_euler_step_momentum_y(
 
 
 def test_registry():
-    assert "forward_euler_si" in IsentropicPrognostic.registry
-    assert IsentropicPrognostic.registry["forward_euler_si"] == ForwardEulerSI
-    assert "centered_si" in IsentropicPrognostic.registry
-    assert IsentropicPrognostic.registry["centered_si"] == CenteredSI
-    assert "rk3ws_si" in IsentropicPrognostic.registry
-    assert IsentropicPrognostic.registry["rk3ws_si"] == RK3WSSI
+    registry = IsentropicPrognostic.registry[
+        "tasmania.python.isentropic.dynamics.prognostic.IsentropicPrognostic"
+    ]
+    assert "forward_euler_si" in registry
+    assert registry["forward_euler_si"] == ForwardEulerSI
+    assert "centered_si" in registry
+    assert registry["centered_si"] == CenteredSI
+    assert "rk3ws_si" in registry
+    assert registry["rk3ws_si"] == RK3WSSI
 
 
 @hyp_settings
@@ -313,7 +317,6 @@ def test_factory(data, backend, dtype):
     # assert np.isclose(imp_sil3._c.value, c)
 
 
-@reproduce_failure("4.28.0", b"AXicY2BAA4IzGBhRBJiZULi8nUjyqCoHAAAAynYBSA==")
 @hyp_settings
 @given(data=hyp_st.data())
 @pytest.mark.parametrize("backend", conf.backend)
@@ -343,6 +346,7 @@ def test_forward_euler_si(data, backend, dtype, subtests):
         ),
         label="domain",
     )
+    assume(domain.horizontal_boundary.type != "identity")
     grid = domain.numerical_grid
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     hb = domain.horizontal_boundary
@@ -425,6 +429,7 @@ def test_forward_euler_si(data, backend, dtype, subtests):
         raw_state["isentropic_density_of_precipitation_water"] = as_storage(
             backend, data=s_np * to_numpy(raw_state[mfpw]), storage_options=so
         )
+    raw_state_new = deepcopy_array_dict(raw_state)
 
     raw_tendencies = get_array_dict(tendencies, properties={})
     if moist:
@@ -451,7 +456,9 @@ def test_forward_euler_si(data, backend, dtype, subtests):
                 storage_options=so,
             )
 
-    raw_state_new = imp.stage_call(0, timestep, raw_state, raw_tendencies)
+    imp.stage_call(
+        0, timestep, raw_state, raw_tendencies, out_state=raw_state_new
+    )
 
     assert "time" in raw_state_new.keys()
     compare_datetimes(raw_state_new["time"], raw_state["time"] + timestep)
@@ -644,6 +651,7 @@ def test_rk3ws_si(data, backend, dtype, subtests):
         ),
         label="domain",
     )
+    assume(domain.horizontal_boundary.type != "identity")
     grid = domain.numerical_grid
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     storage_shape = (nx + 1, ny + 1, nz + 1)
@@ -764,9 +772,12 @@ def test_rk3ws_si(data, backend, dtype, subtests):
     #
     dts = (timestep / 3.0).total_seconds()
 
-    raw_state_1 = imp.stage_call(0, timestep, raw_state, raw_tendencies)
+    raw_state_1 = deepcopy_array_dict(raw_state)
+    imp.stage_call(
+        0, timestep, raw_state, raw_tendencies, out_state=raw_state_1
+    )
 
-    assert "time" in raw_state_1.keys()
+    assert "time" in raw_state_1
     compare_datetimes(
         raw_state_1["time"], raw_state["time"] + 1.0 / 3.0 * timestep
     )
@@ -939,9 +950,12 @@ def test_rk3ws_si(data, backend, dtype, subtests):
 
     dts = (0.5 * timestep).total_seconds()
 
-    raw_state_2 = imp.stage_call(1, timestep, raw_state_1_dc, raw_tendencies)
+    raw_state_2 = deepcopy_array_dict(raw_state_1)
+    imp.stage_call(
+        1, timestep, raw_state_1_dc, raw_tendencies, out_state=raw_state_2
+    )
 
-    assert "time" in raw_state_2.keys()
+    assert "time" in raw_state_2
     compare_datetimes(raw_state_2["time"], raw_state["time"] + 0.5 * timestep)
 
     # isentropic density
@@ -1098,7 +1112,10 @@ def test_rk3ws_si(data, backend, dtype, subtests):
 
     dts = timestep.total_seconds()
 
-    raw_state_3 = imp.stage_call(2, timestep, raw_state_2_dc, raw_tendencies)
+    raw_state_3 = deepcopy_array_dict(raw_state_2)
+    imp.stage_call(
+        2, timestep, raw_state_2_dc, raw_tendencies, out_state=raw_state_3
+    )
 
     assert "time" in raw_state_3.keys()
     compare_datetimes(raw_state_3["time"], raw_state["time"] + timestep)
@@ -1232,5 +1249,4 @@ def test_rk3ws_si(data, backend, dtype, subtests):
 
 
 if __name__ == "__main__":
-    # pytest.main([__file__])
-    test_forward_euler_si("gt4py:gtc:gt:cpu_ifirst", float, None)
+    pytest.main([__file__])

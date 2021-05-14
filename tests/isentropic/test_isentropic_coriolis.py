@@ -25,24 +25,74 @@ from hypothesis import (
     reproduce_failure,
     strategies as hyp_st,
 )
+import numpy as np
+from property_cached import cached_property
 import pytest
+
 from sympl import DataArray
 
-from tasmania.python.framework.generic_functions import to_numpy
-from tasmania.python.framework.options import BackendOptions, StorageOptions
 from tasmania.python.isentropic.physics.coriolis import (
     IsentropicConservativeCoriolis,
 )
-from tasmania.python.utils.storage import get_dataarray_3d
 
 from tests import conf
 from tests.strategies import (
-    st_domain,
     st_floats,
     st_isentropic_state_f,
-    st_one_of,
 )
-from tests.utilities import compare_dataarrays, hyp_settings
+from tests.suites import DomainSuite, TendencyComponentTestSuite
+from tests.utilities import hyp_settings
+
+
+class IsentropicConservativeCoriolisTestSuite(TendencyComponentTestSuite):
+    def __init__(self, hyp_data, domain_suite, *, storage_shape):
+        self.f = hyp_data.draw(st_floats(), label="f")
+        self.storage_shape = storage_shape
+        super().__init__(hyp_data, domain_suite)
+
+    @cached_property
+    def component(self):
+        f = DataArray(self.f, attrs={"units": "rad s^-1"})
+        return IsentropicConservativeCoriolis(
+            self.ds.domain,
+            self.ds.grid_type,
+            f,
+            backend=self.ds.backend,
+            backend_options=self.ds.bo,
+            storage_shape=self.storage_shape,
+            storage_options=self.ds.so,
+        )
+
+    def get_state(self):
+        time = self.hyp_data.draw(hyp_st.datetimes(), label="time")
+        return self.hyp_data.draw(
+            st_isentropic_state_f(
+                self.ds.grid,
+                time=time,
+                moist=False,
+                backend=self.ds.backend,
+                storage_shape=self.storage_shape,
+                storage_options=self.ds.so,
+            ),
+            label="state",
+        )
+
+    def get_tendencies_and_diagnostics(self, raw_state_np):
+        nx, ny, nz = self.ds.grid.nx, self.ds.grid.ny, self.ds.grid.nz
+        nb = self.ds.nb if self.ds.grid_type == "numerical" else 0
+        i, j, k = slice(nb, nx - nb), slice(nb, ny - nb), slice(0, nz)
+        su = raw_state_np["x_momentum_isentropic"]
+        sv = raw_state_np["y_momentum_isentropic"]
+        su_tnd = np.zeros_like(su)
+        su_tnd[i, j, k] = self.f * sv[i, j, k]
+        sv_tnd = np.zeros_like(su)
+        sv_tnd[i, j, k] = -self.f * su[i, j, k]
+        tendencies = {
+            "x_momentum_isentropic": su_tnd,
+            "y_momentum_isentropic": sv_tnd,
+        }
+        diagnostics = {}
+        return tendencies, diagnostics
 
 
 @hyp_settings
@@ -50,117 +100,12 @@ from tests.utilities import compare_dataarrays, hyp_settings
 @pytest.mark.parametrize("backend", conf.backend)
 @pytest.mark.parametrize("dtype", conf.dtype)
 def test_conservative(data, backend, dtype):
-    # ========================================
-    # random data generation
-    # ========================================
-    aligned_index = data.draw(
-        (st_one_of(conf.aligned_index)), label="aligned_index"
+    ds = DomainSuite(data, backend, dtype)
+    storage_shape = (ds.grid.nx + 1, ds.grid.ny + 1, ds.grid.nz + 1)
+    ts = IsentropicConservativeCoriolisTestSuite(
+        data, ds, storage_shape=storage_shape
     )
-    bo = BackendOptions(rebuild=False)
-    so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
-
-    nb = data.draw(
-        hyp_st.integers(min_value=1, max_value=max(1, conf.nb)), label="nb"
-    )
-    domain = data.draw(
-        st_domain(
-            nb=nb, backend=backend, backend_options=bo, storage_options=so
-        ),
-        label="domain",
-    )
-    grid_type = data.draw(
-        st_one_of(("physical", "numerical")), label="grid_type"
-    )
-    grid = (
-        domain.physical_grid
-        if grid_type == "physical"
-        else domain.numerical_grid
-    )
-    nx, ny, nz = grid.nx, grid.ny, grid.nz
-    storage_shape = (nx + 1, ny + 1, nz + 1)
-
-    f = data.draw(st_floats(min_value=0, max_value=1), label="f")
-
-    time = data.draw(hyp_st.datetimes(), label="time")
-
-    state = data.draw(
-        st_isentropic_state_f(
-            grid,
-            time=time,
-            moist=False,
-            backend=backend,
-            storage_shape=storage_shape,
-            storage_options=so,
-        ),
-        label="state",
-    )
-
-    # ========================================
-    # test bed
-    # ========================================
-    nb = nb if grid_type == "numerical" else 0
-    x, y, z = slice(nb, grid.nx - nb), slice(nb, grid.ny - nb), slice(0, nz)
-    coriolis_parameter = DataArray(f, attrs={"units": "rad s^-1"})
-
-    icc = IsentropicConservativeCoriolis(
-        domain,
-        grid_type,
-        coriolis_parameter,
-        backend=backend,
-        backend_options=bo,
-        storage_shape=storage_shape,
-        storage_options=so,
-    )
-
-    assert "x_momentum_isentropic" in icc.input_properties
-    assert "y_momentum_isentropic" in icc.input_properties
-
-    assert "x_momentum_isentropic" in icc.tendency_properties
-    assert "y_momentum_isentropic" in icc.tendency_properties
-
-    assert icc.diagnostic_properties == {}
-
-    tendencies, diagnostics = icc(state)
-
-    su_val_np = f * to_numpy(
-        state["y_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").data
-    )
-    su_val = get_dataarray_3d(
-        su_val_np,
-        grid,
-        "kg m^-1 K^-1 s^-2",
-        grid_shape=(nx, ny, nz),
-        set_coordinates=False,
-    )
-    assert "x_momentum_isentropic" in tendencies
-    compare_dataarrays(
-        tendencies["x_momentum_isentropic"],
-        su_val,
-        compare_coordinate_values=False,
-        slice=(x, y, z),
-    )
-
-    sv_val_np = -f * to_numpy(
-        state["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").data
-    )
-    sv_val = get_dataarray_3d(
-        sv_val_np,
-        grid,
-        "kg m^-1 K^-1 s^-2",
-        grid_shape=(nx, ny, nz),
-        set_coordinates=False,
-    )
-    assert "y_momentum_isentropic" in tendencies
-    compare_dataarrays(
-        tendencies["y_momentum_isentropic"],
-        sv_val,
-        compare_coordinate_values=False,
-        slice=(x, y, z),
-    )
-
-    assert len(tendencies) == 2
-
-    assert len(diagnostics) == 0
+    ts.run()
 
 
 if __name__ == "__main__":

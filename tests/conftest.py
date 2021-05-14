@@ -26,7 +26,7 @@ from sympl import DataArray
 
 from gt4py import gtscript
 
-from tasmania.python.framework.base_components import TendencyComponent
+from tasmania import TendencyComponent
 from tasmania.python.framework.tag import stencil_definition
 from tasmania.python.plot.contour import Contour
 from tasmania.python.plot.profile import LineProfile
@@ -122,15 +122,9 @@ class FakeTendencyComponent1(TendencyComponent):
             grid_type,
             backend=backend,
             backend_options=backend_options,
+            storage_shape=storage_shape,
             storage_options=storage_options,
         )
-
-        self.shape = self.get_storage_shape(storage_shape)
-        self.tnd_s = self.zeros(shape=self.shape)
-        self.tnd_su = self.zeros(shape=self.shape)
-        self.tnd_u = self.zeros(shape=self.shape)
-        self.fake = self.zeros(shape=self.shape)
-
         dtype = self.storage_options.dtype
         self.backend_options.dtypes = {"dtype": dtype}
         self.stencil = self.compile("fake1")
@@ -182,43 +176,61 @@ class FakeTendencyComponent1(TendencyComponent):
 
         return return_dict
 
-    def array_call(self, state):
-        s = state["air_isentropic_density"]
-        su = state["x_momentum_isentropic"]
-        u = state["x_velocity_at_u_locations"]
-
+    def array_call(
+        self, state, out_tendencies, out_diagnostics, overwrite_tendencies
+    ):
         self.stencil(
-            s=s,
-            su=su,
-            u=u,
-            tnd_s=self.tnd_s,
-            tnd_su=self.tnd_su,
-            tnd_u=self.tnd_u,
-            fake=self.fake,
+            s=state["air_isentropic_density"],
+            su=state["x_momentum_isentropic"],
+            u=state["x_velocity_at_u_locations"],
+            tnd_s=out_tendencies["air_isentropic_density"],
+            tnd_su=out_tendencies["x_momentum_isentropic"],
+            tnd_u=out_tendencies["x_velocity"],
+            fake=out_diagnostics["fake_variable"],
+            ow_tnd_s=overwrite_tendencies["air_isentropic_density"],
+            ow_tnd_su=overwrite_tendencies["x_momentum_isentropic"],
+            ow_tnd_u=overwrite_tendencies["x_velocity"],
             origin=(0, 0, 0),
             domain=(self.grid.nx, self.grid.ny, self.grid.nz),
         )
 
-        tendencies = {
-            "air_isentropic_density": self.tnd_s,
-            "x_momentum_isentropic": self.tnd_su,
-            "x_velocity": self.tnd_u,
-        }
-        diagnostics = {"fake_variable": self.fake}
-
-        return tendencies, diagnostics
-
     @staticmethod
     @stencil_definition(backend=("numpy", "cupy"), stencil="fake1")
-    def stencil_numpy(s, su, u, tnd_s, tnd_su, tnd_u, fake, *, origin, domain):
+    def stencil_numpy(
+        s,
+        su,
+        u,
+        tnd_s,
+        tnd_su,
+        tnd_u,
+        fake,
+        *,
+        ow_tnd_s,
+        ow_tnd_su,
+        ow_tnd_u,
+        origin,
+        domain
+    ):
         ib, jb, kb = origin
         ie, je, ke = ib + domain[0], jb + domain[1], kb + domain[2]
         i, j, k = slice(ib, ie), slice(jb, je), slice(kb, ke)
         ip1 = slice(ib + 1, ie + 1)
 
-        tnd_s[i, j, k] = 1e-3 * s[i, j, k]
-        tnd_su[i, j, k] = 300 * su[i, j, k]
-        tnd_u[i, j, k] = 50 * (u[i, j, k] + u[ip1, j, k])
+        if ow_tnd_s:
+            tnd_s[i, j, k] = 1e-3 * s[i, j, k]
+        else:
+            tnd_s[i, j, k] += 1e-3 * s[i, j, k]
+
+        if ow_tnd_su:
+            tnd_su[i, j, k] = 300 * su[i, j, k]
+        else:
+            tnd_su[i, j, k] += 300 * su[i, j, k]
+
+        if ow_tnd_u:
+            tnd_u[i, j, k] = 50 * (u[i, j, k] + u[ip1, j, k])
+        else:
+            tnd_u[i, j, k] += 50 * (u[i, j, k] + u[ip1, j, k])
+
         fake[i, j, k] = 2 * s[i, j, k]
 
     @staticmethod
@@ -231,11 +243,27 @@ class FakeTendencyComponent1(TendencyComponent):
         tnd_su: gtscript.Field["dtype"],
         tnd_u: gtscript.Field["dtype"],
         fake: gtscript.Field["dtype"],
+        *,
+        ow_tnd_s: bool,
+        ow_tnd_su: bool,
+        ow_tnd_u: bool
     ):
         with computation(PARALLEL), interval(...):
-            tnd_s = 1e-3 * s
-            tnd_su = 300 * su
-            tnd_u = 50 * (u[0, 0, 0] + u[1, 0, 0])
+            if ow_tnd_s:
+                tnd_s = 1e-3 * s
+            else:
+                tnd_s += 1e-3 * s
+
+            if ow_tnd_su:
+                tnd_su = 300 * su if ow_tnd_su else tnd_su + 300 * su
+            else:
+                tnd_su += 300 * su
+
+            if ow_tnd_u:
+                tnd_u = 50 * (u[0, 0, 0] + u[1, 0, 0])
+            else:
+                tnd_u += 50 * (u[0, 0, 0] + u[1, 0, 0])
+
             fake = 2 * s
 
 
@@ -278,13 +306,9 @@ class FakeTendencyComponent2(TendencyComponent):
             grid_type,
             backend=backend,
             backend_options=backend_options,
+            storage_shape=storage_shape,
             storage_options=storage_options,
         )
-
-        self.shape = self.get_storage_shape(storage_shape)
-        self.tnd_s = self.zeros(shape=self.shape)
-        self.tnd_sv = self.zeros(shape=self.shape)
-
         dtype = self.storage_options.dtype
         self.backend_options.dtypes = {"dtype": dtype}
         self.stencil = self.compile("fake2")
@@ -325,39 +349,40 @@ class FakeTendencyComponent2(TendencyComponent):
     def diagnostic_properties(self):
         return {}
 
-    def array_call(self, state):
-        s = state["air_isentropic_density"]
-        f = state["fake_variable"]
-        v = state["y_velocity_at_v_locations"]
-
+    def array_call(
+        self, state, out_tendencies, out_diagnostics, overwrite_tendencies
+    ):
         self.stencil(
-            s=s,
-            f=f,
-            v=v,
-            tnd_s=self.tnd_s,
-            tnd_sv=self.tnd_sv,
+            s=state["air_isentropic_density"],
+            f=state["fake_variable"],
+            v=state["y_velocity_at_v_locations"],
+            tnd_s=out_tendencies["air_isentropic_density"],
+            tnd_sv=out_tendencies["y_momentum_isentropic"],
+            ow_tnd_s=overwrite_tendencies["air_isentropic_density"],
+            ow_tnd_sv=overwrite_tendencies["y_momentum_isentropic"],
             origin=(0, 0, 0),
             domain=(self.grid.nx, self.grid.ny, self.grid.nz),
         )
 
-        tendencies = {
-            "air_isentropic_density": self.tnd_s,
-            "y_momentum_isentropic": self.tnd_sv,
-        }
-        diagnostics = {}
-
-        return tendencies, diagnostics
-
     @staticmethod
     @stencil_definition(backend=("numpy", "cupy"), stencil="fake2")
-    def stencil_numpy(s, f, v, tnd_s, tnd_sv, *, origin, domain):
+    def stencil_numpy(
+        s, f, v, tnd_s, tnd_sv, *, ow_tnd_s, ow_tnd_sv, origin, domain
+    ):
         ib, jb, kb = origin
         ie, je, ke = ib + domain[0], jb + domain[1], kb + domain[2]
         i, j, k = slice(ib, ie), slice(jb, je), slice(kb, ke)
         jp1 = slice(jb + 1, je + 1)
 
-        tnd_s[i, j, k] = 0.01 * f[i, j, k]
-        tnd_sv[i, j, k] = 0.5 * s[i, j, k] * (v[i, j, k] + v[i, jp1, k])
+        if ow_tnd_s:
+            tnd_s[i, j, k] = 0.01 * f[i, j, k]
+        else:
+            tnd_s[i, j, k] += 0.01 * f[i, j, k]
+
+        if ow_tnd_sv:
+            tnd_sv[i, j, k] = 0.5 * s[i, j, k] * (v[i, j, k] + v[i, jp1, k])
+        else:
+            tnd_sv[i, j, k] += 0.5 * s[i, j, k] * (v[i, j, k] + v[i, jp1, k])
 
     @staticmethod
     @stencil_definition(backend="gt4py*", stencil="fake2")
@@ -367,10 +392,20 @@ class FakeTendencyComponent2(TendencyComponent):
         v: gtscript.Field["dtype"],
         tnd_s: gtscript.Field["dtype"],
         tnd_sv: gtscript.Field["dtype"],
+        *,
+        ow_tnd_s: bool,
+        ow_tnd_sv: bool
     ):
         with computation(PARALLEL), interval(...):
-            tnd_s = 0.01 * f[0, 0, 0]
-            tnd_sv = 0.5 * s[0, 0, 0] * (v[0, 0, 0] + v[0, 1, 0])
+            if ow_tnd_s:
+                tnd_s = 0.01 * f[0, 0, 0]
+            else:
+                tnd_s += 0.01 * f[0, 0, 0]
+
+            if ow_tnd_sv:
+                tnd_sv = 0.5 * s[0, 0, 0] * (v[0, 0, 0] + v[0, 1, 0])
+            else:
+                tnd_sv += 0.5 * s[0, 0, 0] * (v[0, 0, 0] + v[0, 1, 0])
 
 
 @pytest.fixture(scope="module")

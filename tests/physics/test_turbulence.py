@@ -26,47 +26,127 @@ from hypothesis import (
     strategies as hyp_st,
 )
 import numpy as np
+from property_cached import cached_property
 import pytest
 
-from tasmania.python.framework.generic_functions import to_numpy
-from tasmania.python.framework.options import BackendOptions, StorageOptions
 from tasmania.python.physics.turbulence import Smagorinsky2d
 from tasmania.python.utils.storage import get_dataarray_3d
 
 from tests import conf
-from tests.strategies import st_domain, st_one_of, st_raw_field
-from tests.utilities import compare_dataarrays, hyp_settings
+from tests.strategies import st_raw_field
+from tests.suites import DomainSuite, TendencyComponentTestSuite
+from tests.utilities import compare_arrays, hyp_settings
 
 
-def smagorinsky2d_validation(dx, dy, cs, u, v):
-    u_tnd = np.zeros_like(u)
-    v_tnd = np.zeros_like(v)
+class Smagorinsky2dTestSuite(TendencyComponentTestSuite):
+    def __init__(self, hyp_data, domain_suite, *, storage_shape):
+        self.storage_shape = storage_shape
+        super().__init__(hyp_data, domain_suite)
 
-    s00 = (u[2:, 1:-1] - u[:-2, 1:-1]) / (2.0 * dx)
-    s01 = 0.5 * (
-        (u[1:-1, 2:] - u[1:-1, :-2]) / (2.0 * dy)
-        + (v[2:, 1:-1] - v[:-2, 1:-1]) / (2.0 * dx)
-    )
-    s11 = (v[1:-1, 2:] - v[1:-1, :-2]) / (2.0 * dy)
-    nu = (
-        (cs ** 2)
-        * (dx * dy)
-        * (2.0 * s00 ** 2 + 4.0 * s01 ** 2 + 2.0 * s11 ** 2) ** 0.5
-    )
-    u_tnd[2:-2, 2:-2] = 2.0 * (
-        (nu[2:, 1:-1] * s00[2:, 1:-1] - nu[:-2, 1:-1] * s00[:-2, 1:-1])
-        / (2.0 * dx)
-        + (nu[1:-1, 2:] * s01[1:-1, 2:] - nu[1:-1, :-2] * s01[1:-1, :-2])
-        / (2.0 * dy)
-    )
-    v_tnd[2:-2, 2:-2] = 2.0 * (
-        (nu[2:, 1:-1] * s01[2:, 1:-1] - nu[:-2, 1:-1] * s01[:-2, 1:-1])
-        / (2.0 * dx)
-        + (nu[1:-1, 2:] * s11[1:-1, 2:] - nu[1:-1, :-2] * s11[1:-1, :-2])
-        / (2.0 * dy)
-    )
+    @cached_property
+    def component(self):
+        cs = self.hyp_data.draw(
+            hyp_st.floats(min_value=0, max_value=10), label="cs"
+        )
+        return Smagorinsky2d(
+            self.ds.domain,
+            smagorinsky_constant=cs,
+            backend=self.ds.backend,
+            backend_options=self.ds.bo,
+            storage_shape=self.storage_shape,
+            storage_options=self.ds.so,
+        )
 
-    return u_tnd, v_tnd
+    def get_state(self):
+        time = self.hyp_data.draw(hyp_st.datetimes(), label="time")
+        u = self.hyp_data.draw(
+            st_raw_field(
+                self.storage_shape,
+                -1e3,
+                1e3,
+                backend=self.ds.backend,
+                storage_options=self.ds.so,
+            ),
+            label="u",
+        )
+        v = self.hyp_data.draw(
+            st_raw_field(
+                self.storage_shape,
+                -1e3,
+                1e3,
+                backend=self.ds.backend,
+                storage_options=self.ds.so,
+            ),
+            label="v",
+        )
+
+        g = self.ds.grid
+        state = {
+            "time": time,
+            "x_velocity": get_dataarray_3d(
+                u,
+                g,
+                "m s^-1",
+                grid_shape=(g.nx, g.ny, g.nz),
+                set_coordinates=False,
+            ),
+            "y_velocity": get_dataarray_3d(
+                v,
+                g,
+                "m s^-1",
+                grid_shape=(g.nx, g.ny, g.nz),
+                set_coordinates=False,
+            ),
+        }
+
+        return state
+
+    def get_tendencies_and_diagnostics(self, raw_state_np):
+        cs = self.component._cs
+        dx = self.ds.grid.dx.to_units("m").values.item()
+        dy = self.ds.grid.dy.to_units("m").values.item()
+        u = raw_state_np["x_velocity"]
+        v = raw_state_np["y_velocity"]
+
+        u_tnd = np.zeros_like(u)
+        v_tnd = np.zeros_like(v)
+
+        s00 = (u[2:, 1:-1] - u[:-2, 1:-1]) / (2.0 * dx)
+        s01 = 0.5 * (
+            (u[1:-1, 2:] - u[1:-1, :-2]) / (2.0 * dy)
+            + (v[2:, 1:-1] - v[:-2, 1:-1]) / (2.0 * dx)
+        )
+        s11 = (v[1:-1, 2:] - v[1:-1, :-2]) / (2.0 * dy)
+        nu = (
+            (cs ** 2)
+            * (dx * dy)
+            * (2.0 * s00 ** 2 + 4.0 * s01 ** 2 + 2.0 * s11 ** 2) ** 0.5
+        )
+        u_tnd[2:-2, 2:-2] = 2.0 * (
+            (nu[2:, 1:-1] * s00[2:, 1:-1] - nu[:-2, 1:-1] * s00[:-2, 1:-1])
+            / (2.0 * dx)
+            + (nu[1:-1, 2:] * s01[1:-1, 2:] - nu[1:-1, :-2] * s01[1:-1, :-2])
+            / (2.0 * dy)
+        )
+        v_tnd[2:-2, 2:-2] = 2.0 * (
+            (nu[2:, 1:-1] * s01[2:, 1:-1] - nu[:-2, 1:-1] * s01[:-2, 1:-1])
+            / (2.0 * dx)
+            + (nu[1:-1, 2:] * s11[1:-1, 2:] - nu[1:-1, :-2] * s11[1:-1, :-2])
+            / (2.0 * dy)
+        )
+
+        tendencies = {"x_velocity": u_tnd, "y_velocity": v_tnd}
+
+        return tendencies, {}
+
+    def assert_allclose(self, name, field_a, field_b):
+        nx, ny, nz = self.ds.grid.nx, self.ds.grid.ny, self.ds.grid.nz
+        nb = self.ds.nb
+        slc = (slice(nb, nx - nb), slice(nb, ny - nb), slice(0, nz))
+        try:
+            compare_arrays(field_a, field_b, slice=slc)
+        except AssertionError:
+            raise RuntimeError(f"assert_allclose failed on {name}")
 
 
 @hyp_settings
@@ -74,114 +154,10 @@ def smagorinsky2d_validation(dx, dy, cs, u, v):
 @pytest.mark.parametrize("backend", conf.backend)
 @pytest.mark.parametrize("dtype", conf.dtype)
 def test_smagorinsky2d(data, backend, dtype):
-    # ========================================
-    # random data generation
-    # ========================================
-    aligned_index = data.draw(
-        st_one_of(conf.aligned_index), label="aligned_index"
-    )
-    bo = BackendOptions(rebuild=False)
-    so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
-
-    nb = data.draw(
-        hyp_st.integers(min_value=2, max_value=max(2, conf.nb)), label="nb"
-    )
-    domain = data.draw(
-        st_domain(
-            xaxis_length=(1, 30),
-            yaxis_length=(1, 30),
-            zaxis_length=(1, 20),
-            nb=nb,
-            backend=backend,
-            backend_options=bo,
-            storage_options=so,
-        ),
-        label="domain",
-    )
-    grid = domain.numerical_grid
-
-    nx, ny, nz = grid.nx, grid.ny, grid.nz
-    dnx = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dnx")
-    dny = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dny")
-    dnz = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dnz")
-    storage_shape = (nx + dnx, ny + dny, nz + dnz)
-
-    u = data.draw(
-        st_raw_field(
-            storage_shape, -1e3, 1e3, backend=backend, storage_options=so
-        ),
-        label="u",
-    )
-    v = data.draw(
-        st_raw_field(
-            storage_shape, -1e3, 1e3, backend=backend, storage_options=so
-        ),
-        label="v",
-    )
-
-    cs = data.draw(hyp_st.floats(min_value=0, max_value=10), label="cs")
-
-    time = data.draw(hyp_st.datetimes(), label="time")
-
-    # ========================================
-    # test bed
-    # ========================================
-    dx = grid.dx.to_units("m").values.item()
-    dy = grid.dy.to_units("m").values.item()
-
-    state = {
-        "time": time,
-        "x_velocity": get_dataarray_3d(
-            u, grid, "m s^-1", grid_shape=(nx, ny, nz), set_coordinates=False
-        ),
-        "y_velocity": get_dataarray_3d(
-            v, grid, "m s^-1", grid_shape=(nx, ny, nz), set_coordinates=False
-        ),
-    }
-    u_np, v_np = to_numpy(u), to_numpy(v)
-
-    u_tnd, v_tnd = smagorinsky2d_validation(dx, dy, cs, u_np, v_np)
-
-    smag = Smagorinsky2d(
-        domain,
-        smagorinsky_constant=cs,
-        backend=backend,
-        backend_options=bo,
-        storage_shape=storage_shape,
-        storage_options=so,
-    )
-
-    tendencies, diagnostics = smag(state)
-
-    assert "x_velocity" in tendencies
-    compare_dataarrays(
-        tendencies["x_velocity"],
-        get_dataarray_3d(
-            u_tnd,
-            grid,
-            "m s^-2",
-            grid_shape=(nx, ny, nz),
-            set_coordinates=False,
-        ),
-        compare_coordinate_values=False,
-        slice=(slice(nb, nx - nb), slice(nb, ny - nb), slice(0, nz)),
-    )
-    assert "y_velocity" in tendencies
-    compare_dataarrays(
-        tendencies["y_velocity"],
-        get_dataarray_3d(
-            v_tnd,
-            grid,
-            "m s^-2",
-            grid_shape=(nx, ny, nz),
-            set_coordinates=False,
-        ),
-        compare_coordinate_values=False,
-        slice=(slice(nb, nx - nb), slice(nb, ny - nb), slice(0, nz)),
-    )
-    assert len(tendencies) == 2
-
-    assert len(diagnostics) == 0
+    ds = DomainSuite(data, backend, dtype, grid_type="numerical", nb_min=2)
+    storage_shape = (ds.grid.nx, ds.grid.ny, ds.grid.nz)
+    ts = Smagorinsky2dTestSuite(data, ds, storage_shape=storage_shape)
+    ts.run()
 
 
 if __name__ == "__main__":

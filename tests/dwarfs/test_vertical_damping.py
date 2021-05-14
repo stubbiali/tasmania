@@ -34,9 +34,13 @@ from tests.utilities import hyp_settings
 
 
 def test_registry():
+    registry = VD.registry[
+        "tasmania.python.dwarfs.vertical_damping.VerticalDamping"
+    ]
+
     # rayleigh
-    assert "rayleigh" in VD.registry
-    assert VD.registry["rayleigh"] == Rayleigh
+    assert "rayleigh" in registry
+    assert registry["rayleigh"] == Rayleigh
 
 
 @hyp_settings

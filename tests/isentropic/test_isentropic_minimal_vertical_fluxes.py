@@ -20,7 +20,6 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from copy import deepcopy
 from hypothesis import (
     given,
     reproduce_failure,
@@ -31,6 +30,7 @@ import pytest
 
 from gt4py import gtscript
 
+from tasmania.python.framework.generic_functions import to_numpy
 from tasmania.python.framework.options import BackendOptions, StorageOptions
 from tasmania.python.framework.stencil import StencilFactory
 from tasmania.python.framework.tag import stencil_definition
@@ -43,7 +43,6 @@ from tasmania.python.isentropic.dynamics.subclasses.minimal_vertical_fluxes impo
     ThirdOrderUpwind,
     FifthOrderUpwind,
 )
-from tasmania.python.utils.backend import is_gt, get_gt_backend
 
 from tests import conf
 from tests.strategies import st_domain, st_floats, st_one_of, st_raw_field
@@ -51,20 +50,18 @@ from tests.utilities import compare_arrays, hyp_settings
 
 
 def test_registry():
-    assert "upwind" in IsentropicMinimalVerticalFlux.registry
-    assert IsentropicMinimalVerticalFlux.registry["upwind"] == Upwind
-    assert "centered" in IsentropicMinimalVerticalFlux.registry
-    assert IsentropicMinimalVerticalFlux.registry["centered"] == Centered
-    assert "third_order_upwind" in IsentropicMinimalVerticalFlux.registry
-    assert (
-        IsentropicMinimalVerticalFlux.registry["third_order_upwind"]
-        == ThirdOrderUpwind
-    )
-    assert "fifth_order_upwind" in IsentropicMinimalVerticalFlux.registry
-    assert (
-        IsentropicMinimalVerticalFlux.registry["fifth_order_upwind"]
-        == FifthOrderUpwind
-    )
+    registry = IsentropicMinimalVerticalFlux.registry[
+        "tasmania.python.isentropic.dynamics.vertical_fluxes."
+        "IsentropicMinimalVerticalFlux"
+    ]
+    assert "upwind" in registry
+    assert registry["upwind"] == Upwind
+    assert "centered" in registry
+    assert registry["centered"] == Centered
+    assert "third_order_upwind" in registry
+    assert registry["third_order_upwind"] == ThirdOrderUpwind
+    assert "fifth_order_upwind" in registry
+    assert registry["fifth_order_upwind"] == FifthOrderUpwind
 
 
 def test_factory():
@@ -129,7 +126,13 @@ class WrappingStencil(StencilFactory):
         return return_list
 
     def call_moist(
-        self, dt, dz, w, sqv, sqc, sqr,
+        self,
+        dt,
+        dz,
+        w,
+        sqv,
+        sqc,
+        sqr,
     ):
         mi, mj, mk = sqv.shape
         nb = self.core.extent
@@ -172,7 +175,6 @@ class WrappingStencil(StencilFactory):
         dz=0.0,
         origin,
         domain,
-        **kwargs
     ):
         ijk = tuple(slice(o, o + d) for o, d in zip(origin, domain))
         ijk_ext = (
@@ -189,7 +191,12 @@ class WrappingStencil(StencilFactory):
             flux_su[ijk],
             flux_sv[ijk],
         ) = self.core.stencil_subroutine("flux_dry")(
-            dt, dz, w[ijk_ext], s[ijk_ext], su[ijk_ext], sv[ijk_ext],
+            dt,
+            dz,
+            w[ijk_ext],
+            s[ijk_ext],
+            su[ijk_ext],
+            sv[ijk_ext],
         )
 
     @stencil_definition(backend=("numpy", "cupy"), stencil="stencil_moist")
@@ -207,7 +214,6 @@ class WrappingStencil(StencilFactory):
         dz=0.0,
         origin,
         domain,
-        **kwargs
     ):
         ijk = tuple(slice(o, o + d) for o, d in zip(origin, domain))
         ijk_ext = (
@@ -224,7 +230,12 @@ class WrappingStencil(StencilFactory):
             flux_sqc[ijk],
             flux_sqr[ijk],
         ) = self.core.stencil_subroutine("flux_moist")(
-            dt, dz, w[ijk_ext], sqv[ijk_ext], sqc[ijk_ext], sqr[ijk_ext],
+            dt,
+            dz,
+            w[ijk_ext],
+            sqv[ijk_ext],
+            sqc[ijk_ext],
+            sqr[ijk_ext],
         )
 
     @staticmethod
@@ -272,36 +283,28 @@ class WrappingStencil(StencilFactory):
 
 def get_upwind_flux(w, phi):
     nx, ny, nz = phi.shape
-
-    f = deepcopy(phi)
-
+    f = np.zeros_like(phi)
     for i in range(0, nx):
         for j in range(0, ny):
-            for k in range(1, nz):
+            for k in range(1, nz - 1):
                 f[i, j, k] = w[i, j, k] * (
                     phi[i, j, k] if w[i, j, k] > 0 else phi[i, j, k - 1]
                 )
-
     return f
 
 
 def get_centered_flux(w, phi):
-    f = deepcopy(phi)
-
+    f = np.zeros_like(phi)
     kstop = w.shape[2] - 1
-
     f[:, :, 1:kstop] = (
         w[:, :, 1:-1] * 0.5 * (phi[:, :, : kstop - 1] + phi[:, :, 1:kstop])
     )
-
     return f
 
 
 def get_third_order_upwind_flux(w, phi):
-    f4 = deepcopy(phi)
-
+    f4 = np.zeros_like(phi)
     kstop = w.shape[2] - 2
-
     f4[:, :, 2:kstop] = (
         w[:, :, 2:-2]
         / 12.0
@@ -310,22 +313,17 @@ def get_third_order_upwind_flux(w, phi):
             - (phi[:, :, : kstop - 2] + phi[:, :, 3 : kstop + 1])
         )
     )
-
-    f = deepcopy(phi)
-
+    f = np.zeros_like(phi)
     f[:, :, 2:kstop] = f4[:, :, 2:kstop] - np.abs(w[:, :, 2:-2]) / 12.0 * (
         3.0 * (phi[:, :, 1 : kstop - 1] - phi[:, :, 2:kstop])
         - (phi[:, :, : kstop - 2] - phi[:, :, 3 : kstop + 1])
     )
-
     return f
 
 
 def get_fifth_order_upwind_flux(w, phi):
-    f6 = deepcopy(phi)
-
+    f6 = np.zeros_like(phi)
     kstop = w.shape[2] - 3
-
     f6[:, :, 3:kstop] = (
         w[:, :, 3:-3]
         / 60.0
@@ -335,15 +333,12 @@ def get_fifth_order_upwind_flux(w, phi):
             + (phi[:, :, : kstop - 3] + phi[:, :, 5 : kstop + 2])
         )
     )
-
-    f = deepcopy(phi)
-
+    f = np.zeros_like(phi)
     f[:, :, 3:kstop] = f6[:, :, 3:kstop] - np.abs(w[:, :, 3:-3]) / 60.0 * (
         10.0 * (phi[:, :, 2 : kstop - 1] - phi[:, :, 3:kstop])
         - 5.0 * (phi[:, :, 1 : kstop - 2] - phi[:, :, 4 : kstop + 1])
         + (phi[:, :, : kstop - 3] - phi[:, :, 5 : kstop + 2])
     )
-
     return f
 
 
@@ -403,24 +398,31 @@ def validation(
     # dry
     #
     fs, fsu, fsv = ws.call_dry(dt, dz, w, s, su, sv)
-    z = slice(nb, grid.nz - nb + 1)
-    flux_s = get_fluxes(w, s)
-    compare_arrays(fs[:, :, z], flux_s[:, :, z])
-    flux_su = get_fluxes(w, su)
-    compare_arrays(fsu[:, :, z], flux_su[:, :, z])
-    flux_sv = get_fluxes(w, sv)
-    compare_arrays(fsv[:, :, z], flux_sv[:, :, z])
+    slc = (None, None, slice(nb, grid.nz - nb + 1))
+    w_np = to_numpy(w)
+    s_np = to_numpy(s)
+    flux_s = get_fluxes(w_np, s_np)
+    compare_arrays(fs, flux_s, slice=slc)
+    su_np = to_numpy(su)
+    flux_su = get_fluxes(w_np, su_np)
+    compare_arrays(fsu, flux_su, slice=slc)
+    sv_np = to_numpy(sv)
+    flux_sv = get_fluxes(w_np, sv_np)
+    compare_arrays(fsv, flux_sv, slice=slc)
 
     #
     # moist
     #
     fsqv, fsqc, fsqr = ws.call_moist(dt, dz, w, sqv, sqc, sqr)
-    flux_sqv = get_fluxes(w, sqv)
-    compare_arrays(fsqv[:, :, z], flux_sqv[:, :, z])
-    flux_sqc = get_fluxes(w, sqc)
-    compare_arrays(fsqc[:, :, z], flux_sqc[:, :, z])
-    flux_sqr = get_fluxes(w, sqr)
-    compare_arrays(fsqr[:, :, z], flux_sqr[:, :, z])
+    sqv_np = to_numpy(sqv)
+    flux_sqv = get_fluxes(w_np, sqv_np)
+    compare_arrays(fsqv, flux_sqv, slice=slc)
+    sqc_np = to_numpy(sqc)
+    flux_sqc = get_fluxes(w_np, sqc_np)
+    compare_arrays(fsqc, flux_sqc, slice=slc)
+    sqr_np = to_numpy(sqr)
+    flux_sqr = get_fluxes(w_np, sqr_np)
+    compare_arrays(fsqr, flux_sqr, slice=slc)
 
 
 @hyp_settings
@@ -442,9 +444,15 @@ def test_numerics(data, scheme, backend, dtype):
     aligned_index = data.draw(
         st_one_of(conf.aligned_index), label="aligned_index"
     )
-
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
     domain = data.draw(
-        st_domain(zaxis_length=(4, 40), backend=backend, dtype=dtype),
+        st_domain(
+            zaxis_length=(4, 40),
+            backend=backend,
+            backend_options=bo,
+            storage_options=so,
+        ),
         label="domain",
     )
     grid = domain.numerical_grid
@@ -456,8 +464,7 @@ def test_numerics(data, scheme, backend, dtype):
             -1e4,
             1e4,
             backend=backend,
-            dtype=dtype,
-            aligned_index=aligned_index,
+            storage_options=so,
         )
     )
 
@@ -466,8 +473,6 @@ def test_numerics(data, scheme, backend, dtype):
     # ========================================
     # test bed
     # ========================================
-    bo = BackendOptions(rebuild=False)
-    so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
     validation(
         IsentropicMinimalVerticalFlux,
         scheme,
@@ -482,4 +487,4 @@ def test_numerics(data, scheme, backend, dtype):
 
 if __name__ == "__main__":
     pytest.main([__file__])
-    # test_numerics("third_order_upwind", "gt4py:numpy", float)
+    # test_numerics("upwind", "numpy", float)

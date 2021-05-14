@@ -20,21 +20,28 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-import pytest
-import xarray as xr
+import numpy as np
 
-from gt4py.storage.definitions import Storage
+from gt4py import gtscript
 
-from tasmania.python.framework.allocators import zeros
+from tasmania.python.framework.allocators import as_storage, zeros
 
 
-def test_xarray_gt4py_compatibility_gtmc():
-    x = zeros("gt4py:gtmc", shape=(5, 5, 2))
-    x_da = xr.DataArray(x, dims=["x", "y", "z"], attrs={"units": "kg"})
-
-    assert isinstance(x_da.data, Storage)
+def exponential_defs(
+    in_phi: gtscript.Field[float], out_phi: gtscript.Field[float]
+):
+    with computation(PARALLEL), interval(...):
+        out_phi = exp(in_phi)
 
 
 if __name__ == "__main__":
-    # pytest.main([__file__])
-    test_xarray_gt4py_compatibility_gtmc()
+    exponential = gtscript.stencil("numpy", exponential_defs)
+
+    in_phi_np = np.random.rand(10, 10, 10)
+    in_phi = as_storage("numpy", data=in_phi_np)
+    out_phi = zeros("numpy", shape=(10, 10, 10))
+
+    out_phi_np = np.exp(in_phi_np)
+    exponential(in_phi, out_phi, origin=(0, 0, 0), domain=(10, 10, 10))
+
+    assert np.all(np.equal(out_phi, out_phi_np))

@@ -20,12 +20,12 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from copy import deepcopy
 from hypothesis import (
     given,
     reproduce_failure,
     strategies as hyp_st,
 )
+import numpy as np
 import pytest
 
 from tasmania.python.dwarfs.horizontal_diffusion import (
@@ -60,7 +60,7 @@ def assert_yz(phi_tnd, phi_tnd_assert, nb):
 
 
 def second_order_laplacian_x(dx, phi):
-    out = deepcopy(phi)
+    out = np.zeros_like(phi)
     out[1:-1, :, :] = (
         phi[2:, :, :] - 2.0 * phi[1:-1, :, :] + phi[:-2, :, :]
     ) / (dx * dx)
@@ -68,7 +68,7 @@ def second_order_laplacian_x(dx, phi):
 
 
 def second_order_laplacian_y(dy, phi):
-    out = deepcopy(phi)
+    out = np.zeros_like(phi)
     out[:, 1:-1, :] = (
         phi[:, 2:, :] - 2.0 * phi[:, 1:-1, :] + phi[:, :-2, :]
     ) / (dy * dy)
@@ -90,19 +90,21 @@ def second_order_diffusion_yz(dy, phi):
 
 
 def second_order_validation_xyz(
-    phi, grid, diffusion_depth, nb, backend, backend_options, storage_options
+    phi,
+    phi_tnd,
+    grid,
+    diffusion_depth,
+    nb,
+    overwrite_output,
+    backend,
+    backend_options,
+    storage_options,
 ):
-    ni, nj, nk = phi.shape
-    phi_tnd = zeros(
-        backend, shape=(ni, nj, nk), storage_options=storage_options
-    )
-
     dx = grid.dx.values.item()
     dy = grid.dy.values.item()
-
     hd = HD.factory(
         "second_order",
-        (ni, nj, nk),
+        phi.shape,
         dx,
         dy,
         0.5,
@@ -113,28 +115,38 @@ def second_order_validation_xyz(
         backend_options=backend_options,
         storage_options=storage_options,
     )
-    hd(phi, phi_tnd)
 
     gamma = to_numpy(hd._gamma)  # np.tile(hd._gamma, (ni, nj, 1))
+    if overwrite_output:
+        phi_tnd_assert = gamma * second_order_diffusion_xyz(
+            dx, dy, to_numpy(phi)
+        )
+    else:
+        phi_tnd_assert = to_numpy(
+            phi_tnd
+        ) + gamma * second_order_diffusion_xyz(dx, dy, to_numpy(phi))
 
-    phi_tnd_assert = gamma * second_order_diffusion_xyz(dx, dy, to_numpy(phi))
+    hd(phi, phi_tnd, overwrite_output=overwrite_output)
+
     assert_xyz(phi_tnd, phi_tnd_assert, nb)
 
 
 def second_order_validation_xz(
-    phi, grid, diffusion_depth, nb, backend, backend_options, storage_options
+    phi,
+    phi_tnd,
+    grid,
+    diffusion_depth,
+    nb,
+    overwrite_output,
+    backend,
+    backend_options,
+    storage_options,
 ):
-    ni, nj, nk = phi.shape
-    phi_tnd = zeros(
-        backend, shape=(ni, nj, nk), storage_options=storage_options
-    )
-
     dx = grid.dx.values.item()
     dy = grid.dy.values.item()
-
     hd = HD.factory(
         "second_order_1dx",
-        (ni, nj, nk),
+        phi.shape,
         dx,
         dy,
         0.5,
@@ -145,28 +157,36 @@ def second_order_validation_xz(
         backend_options=backend_options,
         storage_options=storage_options,
     )
-    hd(phi, phi_tnd)
 
     gamma = to_numpy(hd._gamma)  # np.tile(hd._gamma, (ni, nj, 1))
+    if overwrite_output:
+        phi_tnd_assert = gamma * second_order_diffusion_xz(dx, to_numpy(phi))
+    else:
+        phi_tnd_assert = to_numpy(phi_tnd) + gamma * second_order_diffusion_xz(
+            dx, to_numpy(phi)
+        )
 
-    phi_tnd_assert = gamma * second_order_diffusion_xz(dx, to_numpy(phi))
+    hd(phi, phi_tnd, overwrite_output=overwrite_output)
+
     assert_xz(phi_tnd, phi_tnd_assert, nb)
 
 
 def second_order_validation_yz(
-    phi, grid, diffusion_depth, nb, backend, backend_options, storage_options
+    phi,
+    phi_tnd,
+    grid,
+    diffusion_depth,
+    nb,
+    overwrite_output,
+    backend,
+    backend_options,
+    storage_options,
 ):
-    ni, nj, nk = phi.shape
-    phi_tnd = zeros(
-        backend, shape=(ni, nj, nk), storage_options=storage_options
-    )
-
     dx = grid.dx.values.item()
     dy = grid.dy.values.item()
-
     hd = HD.factory(
         "second_order_1dy",
-        (ni, nj, nk),
+        phi.shape,
         dx,
         dy,
         0.5,
@@ -177,11 +197,17 @@ def second_order_validation_yz(
         backend_options=backend_options,
         storage_options=storage_options,
     )
-    hd(phi, phi_tnd)
 
     gamma = to_numpy(hd._gamma)  # np.tile(hd._gamma, (ni, nj, 1))
+    if overwrite_output:
+        phi_tnd_assert = gamma * second_order_diffusion_yz(dy, to_numpy(phi))
+    else:
+        phi_tnd_assert = to_numpy(phi_tnd) + gamma * second_order_diffusion_yz(
+            dy, to_numpy(phi)
+        )
 
-    phi_tnd_assert = gamma * second_order_diffusion_yz(dy, to_numpy(phi))
+    hd(phi, phi_tnd, overwrite_output=overwrite_output)
+
     assert_yz(phi_tnd, phi_tnd_assert, nb)
 
 
@@ -229,6 +255,17 @@ def test(data, backend, dtype):
         ),
         label="phi",
     )
+    phi_tnd = data.draw(
+        st_raw_field(
+            shape,
+            min_value=-1e10,
+            max_value=1e10,
+            backend=backend,
+            storage_options=so,
+        ),
+        label="phi_tnd",
+    )
+    overwrite_output = data.draw(hyp_st.booleans(), label="overwrite")
 
     depth = data.draw(
         hyp_st.integers(min_value=0, max_value=grid.nz), label="depth"
@@ -237,9 +274,15 @@ def test(data, backend, dtype):
     # ========================================
     # test
     # ========================================
-    second_order_validation_xyz(phi, grid, depth, nb, backend, bo, so)
-    second_order_validation_xz(phi, grid, depth, nb, backend, bo, so)
-    second_order_validation_yz(phi, grid, depth, nb, backend, bo, so)
+    second_order_validation_xyz(
+        phi, phi_tnd, grid, depth, nb, overwrite_output, backend, bo, so
+    )
+    second_order_validation_xz(
+        phi, phi_tnd, grid, depth, nb, overwrite_output, backend, bo, so
+    )
+    second_order_validation_yz(
+        phi, phi_tnd, grid, depth, nb, overwrite_output, backend, bo, so
+    )
 
 
 if __name__ == "__main__":

@@ -43,21 +43,25 @@ from tests.utilities import hyp_settings
 
 
 def test_registry():
+    registry = HD.registry[
+        "tasmania.python.dwarfs.horizontal_diffusion.HorizontalDiffusion"
+    ]
+
     # second order
-    assert "second_order" in HD.registry
-    assert HD.registry["second_order"] == SecondOrder
-    assert "second_order_1dx" in HD.registry
-    assert HD.registry["second_order_1dx"] == SecondOrder1DX
-    assert "second_order_1dy" in HD.registry
-    assert HD.registry["second_order_1dy"] == SecondOrder1DY
+    assert "second_order" in registry
+    assert registry["second_order"] == SecondOrder
+    assert "second_order_1dx" in registry
+    assert registry["second_order_1dx"] == SecondOrder1DX
+    assert "second_order_1dy" in registry
+    assert registry["second_order_1dy"] == SecondOrder1DY
 
     # fourth order
-    assert "fourth_order" in HD.registry
-    assert HD.registry["fourth_order"] == FourthOrder
-    assert "fourth_order_1dx" in HD.registry
-    assert HD.registry["fourth_order_1dx"] == FourthOrder1DX
-    assert "fourth_order_1dy" in HD.registry
-    assert HD.registry["fourth_order_1dy"] == FourthOrder1DY
+    assert "fourth_order" in registry
+    assert registry["fourth_order"] == FourthOrder
+    assert "fourth_order_1dx" in registry
+    assert registry["fourth_order_1dx"] == FourthOrder1DX
+    assert "fourth_order_1dy" in registry
+    assert registry["fourth_order_1dy"] == FourthOrder1DY
 
 
 @hyp_settings

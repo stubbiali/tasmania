@@ -28,9 +28,9 @@ from hypothesis import (
 import pytest
 from sympl._core.units import units_are_same
 
-from tasmania.python.framework.promoters import (
+from tasmania.python.framework.promoter import (
     Tendency2Diagnostic,
-    Diagnostic2Tendency,
+    FromDiagnosticToTendency,
 )
 from tasmania.python.utils.storage import get_dataarray_3d
 
@@ -90,7 +90,8 @@ def test_tendency_to_diagnostic(data, backend):
     )
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     field = data.draw(
-        st_raw_field((nx, ny, nz), -1e4, 1e4, backend=backend,), label="field",
+        st_raw_field((nx, ny, nz), -1e4, 1e4, backend=backend),
+        label="field",
     )
 
     # ========================================
@@ -195,7 +196,7 @@ def test_tendency_to_diagnostic(data, backend):
     assert len(tendencies) == 3
 
 
-class FakeDiagnostic2Tendency(Diagnostic2Tendency):
+class FakeDiagnostic2Tendency(FromDiagnosticToTendency):
     @property
     def input_properties(self):
         g = self._grid
@@ -246,7 +247,8 @@ def test_diagnostic_to_tendency(data, backend):
     )
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     field = data.draw(
-        st_raw_field((nx, ny, nz), -1e4, 1e4, backend=backend,), label="field",
+        st_raw_field((nx, ny, nz), -1e4, 1e4, backend=backend),
+        label="field",
     )
 
     # ========================================
@@ -267,7 +269,7 @@ def test_diagnostic_to_tendency(data, backend):
 
     promoter = FakeDiagnostic2Tendency(domain, grid_type)
 
-    assert isinstance(promoter, Diagnostic2Tendency)
+    assert isinstance(promoter, FromDiagnosticToTendency)
 
     assert "air_pressure" in promoter.input_properties
     ref = promoter.input_properties["air_pressure"]

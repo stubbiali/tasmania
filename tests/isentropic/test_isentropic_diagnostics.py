@@ -21,13 +21,15 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 from hypothesis import (
+    assume,
     given,
     reproduce_failure,
     strategies as hyp_st,
 )
 import numpy as np
-from pint import UnitRegistry
+from property_cached import cached_property
 import pytest
+
 import sympl
 
 from tasmania.python.framework.allocators import zeros
@@ -40,18 +42,17 @@ from tasmania.python.isentropic.physics.diagnostics import (
     IsentropicDiagnostics,
     IsentropicVelocityComponents,
 )
-from tasmania.python.utils.storage import get_dataarray_3d
 
 from tests import conf
 from tests.strategies import (
     st_floats,
     st_one_of,
-    st_domain,
     st_physical_grid,
     st_isentropic_state_f,
     st_raw_field,
 )
-from tests.utilities import compare_arrays, compare_dataarrays, hyp_settings
+from tests.suites import DiagnosticComponentTestSuite, DomainSuite
+from tests.utilities import compare_arrays, hyp_settings
 
 
 @hyp_settings
@@ -434,7 +435,86 @@ def test_density_and_temperature(data, backend, dtype):
     compare_arrays(t[:nx, :ny, :nz], t_val)
 
 
-unit_registry = UnitRegistry()
+class IsentropicDiagnosticsTestSuite(DiagnosticComponentTestSuite):
+    def __init__(self, hyp_data, domain_suite, moist, pt, *, storage_shape):
+        self.moist = moist
+        self.pt = pt
+        self.storage_shape = storage_shape
+        super().__init__(hyp_data, domain_suite)
+
+    @cached_property
+    def component(self):
+        return IsentropicDiagnostics(
+            self.ds.domain,
+            self.ds.grid_type,
+            moist=self.moist,
+            pt=self.pt,
+            backend=self.ds.backend,
+            backend_options=self.ds.bo,
+            storage_shape=self.storage_shape,
+            storage_options=self.ds.so,
+        )
+
+    def get_state(self):
+        raise NotImplementedError()
+
+    def get_diagnostics(self, raw_state_np):
+        s = raw_state_np["air_isentropic_density"]
+
+        p = self.component.zeros(
+            backend="numpy",
+            shape=self.component.get_field_storage_shape(
+                "air_pressure_on_interface_levels"
+            ),
+        )
+        exn = self.component.zeros(
+            backend="numpy",
+            shape=self.component.get_field_storage_shape(
+                "exner_function_on_interface_levels"
+            ),
+        )
+        mtg = zeros(
+            backend="numpy",
+            shape=self.component.get_field_storage_shape(
+                "montgomery_potential"
+            ),
+        )
+        h = zeros(
+            backend="numpy",
+            shape=self.component.get_field_storage_shape(
+                "height_on_interface_levels"
+            ),
+        )
+        rho = zeros(
+            backend="numpy",
+            shape=self.component.get_field_storage_shape("air_density"),
+        )
+        t = zeros(
+            backend="numpy",
+            shape=self.component.get_field_storage_shape("air_temperature"),
+        )
+
+        did = DynamicsIsentropicDiagnostics(
+            self.ds.grid,
+            backend="numpy",
+            backend_options=self.ds.bo,
+            storage_shape=self.storage_shape,
+            storage_options=self.ds.so,
+        )
+        did.get_diagnostic_variables(s, self.pt.data.item(), p, exn, mtg, h)
+        out = {
+            "air_pressure_on_interface_levels": p,
+            "exner_function_on_interface_levels": exn,
+            "montgomery_potential": mtg,
+            "height_on_interface_levels": h,
+        }
+
+        if self.moist:
+            did.get_density_and_temperature(s, exn, h, rho, t)
+            out["air_density"] = rho
+            out["air_temperature"] = t
+
+        return out
 
 
 @hyp_settings
@@ -445,28 +525,16 @@ def test_isentropic_diagnostics(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    aligned_index = data.draw(
-        st_one_of(conf.aligned_index), label="aligned_index"
-    )
-    bo = BackendOptions(rebuild=False)
-    so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
-
-    domain = data.draw(
-        st_domain(backend=backend, backend_options=bo, storage_options=so),
-        label="domain",
-    )
-    grid = domain.numerical_grid
-
-    nx, ny, nz = grid.nx, grid.ny, grid.nz
+    ds = DomainSuite(data, backend, dtype, grid_type="numerical")
+    nx, ny, nz = ds.grid.nx, ds.grid.ny, ds.grid.nz
     storage_shape = (nx + 1, ny + 1, nz + 1)
-
     state = data.draw(
         st_isentropic_state_f(
-            grid,
+            ds.grid,
             moist=True,
             backend=backend,
             storage_shape=storage_shape,
-            storage_options=so,
+            storage_options=ds.so,
         ),
         label="state",
     )
@@ -474,128 +542,80 @@ def test_isentropic_diagnostics(data, backend, dtype):
     # ========================================
     # test bed
     # ========================================
-    p = zeros(backend, shape=storage_shape, storage_options=so)
-    exn = zeros(backend, shape=storage_shape, storage_options=so)
-    mtg = zeros(backend, shape=storage_shape, storage_options=so)
-    h = zeros(backend, shape=storage_shape, storage_options=so)
-    rho = zeros(backend, shape=storage_shape, storage_options=so)
-    t = zeros(backend, shape=storage_shape, storage_options=so)
-
-    did = DynamicsIsentropicDiagnostics(
-        grid,
-        backend=backend,
-        backend_options=bo,
-        storage_shape=storage_shape,
-        storage_options=so,
-    )
-
-    s = state["air_isentropic_density"].to_units("kg m^-2 K^-1").data
     pt = sympl.DataArray(
         state["air_pressure_on_interface_levels"].to_units("Pa").data[0, 0, 0],
         attrs={"units": "Pa"},
     )
 
-    did.get_diagnostic_variables(s, pt.data.item(), p, exn, mtg, h)
-    did.get_density_and_temperature(s, exn, h, rho, t)
-
-    #
     # dry
-    #
-    pid = IsentropicDiagnostics(
-        domain,
-        "numerical",
-        moist=False,
-        pt=pt,
-        backend=backend,
-        backend_options=bo,
-        storage_shape=storage_shape,
-        storage_options=so,
+    ts = IsentropicDiagnosticsTestSuite(
+        data, ds, moist=False, pt=pt, storage_shape=storage_shape
     )
+    ts.run(state)
 
-    diags = pid(state)
-
-    nx, ny, nz = grid.nx, grid.ny, grid.nz
-    validation_dict = {
-        "air_pressure_on_interface_levels": {
-            "storage": p,
-            "shape": (nx, ny, nz + 1),
-            "units": "Pa",
-        },
-        "exner_function_on_interface_levels": {
-            "storage": exn,
-            "shape": (nx, ny, nz + 1),
-            "units": "J kg^-1 K^-1",
-        },
-        "montgomery_potential": {
-            "storage": mtg,
-            "shape": (nx, ny, nz),
-            "units": "m^2 s^-2",
-        },
-        "height_on_interface_levels": {
-            "storage": h,
-            "shape": (nx, ny, nz + 1),
-            "units": "m",
-        },
-    }
-
-    for name, props in validation_dict.items():
-        assert name in diags
-        val = get_dataarray_3d(
-            props["storage"],
-            grid,
-            props["units"],
-            name=name,
-            grid_shape=props["shape"],
-            set_coordinates=False,
-        )
-        compare_dataarrays(diags[name], val, compare_coordinate_values=False)
-
-    assert len(diags) == len(validation_dict)
-
-    #
     # moist
-    #
-    pid = IsentropicDiagnostics(
-        domain,
-        "numerical",
-        moist=True,
-        pt=pt,
-        backend=backend,
-        backend_options=bo,
-        storage_shape=storage_shape,
-        storage_options=so,
+    ts = IsentropicDiagnosticsTestSuite(
+        data, ds, moist=True, pt=pt, storage_shape=storage_shape
     )
+    ts.run(state)
 
-    diags = pid(state)
 
-    validation_dict.update(
-        {
-            "air_density": {
-                "storage": rho,
-                "shape": (nx, ny, nz),
-                "units": "kg m^-3",
-            },
-            "air_temperature": {
-                "storage": t,
-                "shape": (nx, ny, nz),
-                "units": "K",
-            },
-        }
-    )
+class HorizontalVelocityTestSuite(DiagnosticComponentTestSuite):
+    def __init__(self, hyp_data, domain_suite, *, storage_shape):
+        self.storage_shape = storage_shape
+        super().__init__(hyp_data, domain_suite)
 
-    for name, props in validation_dict.items():
-        assert name in diags
-        val = get_dataarray_3d(
-            props["storage"],
-            grid,
-            props["units"],
-            name=name,
-            grid_shape=props["shape"],
-            set_coordinates=False,
+    @cached_property
+    def component(self):
+        return IsentropicVelocityComponents(
+            self.ds.domain,
+            backend=self.ds.backend,
+            backend_options=self.ds.bo,
+            storage_shape=self.storage_shape,
+            storage_options=self.ds.so,
         )
-        compare_dataarrays(diags[name], val)
 
-    assert len(diags) == len(validation_dict)
+    def get_state(self):
+        raise NotImplementedError()
+
+    def get_diagnostics(self, raw_state_np):
+        s = raw_state_np["air_isentropic_density"]
+        su = raw_state_np["x_momentum_isentropic"]
+        sv = raw_state_np["y_momentum_isentropic"]
+
+        hb_np = self.ds.domain.copy(backend="numpy").horizontal_boundary
+
+        u = self.component.zeros(
+            backend="numpy",
+            shape=self.component.get_field_storage_shape(
+                name="x_velocity_at_u_locations"
+            ),
+        )
+        u[1:-1, :] = (su[:-2, :] + su[1:-1, :]) / (s[:-2, :] + s[1:-1, :])
+        hb_np.set_outermost_layers_x(
+            u,
+            field_name="x_velocity_at_u_locations",
+            field_units="m s^-1",
+            time=raw_state_np["time"],
+        )
+
+        v = self.component.zeros(
+            backend="numpy",
+            shape=self.component.get_field_storage_shape(
+                name="y_velocity_at_v_locations"
+            ),
+        )
+        v[:, 1:-1] = (sv[:, :-2] + sv[:, 1:-1]) / (s[:, :-2] + s[:, 1:-1])
+        hb_np.set_outermost_layers_y(
+            v,
+            field_name="y_velocity_at_v_locations",
+            field_units="m s^-1",
+            time=raw_state_np["time"],
+        )
+
+        out = {"x_velocity_at_u_locations": u, "y_velocity_at_v_locations": v}
+
+        return out
 
 
 @hyp_settings
@@ -606,104 +626,27 @@ def test_horizontal_velocity(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    aligned_index = data.draw(
-        st_one_of(conf.aligned_index), label="aligned_index"
-    )
-    bo = BackendOptions(rebuild=False)
-    so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
-
-    domain = data.draw(
-        st_domain(backend=backend, backend_options=bo, storage_options=so),
-        label="domain",
-    )
-    hb = domain.horizontal_boundary
-    grid = domain.numerical_grid
-
-    nx, ny, nz = grid.nx, grid.ny, grid.nz
+    ds = DomainSuite(data, backend, dtype, grid_type="numerical")
+    assume(ds.domain.horizontal_boundary.type != "identity")
+    nx, ny, nz = ds.grid.nx, ds.grid.ny, ds.grid.nz
     storage_shape = (nx + 1, ny + 1, nz + 1)
-
     state = data.draw(
         st_isentropic_state_f(
-            grid,
+            ds.grid,
             moist=True,
             backend=backend,
             storage_shape=storage_shape,
-            storage_options=so,
+            storage_options=ds.so,
         ),
         label="state",
     )
-
-    hb.reference_state = state
+    ds.domain.horizontal_boundary.reference_state = state
 
     # ========================================
     # test bed
     # ========================================
-    ivc = IsentropicVelocityComponents(
-        domain,
-        backend=backend,
-        backend_options=bo,
-        storage_shape=storage_shape,
-        storage_options=so,
-    )
-
-    diags = ivc(state)
-
-    s = to_numpy(state["air_isentropic_density"].to_units("kg m^-2 K^-1").data)
-    su = to_numpy(
-        state["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").data
-    )
-    sv = to_numpy(
-        state["y_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").data
-    )
-
-    u = zeros("numpy", shape=storage_shape, storage_options=so)
-    v = zeros("numpy", shape=storage_shape, storage_options=so)
-
-    assert "x_velocity_at_u_locations" in diags
-    u[1:-1, :] = (su[:-2, :] + su[1:-1, :]) / (s[:-2, :] + s[1:-1, :])
-    hb_np = domain.copy(backend="numpy").horizontal_boundary
-    hb_np.set_outermost_layers_x(
-        u,
-        field_name="x_velocity_at_u_locations",
-        field_units="m s^-1",
-        time=state["time"],
-    )
-    u_val = get_dataarray_3d(
-        u,
-        grid,
-        "m s^-1",
-        name="x_velocity_at_u_locations",
-        grid_shape=(nx + 1, ny, nz),
-        set_coordinates=False,
-    )
-    compare_dataarrays(
-        diags["x_velocity_at_u_locations"],
-        u_val,
-        compare_coordinate_values=False,
-        slice=(slice(nx + 1), slice(ny), slice(nz)),
-    )
-
-    assert "y_velocity_at_v_locations" in diags
-    v[:, 1:-1] = (sv[:, :-2] + sv[:, 1:-1]) / (s[:, :-2] + s[:, 1:-1])
-    hb_np.set_outermost_layers_y(
-        v,
-        field_name="y_velocity_at_v_locations",
-        field_units="m s^-1",
-        time=state["time"],
-    )
-    v_val = get_dataarray_3d(
-        v,
-        grid,
-        "m s^-1",
-        name="y_velocity_at_u_locations",
-        grid_shape=(nx, ny + 1, nz),
-        set_coordinates=False,
-    )
-    compare_dataarrays(
-        diags["y_velocity_at_v_locations"],
-        v_val,
-        slice=(slice(nx), slice(ny + 1), slice(nz)),
-    )
+    ts = HorizontalVelocityTestSuite(data, ds, storage_shape=storage_shape)
+    ts.run(state)
 
 
 if __name__ == "__main__":

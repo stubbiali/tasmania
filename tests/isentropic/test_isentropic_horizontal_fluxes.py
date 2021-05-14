@@ -50,20 +50,19 @@ from tests.utilities import compare_arrays, hyp_settings
 
 
 def test_registry():
-    assert "upwind" in IsentropicHorizontalFlux.registry
-    assert IsentropicHorizontalFlux.registry["upwind"] == Upwind
-    assert "centered" in IsentropicHorizontalFlux.registry
-    assert IsentropicHorizontalFlux.registry["centered"] == Centered
-    assert "third_order_upwind" in IsentropicHorizontalFlux.registry
-    assert (
-        IsentropicHorizontalFlux.registry["third_order_upwind"]
-        == ThirdOrderUpwind
-    )
-    assert "fifth_order_upwind" in IsentropicHorizontalFlux.registry
-    assert (
-        IsentropicHorizontalFlux.registry["fifth_order_upwind"]
-        == FifthOrderUpwind
-    )
+    registry = IsentropicHorizontalFlux.registry[
+        "tasmania.python.isentropic.dynamics.horizontal_fluxes."
+        "IsentropicHorizontalFlux"
+    ]
+
+    assert "upwind" in registry
+    assert registry["upwind"] == Upwind
+    assert "centered" in registry
+    assert registry["centered"] == Centered
+    assert "third_order_upwind" in registry
+    assert registry["third_order_upwind"] == ThirdOrderUpwind
+    assert "fifth_order_upwind" in registry
+    assert registry["fifth_order_upwind"] == FifthOrderUpwind
 
 
 def test_factory():

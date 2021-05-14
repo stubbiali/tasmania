@@ -142,8 +142,12 @@ def test_forward_euler(data, backend, dtype):
         }
     else:
         raw_tendency = {}
+    out_state = {
+        "x_velocity": bs.zeros(shape=(grid.nx, grid.ny, 1)),
+        "y_velocity": bs.zeros(shape=(grid.nx, grid.ny, 1)),
+    }
 
-    out_state = bs(0, raw_state, raw_tendency, timestep)
+    bs(0, raw_state, raw_tendency, timestep, out_state)
 
     dx = grid.grid_xy.dx.to_units("m").values.item()
     dy = grid.grid_xy.dy.to_units("m").values.item()
@@ -169,9 +173,6 @@ def test_forward_euler(data, backend, dtype):
     )
 
 
-@reproduce_failure(
-    "4.28.0", b"AXicY2BgZEAGzCwMqEBwBiqftxOZB9HsgiQyc+lJbv0ZAEtMBGY="
-)
 @hyp_settings
 @given(data=hyp_st.data())
 @pytest.mark.parametrize("backend", conf.backend)
@@ -266,7 +267,11 @@ def test_rk2(data, backend, dtype):
     # ========================================
     # stage 0
     # ========================================
-    raw_state_1 = bs(0, raw_state_0, raw_tendency, timestep)
+    raw_state_1 = {
+        "x_velocity": bs.zeros(shape=(grid.nx, grid.ny, 1)),
+        "y_velocity": bs.zeros(shape=(grid.nx, grid.ny, 1)),
+    }
+    bs(0, raw_state_0, raw_tendency, timestep, raw_state_1)
 
     dx = grid.grid_xy.dx.to_units("m").values.item()
     dy = grid.grid_xy.dy.to_units("m").values.item()
@@ -295,7 +300,11 @@ def test_rk2(data, backend, dtype):
     # stage 1
     # ========================================
     raw_state_1_dc = deepcopy_array_dict(raw_state_1)
-    raw_state_2 = bs(1, raw_state_1, raw_tendency, timestep)
+    raw_state_2 = {
+        "x_velocity": bs.zeros(shape=(grid.nx, grid.ny, 1)),
+        "y_velocity": bs.zeros(shape=(grid.nx, grid.ny, 1)),
+    }
+    bs(1, raw_state_1, raw_tendency, timestep, raw_state_2)
 
     u1 = to_numpy(raw_state_1_dc["x_velocity"])
     v1 = to_numpy(raw_state_1_dc["y_velocity"])
@@ -409,7 +418,11 @@ def test_rk3ws(data, backend, dtype):
     # ========================================
     # stage 0
     # ========================================
-    raw_state_1 = bs(0, raw_state_0, raw_tendency, timestep)
+    raw_state_1 = {
+        "x_velocity": bs.zeros(shape=(grid.nx, grid.ny, 1)),
+        "y_velocity": bs.zeros(shape=(grid.nx, grid.ny, 1)),
+    }
+    bs(0, raw_state_0, raw_tendency, timestep, raw_state_1)
 
     dx = grid.grid_xy.dx.to_units("m").values.item()
     dy = grid.grid_xy.dy.to_units("m").values.item()
@@ -440,7 +453,11 @@ def test_rk3ws(data, backend, dtype):
     # stage 1
     # ========================================
     raw_state_1_dc = deepcopy_array_dict(raw_state_1)
-    raw_state_2 = bs(1, raw_state_1, raw_tendency, timestep)
+    raw_state_2 = {
+        "x_velocity": bs.zeros(shape=(grid.nx, grid.ny, 1)),
+        "y_velocity": bs.zeros(shape=(grid.nx, grid.ny, 1)),
+    }
+    bs(1, raw_state_1, raw_tendency, timestep, raw_state_2)
 
     u1 = to_numpy(raw_state_1["x_velocity"])
     v1 = to_numpy(raw_state_1["y_velocity"])
@@ -464,7 +481,11 @@ def test_rk3ws(data, backend, dtype):
     # stage 2
     # ========================================
     raw_state_2_dc = deepcopy_array_dict(raw_state_2)
-    raw_state_3 = bs(2, raw_state_2, raw_tendency, timestep)
+    raw_state_3 = {
+        "x_velocity": bs.zeros(shape=(grid.nx, grid.ny, 1)),
+        "y_velocity": bs.zeros(shape=(grid.nx, grid.ny, 1)),
+    }
+    bs(2, raw_state_2, raw_tendency, timestep, raw_state_3)
 
     u2 = to_numpy(raw_state_2_dc["x_velocity"])
     v2 = to_numpy(raw_state_2_dc["y_velocity"])
@@ -486,5 +507,4 @@ def test_rk3ws(data, backend, dtype):
 
 
 if __name__ == "__main__":
-    # pytest.main([__file__])
-    test_rk2("gt4py:gtx86", float)
+    pytest.main([__file__])

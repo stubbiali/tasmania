@@ -27,7 +27,7 @@ from hypothesis import (
 )
 import pytest
 
-from tasmania.python.framework.base_components import (
+from tasmania import (
     DiagnosticComponent,
     ImplicitTendencyComponent,
     TendencyComponent,

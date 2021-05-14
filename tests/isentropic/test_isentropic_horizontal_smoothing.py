@@ -20,30 +20,27 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from copy import deepcopy
 from hypothesis import (
     given,
     reproduce_failure,
     strategies as hyp_st,
 )
+import numpy as np
+from property_cached import cached_property
 import pytest
 
-from tasmania.python.framework.allocators import zeros
-from tasmania.python.framework.options import BackendOptions, StorageOptions
 from tasmania.python.isentropic.physics.horizontal_smoothing import (
     IsentropicHorizontalSmoothing,
 )
 from tasmania.python.dwarfs.horizontal_smoothing import HorizontalSmoothing
-from tasmania.python.utils.storage import get_dataarray_3d
 
 from tests import conf
 from tests.strategies import (
-    st_domain,
     st_floats,
-    st_one_of,
     st_isentropic_state_f,
 )
-from tests.utilities import compare_dataarrays, hyp_settings
+from tests.suites import DiagnosticComponentTestSuite, DomainSuite
+from tests.utilities import compare_arrays, hyp_settings
 
 
 mfwv = "mass_fraction_of_water_vapor_in_air"
@@ -51,10 +48,145 @@ mfcw = "mass_fraction_of_cloud_liquid_water_in_air"
 mfpw = "mass_fraction_of_precipitation_water_in_air"
 
 
+class IsentropicHorizontalSmoothingTestSuite(DiagnosticComponentTestSuite):
+    def __init__(
+        self, hyp_data, domain_suite, smooth_type, moist, *, storage_shape
+    ):
+        self.smooth_type = smooth_type
+        self.moist = moist
+        self.storage_shape = storage_shape
+
+        self.smooth_coeff = hyp_data.draw(st_floats(min_value=0, max_value=1))
+        self.smooth_coeff_max = hyp_data.draw(
+            st_floats(min_value=self.smooth_coeff, max_value=1)
+        )
+        self.smooth_damp_depth = hyp_data.draw(
+            hyp_st.integers(min_value=0, max_value=domain_suite.grid.nz)
+        )
+        self.smooth_moist_coeff = hyp_data.draw(
+            st_floats(min_value=0, max_value=1)
+        )
+        self.smooth_moist_coeff_max = hyp_data.draw(
+            st_floats(min_value=self.smooth_moist_coeff, max_value=1)
+        )
+        self.smooth_moist_damp_depth = hyp_data.draw(
+            hyp_st.integers(min_value=0, max_value=domain_suite.grid.nz)
+        )
+
+        super().__init__(hyp_data, domain_suite)
+
+    @cached_property
+    def component(self):
+        if not self.moist:
+            return IsentropicHorizontalSmoothing(
+                self.ds.domain,
+                self.smooth_type,
+                smooth_coeff=self.smooth_coeff,
+                smooth_coeff_max=self.smooth_coeff_max,
+                smooth_damp_depth=self.smooth_damp_depth,
+                moist=False,
+                backend=self.ds.backend,
+                backend_options=self.ds.bo,
+                storage_shape=self.storage_shape,
+                storage_options=self.ds.so,
+            )
+        else:
+            return IsentropicHorizontalSmoothing(
+                self.ds.domain,
+                self.smooth_type,
+                smooth_coeff=self.smooth_coeff,
+                smooth_coeff_max=self.smooth_coeff_max,
+                smooth_damp_depth=self.smooth_damp_depth,
+                moist=True,
+                smooth_moist_coeff=self.smooth_moist_coeff,
+                smooth_moist_coeff_max=self.smooth_moist_coeff_max,
+                smooth_moist_damp_depth=self.smooth_moist_damp_depth,
+                backend=self.ds.backend,
+                backend_options=self.ds.bo,
+                storage_shape=self.storage_shape,
+                storage_options=self.ds.so,
+            )
+
+    def get_state(self):
+        return self.hyp_data.draw(
+            st_isentropic_state_f(
+                self.ds.grid,
+                moist=self.moist,
+                backend=self.ds.backend,
+                storage_shape=self.storage_shape,
+                storage_options=self.ds.so,
+            ),
+            label="state",
+        )
+
+    def get_diagnostics(self, raw_state_np):
+        hs = HorizontalSmoothing.factory(
+            self.smooth_type,
+            self.storage_shape,
+            self.smooth_coeff,
+            self.smooth_coeff_max,
+            self.smooth_damp_depth,
+            self.ds.nb,
+            backend="numpy",
+            backend_options=self.ds.bo,
+            storage_options=self.ds.so,
+        )
+        s = raw_state_np["air_isentropic_density"]
+        s_out = np.zeros_like(s)
+        hs(s, s_out)
+        su = raw_state_np["x_momentum_isentropic"]
+        su_out = np.zeros_like(su)
+        hs(su, su_out)
+        sv = raw_state_np["y_momentum_isentropic"]
+        sv_out = np.zeros_like(sv)
+        hs(sv, sv_out)
+        diagnostics = {
+            "air_isentropic_density": s_out,
+            "x_momentum_isentropic": su_out,
+            "y_momentum_isentropic": sv_out,
+        }
+
+        if self.moist:
+            hs_moist = HorizontalSmoothing.factory(
+                self.smooth_type,
+                self.storage_shape,
+                self.smooth_moist_coeff,
+                self.smooth_moist_coeff_max,
+                self.smooth_moist_damp_depth,
+                self.ds.nb,
+                backend="numpy",
+                backend_options=self.ds.bo,
+                storage_options=self.ds.so,
+            )
+            qv = raw_state_np[mfwv]
+            qv_out = np.zeros_like(qv)
+            hs_moist(qv, qv_out)
+            diagnostics[mfwv] = qv_out
+            qc = raw_state_np[mfcw]
+            qc_out = np.zeros_like(qc)
+            hs_moist(qc, qc_out)
+            diagnostics[mfcw] = qc_out
+            qr = raw_state_np[mfpw]
+            qr_out = np.zeros_like(qr)
+            hs_moist(qr, qr_out)
+            diagnostics[mfpw] = qr_out
+
+        return diagnostics
+
+    def assert_allclose(self, name, field_a, field_b):
+        nx, ny, nz = self.ds.grid.nx, self.ds.grid.ny, self.ds.grid.nz
+        nb = self.ds.nb
+        slc = (slice(nb, nx - nb), slice(nb, ny - nb), slice(0, nz))
+        try:
+            compare_arrays(field_a, field_b, slice=slc)
+        except AssertionError:
+            raise RuntimeError(f"assert_allclose failed on {name}")
+
+
 @hyp_settings
 @given(data=hyp_st.data())
 @pytest.mark.parametrize(
-    "smooth_type", ("first_order", "second_order", "third_order")
+    "smooth_type", ("first_order", "second_order")  # , "third_order")
 )
 @pytest.mark.parametrize("backend", conf.backend)
 @pytest.mark.parametrize("dtype", conf.dtype)
@@ -62,196 +194,23 @@ def test(data, smooth_type, backend, dtype, subtests):
     # ========================================
     # random data generation
     # ========================================
-    aligned_index = data.draw(
-        st_one_of(conf.aligned_index), label="aligned_index"
-    )
-    bo = BackendOptions(rebuild=False)
-    so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
-
-    nb = data.draw(
-        hyp_st.integers(min_value=3, max_value=max(3, conf.nb)), label="nb"
-    )
-    domain = data.draw(
-        st_domain(
-            xaxis_length=(1, 30),
-            yaxis_length=(1, 30),
-            zaxis_length=(2, 20),
-            nb=nb,
-            backend=backend,
-            backend_options=bo,
-            storage_options=so,
-        ),
-        label="domain",
-    )
-    grid = domain.numerical_grid
-    nx, ny, nz = grid.nx, grid.ny, grid.nz
-    storage_shape = (nx + 1, ny + 1, nz + 1)
-
-    state = data.draw(
-        st_isentropic_state_f(
-            grid,
-            moist=True,
-            backend=backend,
-            storage_shape=storage_shape,
-            storage_options=so,
-        ),
-        label="state",
-    )
-
-    smooth_coeff = data.draw(st_floats(min_value=0, max_value=1))
-    smooth_coeff_max = data.draw(
-        st_floats(min_value=smooth_coeff, max_value=1)
-    )
-    smooth_damp_depth = data.draw(
-        hyp_st.integers(min_value=0, max_value=grid.nz)
-    )
-    smooth_moist_coeff = data.draw(st_floats(min_value=0, max_value=1))
-    smooth_moist_coeff_max = data.draw(
-        st_floats(min_value=smooth_moist_coeff, max_value=1)
-    )
-    smooth_moist_damp_depth = data.draw(
-        hyp_st.integers(min_value=0, max_value=grid.nz)
-    )
+    ds = DomainSuite(data, backend, dtype, grid_type="numerical", nb_min=3)
+    storage_shape = (ds.grid.nx + 1, ds.grid.ny + 1, ds.grid.nz + 1)
 
     # ========================================
     # test bed
     # ========================================
-    in_st = zeros(backend, shape=storage_shape, storage_options=so)
-    out_st = zeros(backend, shape=storage_shape, storage_options=so)
-
-    #
-    # validation data
-    #
-    hs = HorizontalSmoothing.factory(
-        smooth_type,
-        storage_shape,
-        smooth_coeff,
-        smooth_coeff_max,
-        smooth_damp_depth,
-        nb,
-        backend=backend,
-        backend_options=bo,
-        storage_options=so,
-    )
-    hs_moist = HorizontalSmoothing.factory(
-        smooth_type,
-        storage_shape,
-        smooth_moist_coeff,
-        smooth_moist_coeff_max,
-        smooth_moist_damp_depth,
-        nb,
-        backend=backend,
-        backend_options=bo,
-        storage_options=so,
-    )
-
-    val = {}
-
-    names = (
-        "air_isentropic_density",
-        "x_momentum_isentropic",
-        "y_momentum_isentropic",
-    )
-    units = ("kg m^-2 K^-1", "kg m^-1 K^-1 s^-1", "kg m^-1 K^-1 s^-1")
-    for i in range(len(names)):
-        in_st[...] = state[names[i]].to_units(units[i]).data
-        hs(in_st, out_st)
-        val[names[i]] = deepcopy(out_st)
-
-    names = (mfwv, mfcw, mfpw)
-    units = ("g g^-1",) * 3
-    for i in range(len(names)):
-        in_st[...] = state[names[i]].to_units(units[i]).data
-        hs_moist(in_st, out_st)
-        val[names[i]] = deepcopy(out_st)
-
-    #
     # dry
-    #
-    ihs = IsentropicHorizontalSmoothing(
-        domain,
-        smooth_type,
-        smooth_coeff=smooth_coeff,
-        smooth_coeff_max=smooth_coeff_max,
-        smooth_damp_depth=smooth_damp_depth,
-        backend=backend,
-        backend_options=bo,
-        storage_options=so,
+    ts = IsentropicHorizontalSmoothingTestSuite(
+        data, ds, smooth_type, False, storage_shape=storage_shape
     )
+    ts.run()
 
-    diagnostics = ihs(state)
-
-    names = (
-        "air_isentropic_density",
-        "x_momentum_isentropic",
-        "y_momentum_isentropic",
-    )
-    units = ("kg m^-2 K^-1", "kg m^-1 K^-1 s^-1", "kg m^-1 K^-1 s^-1")
-    for i in range(len(names)):
-        # with subtests.test(smooth_type=smooth_type, name=names[i]):
-        assert names[i] in diagnostics
-        field_val = get_dataarray_3d(
-            val[names[i]],
-            grid,
-            units[i],
-            name=names[i],
-            grid_shape=(nx, ny, nz),
-            set_coordinates=False,
-        )
-        compare_dataarrays(diagnostics[names[i]], field_val)
-
-    assert len(diagnostics) == len(names)
-
-    #
     # moist
-    #
-    ihs = IsentropicHorizontalSmoothing(
-        domain,
-        smooth_type,
-        smooth_coeff=smooth_coeff,
-        smooth_coeff_max=smooth_coeff_max,
-        smooth_damp_depth=smooth_damp_depth,
-        moist=True,
-        smooth_moist_coeff=smooth_moist_coeff,
-        smooth_moist_coeff_max=smooth_moist_coeff_max,
-        smooth_moist_damp_depth=smooth_moist_damp_depth,
-        backend=backend,
-        backend_options=bo,
-        storage_options=so,
+    ts = IsentropicHorizontalSmoothingTestSuite(
+        data, ds, smooth_type, True, storage_shape=storage_shape
     )
-
-    diagnostics = ihs(state)
-
-    names = (
-        "air_isentropic_density",
-        "x_momentum_isentropic",
-        "y_momentum_isentropic",
-        mfwv,
-        mfcw,
-        mfpw,
-    )
-    units = (
-        "kg m^-2 K^-1",
-        "kg m^-1 K^-1 s^-1",
-        "kg m^-1 K^-1 s^-1",
-        "g g^-1",
-        "g g^-1",
-        "g g^-1",
-    )
-    for i in range(len(names)):
-        # with subtests.test(smooth_type=smooth_type, name=names[i]):
-        assert names[i] in diagnostics
-        field_val = get_dataarray_3d(
-            val[names[i]],
-            grid,
-            units[i],
-            name=names[i],
-            grid_shape=(nx, ny, nz),
-            set_coordinates=False,
-        )
-        compare_dataarrays(diagnostics[names[i]], field_val)
-
-    assert len(diagnostics) == len(names)
+    ts.run()
 
 
 if __name__ == "__main__":

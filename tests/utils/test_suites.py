@@ -20,21 +20,21 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+from hypothesis import given, strategies as hyp_st
 import pytest
-import xarray as xr
 
-from gt4py.storage.definitions import Storage
-
-from tasmania.python.framework.allocators import zeros
+from tests import conf
+from tests.suites import DomainSuite
 
 
-def test_xarray_gt4py_compatibility_gtmc():
-    x = zeros("gt4py:gtmc", shape=(5, 5, 2))
-    x_da = xr.DataArray(x, dims=["x", "y", "z"], attrs={"units": "kg"})
-
-    assert isinstance(x_da.data, Storage)
+@given(data=hyp_st.data())
+@pytest.mark.parametrize("backend", conf.backend)
+@pytest.mark.parametrize("dtype", conf.dtype)
+def test_domain_suite(data, backend, dtype):
+    ds = DomainSuite(data, backend, dtype)
+    assert isinstance(ds, DomainSuite)
+    assert ds.backend == backend
 
 
 if __name__ == "__main__":
-    # pytest.main([__file__])
-    test_xarray_gt4py_compatibility_gtmc()
+    pytest.main([__file__])

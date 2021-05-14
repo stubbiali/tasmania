@@ -51,20 +51,18 @@ from tests.utilities import hyp_settings
 
 
 def test_registry():
-    assert "upwind" in IsentropicMinimalHorizontalFlux.registry
-    assert IsentropicMinimalHorizontalFlux.registry["upwind"] == Upwind
-    assert "centered" in IsentropicMinimalHorizontalFlux.registry
-    assert IsentropicMinimalHorizontalFlux.registry["centered"] == Centered
-    assert "third_order_upwind" in IsentropicMinimalHorizontalFlux.registry
-    assert (
-        IsentropicMinimalHorizontalFlux.registry["third_order_upwind"]
-        == ThirdOrderUpwind
-    )
-    assert "fifth_order_upwind" in IsentropicMinimalHorizontalFlux.registry
-    assert (
-        IsentropicMinimalHorizontalFlux.registry["fifth_order_upwind"]
-        == FifthOrderUpwind
-    )
+    registry = IsentropicMinimalHorizontalFlux.registry[
+        "tasmania.python.isentropic.dynamics.horizontal_fluxes."
+        "IsentropicMinimalHorizontalFlux"
+    ]
+    assert "upwind" in registry
+    assert registry["upwind"] == Upwind
+    assert "centered" in registry
+    assert registry["centered"] == Centered
+    assert "third_order_upwind" in registry
+    assert registry["third_order_upwind"] == ThirdOrderUpwind
+    assert "fifth_order_upwind" in registry
+    assert registry["fifth_order_upwind"] == FifthOrderUpwind
 
 
 def test_factory():
@@ -140,9 +138,7 @@ def test(data, flux_scheme, backend, dtype):
         label="field",
     )
 
-    timestep = data.draw(
-        st_floats(min_value=0, max_value=3600), label="timestep"
-    )
+    dt = data.draw(st_floats(min_value=0, max_value=3600), label="dt")
 
     # ========================================
     # test bed
@@ -152,193 +148,7 @@ def test(data, flux_scheme, backend, dtype):
         flux_scheme,
         domain,
         field,
-        timestep,
-        backend,
-        bo,
-        so,
-    )
-
-
-@hyp_settings
-@given(data=hyp_st.data())
-@pytest.mark.parametrize("backend", conf.backend)
-@pytest.mark.parametrize("dtype", conf.dtype)
-def test_centered(data, backend, dtype):
-    # ========================================
-    # random data generation
-    # ========================================
-    aligned_index = data.draw(
-        st_one_of(conf.aligned_index), label="aligned_index"
-    )
-
-    nb = data.draw(
-        hyp_st.integers(min_value=1, max_value=max(1, conf.nb)), label="nb"
-    )
-    domain = data.draw(
-        st_domain(
-            xaxis_length=(1, 20),
-            yaxis_length=(1, 20),
-            zaxis_length=(1, 20),
-            nb=nb,
-            backend=backend,
-            dtype=dtype,
-        ),
-        label="domain",
-    )
-    grid = domain.numerical_grid
-    nx, ny, nz = grid.nx, grid.ny, grid.nz
-
-    field = data.draw(
-        st_raw_field(
-            (nx + 2, ny + 2, nz + 1),
-            -1e4,
-            1e4,
-            backend=backend,
-            dtype=dtype,
-            aligned_index=aligned_index,
-        ),
-        label="field",
-    )
-
-    timestep = data.draw(
-        st_floats(min_value=0, max_value=3600), label="timestep"
-    )
-
-    # ========================================
-    # test bed
-    # ========================================
-    bo = BackendOptions(rebuild=False)
-    so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
-    validation(
-        IsentropicMinimalHorizontalFlux,
-        "centered",
-        domain,
-        field,
-        timestep,
-        backend,
-        bo,
-        so,
-    )
-
-
-@hyp_settings
-@given(data=hyp_st.data())
-@pytest.mark.parametrize("backend", conf.backend)
-@pytest.mark.parametrize("dtype", conf.dtype)
-def test_third_order_upwind(data, backend, dtype):
-    # ========================================
-    # random data generation
-    # ========================================
-    aligned_index = data.draw(
-        st_one_of(conf.aligned_index), label="aligned_index"
-    )
-
-    nb = data.draw(
-        hyp_st.integers(min_value=2, max_value=max(2, conf.nb)), label="nb"
-    )
-    domain = data.draw(
-        st_domain(
-            xaxis_length=(1, 20),
-            yaxis_length=(1, 20),
-            zaxis_length=(1, 20),
-            nb=nb,
-            backend=backend,
-            dtype=dtype,
-        ),
-        label="domain",
-    )
-    grid = domain.numerical_grid
-    nx, ny, nz = grid.nx, grid.ny, grid.nz
-
-    field = data.draw(
-        st_raw_field(
-            (nx + 2, ny + 2, nz + 1),
-            -1e4,
-            1e4,
-            backend=backend,
-            dtype=dtype,
-            aligned_index=aligned_index,
-        ),
-        label="field",
-    )
-
-    timestep = data.draw(
-        st_floats(min_value=0, max_value=3600), label="timestep"
-    )
-
-    # ========================================
-    # test bed
-    # ========================================
-    bo = BackendOptions(rebuild=False)
-    so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
-    validation(
-        IsentropicMinimalHorizontalFlux,
-        "third_order_upwind",
-        domain,
-        field,
-        timestep,
-        backend,
-        bo,
-        so,
-    )
-
-
-@hyp_settings
-@given(data=hyp_st.data())
-@pytest.mark.parametrize("backend", conf.backend)
-@pytest.mark.parametrize("dtype", conf.dtype)
-def test_fifth_order_upwind(data, backend, dtype):
-    # ========================================
-    # random data generation
-    # ========================================
-    aligned_index = data.draw(
-        st_one_of(conf.aligned_index), label="aligned_index"
-    )
-
-    nb = data.draw(
-        hyp_st.integers(min_value=3, max_value=max(3, conf.nb)), label="nb"
-    )
-    domain = data.draw(
-        st_domain(
-            xaxis_length=(1, 20),
-            yaxis_length=(1, 20),
-            zaxis_length=(1, 20),
-            nb=nb,
-            backend=backend,
-            dtype=dtype,
-        ),
-        label="domain",
-    )
-    grid = domain.numerical_grid
-    nx, ny, nz = grid.nx, grid.ny, grid.nz
-
-    field = data.draw(
-        st_raw_field(
-            (nx + 2, ny + 2, nz + 1),
-            -1e4,
-            1e4,
-            backend=backend,
-            dtype=dtype,
-            aligned_index=aligned_index,
-        ),
-        label="field",
-    )
-
-    timestep = data.draw(
-        st_floats(min_value=0, max_value=3600), label="timestep"
-    )
-
-    # ========================================
-    # test bed
-    # ========================================
-    bo = BackendOptions(rebuild=False)
-    so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
-    validation(
-        IsentropicMinimalHorizontalFlux,
-        "fifth_order_upwind",
-        domain,
-        field,
-        timestep,
+        dt,
         backend,
         bo,
         so,
