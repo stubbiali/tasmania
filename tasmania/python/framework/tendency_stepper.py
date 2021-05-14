@@ -28,17 +28,16 @@ from sympl import (
     ImplicitTendencyComponent,
     ImplicitTendencyComponentComposite,
 )
-from sympl._core.base_components import (
-    InputChecker,
-    DiagnosticChecker,
-    OutputChecker,
+from sympl._core.dynamic_checkers import (
+    InflowComponentChecker,
+    OutflowComponentChecker,
 )
 from sympl._core.units import clean_units
 from typing import Optional, TYPE_CHECKING, Tuple
 
 from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
 from tasmania.python.framework.register import factorize
-from tasmania.python.utils import typing as ty
+from tasmania.python.utils import typingx as ty
 from tasmania.python.utils.dict import DataArrayDictOperator
 from tasmania.python.utils.framework import check_property_compatibility
 from tasmania.python.utils.storage import deepcopy_dataarray
@@ -124,9 +123,15 @@ class TendencyStepper(abc.ABC):
         )
         self.output_properties = self._get_output_properties()
 
-        self._input_checker = InputChecker(self)
-        self._diagnostic_checker = DiagnosticChecker(self)
-        self._output_checker = OutputChecker(self)
+        self._input_checker = InflowComponentChecker.factory(
+            "input_properties", self
+        )
+        self._diagnostic_checker = OutflowComponentChecker.factory(
+            "diagnostic_properties", self
+        )
+        self._output_checker = OutflowComponentChecker.factory(
+            "output_properties", self
+        )
 
         enforce_hb = enforce_horizontal_boundary
         if enforce_hb:
@@ -229,7 +234,7 @@ class TendencyStepper(abc.ABC):
         return return_dict
 
     def __call__(
-        self, state: ty.DataArrayDict, timestep: ty.TimeDelta,
+        self, state: ty.DataArrayDict, timestep: ty.TimeDelta
     ) -> Tuple[ty.DataArrayDict, ty.DataArrayDict]:
         """
         Step the model state.
@@ -250,17 +255,23 @@ class TendencyStepper(abc.ABC):
         out_state : dict[str, sympl.DataArray]
             The output (stepped) state.
         """
-        self._input_checker.check_inputs(state)
+        self._input_checker.check(state)
 
         diagnostics, out_state = self._call(state, timestep)
 
-        self._diagnostic_checker.check_diagnostics(
-            {key: val for key, val in diagnostics.items() if key != "time"}
+        self._diagnostic_checker.check(
+            {
+                key: val.data
+                for key, val in diagnostics.items()
+                if key != "time"
+            },
+            state,
         )
         diagnostics["time"] = state["time"]
 
-        self._output_checker.check_outputs(
-            {key: val for key, val in out_state.items() if key != "time"}
+        self._output_checker.check(
+            {key: val.data for key, val in out_state.items() if key != "time"},
+            state,
         )
         out_state["time"] = state["time"] + timestep
 
@@ -268,7 +279,7 @@ class TendencyStepper(abc.ABC):
 
     @abc.abstractmethod
     def _call(
-        self, state: ty.DataArrayDict, timestep: ty.TimeDelta,
+        self, state: ty.DataArrayDict, timestep: ty.TimeDelta
     ) -> Tuple[ty.DataArrayDict, ty.DataArrayDict]:
         """
         Step the model state. As this method is marked as abstract,

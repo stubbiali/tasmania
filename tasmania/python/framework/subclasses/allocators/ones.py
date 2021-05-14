@@ -57,6 +57,14 @@ if gt:
         backend = ones_gt4py.__tasmania_runtime__["backend"]
         defaults = get_gt_backend(backend)
         so = storage_options or StorageOptions
+        # >>> old storage
+        # return gt.storage.ones(
+        #     defaults,
+        #     so.aligned_index,
+        #     shape,
+        #     dtype=so.dtype,
+        # )
+        # <<< new storage
         return gt.storage.ones(
             shape,
             dtype=so.dtype,

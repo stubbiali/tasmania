@@ -20,30 +20,29 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from tasmania.python.isentropic.dynamics.vertical_fluxes import (
-    IsentropicVerticalFlux,
-)
-from tasmania.python.framework.register import register
+from typing import Sequence
 
 
-@register(name="centered")
-class Centered(IsentropicVerticalFlux):
+class ConcurrentCouplingStaticOperator:
     @staticmethod
-    def __call__(
-        dt,
-        dz,
-        w,
-        s,
-        s_prv,
-        su,
-        su_prv,
-        sv,
-        sv_prv,
-        sqv=None,
-        sqv_prv=None,
-        sqc=None,
-        sqc_prv=None,
-        sqr=None,
-        sqr_prv=None,
-    ):
-        raise NotImplementedError()
+    def get_overwrite_tendencies(parent):
+        components = getattr(parent, "component_list", [])
+        tendencies = set()
+        out = []
+        for component in components:
+            if hasattr(component, "tendency_properties"):
+                ot = {}
+                for name in component.input_tendency_properties:
+                    ot[name] = name not in tendencies
+                    tendencies.add(name)
+
+
+def merge_dims(dim1: Sequence[str], dim2: Sequence[str]) -> Sequence[str]:
+    if "*" not in dim1 and "*" not in dim2:
+        return dim1
+    elif "*" in dim1 and "*" not in dim2:
+        return dim2
+    elif "*" not in dim1 and "*" in dim2:
+        return dim1
+    else:
+        return tuple(set(dim1).union(set(dim2)))

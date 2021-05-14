@@ -62,7 +62,7 @@ from tasmania.python.dwarfs.vertical_damping import VerticalDamping
 # framework
 from tasmania.python.framework import tag
 from tasmania.python.framework.allocators import as_storage, empty, ones, zeros
-from tasmania.python.framework.base_components import (
+from tasmania.python.framework.core_components import (
     DiagnosticComponent,
     ImplicitTendencyComponent,
     Stepper,
@@ -83,9 +83,9 @@ from tasmania.python.framework.options import (
     TimeIntegrationOptions,
 )
 from tasmania.python.framework.parallel_splitting import ParallelSplitting
-from tasmania.python.framework.promoters import (
-    Diagnostic2Tendency,
-    Tendency2Diagnostic,
+from tasmania.python.framework.promoter import (
+    FromDiagnosticToTendency,
+    FromTendencyToDiagnostic,
 )
 from tasmania.python.framework.register import factorize, register
 from tasmania.python.framework.sequential_tendency_splitting import (
@@ -132,8 +132,8 @@ from tasmania.python.isentropic.state import (
     get_isentropic_state_from_temperature,
 )
 from tasmania.python.isentropic.utils import (
-    AirPotentialTemperature2Diagnostic,
-    AirPotentialTemperature2Tendency,
+    AirPotentialTemperatureToDiagnostic,
+    AirPotentialTemperatureToTendency,
 )
 
 # physics
@@ -165,7 +165,7 @@ from tasmania.python.plot.spectrals import CDF
 from tasmania.python.plot.trackers import TimeSeries, HovmollerDiagram
 
 # utilities
-from tasmania.python.utils import typing
+from tasmania.python.utils import typingx
 from tasmania.python.utils.dict import DataArrayDictOperator
 from tasmania.python.utils.exceptions import (
     ConstantNotFoundError,
@@ -200,3 +200,10 @@ finally:
 __author__ = "ETH Zurich"
 __copyright__ = "ETH Zurich"
 __license__ = "GPLv3"
+
+
+# >>> old storage
+# from gt4py.storage import prepare_numpy
+#
+# prepare_numpy()
+# <<< new storage

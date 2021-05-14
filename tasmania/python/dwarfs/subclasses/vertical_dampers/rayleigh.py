@@ -25,13 +25,13 @@ from sympl import DataArray
 from gt4py import gtscript
 
 from tasmania.python.dwarfs.vertical_damping import VerticalDamping
-from tasmania.python.framework.register import register
 from tasmania.python.framework.tag import stencil_definition
 
 
-@register(name="rayleigh")
 class Rayleigh(VerticalDamping):
     """The Rayleigh absorber."""
+
+    name = "rayleigh"
 
     def __init__(
         self,
@@ -39,6 +39,7 @@ class Rayleigh(VerticalDamping):
         damp_depth=15,
         damp_coeff_max=0.0002,
         time_units="s",
+        *,
         backend="numpy",
         backend_options=None,
         storage_shape=None,
@@ -58,7 +59,6 @@ class Rayleigh(VerticalDamping):
     def __call__(self, dt, field_now, field_new, field_ref, field_out):
         # shortcuts
         ni, nj, nk = self._shape
-        dnk = self._damp_depth
 
         # convert the timestep to seconds
         dt_da = DataArray(dt.total_seconds(), attrs={"units": "s"})
@@ -78,6 +78,7 @@ class Rayleigh(VerticalDamping):
             validate_args=self.backend_options.validate_args,
         )
 
+        # dnk = self._damp_depth
         # if nk > dnk:
         #     # set the lowermost layers, outside of the damping region
         #     if not self._gt_powered:
@@ -95,7 +96,6 @@ class Rayleigh(VerticalDamping):
         dt,
         origin,
         domain,
-        **kwargs
     ):
         i = slice(origin[0], origin[0] + domain[0])
         j = slice(origin[1], origin[1] + domain[1])

@@ -28,7 +28,7 @@ from tasmania.python.plot.drawer import Drawer
 from tasmania.python.plot.plot_utils import make_contourf
 from tasmania.python.plot.retrievers import DataRetriever
 from tasmania.python.plot.utils import to_units
-from tasmania.python.utils import typing
+from tasmania.python.utils import typingx
 
 if TYPE_CHECKING:
     from tasmania.python.domain.grid import Grid
@@ -60,7 +60,7 @@ class Contourf(Drawer):
         zaxis_units: Optional[str] = None,
         zaxis_x: Optional[int] = None,
         zaxis_y: Optional[int] = None,
-        properties: Optional[typing.options_dict_t] = None,
+        properties: Optional[typingx.options_dict_t] = None,
     ) -> None:
         """
         Parameters
@@ -248,7 +248,7 @@ class Contourf(Drawer):
                     )
 
     def __call__(
-        self, state: typing.DataArrayDict, fig: plt.Figure, ax: plt.Axes
+        self, state: typingx.DataArrayDict, fig: plt.Figure, ax: plt.Axes
     ) -> None:
         """
         Call operator generating the contourf plot.
@@ -261,7 +261,7 @@ def make_contourf_xy(
     xaxis_units: str,
     yaxis_units: str,
     field_retriever: DataRetriever,
-    state: typing.DataArrayDict,
+    state: typingx.DataArrayDict,
     fig: plt.Figure,
     ax: plt.Axes,
     **kwargs
@@ -289,7 +289,7 @@ def make_contourf_xz(
     xaxis_units: str,
     zaxis_units: str,
     field_retriever: DataRetriever,
-    state: typing.DataArrayDict,
+    state: typingx.DataArrayDict,
     fig: plt.Figure,
     ax: plt.Axes,
     **kwargs
@@ -317,7 +317,7 @@ def make_contourf_xh(
     xaxis_units: str,
     zaxis_retriever: DataRetriever,
     field_retriever: DataRetriever,
-    state: typing.DataArrayDict,
+    state: typingx.DataArrayDict,
     fig: plt.Figure,
     ax: plt.Axes,
     **kwargs
@@ -353,7 +353,7 @@ def make_contourf_yz(
     yaxis_units: str,
     zaxis_units: str,
     field_retriever: DataRetriever,
-    state: typing.DataArrayDict,
+    state: typingx.DataArrayDict,
     fig: plt.Figure,
     ax: plt.Axes,
     **kwargs
@@ -381,7 +381,7 @@ def make_contourf_yh(
     yaxis_units: str,
     zaxis_retriever: DataRetriever,
     field_retriever: DataRetriever,
-    state: typing.DataArrayDict,
+    state: typingx.DataArrayDict,
     fig: plt.Figure,
     ax: plt.Axes,
     **kwargs

@@ -33,7 +33,7 @@ from tasmania.python.framework.tag import (
     stencil_definition,
     stencil_subroutine,
 )
-from tasmania.python.utils import typing as ty
+from tasmania.python.utils import typingx as ty
 
 if TYPE_CHECKING:
     from tasmania.python.framework.options import (
@@ -264,23 +264,21 @@ class HorizontalHyperDiffusion(StencilFactory, abc.ABC):
     @staticmethod
     @stencil_subroutine(backend="gt4py*", stencil="laplacian_x")
     @gtscript.function
-    def stage_laplacian_x(dx: float, phi: ty.gtfield_t) -> ty.gtfield_t:
+    def stage_laplacian_x(dx: float, phi: ty.GTField) -> ty.GTField:
         lap = (phi[-1, 0, 0] - 2.0 * phi[0, 0, 0] + phi[1, 0, 0]) / (dx * dx)
         return lap
 
     @staticmethod
     @stencil_subroutine(backend="gt4py*", stencil="laplacian_y")
     @gtscript.function
-    def stage_laplacian_y(dy: float, phi: ty.gtfield_t) -> ty.gtfield_t:
+    def stage_laplacian_y(dy: float, phi: ty.GTField) -> ty.GTField:
         lap = (phi[0, -1, 0] - 2.0 * phi[0, 0, 0] + phi[0, 1, 0]) / (dy * dy)
         return lap
 
     @staticmethod
     @stencil_subroutine(backend="gt4py*", stencil="laplacian")
     @gtscript.function
-    def stage_laplacian(
-        dx: float, dy: float, phi: ty.gtfield_t
-    ) -> ty.gtfield_t:
+    def stage_laplacian(dx: float, dy: float, phi: ty.GTField) -> ty.GTField:
         lap = (phi[-1, 0, 0] - 2.0 * phi[0, 0, 0] + phi[1, 0, 0]) / (
             dx * dx
         ) + (phi[0, -1, 0] - 2.0 * phi[0, 0, 0] + phi[0, 1, 0]) / (dy * dy)

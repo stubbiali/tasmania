@@ -22,7 +22,6 @@
 #
 from gt4py import gtscript
 
-from tasmania.python.framework.register import register
 from tasmania.python.framework.tag import stencil_subroutine
 from tasmania.python.isentropic.dynamics.vertical_fluxes import (
     IsentropicMinimalVerticalFlux,
@@ -40,10 +39,10 @@ def get_centered_flux_gt4py(w, phi):
     return flux
 
 
-@register(name="centered")
 class Centered(IsentropicMinimalVerticalFlux):
     """Centered scheme."""
 
+    name = "centered"
     extent = 1
     order = 2
     externals = {"get_centered_flux_gt4py": get_centered_flux_gt4py}

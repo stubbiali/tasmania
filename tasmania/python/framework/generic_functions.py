@@ -27,7 +27,7 @@ from tasmania.python.framework.allocators import as_storage
 if TYPE_CHECKING:
     import numpy as np
 
-    from tasmania.python.utils.typing import Storage
+    from tasmania.python.utils.typingx import Storage
 
 
 def to_numpy(data: "Storage") -> "np.ndarray":

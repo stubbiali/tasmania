@@ -26,9 +26,9 @@ from typing import Mapping, Optional, Sequence, TYPE_CHECKING
 
 from gt4py import gtscript
 
-from tasmania.python.framework.base_components import DiagnosticComponent
+from tasmania.python.framework.core_components import DiagnosticComponent
 from tasmania.python.framework.tag import stencil_definition
-from tasmania.python.utils import typing as ty
+from tasmania.python.utils import typingx as ty
 
 if TYPE_CHECKING:
     from tasmania.python.domain.domain import Domain
@@ -83,7 +83,7 @@ class DryStaticEnergy(DiagnosticComponent):
         ]  # debug purposes
 
         # set the storage shape
-        storage_shape = self.get_storage_shape(storage_shape)
+        storage_shape = self.get_field_storage_shape(storage_shape)
 
         # allocate the storage collecting the output
         self._out_dse = self.zeros(shape=storage_shape)
@@ -226,7 +226,7 @@ class MoistStaticEnergy(DiagnosticComponent):
         self._lhvw = self.rpc["latent_heat_of_vaporization_of_water"]
 
         # set the storage shape
-        storage_shape = self.get_storage_shape(storage_shape)
+        storage_shape = self.get_field_storage_shape(storage_shape)
 
         # allocate the storage collecting the output
         self._out_mse = self.zeros(shape=storage_shape)

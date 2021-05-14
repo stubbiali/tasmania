@@ -26,6 +26,10 @@ class ConstantNotFoundError(Exception):
     pass
 
 
+class FrameworkError(Exception):
+    pass
+
+
 class InconsistencyError(Exception):
     pass
 

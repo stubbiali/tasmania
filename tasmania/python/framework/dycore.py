@@ -21,6 +21,8 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 import abc
+from typing import Optional, Sequence, TYPE_CHECKING, Tuple, Union
+
 from sympl import (
     DiagnosticComponent,
     DiagnosticComponentComposite as SymplDiagnosticComponentComposite,
@@ -29,8 +31,18 @@ from sympl import (
     ImplicitTendencyComponent,
     ImplicitTendencyComponentComposite,
 )
-from sympl._core.base_components import InputChecker, OutputChecker
-from typing import Optional, Sequence, TYPE_CHECKING, Union
+from sympl._core.dynamic_checkers import (
+    InflowComponentChecker,
+    OutflowComponentChecker,
+)
+from sympl._core.dynamic_operators import (
+    InflowComponentOperator,
+    OutflowComponentOperator,
+)
+from sympl._core.static_checkers import StaticComponentChecker
+from sympl._core.time import FakeTimer as Timer
+
+# from sympl._core.time import Timer
 
 from tasmania.python.framework.base_components import (
     DomainComponent,
@@ -40,21 +52,23 @@ from tasmania.python.framework.composite import (
     DiagnosticComponentComposite as TasmaniaDiagnosticComponentComposite,
 )
 from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
+from tasmania.python.framework.dycore_utils import (
+    DynamicOperator,
+    StaticChecker,
+    StaticOperator,
+)
 from tasmania.python.framework.stencil import StencilFactory
-from tasmania.python.framework.tendency_checkers import SubsetTendencyChecker
-from tasmania.python.utils import typing
-from tasmania.python.utils.storage import (
-    get_array_dict,
-    get_dataarray_dict,
-)
+from tasmania.python.utils import typingx
 from tasmania.python.utils.dict import DataArrayDictOperator
-from tasmania.python.utils.framework import (
-    check_properties_compatibility,
-    check_missing_properties,
-)
-from tasmania.python.utils.time import Timer
 
 if TYPE_CHECKING:
+    from sympl._core.typingx import (
+        DataArrayDict,
+        NDArrayLike,
+        NDArrayLikeDict,
+        PropertyDict,
+    )
+
     from tasmania.python.domain.domain import Domain
     from tasmania.python.framework.options import (
         BackendOptions,
@@ -82,18 +96,18 @@ class DynamicalCore(DomainComponent, StencilFactory, abc.ABC):
     def __init__(
         self,
         domain: "Domain",
-        intermediate_tendency_component: Optional[
-            typing.TendencyComponent
-        ] = None,
-        intermediate_diagnostic_component: Optional[
-            Union[typing.DiagnosticComponent, typing.TendencyComponent,]
+        fast_tendency_component: Optional[TendencyComponent] = None,
+        fast_diagnostic_component: Optional[
+            Union[DiagnosticComponent, TendencyComponent]
         ] = None,
         substeps: int = 0,
-        fast_tendency_component: Optional[typing.TendencyComponent] = None,
-        fast_diagnostic_component: Optional[typing.DiagnosticComponent] = None,
+        superfast_tendency_component: Optional[TendencyComponent] = None,
+        superfast_diagnostic_component: Optional[DiagnosticComponent] = None,
         *,
+        enable_checks: bool = True,
         backend: str = "numpy",
         backend_options: Optional["BackendOptions"] = None,
+        storage_shape: Optional[Sequence[int]] = None,
         storage_options: Optional["StorageOptions"] = None
     ) -> None:
         """
@@ -101,7 +115,7 @@ class DynamicalCore(DomainComponent, StencilFactory, abc.ABC):
         ----------
         domain : tasmania.Domain
             The :class:`~tasmania.Domain` holding the grid underneath.
-        intermediate_tendency_component : `obj`, optional
+        fast_tendency_component : `obj`, optional
             An instance of either
 
             * :class:`~sympl.TendencyComponent`,
@@ -113,7 +127,7 @@ class DynamicalCore(DomainComponent, StencilFactory, abc.ABC):
             prescribing physics tendencies and retrieving diagnostic quantities.
             This object is called at the beginning of each stage on the latest
             provisional state.
-        intermediate_diagnostic_component : `obj`, optional
+        fast_diagnostic_component : `obj`, optional
             An instance of either
 
             * :class:`sympl.TendencyComponent`,
@@ -131,7 +145,7 @@ class DynamicalCore(DomainComponent, StencilFactory, abc.ABC):
         substeps : `int`, optional
             Number of substeps to perform. Defaults to 0, meaning that no
             form of substepping is carried out.
-        fast_tendency_component : `obj`, optional
+        superfast_tendency_component : `obj`, optional
             An instance of either
 
             * :class:`sympl.TendencyComponent`,
@@ -144,7 +158,7 @@ class DynamicalCore(DomainComponent, StencilFactory, abc.ABC):
             This object is called at the beginning of each substep on the
             latest provisional state. This parameter is ignored if ``substeps``
             is not positive.
-        fast_diagnostic_component : `obj`, optional
+        superfast_diagnostic_component : `obj`, optional
             An instance of either
 
             * :class:`sympl.DiagnosticComponent`,
@@ -154,10 +168,14 @@ class DynamicalCore(DomainComponent, StencilFactory, abc.ABC):
             prescribing physics tendencies and retrieving diagnostic quantities.
             This object is called at the end of each substep on the latest
             provisional state.
+        enable_checks : `bool`, optional
+            TODO
         backend : `str`, optional
             The backend.
         backend_options : `BackendOptions`, optional
             Backend-specific options.
+        storage_shape : `Sequence[int]`, optional
+            TODO
         storage_options : `StorageOptions`, optional
             Storage-related options.
         """
@@ -165,463 +183,133 @@ class DynamicalCore(DomainComponent, StencilFactory, abc.ABC):
         super(GridComponent, self).__init__(
             backend, backend_options, storage_options
         )
+        self._initialized = True
 
-        self._inter_tc = intermediate_tendency_component
-        if self._inter_tc is not None:
-            tend_type = self.__class__.allowed_tendency_type
-            assert isinstance(self._inter_tc, tend_type), (
-                "The input argument ''intermediate_tendencies'' "
-                "should be an instance of either {}.".format(
-                    ", ".join(str(item) for item in tend_type)
-                )
-            )
-
-        self._inter_dc = intermediate_diagnostic_component
-        if self._inter_dc is not None:
-            diag_type = (
-                self.__class__.allowed_diagnostic_type
-                + self.__class__.allowed_tendency_type
-            )
-            assert isinstance(self._inter_dc, diag_type), (
-                "The input argument ''intermediate_diagnostics'' "
-                "should be an instance of either {}.".format(
-                    ", ".join(str(item) for item in diag_type)
-                )
-            )
-
+        # store input arguments
+        self._fast_tc = fast_tendency_component
+        self._fast_dc = fast_diagnostic_component
         self._substeps = substeps if substeps >= 0 else 0
+        self._superfast_tc = superfast_tendency_component
+        self._superfast_dc = superfast_diagnostic_component
+        self._enable_checks = enable_checks
 
-        if self._substeps >= 0:
-            self._fast_tc = fast_tendency_component
-            if self._fast_tc is not None:
-                tend_type = self.__class__.allowed_tendency_type
-                assert isinstance(self._fast_tc, tend_type), (
-                    "The input argument ''fast_tendencies'' "
-                    "should be an instance of either {}.".format(
-                        ", ".join(str(item) for item in tend_type)
-                    )
-                )
+        # run static checks
+        if enable_checks:
+            StaticChecker.check(self)
 
-            self._fast_dc = fast_diagnostic_component
-            if self._fast_dc is not None:
-                diag_type = self.__class__.allowed_diagnostic_type
-                assert isinstance(self._fast_dc, diag_type), (
-                    "The input argument ''fast_diagnostics'' "
-                    "should be an instance of either {}.".format(
-                        ", ".join(str(item) for item in diag_type)
-                    )
-                )
+        # set default storage shape
+        self.storage_shape = self.get_storage_shape(storage_shape)
 
         # initialize properties
-        self.input_properties = self._init_input_properties()
-        self.tendency_properties = self._init_tendency_properties()
-        self.output_properties = self._init_output_properties()
+        self.input_properties = StaticOperator.get_input_properties(self)
+        self.input_tendency_properties = (
+            StaticOperator.get_input_tendency_properties(self)
+        )
+        self.output_properties = StaticOperator.get_output_properties(self)
 
-        # instantiate checkers
-        self._input_checker = InputChecker(self)
-        self._tendency_checker = SubsetTendencyChecker(self)
-        self._output_checker = OutputChecker(self)
+        # wrap auxiliary components in ConcurrentCoupling objects
+        self._fast_tc = StaticOperator.wrap_component(self, self._fast_tc)
+        self._fast_dc = StaticOperator.wrap_component(self, self._fast_dc)
+        self._superfast_tc = StaticOperator.wrap_component(
+            self, self._superfast_tc
+        )
+        self._superfast_dc = StaticOperator.wrap_component(
+            self, self._superfast_dc
+        )
+
+        if enable_checks:
+            # run static checks
+            StaticComponentChecker.factory("input_properties").check(self)
+            StaticComponentChecker.factory("input_tendency_properties").check(
+                self
+            )
+            StaticComponentChecker.factory("output_properties").check(self)
+
+            # instantiate dynamic checkers
+            self._input_checker = InflowComponentChecker.factory(
+                "input_properties", self
+            )
+            self._input_tendency_checker = InflowComponentChecker.factory(
+                "input_tendency_properties", self
+            )
+            self._output_inflow_checker = InflowComponentChecker.factory(
+                "output_properties", self
+            )
+            self._output_outflow_checker = OutflowComponentChecker.factory(
+                "output_properties", self
+            )
+            self._stage_input_checker = InflowComponentChecker.factory(
+                "stage_input_properties", self
+            )
+            self._stage_tendency_checker = InflowComponentChecker.factory(
+                "stage_tendency_properties", self
+            )
+            self._stage_output_checker = OutflowComponentChecker.factory(
+                "stage_output_properties", self
+            )
+
+        # instantiate dynamic operators
+        self._stage_input_operator = InflowComponentOperator.factory(
+            "stage_input_properties", self
+        )
+        self._stage_tendency_operator = InflowComponentOperator.factory(
+            "stage_tendency_properties", self
+        )
+        self._output_inflow_operator = InflowComponentOperator.factory(
+            "output_properties", self
+        )
+        self._output_outflow_operator = OutflowComponentOperator.factory(
+            "output_properties", self
+        )
+        self._stage_output_operator = OutflowComponentOperator.factory(
+            "stage_output_properties", self
+        )
+        self._dynamic_operator = DynamicOperator(self)
 
         # instantiate the dictionary operator
-        self._dict_op = DataArrayDictOperator(
+        self._dict_operator = DataArrayDictOperator(
             backend=self.backend,
             backend_options=self.backend_options,
             storage_options=self.storage_options,
         )
 
-        # allocate the output state
-        self._out_state = self.allocate_output_state()
+        # auxiliary variables
+        self._fast_tendencies: Optional["DataArrayDict"] = None
+        self._fast_tendency_component_diagnostics: Optional[
+            Sequence["DataArrayDict"]
+        ] = None
+        self._fast_diagnostic_component_diagnostics: Optional[
+            Sequence["DataArrayDict"]
+        ] = None
+        self._raw_stage_states: Optional[Sequence["NDArrayLikeDict"]] = None
 
-        # initialize the dictionary of intermediate tendencies
-        self._inter_tendencies = {}
+    @property
+    def fast_tendency_component(self):
+        return self._fast_tc
 
-    def ensure_internal_consistency(self) -> None:
-        """ Perform some controls aiming to ensure internal consistency.
+    @property
+    def fast_diagnostic_component(self):
+        return self._fast_dc
 
-        In more detail:
+    @property
+    def superfast_tendency_component(self):
+        return self._superfast_tc
 
-        1. Variables contained in both ``stage_input_properties`` and \
-            ``stage_output_properties`` should have compatible properties \
-            across the two dictionaries;
-        2. Variables contained in both ``substep_input_properties`` and \
-            ``substep_output_properties`` should have compatible properties \
-            across the two dictionaries;
-        3. Variables contained in both ``stage_input_properties`` and the \
-            ``input_properties`` dictionary of ``intermediate_tendency_component`` \
-            should have compatible properties across the two dictionaries;
-        4. Dimensions and units of the variables diagnosed by \
-            ``intermediate_tendency_component`` should be compatible with \
-            the dimensions and units specified in ``stage_input_properties``;
-        5. Any intermediate tendency calculated by ``intermediate_tendency_component`` \
-            should be present in the ``stage_tendency_properties`` dictionary, \
-            with compatible dimensions and units;
-        6. Dimensions and units of the variables diagnosed by \
-            ``intermediate_tendency_component`` should be compatible with \
-            the dimensions and units specified in the ``input_properties`` \
-            dictionary of ``fast_tendency_component``, or the \
-            ``substep_input_properties`` dictionary if \
-            ``fast_tendency_component`` is not given;
-        7. Variables diagnosed by ``fast_tendency_component`` should have dimensions \
-            and units compatible with those specified in the \
-            ``substep_input_properties`` dictionary;
-        8. Variables contained in ``stage_output_properties`` for which \
-            ``fast_tendency_component`` prescribes a (fast) tendency should \
-            have dimensions and units compatible with those specified \
-            in the ``tendency_properties`` dictionary of ``fast_tendency_component``;
-        9. Any fast tendency calculated by ``fast_tendency_component`` \
-            should be present in the ``substep_tendency_properties`` \
-            dictionary, with compatible dimensions and units;
-        10. Any variable for which``fast_tendency_component`` \
-            prescribes a (fast) tendency should be present both in \
-            the ``substep_input_property`` and ``substep_output_property`` \
-            dictionaries, with compatible dimensions and units;
-        11. Any variable being expected by ``fast_diagnostic_component`` should be \
-            present in ``substep_output_properties``, with compatible \
-            dimensions and units;
-        12. Any variable being expected by ``intermediate_diagnostic_component`` \
-            should be present either in ``stage_output_properties`` or \
-            ``substep_output_properties``, with compatible dimensions \
-            and units.
-        13. ``stage_array_call`` should be able to handle any tendency \
-            prescribed by ``intermediate_tendency_component``.
-        """
-        # ============================================================
-        # Check #1
-        # ============================================================
-        check_properties_compatibility(
-            self.stage_input_properties,
-            self.stage_output_properties,
-            properties1_name="_input_properties",
-            properties2_name="_output_properties",
-        )
+    @property
+    def superfast_diagnostic_component(self):
+        return self._superfast_dc
 
-        # ============================================================
-        # Check #2
-        # ============================================================
-        check_properties_compatibility(
-            self.substep_input_properties,
-            self.substep_output_properties,
-            properties1_name="_substep_input_properties",
-            properties2_name="_substep_output_properties",
-        )
+    @property
+    def substeps(self):
+        return max(0, int(self._substeps))
 
-        # ============================================================
-        # Check #3
-        # ============================================================
-        if self._inter_tc is not None:
-            check_properties_compatibility(
-                self._inter_tc.input_properties,
-                self.stage_input_properties,
-                properties1_name="intermediate_tendencies.input_properties",
-                properties2_name="_input_properties",
-            )
-
-        # ============================================================
-        # Check #4
-        # ============================================================
-        if self._inter_tc is not None:
-            check_properties_compatibility(
-                self._inter_tc.diagnostic_properties,
-                self.stage_input_properties,
-                properties1_name="intermediate_tendencies.diagnostic_properties",
-                properties2_name="_input_properties",
-            )
-
-        # ============================================================
-        # Check #5
-        # ============================================================
-        if self._inter_tc is not None:
-            check_properties_compatibility(
-                self._inter_tc.tendency_properties,
-                self.stage_tendency_properties,
-                properties1_name="intermediate_tendencies.tendency_properties",
-                properties2_name="_tendency_properties",
-            )
-
-            check_missing_properties(
-                self._inter_tc.tendency_properties,
-                self.stage_tendency_properties,
-                properties1_name="intermediate_tendencies.tendency_properties",
-                properties2_name="_tendency_properties",
-            )
-
-        # ============================================================
-        # Check #6
-        # ============================================================
-        if self._inter_tc is not None:
-            if self._fast_tc is not None:
-                check_properties_compatibility(
-                    self._inter_tc.diagnostic_properties,
-                    self._fast_tc.input_properties,
-                    properties1_name="intermediate_tendencies.diagnostic_properties",
-                    properties2_name="fast_tendencies.input_properties",
-                )
-            else:
-                check_properties_compatibility(
-                    self._inter_tc.diagnostic_properties,
-                    self.substep_input_properties,
-                    properties1_name="intermediate_tendencies.diagnostics_properties",
-                    properties2_name="_substep_input_properties",
-                )
-
-        # ============================================================
-        # Check #7
-        # ============================================================
-        if self._fast_tc is not None:
-            check_properties_compatibility(
-                self._fast_tc.diagnostics_properties,
-                self.substep_input_properties,
-                properties1_name="fast_tendencies.diagnostic_properties",
-                properties2_name="_substep_input_properties",
-            )
-
-        # ============================================================
-        # Check #8
-        # ============================================================
-        if self._fast_tc is not None:
-            check_properties_compatibility(
-                self._fast_tc.tendency_properties,
-                self.stage_output_properties,
-                to_append=" s",
-                properties1_name="fast_tendencies.tendency_properties",
-                properties2_name="_output_properties",
-            )
-
-        # ============================================================
-        # Check #9
-        # ============================================================
-        if self._fast_tc is not None:
-            check_properties_compatibility(
-                self._fast_tc.tendency_properties,
-                self.substep_tendency_properties,
-                to_append=" s",
-                properties1_name="fast_tendencies.tendency_properties",
-                properties2_name="_substep_tendency_properties",
-            )
-
-            check_missing_properties(
-                self._fast_tc.tendency_properties,
-                self.substep_tendency_properties,
-                properties1_name="fast_tendencies.tendency_properties",
-                properties2_name="_substep_tendency_properties",
-            )
-
-        # ============================================================
-        # Check #10
-        # ============================================================
-        if self._fast_tc is not None:
-            check_properties_compatibility(
-                self._fast_tc.tendency_properties,
-                self.substep_input_properties,
-                to_append=" s",
-                properties1_name="fast_tendencies.tendency_properties",
-                properties2_name="_substep_input_properties",
-            )
-
-            check_missing_properties(
-                self._fast_tc.tendency_properties,
-                self.substep_input_properties,
-                properties1_name="fast_tendencies.tendency_properties",
-                properties2_name="_substep_input_properties",
-            )
-
-            check_properties_compatibility(
-                self._fast_tc.tendency_properties,
-                self.substep_output_properties,
-                to_append=" s",
-                properties1_name="fast_tendencies.tendency_properties",
-                properties2_name="_substep_input_properties",
-            )
-
-            check_missing_properties(
-                self._fast_tc.tendency_properties,
-                self.substep_output_properties,
-                properties1_name="fast_tendencies.tendency_properties",
-                properties2_name="_substep_output_properties",
-            )
-
-        # ============================================================
-        # Check #11
-        # ============================================================
-        if self._fast_dc is not None:
-            check_properties_compatibility(
-                self._fast_dc.input_properties,
-                self.substep_output_properties,
-                properties1_name="fast_diagnostics.input_properties",
-                properties2_name="_substep_output_properties",
-            )
-
-            check_missing_properties(
-                self._fast_dc.input_properties,
-                self.substep_output_properties,
-                properties1_name="fast_diagnostics.input_properties",
-                properties2_name="_substep_output_properties",
-            )
-
-        # ============================================================
-        # Check #12
-        # ============================================================
-        if self._inter_dc is not None:
-            fused_output_properties = {}
-            fused_output_properties.update(self.stage_output_properties)
-            fused_output_properties.update(self.substep_output_properties)
-
-            check_properties_compatibility(
-                self._inter_dc.input_properties,
-                fused_output_properties,
-                properties1_name="intermediate_diagnostics.input_properties",
-                properties2_name="fused_output_properties",
-            )
-
-            check_missing_properties(
-                self._inter_dc.input_properties,
-                fused_output_properties,
-                properties1_name="intermediate_diagnostics.input_properties",
-                properties2_name="fused_output_properties",
-            )
-
-        # ============================================================
-        # Check #13
-        # ============================================================
-        if self._inter_dc is not None:
-            src = getattr(self._inter_dc, "tendency_properties", {})
-            trg = self.stage_tendency_properties
-
-            check_properties_compatibility(
-                src,
-                trg,
-                properties1_name="intermediate_diagnostics.tendency_properties",
-                properties2_name="_tendency_properties",
-            )
-
-            check_missing_properties(
-                src,
-                trg,
-                properties1_name="intermediate_diagnostics.tendency_properties",
-                properties2_name="_tendency_properties",
-            )
-
-    def ensure_input_output_consistency(self) -> None:
-        """ Perform some controls aiming to ensure input-output consistency.
-
-        In more detail:
-
-        1. Variables contained in both ``input_properties`` and \
-            ``output_properties`` should have compatible properties \
-            across the two dictionaries;
-        2. In case of a multi-stage dynamical core, any variable \
-            present in ``output_properties`` should be also contained \
-            in ``input_properties``.
-        """
-        # ============================================================
-        # Safety-guard preamble
-        # ============================================================
-        assert hasattr(
-            self, "input_properties"
-        ), "Hint: did you call _init_input_properties?"
-        assert hasattr(
-            self, "output_properties"
-        ), "Hint: did you call _init_output_properties?"
-
-        # ============================================================
-        # Check #1
-        # ============================================================
-        check_properties_compatibility(
-            self.input_properties,
-            self.output_properties,
-            properties1_name="input_properties",
-            properties2_name="output_properties",
-        )
-
-        # ============================================================
-        # Check #2
-        # ============================================================
-        if self.stages > 1:
-            check_missing_properties(
-                self.output_properties,
-                self.input_properties,
-                properties1_name="output_properties",
-                properties2_name="input_properties",
-            )
-
-    def _init_input_properties(self) -> typing.PropertiesDict:
-        """
-        Return
-        ------
-        dict[str, dict] :
-            Dictionary whose keys are strings denoting variables which
-            should be included in the input state, and whose values
-            are fundamental properties (dims, units) of those variables.
-            This dictionary results from fusing the requirements
-            specified by the user via
-            :meth:`~tasmania.DynamicalCore.stage_input_properties` and
-            :meth:`~tasmania.DynamicalCore.substep_input_properties`
-            with the ``input_properties`` dictionary of
-            ``intermediate_tendency_component`` and
-            ``fast_tendency_component``.
-        """
-        return_dict = {}
-
-        if self._inter_tc is None:
-            return_dict.update(self.stage_input_properties)
-        else:
-            return_dict.update(self._inter_tc.input_properties)
-            inter_params_diag_properties = self._inter_tc.diagnostic_properties
-            stage_input_properties = self.stage_input_properties
-
-            # Add to the requirements the variables to feed the stage with
-            # and which are not output by the intermediate parameterizations
-            unshared_vars = tuple(
-                name
-                for name in stage_input_properties
-                if not (
-                    name in inter_params_diag_properties or name in return_dict
-                )
-            )
-            for name in unshared_vars:
-                return_dict[name] = {}
-                return_dict[name].update(stage_input_properties[name])
-
-        if self._substeps >= 0:
-            fast_params_input_properties = (
-                {} if self._fast_tc is None else self._fast_tc.input_properties
-            )
-            fast_params_diag_properties = (
-                {}
-                if self._fast_tc is None
-                else self._fast_tc.diagnostic_properties
-            )
-
-            # Add to the requirements the variables to feed the fast
-            # parameterizations with
-            unshared_vars = tuple(
-                name
-                for name in fast_params_input_properties
-                if name not in return_dict
-            )
-            for name in unshared_vars:
-                return_dict[name] = {}
-                return_dict[name].update(fast_params_input_properties[name])
-
-            # Add to the requirements the variables to feed the substep with
-            # and which are not output by the either the intermediate parameterizations
-            # or the fast parameterizations
-            unshared_vars = tuple(
-                name
-                for name in self.substep_input_properties
-                if not (
-                    name in fast_params_diag_properties or name in return_dict
-                )
-            )
-            for name in unshared_vars:
-                return_dict[name] = {}
-                return_dict[name].update(self.substep_input_properties[name])
-
-        return return_dict
+    @property
+    def enable_checks(self) -> bool:
+        return self._enable_checks
 
     @property
     @abc.abstractmethod
-    def stage_input_properties(self) -> typing.PropertiesDict:
+    def stage_input_properties(self) -> "PropertyDict":
         """
         Dictionary whose keys are strings denoting variables which
         should be included in any state passed to the ``stage_array_call``, and
@@ -632,7 +320,7 @@ class DynamicalCore(DomainComponent, StencilFactory, abc.ABC):
 
     @property
     @abc.abstractmethod
-    def substep_input_properties(self) -> typing.PropertiesDict:
+    def substep_input_properties(self) -> "PropertyDict":
         """
         Dictionary whose keys are strings denoting variables which
         should be included in any state passed to the ``substep_array_call``
@@ -641,44 +329,9 @@ class DynamicalCore(DomainComponent, StencilFactory, abc.ABC):
         """
         pass
 
-    def _init_tendency_properties(self) -> typing.PropertiesDict:
-        """
-        Return
-        ------
-        dict[str, dict] :
-            Dictionary whose keys are strings denoting (slow) tendencies which
-            may (or may not) be passed to the call operator, and whose
-            values are fundamental properties (dims, units) of those
-            tendencies. This dictionary results from fusing the requirements
-            specified by the user via
-            :meth:`tasmania.DynamicalCore.stage_tendency_properties`
-            with the ``tendency_properties`` dictionary of
-            ``intermediate_tendency_component``.
-        """
-        return_dict = {}
-
-        if self._inter_tc is None:
-            return_dict.update(self.stage_tendency_properties)
-        else:
-            return_dict.update(self._inter_tc.tendency_properties)
-
-            # Add to the requirements on the input slow tendencies those
-            # tendencies to feed the dycore with and which are not provided
-            # by the intermediate parameterizations
-            unshared_vars = tuple(
-                name
-                for name in self.stage_tendency_properties
-                if name not in return_dict
-            )
-            for name in unshared_vars:
-                return_dict[name] = {}
-                return_dict[name].update(self.stage_tendency_properties[name])
-
-        return return_dict
-
     @property
     @abc.abstractmethod
-    def stage_tendency_properties(self) -> typing.PropertiesDict:
+    def stage_tendency_properties(self) -> "PropertyDict":
         """
         Dictionary whose keys are strings denoting (slow and intermediate)
         tendencies which may (or may not) be passed to ``stage_array_call``,
@@ -689,7 +342,7 @@ class DynamicalCore(DomainComponent, StencilFactory, abc.ABC):
 
     @property
     @abc.abstractmethod
-    def substep_tendency_properties(self) -> typing.PropertiesDict:
+    def substep_tendency_properties(self) -> "PropertyDict":
         """
         Dictionary whose keys are strings denoting (slow, intermediate and fast)
         tendencies which may (or may not) be passed to ``substep_array_call``,
@@ -698,58 +351,9 @@ class DynamicalCore(DomainComponent, StencilFactory, abc.ABC):
         """
         pass
 
-    def _init_output_properties(self) -> typing.PropertiesDict:
-        """
-        Return
-        ------
-        dict[str, dict] :
-            Dictionary whose keys are strings denoting variables which are
-            included in the output state, and whose values are fundamental
-            properties (dims, units) of those variables. This dictionary
-            results from fusing the requirements specified by the user via
-            :meth:`~tasmania.DynamicalCore.stage_output_properties` and
-            :meth:`~tasmania.DynamicalCore.substep_output_properties`
-            with the ``diagnostic_properties`` dictionary of
-            ``intermediate_diagnostic_component`` and
-            ``fast_diagnostic_component``.
-        """
-        return_dict = {}
-
-        if self._substeps == 0:
-            # Add to the return dictionary the variables included in
-            # the state output by a stage
-            return_dict.update(self.stage_output_properties)
-        else:
-            # Add to the return dictionary the variables included in
-            # the state output by a substep
-            return_dict.update(self.substep_output_properties)
-
-            if self._fast_dc is not None:
-                # Add the fast diagnostics to the return dictionary
-                for (
-                    name,
-                    properties,
-                ) in self._fast_dc.diagnostic_properties.items():
-                    return_dict[name] = {}
-                    return_dict[name].update(properties)
-
-            # Add to the return dictionary the non-substepped variables
-            return_dict.update(self.stage_output_properties)
-
-        if self._inter_dc is not None:
-            # Add the retrieved diagnostics to the return dictionary
-            for (
-                name,
-                properties,
-            ) in self._inter_dc.diagnostic_properties.items():
-                return_dict[name] = {}
-                return_dict[name].update(properties)
-
-        return return_dict
-
     @property
     @abc.abstractmethod
-    def stage_output_properties(self) -> typing.PropertiesDict:
+    def stage_output_properties(self) -> "PropertyDict":
         """
         Dictionary whose keys are strings denoting variables which are
         included in the output state returned by ``stage_array_call``,
@@ -760,7 +364,7 @@ class DynamicalCore(DomainComponent, StencilFactory, abc.ABC):
 
     @property
     @abc.abstractmethod
-    def substep_output_properties(self) -> typing.PropertiesDict:
+    def substep_output_properties(self) -> "PropertyDict":
         """
         Return
         ------
@@ -774,7 +378,7 @@ class DynamicalCore(DomainComponent, StencilFactory, abc.ABC):
     @property
     @abc.abstractmethod
     def stages(self) -> int:
-        """ Number of stages carried out by the dynamical core. """
+        """Number of stages carried out by the dynamical core."""
         pass
 
     @property
@@ -786,17 +390,69 @@ class DynamicalCore(DomainComponent, StencilFactory, abc.ABC):
         """
         pass
 
-    @abc.abstractmethod
-    def allocate_output_state(self) -> typing.DataArrayDict:
-        """ Allocate memory for the return state. """
-        pass
+    def allocate_stage_output(self, name) -> "NDArrayLike":
+        """Allocate memory for an output field."""
+        return self.zeros(
+            shape=self.get_field_storage_shape(name, self.storage_shape)
+        )
+
+    def allocate_stage_outputs(self) -> "NDArrayLikeDict":
+        """Allocate memory for the return state."""
+        out = {
+            name: self.allocate_stage_output(name)
+            for name in self.stage_output_properties
+        }
+        return out
+
+    def allocate_substep_output(self, name) -> "NDArrayLike":
+        """Allocate memory for an output field."""
+        return self.zeros(
+            shape=self.get_field_storage_shape(name, self.storage_shape)
+        )
+
+    def allocate_substep_outputs(self) -> "NDArrayLikeDict":
+        """Allocate memory for the return state."""
+        out = {
+            name: self.allocate_substep_output(name)
+            for name in self.substep_output_properties
+        }
+        return out
+
+    def allocate_fast_tendencies_and_diagnostics(
+        self, state: "DataArrayDict"
+    ) -> None:
+        self._fast_tendencies = (
+            self.fast_tendency_component.allocate_tendencies(state)
+            if self.fast_tendency_component is not None
+            else {}
+        )
+        if self.fast_diagnostic_component is not None:
+            self._fast_tendencies.update(
+                self.fast_diagnostic_component.allocate_tendencies(state)
+            )
+
+        self._fast_tendency_component_diagnostics = []
+        self._fast_diagnostic_component_diagnostics = []
+        for _ in range(self.stages):
+            self._fast_tendency_component_diagnostics.append(
+                self.fast_tendency_component.allocate_diagnostics(state)
+                if self.fast_tendency_component is not None
+                else {}
+            )
+            self._fast_diagnostic_component_diagnostics.append(
+                self.fast_diagnostic_component.allocate_diagnostics(state)
+                if self.fast_diagnostic_component is not None
+                else {}
+            )
 
     def __call__(
         self,
-        state: typing.DataArrayDict,
-        tendencies: typing.DataArrayDict,
-        timestep: typing.TimeDelta,
-    ) -> typing.DataArrayDict:
+        state: "DataArrayDict",
+        tendencies: "DataArrayDict",
+        timestep: typingx.TimeDelta,
+        *,
+        out_state: Optional["DataArrayDict"] = None
+    ) -> "DataArrayDict":
         """Advance the input state one timestep forward.
 
         Parameters
@@ -823,49 +479,67 @@ class DynamicalCore(DomainComponent, StencilFactory, abc.ABC):
         -------
         Variable aliasing is not supported at the moment.
         """
-        self._input_checker.check_inputs(state)
-        self._tendency_checker.check_tendencies(tendencies)
+        # run checks on input dictionaries
+        if self.enable_checks:
+            self._input_checker.check(state)
+            self._input_tendency_checker.check(tendencies, state)
 
-        out_state = self._out_state
+        # allocate memory for fast tendencies and fast diagnostics
+        if self._fast_tendencies is None:
+            self.allocate_fast_tendencies_and_diagnostics(state)
 
-        inter_tends = self.call(
-            0,
-            timestep,
-            state,
-            state,
-            tendencies,
-            self._inter_tendencies,
-            out_state,
+        # run checks on output dictionary
+        out_state = out_state if out_state is not None else {}
+        if self.enable_checks:
+            self._output_inflow_checker.check(out_state, state)
+
+        # extract or allocate output buffers
+        raw_out_state = self._output_inflow_operator.get_ndarray_dict(
+            out_state
         )
-        for stage in range(1, self.stages):
-            inter_tends = self.call(
-                stage,
-                timestep,
-                state,
-                out_state,
-                tendencies,
-                inter_tends,
-                out_state,
+        raw_out_state.update(
+            {
+                name: self.allocate_stage_output(name)
+                for name in self.stage_output_properties
+                if name not in out_state
+            }
+        )
+        raw_out_state.update(
+            {
+                name: self.allocate_substep_output(name)
+                for name in self.substep_output_properties
+                if name not in out_state
+            }
+        )
+
+        # allocate states output by each stage
+        if self._raw_stage_states is None:
+            self._raw_stage_states = [
+                self.allocate_stage_outputs() for _ in range(self.stages - 1)
+            ]
+            self._raw_stage_states.append(raw_out_state)
+        else:
+            self._raw_stage_states[-1] = raw_out_state
+
+        stage_state, tmp_state = state, None
+        for stage in range(self.stages):
+            stage_state, tmp_state = tmp_state, stage_state
+            stage_state = self.call(
+                stage, timestep, state, tendencies, tmp_state
             )
 
-        return_state = {"time": out_state["time"]}
-        for name in self.output_properties:
-            return_state[name] = out_state[name]
+        out_state.update(stage_state)
 
-        self._inter_tendencies = inter_tends
-
-        return return_state
+        return out_state
 
     def call(
         self,
         stage: int,
-        timestep: typing.TimeDelta,
-        state: typing.DataArrayDict,
-        tmp_state: typing.DataArrayDict,
-        slow_tendencies: typing.DataArrayDict,
-        inter_tendencies: typing.DataArrayDict,
-        out_state: typing.mutable_dataarray_dict_t,
-    ) -> typing.DataArrayDict:
+        timestep: typingx.TimeDelta,
+        state: "DataArrayDict",
+        slow_tendencies: "DataArrayDict",
+        tmp_state: "DataArrayDict",
+    ) -> "DataArrayDict":
         """Perform a single stage of the time integration algorithm.
 
         Parameters
@@ -877,75 +551,94 @@ class DynamicalCore(DomainComponent, StencilFactory, abc.ABC):
         state : dict[str, sympl.DataArray]
             The state at the current time level.
         tmp_state : dict[str, sympl.DataArray]
-            The latest provisional state.
+            The provisional state calculated by the previous stage.
             It coincides with ``state`` when ``stage = 0``.
         slow_tendencies : dict[str, sympl.DataArray]
             The *slow* physics tendencies for the prognostic model variables.
-        inter_tendencies : dict[str, sympl.DataArray]
-            The *intermediate* physics tendencies coming from the previous stage.
-        out_state : dict[str, sympl.DataArray]
-            The :class:`sympl.DataArray`\s into which the next provisional
-            state will be written.
         """
+        # shortcuts
+        ftc = self.fast_tendency_component
+        fdc = self.fast_diagnostic_component
+        ftc_diagnostics = self._fast_tendency_component_diagnostics
+        fdc_diagnostics = self._fast_diagnostic_component_diagnostics
+        ftc_slow = self._dynamic_operator.get_fast_and_slow_tendencies(
+            self.fast_tendency_component, slow_tendencies
+        )
+        fdc_slow = self._dynamic_operator.get_fast_and_slow_tendencies(
+            self.fast_diagnostic_component, slow_tendencies
+        )
+
         # ============================================================
-        # Calculating the intermediate tendencies
+        # Calculating fast tendencies and diagnostics
         # ============================================================
-        # add the slow and intermediate tendencies up
-        Timer.start(label="add_slow_inter_tends")
-        self._dict_op.iadd(
-            inter_tendencies,
-            slow_tendencies,
-            field_properties=self.tendency_properties,
-            unshared_variables_in_output=True,
+        Timer.start(label="add_slow_and_fast_tendencies")
+        # add the slow and fast tendencies up
+        if stage == 0:
+            self._fast_tendencies.update(
+                {
+                    key: slow_tendencies[key]
+                    for key in slow_tendencies
+                    if key not in ftc_slow and key not in fdc_slow
+                }
+            )
+        self._dict_operator.iadd(
+            self._fast_tendencies,
+            {key: slow_tendencies[key] for key in fdc_slow},
+            field_properties=self.input_tendency_properties,
+            unshared_variables_in_output=False,
+        )
+        self._dict_operator.copy(
+            self._fast_tendencies,
+            {
+                key: slow_tendencies[key]
+                for key in ftc_slow
+                if key not in fdc_slow
+            },
+            unshared_variables_in_output=False,
         )
         Timer.stop()
 
-        if self._inter_tc is None and stage == 0:
-            # collect the slow tendencies, and possibly the intermediate
-            # tendencies from the previous stage
-            tends = {}
-            tends.update(inter_tendencies)
-        elif self._inter_tc is not None:
-            Timer.start(label="get_inter_tends")
-            # calculate the intermediate tendencies
-            try:
-                tends, diags = self._inter_tc(tmp_state)
-            except TypeError:
-                tends, diags = self._inter_tc(tmp_state, timestep)
-
-            # sum up all the slow and intermediate tendencies
-            self._dict_op.iadd(
-                tends,
-                inter_tendencies,
-                field_properties=self.tendency_properties,
-                unshared_variables_in_output=True,
+        if ftc is not None:
+            Timer.start(label="call_fast_tendency_component")
+            # calculate fast tendencies and diagnostics
+            overwrite_tendencies = (
+                self._dynamic_operator.get_ovewrite_tendencies(slow_tendencies)
+            )
+            ftc(
+                tmp_state,
+                timestep,
+                out_tendencies=self._fast_tendencies,
+                out_diagnostics=ftc_diagnostics[stage],
+                overwrite_tendencies=overwrite_tendencies,
             )
 
             # update the state with the just computed diagnostics
-            tmp_state.update(diags)
+            self._dict_operator.update_swap(
+                tmp_state,
+                {
+                    name: ftc_diagnostics[stage][name]
+                    for name in ftc.diagnostic_properties
+                },
+            )
             Timer.stop()
-        else:
-            tends = {}
 
         # ============================================================
         # Stage: pre-processing
         # ============================================================
-        # Extract raw storages from state
-        tmp_state_properties = {
-            name: self.stage_input_properties[name]
-            for name in self.stage_input_properties
-        }
+        if self.enable_checks:
+            self._stage_input_checker.check(tmp_state)
+            self._stage_tendency_checker.check(self._fast_tendencies)
+
         Timer.start(label="get_raw_tmp_state")
-        raw_tmp_state = get_array_dict(tmp_state, tmp_state_properties)
+        # Extract raw storages from state
+        raw_tmp_state = self._stage_input_operator.get_ndarray_dict(tmp_state)
         Timer.stop()
 
-        # Extract raw storages from tendencies
-        tendency_properties = {
-            name: self.stage_tendency_properties[name]
-            for name in self.stage_tendency_properties
-        }
         Timer.start(label="get_raw_tends")
-        raw_tends = get_array_dict(tends, tendency_properties)
+        # Extract raw storages from tendencies
+        raw_tends = self._stage_tendency_operator.get_ndarray_dict(
+            self._fast_tendencies
+        )
         Timer.stop()
 
         # ============================================================
@@ -953,32 +646,30 @@ class DynamicalCore(DomainComponent, StencilFactory, abc.ABC):
         # ============================================================
         # Carry out the stage
         Timer.start(label="stage")
-        raw_stage_state = self.stage_array_call(
-            stage, raw_tmp_state, raw_tends, timestep
+        self.stage_array_call(
+            stage,
+            raw_tmp_state,
+            raw_tends,
+            timestep,
+            self._raw_stage_states[stage],
         )
         Timer.stop()
 
-        if self._substeps == 0 or len(self.substep_output_properties) == 0:
+        if self.substeps == 0 or len(self.substep_output_properties) == 0:
             # ============================================================
             # Stage: post-processing, substepping disabled
             # ============================================================
-            # Create dataarrays out of the numpy arrays contained in the stepped state
-            stage_state_properties = {
-                name: dict(
-                    **self.stage_output_properties[name], set_coordinates=False
+            if self.enable_checks:
+                self._stage_output_checker.check(
+                    self._raw_stage_states[stage], state
                 )
-                for name in self.stage_output_properties
-            }
-            Timer.start(label="get_stage_state")
-            stage_state = get_dataarray_dict(
-                raw_stage_state, self.grid, stage_state_properties
-            )
-            Timer.stop()
 
-            # Update the latest state
-            Timer.start(label="update_out_state")
-            self._dict_op.copy(out_state, stage_state)
-            # out_state.update(stage_state)
+            Timer.start(label="get_stage_state")
+            # Create dataarrays out of the ndarrays contained in the
+            # stepped state
+            stage_state = self._stage_output_operator.get_dataarray_dict(
+                self._raw_stage_states[stage], state
+            )
             Timer.stop()
         else:
             # TODO: deprecated!
@@ -1084,73 +775,55 @@ class DynamicalCore(DomainComponent, StencilFactory, abc.ABC):
             # out_state.update(nosubstep_stage_state)
 
         # ============================================================
-        # Retrieving the intermediate diagnostics
+        # Calculating fast tendencies and diagnostics
         # ============================================================
-        if self._inter_dc is not None:
-            Timer.start(label="compute_inter_diags")
-            if isinstance(
-                self._inter_dc, self.__class__.allowed_diagnostic_type
-            ):
-                inter_tends = {}
-                try:
-                    inter_diags = self._inter_dc(out_state)
-                except TypeError:
-                    inter_diags = self._inter_dc(out_state, timestep)
-            else:  # tendency component
-                try:
-                    inter_tends, inter_diags = self._inter_dc(out_state)
-                except TypeError:
-                    inter_tends, inter_diags = self._inter_dc(
-                        out_state, timestep
-                    )
+        if fdc is not None:
+            Timer.start(label="call_fast_diagnostic_component")
+            fdc(
+                stage_state,
+                timestep,
+                out_tendencies=self._fast_tendencies,
+                out_diagnostics=fdc_diagnostics[stage],
+            )
+            self._dict_operator.update_swap(
+                stage_state,
+                {
+                    name: fdc_diagnostics[stage][name]
+                    for name in fdc.diagnostic_properties
+                },
+            )
             Timer.stop()
-
-            diagnostic_fields = {}
-            for name in inter_diags:
-                if name != "time" and name not in self.stage_output_properties:
-                    diagnostic_fields[name] = inter_diags[name]
-
-            Timer.start(label="fill_inter_diags")
-            self._dict_op.copy(out_state, inter_diags)
-            out_state.update(diagnostic_fields)
-            Timer.stop()
-        else:
-            inter_tends = {}
 
         # Ensure the time specified in the output state is correct
         if stage == self.stages - 1:
-            out_state["time"] = state["time"] + timestep
+            stage_state["time"] = state["time"] + timestep
 
         # ============================================================
         # Final checks
         # ============================================================
-        self._output_checker.check_outputs(
-            {
-                name: out_state[name]
-                for name in out_state
-                if (name != "time" and name in self.output_properties)
-            }
-        )
+        if self.enable_checks:
+            self._output_outflow_checker.check(stage_state, state)
 
-        return inter_tends
+        return stage_state
 
     @abc.abstractmethod
     def stage_array_call(
         self,
         stage: int,
-        raw_state: typing.StorageDict,
-        raw_tendencies: typing.StorageDict,
-        timestep: typing.TimeDelta,
-    ) -> typing.StorageDict:
+        state: "NDArrayLikeDict",
+        tendencies: "NDArrayLikeDict",
+        timestep: typingx.TimeDelta,
+        out_state: "NDArrayLikeDict",
+    ) -> None:
         """Integrate the state over a stage.
 
         Parameters
         ----------
         stage : int
             The stage identifier.
-        raw_state : dict[str, array_like]
+        state : dict[str, array_like]
             The latest provisional state.
-        raw_tendencies : dict[str, array_like]
+        tendencies : dict[str, array_like]
             The tendencies for the model prognostic variables.
         timestep : datetime.timedelta
             The step size.
@@ -1167,12 +840,12 @@ class DynamicalCore(DomainComponent, StencilFactory, abc.ABC):
         self,
         stage: int,
         substep: int,
-        raw_state: typing.StorageDict,
-        raw_stage_state: typing.StorageDict,
-        raw_tmp_state: typing.StorageDict,
-        raw_tendencies: typing.StorageDict,
-        timestep: typing.TimeDelta,
-    ) -> typing.StorageDict:
+        state: "NDArrayLikeDict",
+        stage_state: "NDArrayLikeDict",
+        tmp_state: "NDArrayLikeDict",
+        slow_tendencies: "NDArrayLikeDict",
+        timestep: typingx.TimeDelta,
+    ) -> "NDArrayLikeDict":
         """Integrate the state over a substep.
 
         Parameters
@@ -1200,7 +873,7 @@ class DynamicalCore(DomainComponent, StencilFactory, abc.ABC):
         """
         pass
 
-    def update_topography(self, time: typing.Datetime) -> None:
+    def update_topography(self, time: typingx.Datetime) -> None:
         """Update the underlying (time-dependent) topography.
 
         Parameters

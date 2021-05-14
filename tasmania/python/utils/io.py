@@ -36,7 +36,7 @@ from tasmania.python.framework.base_components import (
 from tasmania.python.framework.options import StorageOptions
 from tasmania.python.framework.stencil import StencilFactory
 from tasmania.python.domain.domain import Domain
-from tasmania.python.utils import typing
+from tasmania.python.utils import typingx
 from tasmania.python.utils.storage import (
     deepcopy_dataarray_dict,
     get_physical_state,
@@ -101,7 +101,7 @@ class NetCDFMonitor(DomainComponent, StencilFactory, sympl.NetCDFMonitor):
             filename, time_units, store_names, write_on_store, aliases
         )
 
-    def store(self, state: typing.DataArrayDict) -> None:
+    def store(self, state: typingx.DataArrayDict) -> None:
         """
         If the state is defined over the numerical (respectively physical)
         grid but should be saved over the physical (resp. numerical) grid:
@@ -331,7 +331,7 @@ class NetCDFMonitor(DomainComponent, StencilFactory, sympl.NetCDFMonitor):
 
 def load_netcdf_dataset(
     filename: str,
-) -> Tuple[Domain, str, List[typing.DataArrayDict]]:
+) -> Tuple[Domain, str, List[typingx.DataArrayDict]]:
     """
     Load the sequence of states stored in a NetCDF dataset,
     and build the underlying domain.
@@ -462,7 +462,7 @@ def load_grid_type(dataset: xr.Dataset) -> str:
     return dataset.data_vars["grid_type"].values.item()
 
 
-def load_states(dataset: xr.Dataset) -> List[typing.DataArrayDict]:
+def load_states(dataset: xr.Dataset) -> List[typingx.DataArrayDict]:
     names = dataset.data_vars["state_variable_names"].values
     nt = dataset.data_vars[names[0]].shape[0]
 

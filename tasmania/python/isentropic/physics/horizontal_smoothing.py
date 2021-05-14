@@ -23,10 +23,11 @@
 from typing import Optional, Sequence, TYPE_CHECKING
 
 from tasmania.python.dwarfs.horizontal_smoothing import HorizontalSmoothing
-from tasmania.python.framework.base_components import DiagnosticComponent
-from tasmania.python.utils import typing as ty
+from tasmania.python.framework.core_components import DiagnosticComponent
 
 if TYPE_CHECKING:
+    from sympl._core.typingx import NDArrayLikeDict, PropertyDict
+
     from tasmania.python.domain.domain import Domain
     from tasmania.python.framework.options import (
         BackendOptions,
@@ -58,6 +59,7 @@ class IsentropicHorizontalSmoothing(DiagnosticComponent):
         smooth_moist_coeff_max: Optional[float] = None,
         smooth_moist_damp_depth: Optional[int] = None,
         *,
+        enable_checks: bool = True,
         backend: str = "numpy",
         backend_options: Optional["BackendOptions"] = None,
         storage_shape: Optional[Sequence[int]] = None,
@@ -89,6 +91,8 @@ class IsentropicHorizontalSmoothing(DiagnosticComponent):
             species close to the upper boundary.
         smooth_damp_depth : int
             Depth of the damping region for the water species.
+        enable_checks : `bool`, optional
+            TODO
         backend : `str`, optional
             The backend.
         backend_options : `BackendOptions`, optional
@@ -103,22 +107,20 @@ class IsentropicHorizontalSmoothing(DiagnosticComponent):
         super().__init__(
             domain,
             "numerical",
+            enable_checks=enable_checks,
             backend=backend,
             backend_options=backend_options,
+            storage_shape=storage_shape,
             storage_options=storage_options,
         )
 
-        nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
-        nb = self.horizontal_boundary.nb
-        shape = self.get_storage_shape(storage_shape, (nx + 1, ny + 1, nz + 1))
-
         self._core = HorizontalSmoothing.factory(
             smooth_type,
-            shape,
+            self.storage_shape,
             smooth_coeff,
             smooth_coeff_max,
             smooth_damp_depth,
-            nb,
+            self.horizontal_boundary.nb,
             backend=self.backend,
             backend_options=self.backend_options,
             storage_options=self.storage_options,
@@ -137,11 +139,11 @@ class IsentropicHorizontalSmoothing(DiagnosticComponent):
             )
             self._core_moist = HorizontalSmoothing.factory(
                 smooth_type,
-                shape,
+                self.storage_shape,
                 smooth_moist_coeff,
                 smooth_moist_coeff_max,
                 smooth_moist_damp_depth,
-                nb,
+                self.horizontal_boundary.nb,
                 backend=self.backend,
                 backend_options=self.backend_options,
                 storage_options=self.storage_options,
@@ -149,16 +151,8 @@ class IsentropicHorizontalSmoothing(DiagnosticComponent):
         else:
             self._core_moist = None
 
-        self._out_s = self.zeros(shape=shape)
-        self._out_su = self.zeros(shape=shape)
-        self._out_sv = self.zeros(shape=shape)
-        if self._moist:
-            self._out_qv = self.zeros(shape=shape)
-            self._out_qc = self.zeros(shape=shape)
-            self._out_qr = self.zeros(shape=shape)
-
     @property
-    def input_properties(self) -> ty.PropertiesDict:
+    def input_properties(self) -> "PropertyDict":
         dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])
 
         return_dict = {
@@ -181,34 +175,23 @@ class IsentropicHorizontalSmoothing(DiagnosticComponent):
         return return_dict
 
     @property
-    def diagnostic_properties(self) -> ty.PropertiesDict:
+    def diagnostic_properties(self) -> "PropertyDict":
         return self.input_properties
 
-    def array_call(self, state: ty.StorageDict) -> ty.StorageDict:
-        in_s = state["air_isentropic_density"]
-        in_su = state["x_momentum_isentropic"]
-        in_sv = state["y_momentum_isentropic"]
-        self._core(in_s, self._out_s)
-        self._core(in_su, self._out_su)
-        self._core(in_sv, self._out_sv)
-
-        return_dict = {
-            "air_isentropic_density": self._out_s,
-            "x_momentum_isentropic": self._out_su,
-            "y_momentum_isentropic": self._out_sv,
-        }
+    def array_call(
+        self, state: "NDArrayLikeDict", out: "NDArrayLikeDict"
+    ) -> None:
+        self._core(
+            state["air_isentropic_density"], out["air_isentropic_density"]
+        )
+        self._core(
+            state["x_momentum_isentropic"], out["x_momentum_isentropic"]
+        )
+        self._core(
+            state["y_momentum_isentropic"], out["y_momentum_isentropic"]
+        )
 
         if self._moist:
-            in_qv = state[mfwv]
-            in_qc = state[mfcw]
-            in_qr = state[mfpw]
-
-            self._core_moist(in_qv, self._out_qv)
-            self._core_moist(in_qc, self._out_qc)
-            self._core_moist(in_qr, self._out_qr)
-
-            return_dict[mfwv] = self._out_qv
-            return_dict[mfcw] = self._out_qc
-            return_dict[mfpw] = self._out_qr
-
-        return return_dict
+            self._core_moist(state[mfwv], out[mfwv])
+            self._core_moist(state[mfcw], out[mfcw])
+            self._core_moist(state[mfpw], out[mfpw])

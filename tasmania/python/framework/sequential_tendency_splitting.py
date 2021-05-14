@@ -36,7 +36,7 @@ from tasmania.python.framework.composite import (
 )
 from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
 from tasmania.python.framework.sts_tendency_stepper import STSTendencyStepper
-from tasmania.python.utils import typing
+from tasmania.python.utils import typingx
 from tasmania.python.utils.framework import (
     check_property_compatibility,
     get_input_properties,
@@ -144,7 +144,7 @@ class SequentialTendencySplitting:
             self._get_provisional_output_properties()
         )
 
-    def _get_input_properties(self) -> typing.PropertiesDict:
+    def _get_input_properties(self) -> typingx.PropertiesDict:
         return get_input_properties(
             tuple(
                 {
@@ -157,7 +157,7 @@ class SequentialTendencySplitting:
             )
         )
 
-    def _get_provisional_input_properties(self) -> typing.PropertiesDict:
+    def _get_provisional_input_properties(self) -> typingx.PropertiesDict:
         at_disposal = {}
         return_dict = {}
 
@@ -186,7 +186,7 @@ class SequentialTendencySplitting:
 
         return return_dict
 
-    def _get_output_properties(self) -> typing.PropertiesDict:
+    def _get_output_properties(self) -> typingx.PropertiesDict:
         return_dict = self._get_input_properties()
         get_output_properties(
             tuple(
@@ -202,7 +202,7 @@ class SequentialTendencySplitting:
         )
         return return_dict
 
-    def _get_provisional_output_properties(self,) -> typing.PropertiesDict:
+    def _get_provisional_output_properties(self) -> typingx.PropertiesDict:
         return_dict = self._get_provisional_input_properties()
 
         for component in self._component_list:
@@ -221,9 +221,9 @@ class SequentialTendencySplitting:
 
     def __call__(
         self,
-        state: typing.DataArrayDict,
-        state_prv: typing.mutable_dataarray_dict_t,
-        timestep: typing.TimeDelta,
+        state: typingx.DataArrayDict,
+        state_prv: typingx.mutable_dataarray_dict_t,
+        timestep: typingx.TimeDelta,
     ) -> None:
         """
         Advance the model state one timestep forward in time by pursuing

@@ -28,15 +28,17 @@ from gt4py import gtscript
 from tasmania.python.framework.base_components import GridComponent
 from tasmania.python.framework.stencil import StencilFactory
 from tasmania.python.framework.tag import stencil_definition
-from tasmania.python.utils import typing as ty
 from tasmania.python.utils.gtscript import positive
 
 if TYPE_CHECKING:
+    from sympl._core.typingx import NDArrayLike
+
     from tasmania.python.domain.grid import Grid
     from tasmania.python.framework.options import (
         BackendOptions,
         StorageOptions,
     )
+    from tasmania.python.utils.typingx import TripletInt
 
 
 class HorizontalVelocity(GridComponent, StencilFactory):
@@ -89,11 +91,11 @@ class HorizontalVelocity(GridComponent, StencilFactory):
 
     def get_momenta(
         self: "HorizontalVelocity",
-        d: ty.Storage,
-        u: ty.Storage,
-        v: ty.Storage,
-        du: ty.Storage,
-        dv: ty.Storage,
+        d: "NDArrayLike",
+        u: "NDArrayLike",
+        v: "NDArrayLike",
+        du: "NDArrayLike",
+        dv: "NDArrayLike",
     ) -> None:
         """
         Diagnose the horizontal momenta.
@@ -112,7 +114,7 @@ class HorizontalVelocity(GridComponent, StencilFactory):
             The buffer where the y-momentum will be written.
         """
         # shortcuts
-        nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
+        nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
 
         # run the stencil
         self._stencil_diagnosing_momenta(
@@ -129,11 +131,11 @@ class HorizontalVelocity(GridComponent, StencilFactory):
 
     def get_velocity_components(
         self: "HorizontalVelocity",
-        d: ty.Storage,
-        du: ty.Storage,
-        dv: ty.Storage,
-        u: ty.Storage,
-        v: ty.Storage,
+        d: "NDArrayLike",
+        du: "NDArrayLike",
+        dv: "NDArrayLike",
+        u: "NDArrayLike",
+        v: "NDArrayLike",
     ) -> None:
         """
         Diagnose the horizontal velocity components.
@@ -157,7 +159,7 @@ class HorizontalVelocity(GridComponent, StencilFactory):
         of the x-velocity (resp., y-velocity) are not set.
         """
         # shortcuts
-        nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
+        nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
         dn = int(self._staggering)
 
         # run the stencils
@@ -180,17 +182,17 @@ class HorizontalVelocity(GridComponent, StencilFactory):
             validate_args=self.backend_options.validate_args,
         )
 
+    @staticmethod
     @stencil_definition(backend=("numpy", "cupy"), stencil="momenta")
     def _diagnose_momenta_numpy(
-        self: "HorizontalVelocity",
         in_d: np.ndarray,
         in_u: np.ndarray,
         in_v: np.ndarray,
         out_du: np.ndarray,
         out_dv: np.ndarray,
         *,
-        origin: ty.TripletInt,
-        domain: ty.TripletInt
+        origin: "TripletInt",
+        domain: "TripletInt"
     ) -> None:
         i = slice(origin[0], origin[0] + domain[0])
         ip1 = slice(origin[0] + 1, origin[0] + domain[0] + 1)
@@ -198,7 +200,7 @@ class HorizontalVelocity(GridComponent, StencilFactory):
         jp1 = slice(origin[1] + 1, origin[1] + domain[1] + 1)
         k = slice(origin[2], origin[2] + domain[2])
 
-        if self._staggering:  # compile-time if
+        if staggering:  # compile-time if
             out_du[i, j, k] = (
                 0.5 * in_d[i, j, k] * (in_u[i, j, k] + in_u[ip1, j, k])
             )
@@ -228,22 +230,22 @@ class HorizontalVelocity(GridComponent, StencilFactory):
                 out_du = in_d * in_u
                 out_dv = in_d * in_v
 
+    @staticmethod
     @stencil_definition(backend=("numpy", "cupy"), stencil="velocity_x")
     def _diagnose_velocity_x_numpy(
-        self: "HorizontalVelocity",
         in_d: np.ndarray,
         in_du: np.ndarray,
         out_u: np.ndarray,
         *,
-        origin: ty.TripletInt,
-        domain: ty.TripletInt
+        origin: "TripletInt",
+        domain: "TripletInt"
     ) -> None:
         i = slice(origin[0], origin[0] + domain[0])
         im1 = slice(origin[0] - 1, origin[0] + domain[0] - 1)
         j = slice(origin[1], origin[1] + domain[1])
         k = slice(origin[2], origin[2] + domain[2])
 
-        if self._staggering:  # compile-time if
+        if staggering:  # compile-time if
             out_u[i, j, k] = (in_du[im1, j, k] + in_du[i, j, k]) / (
                 in_d[im1, j, k] + in_d[i, j, k]
             )
@@ -267,22 +269,22 @@ class HorizontalVelocity(GridComponent, StencilFactory):
             else:
                 out_u = in_du / in_d
 
+    @staticmethod
     @stencil_definition(backend=("numpy", "cupy"), stencil="velocity_y")
     def _diagnose_velocity_y_numpy(
-        self: "HorizontalVelocity",
         in_d: np.ndarray,
         in_dv: np.ndarray,
         out_v: np.ndarray,
         *,
-        origin: ty.TripletInt,
-        domain: ty.TripletInt
+        origin: "TripletInt",
+        domain: "TripletInt"
     ) -> None:
         i = slice(origin[0], origin[0] + domain[0])
         j = slice(origin[1], origin[1] + domain[1])
         jm1 = slice(origin[1] - 1, origin[1] + domain[1] - 1)
         k = slice(origin[2], origin[2] + domain[2])
 
-        if self._staggering:  # compile-time if
+        if staggering:  # compile-time if
             out_v[i, j, k] = (in_dv[i, jm1, k] + in_dv[i, j, k]) / (
                 in_d[i, jm1, k] + in_d[i, j, k]
             )
@@ -357,7 +359,10 @@ class WaterConstituent(GridComponent, StencilFactory):
         self._stencil_diagnosing_mass_fraction = self.compile("mass_fraction")
 
     def get_density_of_water_constituent(
-        self: "WaterConstituent", d: ty.Storage, q: ty.Storage, dq: ty.Storage,
+        self: "WaterConstituent",
+        d: "NDArrayLike",
+        q: "NDArrayLike",
+        dq: "NDArrayLike",
     ) -> None:
         """
         Diagnose the density of a water constituent.
@@ -373,7 +378,7 @@ class WaterConstituent(GridComponent, StencilFactory):
             in the same units of the input air density.
         """
         # shortcuts
-        nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
+        nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
 
         # run the stencil
         self._stencil_diagnosing_density(
@@ -387,7 +392,10 @@ class WaterConstituent(GridComponent, StencilFactory):
         )
 
     def get_mass_fraction_of_water_constituent_in_air(
-        self: "WaterConstituent", d: ty.Storage, dq: ty.Storage, q: ty.Storage,
+        self: "WaterConstituent",
+        d: "NDArrayLike",
+        dq: "NDArrayLike",
+        q: "NDArrayLike",
     ) -> None:
         """
         Diagnose the mass fraction of a water constituent.
@@ -404,7 +412,7 @@ class WaterConstituent(GridComponent, StencilFactory):
             constituent, in the same units of the input air density.
         """
         # shortcuts
-        nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
+        nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
 
         # run the stencil
         self._stencil_diagnosing_mass_fraction(
@@ -417,22 +425,22 @@ class WaterConstituent(GridComponent, StencilFactory):
             validate_args=self.backend_options.validate_args,
         )
 
+    @staticmethod
     @stencil_definition(backend=("numpy", "cupy"), stencil="density")
     def _diagnose_density_numpy(
-        self: "WaterConstituent",
         in_d: np.ndarray,
         in_q: np.ndarray,
         out_dq: np.ndarray,
         *,
-        origin: ty.TripletInt,
-        domain: ty.TripletInt
+        origin: "TripletInt",
+        domain: "TripletInt"
     ) -> None:
         i = slice(origin[0], origin[0] + domain[0])
         j = slice(origin[1], origin[1] + domain[1])
         k = slice(origin[2], origin[2] + domain[2])
 
         out_dq[i, j, k] = in_d[i, j, k] * in_q[i, j, k]
-        if self._clipping:
+        if clipping:
             out_dq[i, j, k] = np.where(
                 out_dq[i, j, k] > 0.0, out_dq[i, j, k], 0.0
             )
@@ -453,23 +461,22 @@ class WaterConstituent(GridComponent, StencilFactory):
             else:
                 out_dq = in_d * in_q
 
+    @staticmethod
     @stencil_definition(backend=("numpy", "cupy"), stencil="mass_fraction")
     def _diagnose_mass_fraction_numpy(
-        self: "WaterConstituent",
         in_d: np.ndarray,
         in_dq: np.ndarray,
         out_q: np.ndarray,
         *,
-        origin: ty.TripletInt,
-        domain: ty.TripletInt,
-        **kwargs  # catch-all
+        origin: "TripletInt",
+        domain: "TripletInt",
     ) -> None:
         i = slice(origin[0], origin[0] + domain[0])
         j = slice(origin[1], origin[1] + domain[1])
         k = slice(origin[2], origin[2] + domain[2])
 
         out_q[i, j, k] = in_dq[i, j, k] / in_d[i, j, k]
-        if self._clipping:
+        if clipping:
             out_q[i, j, k] = np.where(
                 out_q[i, j, k] > 0.0, out_q[i, j, k], 0.0
             )

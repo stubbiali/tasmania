@@ -35,7 +35,7 @@ from tasmania.python.framework.tag import stencil_definition
 from tasmania.python.isentropic.physics.implicit_vertical_advection import (
     IsentropicImplicitVerticalAdvectionDiagnostic,
 )
-from tasmania.python.utils import typing as ty
+from tasmania.python.utils import typingx as ty
 
 
 mfwv = "mass_fraction_of_water_vapor_in_air"
@@ -75,8 +75,8 @@ def setup_tridiagonal_system_numpy(
 
 @gtscript.function
 def setup_tridiagonal_system(
-    gamma: float, w: ty.gtfield_t, phi: ty.gtfield_t, phi_prv: ty.gtfield_t,
-) -> "Tuple[ty.gtfield_t, ty.gtfield_t, ty.gtfield_t]":
+    gamma: float, w: ty.GTField, phi: ty.GTField, phi_prv: ty.GTField
+) -> "Tuple[ty.GTField, ty.GTField, ty.GTField]":
     a = gamma * w[0, 0, -1]
     c = -gamma * w[0, 0, 1]
     d = phi_prv[0, 0, 0] - gamma * (
@@ -87,8 +87,8 @@ def setup_tridiagonal_system(
 
 @gtscript.function
 def setup_tridiagonal_system_bc(
-    phi_prv: ty.gtfield_t,
-) -> "Tuple[ty.gtfield_t, ty.gtfield_t, ty.gtfield_t]":
+    phi_prv: ty.GTField,
+) -> "Tuple[ty.GTField, ty.GTField, ty.GTField]":
     a = 0.0
     c = 0.0
     d = phi_prv[0, 0, 0]

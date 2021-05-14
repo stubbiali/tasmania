@@ -25,13 +25,13 @@ import numba
 from gt4py import gtscript
 
 from tasmania.python.dwarfs.horizontal_diffusion import HorizontalDiffusion
-from tasmania.python.framework.register import register
 from tasmania.python.framework.tag import stencil_definition
 
 
-@register(name="second_order")
 class SecondOrder(HorizontalDiffusion):
-    """ Two-dimensional second-order diffusion. """
+    """Two-dimensional second-order diffusion."""
+
+    name = "second_order"
 
     def __init__(
         self,
@@ -41,10 +41,11 @@ class SecondOrder(HorizontalDiffusion):
         diffusion_coeff,
         diffusion_coeff_max,
         diffusion_damp_depth,
-        nb,
-        backend,
-        backend_options,
-        storage_options,
+        nb=None,
+        *,
+        backend="numpy",
+        backend_options=None,
+        storage_options=None,
     ):
         nb = 1 if (nb is None or nb < 1) else nb
         lb = 2 * nb + 1
@@ -66,7 +67,7 @@ class SecondOrder(HorizontalDiffusion):
             storage_options,
         )
 
-    def __call__(self, phi, phi_tnd):
+    def __call__(self, phi, phi_tnd, *, overwrite_output=True):
         # shortcuts
         dx, dy, nb = self._dx, self._dy, self._nb
         nx, ny, nz = self._shape
@@ -78,6 +79,7 @@ class SecondOrder(HorizontalDiffusion):
             out_phi=phi_tnd,
             dx=dx,
             dy=dy,
+            ow_out_phi=overwrite_output,
             origin=(nb, nb, 0),
             domain=(nx - 2 * nb, ny - 2 * nb, nz),
             exec_info=self.backend_options.exec_info,
@@ -87,7 +89,7 @@ class SecondOrder(HorizontalDiffusion):
     @staticmethod
     @stencil_definition(backend=("numpy", "cupy"), stencil="diffusion")
     def _stencil_numpy(
-        in_phi, in_gamma, out_phi, *, dx, dy, origin, domain, **kwargs
+        in_phi, in_gamma, out_phi, *, dx, dy, ow_out_phi, origin, domain
     ):
         i = slice(origin[0], origin[0] + domain[0])
         ip1 = slice(origin[0] + 1, origin[0] + domain[0] + 1)
@@ -96,11 +98,12 @@ class SecondOrder(HorizontalDiffusion):
         jp1 = slice(origin[1] + 1, origin[1] + domain[1] + 1)
         jm1 = slice(origin[1] - 1, origin[1] + domain[1] - 1)
 
-        out_phi[i, j] = in_gamma[i, j] * (
+        tmp = in_gamma[i, j] * (
             (in_phi[im1, j] - 2.0 * in_phi[i, j] + in_phi[ip1, j]) / (dx * dx)
             + (in_phi[i, jm1] - 2.0 * in_phi[i, j] + in_phi[i, jp1])
             / (dy * dy)
         )
+        set_output(out_phi[i, j], tmp, ow_out_phi)
 
     @staticmethod
     @stencil_definition(backend="gt4py*", stencil="diffusion")
@@ -110,15 +113,19 @@ class SecondOrder(HorizontalDiffusion):
         out_phi: gtscript.Field["dtype"],
         *,
         dx: float,
-        dy: float
+        dy: float,
+        ow_out_phi: bool
     ) -> None:
+        from __externals__ import set_output
+
         with computation(PARALLEL), interval(...):
-            out_phi = in_gamma[0, 0, 0] * (
+            tmp = in_gamma[0, 0, 0] * (
                 (in_phi[-1, 0, 0] - 2.0 * in_phi[0, 0, 0] + in_phi[1, 0, 0])
                 / (dx * dx)
                 + (in_phi[0, -1, 0] - 2.0 * in_phi[0, 0, 0] + in_phi[0, 1, 0])
                 / (dy * dy)
             )
+            out_phi = set_output(out_phi, tmp, ow_out_phi)
 
     @staticmethod
     @stencil_definition(backend="numba:cpu", stencil="diffusion")
@@ -170,9 +177,10 @@ class SecondOrder(HorizontalDiffusion):
     #         )
 
 
-@register(name="second_order_1dx")
 class SecondOrder1DX(HorizontalDiffusion):
-    """ One-dimensional second-order diffusion along the x-direction. """
+    """One-dimensional second-order diffusion along the x-direction."""
+
+    name = "second_order_1dx"
 
     def __init__(
         self,
@@ -182,10 +190,11 @@ class SecondOrder1DX(HorizontalDiffusion):
         diffusion_coeff,
         diffusion_coeff_max,
         diffusion_damp_depth,
-        nb,
-        backend,
-        backend_options,
-        storage_options,
+        nb=None,
+        *,
+        backend="numpy",
+        backend_options=None,
+        storage_options=None,
     ):
         nb = 1 if (nb is None or nb < 1) else nb
         lb = 2 * nb + 1
@@ -207,7 +216,7 @@ class SecondOrder1DX(HorizontalDiffusion):
             storage_options,
         )
 
-    def __call__(self, phi, phi_tnd):
+    def __call__(self, phi, phi_tnd, *, overwrite_output=True):
         # shortcuts
         dx, dy, nb = self._dx, self._dy, self._nb
         nx, ny, nz = self._shape
@@ -219,6 +228,7 @@ class SecondOrder1DX(HorizontalDiffusion):
             out_phi=phi_tnd,
             dx=dx,
             dy=dy,
+            ow_out_phi=overwrite_output,
             origin=(nb, 0, 0),
             domain=(nx - 2 * nb, ny, nz),
             exec_info=self.backend_options.exec_info,
@@ -228,18 +238,19 @@ class SecondOrder1DX(HorizontalDiffusion):
     @staticmethod
     @stencil_definition(backend=("numpy", "cupy"), stencil="diffusion")
     def _stencil_numpy(
-        in_phi, in_gamma, out_phi, *, dx, dy, origin, domain, **kwargs
+        in_phi, in_gamma, out_phi, *, dx, dy, ow_out_phi, origin, domain
     ):
         i = slice(origin[0], origin[0] + domain[0])
         ip1 = slice(origin[0] + 1, origin[0] + domain[0] + 1)
         im1 = slice(origin[0] - 1, origin[0] + domain[0] - 1)
         j = slice(origin[1], origin[1] + domain[1])
 
-        out_phi[i, j] = (
+        tmp = (
             in_gamma[i, j]
             * (in_phi[im1, j] - 2.0 * in_phi[i, j] + in_phi[ip1, j])
             / (dx * dx)
         )
+        set_output(out_phi[i, j], tmp, ow_out_phi)
 
     @staticmethod
     @stencil_definition(backend="gt4py*", stencil="diffusion")
@@ -249,14 +260,18 @@ class SecondOrder1DX(HorizontalDiffusion):
         out_phi: gtscript.Field["dtype"],
         *,
         dx: float,
-        dy: float = 0.0
+        dy: float = 0.0,
+        ow_out_phi: bool
     ) -> None:
+        from __externals__ import set_output
+
         with computation(PARALLEL), interval(...):
-            out_phi = (
+            tmp = (
                 in_gamma[0, 0, 0]
                 * (in_phi[-1, 0, 0] - 2.0 * in_phi[0, 0, 0] + in_phi[1, 0, 0])
                 / (dx * dx)
             )
+            out_phi = set_output(out_phi, tmp, ow_out_phi)
 
     @staticmethod
     @stencil_definition(backend="numba:cpu", stencil="diffusion")
@@ -280,9 +295,10 @@ class SecondOrder1DX(HorizontalDiffusion):
         )
 
 
-@register(name="second_order_1dy")
 class SecondOrder1DY(HorizontalDiffusion):
-    """ One-dimensional second-order diffusion along the y-direction. """
+    """One-dimensional second-order diffusion along the y-direction."""
+
+    name = "second_order_1dy"
 
     def __init__(
         self,
@@ -292,10 +308,11 @@ class SecondOrder1DY(HorizontalDiffusion):
         diffusion_coeff,
         diffusion_coeff_max,
         diffusion_damp_depth,
-        nb,
-        backend,
-        backend_options,
-        storage_options,
+        nb=None,
+        *,
+        backend="numpy",
+        backend_options=None,
+        storage_options=None,
     ):
         nb = 1 if (nb is None or nb < 1) else nb
         lb = 2 * nb + 1
@@ -317,7 +334,7 @@ class SecondOrder1DY(HorizontalDiffusion):
             storage_options,
         )
 
-    def __call__(self, phi, phi_tnd):
+    def __call__(self, phi, phi_tnd, *, overwrite_output=True):
         # shortcuts
         dx, dy, nb = self._dx, self._dy, self._nb
         nx, ny, nz = self._shape
@@ -329,6 +346,7 @@ class SecondOrder1DY(HorizontalDiffusion):
             out_phi=phi_tnd,
             dx=dx,
             dy=dy,
+            ow_out_phi=overwrite_output,
             origin=(0, nb, 0),
             domain=(nx, ny - 2 * nb, nz),
             exec_info=self.backend_options.exec_info,
@@ -338,18 +356,19 @@ class SecondOrder1DY(HorizontalDiffusion):
     @staticmethod
     @stencil_definition(backend=("numpy", "cupy"), stencil="diffusion")
     def _stencil_numpy(
-        in_phi, in_gamma, out_phi, *, dx, dy, origin, domain, **kwargs
+        in_phi, in_gamma, out_phi, *, dx, dy, ow_out_phi, origin, domain
     ):
         i = slice(origin[0], origin[0] + domain[0])
         j = slice(origin[1], origin[1] + domain[1])
         jp1 = slice(origin[1] + 1, origin[1] + domain[1] + 1)
         jm1 = slice(origin[1] - 1, origin[1] + domain[1] - 1)
 
-        out_phi[i, j] = (
+        tmp = (
             in_gamma[i, j]
             * (in_phi[i, jm1] - 2.0 * in_phi[i, j] + in_phi[i, jp1])
             / (dy * dy)
         )
+        set_output(out_phi[i, j], tmp, ow_out_phi)
 
     @staticmethod
     @stencil_definition(backend="gt4py*", stencil="diffusion")
@@ -359,14 +378,18 @@ class SecondOrder1DY(HorizontalDiffusion):
         out_phi: gtscript.Field["dtype"],
         *,
         dx: float = 0.0,
-        dy: float
+        dy: float,
+        ow_out_phi: bool
     ) -> None:
+        from __externals__ import set_output
+
         with computation(PARALLEL), interval(...):
-            out_phi = (
+            tmp = (
                 in_gamma[0, 0, 0]
                 * (in_phi[0, -1, 0] - 2.0 * in_phi[0, 0, 0] + in_phi[0, 1, 0])
                 / (dy * dy)
             )
+            out_phi = set_output(out_phi, tmp, ow_out_phi)
 
     @staticmethod
     @stencil_definition(backend="numba:cpu", stencil="diffusion")

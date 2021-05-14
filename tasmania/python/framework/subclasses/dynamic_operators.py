@@ -20,6 +20,27 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from .centered import Centered
-from .maccormack import MacCormack
-from .upwind import Upwind
+from sympl._core.dynamic_operators import (
+    InflowComponentOperator,
+    OutflowComponentOperator,
+)
+
+
+class StageInputInflowComponentOperator(InflowComponentOperator):
+    name = "stage_input_properties"
+    properties_name = "stage_input_properties"
+
+
+class InputTendencyInflowComponentOperator(InflowComponentOperator):
+    name = "input_tendency_properties"
+    properties_name = "input_tendency_properties"
+
+
+class StageTendencyInflowComponentOperator(InflowComponentOperator):
+    name = "stage_tendency_properties"
+    properties_name = "stage_tendency_properties"
+
+
+class StageOutputOutflowComponentOperator(OutflowComponentOperator):
+    name = "stage_output_properties"
+    properties_name = "stage_output_properties"

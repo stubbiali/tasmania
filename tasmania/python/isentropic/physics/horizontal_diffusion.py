@@ -20,14 +20,15 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from sympl import DataArray
-from typing import Optional, Sequence, TYPE_CHECKING, Tuple
+from typing import Dict, Optional, Sequence, TYPE_CHECKING
 
 from tasmania.python.dwarfs.horizontal_diffusion import HorizontalDiffusion
-from tasmania.python.framework.base_components import TendencyComponent
-from tasmania.python.utils import typing as ty
+from tasmania.python.framework.core_components import TendencyComponent
 
 if TYPE_CHECKING:
+    from sympl import DataArray
+    from sympl._core.typingx import NDArrayLikeDict, PropertyDict
+
     from tasmania.python.domain.domain import Domain
     from tasmania.python.framework.options import (
         BackendOptions,
@@ -52,14 +53,15 @@ class IsentropicHorizontalDiffusion(TendencyComponent):
         self,
         domain: "Domain",
         diffusion_type: str,
-        diffusion_coeff: DataArray,
-        diffusion_coeff_max: DataArray,
+        diffusion_coeff: "DataArray",
+        diffusion_coeff_max: "DataArray",
         diffusion_damp_depth: int,
         moist: bool = False,
-        diffusion_moist_coeff: Optional[DataArray] = None,
-        diffusion_moist_coeff_max: Optional[DataArray] = None,
+        diffusion_moist_coeff: Optional["DataArray"] = None,
+        diffusion_moist_coeff_max: Optional["DataArray"] = None,
         diffusion_moist_damp_depth: Optional[int] = None,
         *,
+        enable_checks: bool = True,
         backend: str = "numpy",
         backend_options: Optional["BackendOptions"] = None,
         storage_shape: Optional[Sequence[int]] = None,
@@ -95,6 +97,8 @@ class IsentropicHorizontalDiffusion(TendencyComponent):
             boundary; in units compatible with [s^-1].
         diffusion_damp_depth : int
             Depth of the damping region for the water species.
+        enable_checks : `bool`, optional
+            TODO
         backend : `str`, optional
             The backend.
         backend_options : `BackendOptions`, optional
@@ -112,13 +116,14 @@ class IsentropicHorizontalDiffusion(TendencyComponent):
         super().__init__(
             domain,
             "numerical",
+            enable_checks=enable_checks,
             backend=backend,
             backend_options=backend_options,
+            storage_shape=storage_shape,
             storage_options=storage_options,
             **kwargs
         )
 
-        nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
         dx = self.grid.dx.to_units("m").values.item()
         dy = self.grid.dy.to_units("m").values.item()
         nb = self.horizontal_boundary.nb
@@ -126,11 +131,9 @@ class IsentropicHorizontalDiffusion(TendencyComponent):
         diff_coeff = diffusion_coeff.to_units("s^-1").values.item()
         diff_coeff_max = diffusion_coeff_max.to_units("s^-1").values.item()
 
-        shape = self.get_storage_shape(storage_shape, (nx + 1, ny + 1, nz + 1))
-
         self._core = HorizontalDiffusion.factory(
             diffusion_type,
-            shape,
+            self.storage_shape,
             dx,
             dy,
             diff_coeff,
@@ -159,7 +162,7 @@ class IsentropicHorizontalDiffusion(TendencyComponent):
 
             self._core_moist = HorizontalDiffusion.factory(
                 diffusion_type,
-                shape,
+                self.storage_shape,
                 dx,
                 dy,
                 diff_moist_coeff,
@@ -173,16 +176,8 @@ class IsentropicHorizontalDiffusion(TendencyComponent):
         else:
             self._core_moist = None
 
-        self._s_tnd = self.zeros(shape=shape)
-        self._su_tnd = self.zeros(shape=shape)
-        self._sv_tnd = self.zeros(shape=shape)
-        if self._moist:
-            self._qv_tnd = self.zeros(shape=shape)
-            self._qc_tnd = self.zeros(shape=shape)
-            self._qr_tnd = self.zeros(shape=shape)
-
     @property
-    def input_properties(self) -> ty.PropertiesDict:
+    def input_properties(self) -> "PropertyDict":
         dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])
 
         return_dict = {
@@ -205,7 +200,7 @@ class IsentropicHorizontalDiffusion(TendencyComponent):
         return return_dict
 
     @property
-    def tendency_properties(self) -> ty.PropertiesDict:
+    def tendency_properties(self) -> "PropertyDict":
         dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])
 
         return_dict = {
@@ -231,37 +226,45 @@ class IsentropicHorizontalDiffusion(TendencyComponent):
         return return_dict
 
     @property
-    def diagnostic_properties(self) -> ty.PropertiesDict:
+    def diagnostic_properties(self) -> "PropertyDict":
         return {}
 
     def array_call(
-        self, state: ty.StorageDict
-    ) -> Tuple[ty.StorageDict, ty.StorageDict]:
-        in_s = state["air_isentropic_density"]
-        in_su = state["x_momentum_isentropic"]
-        in_sv = state["y_momentum_isentropic"]
-
-        self._core(in_s, self._s_tnd)
-        self._core(in_su, self._su_tnd)
-        self._core(in_sv, self._sv_tnd)
-
-        return_dict = {
-            "air_isentropic_density": self._s_tnd,
-            "x_momentum_isentropic": self._su_tnd,
-            "y_momentum_isentropic": self._sv_tnd,
-        }
+        self,
+        state: "NDArrayLikeDict",
+        out_tendencies: "NDArrayLikeDict",
+        out_diagnostics: "NDArrayLikeDict",
+        overwrite_tendencies: Dict[str, bool],
+    ) -> None:
+        self._core(
+            state["air_isentropic_density"],
+            out_tendencies["air_isentropic_density"],
+            overwrite_output=overwrite_tendencies["air_isentropic_density"],
+        )
+        self._core(
+            state["x_momentum_isentropic"],
+            out_tendencies["x_momentum_isentropic"],
+            overwrite_output=overwrite_tendencies["x_momentum_isentropic"],
+        )
+        self._core(
+            state["y_momentum_isentropic"],
+            out_tendencies["y_momentum_isentropic"],
+            overwrite_output=overwrite_tendencies["y_momentum_isentropic"],
+        )
 
         if self._moist:
-            in_qv = state[mfwv]
-            in_qc = state[mfcw]
-            in_qr = state[mfpw]
-
-            self._core_moist(in_qv, self._qv_tnd)
-            self._core_moist(in_qc, self._qc_tnd)
-            self._core_moist(in_qr, self._qr_tnd)
-
-            return_dict[mfwv] = self._qv_tnd
-            return_dict[mfcw] = self._qc_tnd
-            return_dict[mfpw] = self._qr_tnd
-
-        return return_dict, {}
+            self._core_moist(
+                state[mfwv],
+                out_tendencies[mfwv],
+                overwrite_output=overwrite_tendencies[mfwv],
+            )
+            self._core_moist(
+                state[mfcw],
+                out_tendencies[mfcw],
+                overwrite_output=overwrite_tendencies[mfcw],
+            )
+            self._core_moist(
+                state[mfpw],
+                out_tendencies[mfpw],
+                overwrite_output=overwrite_tendencies[mfpw],
+            )

@@ -20,14 +20,24 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from tasmania.python.isentropic.dynamics.horizontal_fluxes import (
-    IsentropicNonconservativeHorizontalFlux,
-)
-from tasmania.python.utils.framework_utils import register
+from sympl._core.units import clean_units
 
 
-@register(name="centered")
-class Centered(IsentropicNonconservativeHorizontalFlux):
-    @staticmethod
-    def __call__(dt, dx, dy, s, u, v, mtg, qv=None, qc=None, qr=None):
-        raise NotImplementedError()
+class CouplingError(Exception):
+    pass
+
+
+class IncompatibleDimensionsError(Exception):
+    def __init__(self, dim1, dim2):
+        super().__init__(
+            f"Dimensions ({', '.join(dim1)}) and ({', '.join(dim2)}) "
+            f"are not compatible."
+        )
+
+
+class IncompatibleUnitsError(Exception):
+    def __init__(self, unit1, unit2):
+        super().__init__(
+            f"Units [{clean_units(unit1)}] and [{clean_units(unit2)}] "
+            f"are not compatible."
+        )

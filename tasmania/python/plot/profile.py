@@ -28,7 +28,7 @@ from tasmania.python.plot.drawer import Drawer
 from tasmania.python.plot.plot_utils import make_lineplot
 from tasmania.python.plot.retrievers import DataRetriever
 from tasmania.python.plot.utils import to_units
-from tasmania.python.utils import typing
+from tasmania.python.utils import typingx
 
 if TYPE_CHECKING:
     from tasmania.python.domain.grid import Grid
@@ -56,7 +56,7 @@ class LineProfile(Drawer):
         axis_x: Optional[int] = None,
         axis_y: Optional[int] = None,
         axis_z: Optional[int] = None,
-        properties: Optional[typing.options_dict_t] = None,
+        properties: Optional[typingx.options_dict_t] = None,
     ) -> None:
         """
         Parameters
@@ -164,7 +164,7 @@ class LineProfile(Drawer):
 
     def __call__(
         self,
-        state: typing.DataArrayDict,
+        state: typingx.DataArrayDict,
         fig: Optional[plt.Figure] = None,
         ax: Optional[plt.Axes] = None,
     ) -> Tuple[np.ndarray, np.ndarray]:
@@ -194,7 +194,7 @@ def make_xplot(
     grid: "Grid",
     axis_units: str,
     field_retriever: DataRetriever,
-    state: typing.DataArrayDict,
+    state: typingx.DataArrayDict,
     ax: Optional[plt.Axes] = None,
     **kwargs
 ) -> Tuple[np.ndarray, np.ndarray]:
@@ -215,7 +215,7 @@ def make_yplot(
     grid: "Grid",
     axis_units: str,
     field_retriever: DataRetriever,
-    state: typing.DataArrayDict,
+    state: typingx.DataArrayDict,
     ax: Optional[plt.Axes] = None,
     **kwargs
 ) -> Tuple[np.ndarray, np.ndarray]:
@@ -236,7 +236,7 @@ def make_zplot(
     grid: "Grid",
     axis_units: str,
     field_retriever: DataRetriever,
-    state: typing.DataArrayDict,
+    state: typingx.DataArrayDict,
     ax: Optional[plt.Axes] = None,
     **kwargs
 ) -> Tuple[np.ndarray, np.ndarray]:
@@ -256,7 +256,7 @@ def make_zplot(
 def make_hplot(
     axis_retriever: DataRetriever,
     field_retriever: DataRetriever,
-    state: typing.DataArrayDict,
+    state: typingx.DataArrayDict,
     ax: Optional[plt.Axes] = None,
     **kwargs
 ) -> Tuple[np.ndarray, np.ndarray]:

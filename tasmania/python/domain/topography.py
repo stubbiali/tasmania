@@ -29,7 +29,7 @@ from typing import Any, Dict, Optional, TYPE_CHECKING
 
 from tasmania.python.domain.horizontal_grid import NumericalHorizontalGrid
 from tasmania.python.framework.register import factorize
-from tasmania.python.utils import typing as ty
+from tasmania.python.utils import typingx as ty
 from tasmania.python.utils.storage import get_dataarray_2d
 from tasmania.python.utils.utils import smaller_than as lt
 

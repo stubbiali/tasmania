@@ -23,15 +23,19 @@
 import abc
 from typing import Any, Dict, Optional, Sequence, TYPE_CHECKING, Type, Union
 
+from sympl._core.factory import AbstractFactory
+
 from tasmania.python.framework.base_components import (
     DomainComponent,
     GridComponent,
 )
 from tasmania.python.framework.register import factorize
 from tasmania.python.framework.stencil import StencilFactory
-from tasmania.python.utils import typing as ty
+from tasmania.python.utils import typingx as ty
 
 if TYPE_CHECKING:
+    from sympl._core.typingx import NDArrayLikeDict
+
     from tasmania.python.domain.domain import Domain
     from tasmania.python.framework.options import (
         BackendOptions,
@@ -41,6 +45,7 @@ if TYPE_CHECKING:
         IsentropicHorizontalFlux,
         IsentropicMinimalHorizontalFlux,
     )
+    from tasmania.python.utils.typingx import TimeDelta
 
 # convenient aliases
 mfwv = "mass_fraction_of_water_vapor_in_air"
@@ -48,7 +53,7 @@ mfcw = "mass_fraction_of_cloud_liquid_water_in_air"
 mfpw = "mass_fraction_of_precipitation_water_in_air"
 
 
-class IsentropicPrognostic(DomainComponent, StencilFactory, abc.ABC):
+class IsentropicPrognostic(AbstractFactory, DomainComponent, StencilFactory):
     """
     Abstract base class whose derived classes implement different
     schemes to carry out the prognostic steps of the three-dimensional
@@ -58,8 +63,6 @@ class IsentropicPrognostic(DomainComponent, StencilFactory, abc.ABC):
     the sedimentation motion are not included in the dynamics, but rather
     parameterized. The conservative form of the governing equations is used.
     """
-
-    registry: Dict[str, "IsentropicPrognostic"] = {}
 
     def __init__(
         self,
@@ -120,34 +123,19 @@ class IsentropicPrognostic(DomainComponent, StencilFactory, abc.ABC):
         )
         hb = self.horizontal_boundary
         assert hb.nb >= self._hflux.extent, (
-            "The number of lateral boundary layers is {}, but should be "
-            "greater or equal than {}.".format(hb.nb, self._hflux.extent)
+            f"The number of lateral boundary layers is {hb.nb}, but should be "
+            f"greater or equal than {self._hflux.extent}."
         )
         assert g.nx >= 2 * hb.nb + 1, (
-            "The number of grid points along the first horizontal "
-            "dimension is {}, but should be greater or equal than {}.".format(
-                g.nx, 2 * hb.nb + 1
-            )
+            f"The number of grid points along the first horizontal "
+            f"dimension is {g.nx}, but should be greater or equal than "
+            f"{2 * hb.nb + 1}."
         )
         assert g.ny >= 2 * hb.nb + 1, (
-            "The number of grid points along the second horizontal "
-            "dimension is {}, but should be greater or equal than {}.".format(
-                g.ny, 2 * hb.nb + 1
-            )
+            f"The number of grid points along the second horizontal "
+            f"dimension is {g.ny}, but should be greater or equal than "
+            f"{2 * hb.nb + 1}."
         )
-
-        # allocate the storages collecting the output fields computed by
-        # the underlying stencils
-        self._stencils_allocate_outputs()
-
-        # initialize the pointers to the storages collecting the physics
-        # tendencies
-        self._s_tnd = None
-        self._su_tnd = None
-        self._sv_tnd = None
-        self._qv_tnd = None
-        self._qc_tnd = None
-        self._qr_tnd = None
 
     @property
     @abc.abstractmethod
@@ -169,10 +157,11 @@ class IsentropicPrognostic(DomainComponent, StencilFactory, abc.ABC):
     def stage_call(
         self,
         stage: int,
-        timestep: ty.TimeDelta,
-        state: ty.StorageDict,
-        tendencies: Optional[ty.StorageDict] = None,
-    ) -> ty.StorageDict:
+        timestep: "TimeDelta",
+        state: "NDArrayLikeDict",
+        tendencies: "NDArrayLikeDict",
+        out_state: "NDArrayLikeDict",
+    ) -> None:
         """
         Perform a stage.
 
@@ -186,83 +175,10 @@ class IsentropicPrognostic(DomainComponent, StencilFactory, abc.ABC):
             The (raw) state at the current stage.
         tendencies : dict[str, array-like]
             The (raw) tendencies for the prognostic model variables.
-
-        Return
-        ------
-        dict[str, array-like] :
+        out_state : dict[str, array-like]
             The (raw) state at the next stage.
         """
         pass
 
-    @staticmethod
-    def factory(
-        time_integration_scheme: str,
-        horizontal_flux_scheme: str,
-        domain: "Domain",
-        moist: bool = False,
-        *,
-        backend: str = "numpy",
-        backend_options: Optional["BackendOptions"] = None,
-        storage_shape: Optional[Sequence[int]] = None,
-        storage_options: Optional["StorageOptions"] = None,
-        **kwargs: Any
-    ) -> "IsentropicPrognostic":
-        """
-        Static method returning an instance of the derived class implementing
-        the time stepping scheme specified by `time_scheme`.
-
-        Parameters
-        ----------
-        time_integration_scheme : str
-            The time stepping method to implement.
-        horizontal_flux_scheme : str
-            The numerical horizontal flux scheme to implement.
-            See :class:`~tasmania.IsentropicHorizontalFlux` and
-            :class:`~tasmania.IsentropicMinimalHorizontalFlux`
-            for the complete list of the available options.
-        domain : tasmania.Domain
-            The underlying domain.
-        moist : `bool`, optional
-            ``True`` for a moist dynamical core, ``False`` otherwise.
-            Defaults to ``False``.
-        backend : `str`, optional
-            The backend.
-        backend_options : `BackendOptions`, optional
-            Backend-specific options.
-        storage_shape : `Sequence[int]`, optional
-            The shape of the storages allocated within the class.
-        storage_options : `StorageOptions`, optional
-            Storage-related options.
-
-        Return
-        ------
-        obj :
-            An instance of the derived class implementing
-            ``time_integration_scheme``.
-        """
-        args = (
-            horizontal_flux_scheme,
-            domain,
-            moist,
-            backend,
-            backend_options,
-            storage_shape,
-            storage_options,
-        )
-        return factorize(
-            time_integration_scheme, IsentropicPrognostic, args, kwargs
-        )
-
-    def _stencils_allocate_outputs(self) -> None:
-        """
-        Allocate the storages which collect the output fields calculated
-        by the underlying stencils.
-        """
-        shape = self._storage_shape
-        self._s_new = self.zeros(shape=shape)
-        self._su_new = self.zeros(shape=shape)
-        self._sv_new = self.zeros(shape=shape)
-        if self._moist:
-            self._sqv_new = self.zeros(shape=shape)
-            self._sqc_new = self.zeros(shape=shape)
-            self._sqr_new = self.zeros(shape=shape)
+    def _stencils_allocate_temporaries(self) -> None:
+        pass

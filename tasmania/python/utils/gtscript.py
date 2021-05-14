@@ -25,10 +25,10 @@ from typing import Callable
 from gt4py import gtscript
 from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval
 
-from tasmania.python.utils import typing
+from tasmania.python.utils import typingx
 
 
-def set_annotations(func_handle: Callable, dtype: typing.dtype_t) -> Callable:
+def set_annotations(func_handle: Callable, dtype: typingx.dtype_t) -> Callable:
     annotations = getattr(func_handle, "__annotations__", {})
     for arg in annotations:
         if isinstance(annotations[arg], gtscript._FieldDescriptor):
@@ -37,17 +37,17 @@ def set_annotations(func_handle: Callable, dtype: typing.dtype_t) -> Callable:
 
 
 @gtscript.function
-def absolute(phi: typing.gtfield_t) -> typing.gtfield_t:
+def absolute(phi: typingx.GTField) -> typingx.GTField:
     return phi if phi > 0 else -phi
 
 
 @gtscript.function
-def positive(phi: typing.gtfield_t) -> typing.gtfield_t:
+def positive(phi: typingx.GTField) -> typingx.GTField:
     return phi if phi > 0 else 0
 
 
 @gtscript.function
-def negative(phi: typing.gtfield_t) -> typing.gtfield_t:
+def negative(phi: typingx.GTField) -> typingx.GTField:
     return -phi if phi < 0 else 0
 
 

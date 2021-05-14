@@ -33,14 +33,16 @@ from tasmania.python.framework.base_components import (
 )
 from tasmania.python.framework.stencil import StencilFactory
 from tasmania.python.framework.tag import stencil_definition
-from tasmania.python.utils import typing as ty
 
 if TYPE_CHECKING:
+    from sympl._core.typingx import NDArrayLike
+
     from tasmania.python.domain.grid import Grid
     from tasmania.python.framework.options import (
         BackendOptions,
         StorageOptions,
     )
+    from tasmania.python.utils.typingx import TripletInt
 
 
 class IsentropicDiagnostics(
@@ -148,12 +150,12 @@ class IsentropicDiagnostics(
 
     def get_diagnostic_variables(
         self,
-        s: ty.Storage,
+        s: "NDArrayLike",
         pt: float,
-        p: ty.Storage,
-        exn: ty.Storage,
-        mtg: ty.Storage,
-        h: ty.Storage,
+        p: "NDArrayLike",
+        exn: "NDArrayLike",
+        mtg: "NDArrayLike",
+        h: "NDArrayLike",
     ) -> None:
         """
         With the help of the isentropic density and the upper boundary
@@ -180,12 +182,12 @@ class IsentropicDiagnostics(
             in units of [m].
         """
         # shortcuts
-        nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
-        dz = self._grid.dz.to_units("K").values.item()
+        nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
+        dz = self.grid.dz.to_units("K").values.item()
 
         # set the topography
         self._topo[:nx, :ny, nz] = self.as_storage(
-            data=self._grid.topography.profile.to_units("m").values
+            data=self.grid.topography.profile.to_units("m").values
         )
 
         # retrieve all the diagnostic variables
@@ -206,7 +208,7 @@ class IsentropicDiagnostics(
         )
 
     def get_montgomery_potential(
-        self, s: ty.Storage, pt: float, mtg: ty.Storage
+        self, s: "NDArrayLike", pt: float, mtg: "NDArrayLike"
     ) -> None:
         """
         With the help of the isentropic density and the upper boundary
@@ -224,13 +226,13 @@ class IsentropicDiagnostics(
             The buffer for the Montgomery potential, in units of [J kg^-1].
         """
         # shortcuts
-        nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
-        dz = self._grid.dz.to_units("K").values.item()
-        theta_s = self._grid.z_on_interface_levels.to_units("K").values[-1]
+        nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
+        dz = self.grid.dz.to_units("K").values.item()
+        theta_s = self.grid.z_on_interface_levels.to_units("K").values[-1]
 
         # set the topography
         self._topo[:nx, :ny, nz] = self.as_storage(
-            data=self._grid.topography.profile.to_units("m").values
+            data=self.grid.topography.profile.to_units("m").values
         )
 
         # run the stencil
@@ -247,7 +249,9 @@ class IsentropicDiagnostics(
             validate_args=self.backend_options.validate_args,
         )
 
-    def get_height(self, s: ty.Storage, pt: float, h: ty.Storage) -> None:
+    def get_height(
+        self, s: "NDArrayLike", pt: float, h: "NDArrayLike"
+    ) -> None:
         """
         With the help of the isentropic density and the upper boundary
         condition on the pressure distribution, diagnose the geometric
@@ -265,12 +269,12 @@ class IsentropicDiagnostics(
             in units of [m].
         """
         # shortcuts
-        nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
-        dz = self._grid.dz.to_units("K").values.item()
+        nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
+        dz = self.grid.dz.to_units("K").values.item()
 
         # set the topography
         self._topo[:nx, :ny, nz] = self.as_storage(
-            data=self._grid.topography.profile.to_units("m").values
+            data=self.grid.topography.profile.to_units("m").values
         )
 
         # run the stencil
@@ -289,11 +293,11 @@ class IsentropicDiagnostics(
 
     def get_density_and_temperature(
         self,
-        s: ty.Storage,
-        exn: ty.Storage,
-        h: ty.Storage,
-        rho: ty.Storage,
-        t: ty.Storage,
+        s: "NDArrayLike",
+        exn: "NDArrayLike",
+        h: "NDArrayLike",
+        rho: "NDArrayLike",
+        t: "NDArrayLike",
     ) -> None:
         """
         With the help of the isentropic density and the geometric height
@@ -314,7 +318,7 @@ class IsentropicDiagnostics(
             The buffer for the air temperature, in units of [K].
         """
         # shortcuts
-        nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
+        nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
 
         # run the stencil
         self._stencil_density_and_temperature(
@@ -345,8 +349,8 @@ class IsentropicDiagnostics(
         *,
         dz: float,
         pt: float,
-        origin: ty.TripletInt,
-        domain: ty.TripletInt
+        origin: "TripletInt",
+        domain: "TripletInt"
     ) -> None:
         i = slice(origin[0], origin[0] + domain[0])
         j = slice(origin[1], origin[1] + domain[1])
@@ -446,8 +450,8 @@ class IsentropicDiagnostics(
         dz: float,
         pt: float,
         theta_s: float,
-        origin: ty.TripletInt,
-        domain: ty.TripletInt
+        origin: "TripletInt",
+        domain: "TripletInt"
     ) -> None:
         i = slice(origin[0], origin[0] + domain[0])
         j = slice(origin[1], origin[1] + domain[1])
@@ -510,8 +514,8 @@ class IsentropicDiagnostics(
         *,
         dz: float,
         pt: float,
-        origin: ty.TripletInt,
-        domain: ty.TripletInt
+        origin: "TripletInt",
+        domain: "TripletInt"
     ) -> None:
         i = slice(origin[0], origin[0] + domain[0])
         j = slice(origin[1], origin[1] + domain[1])
@@ -584,8 +588,8 @@ class IsentropicDiagnostics(
         out_rho: np.ndarray,
         out_t: np.ndarray,
         *,
-        origin: ty.TripletInt,
-        domain: ty.TripletInt,
+        origin: "TripletInt",
+        domain: "TripletInt",
     ) -> None:
         i = slice(origin[0], origin[0] + domain[0])
         j = slice(origin[1], origin[1] + domain[1])

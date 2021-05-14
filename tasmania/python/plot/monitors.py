@@ -33,7 +33,7 @@ from tasmania.python.plot.plot_utils import (
     set_figure_properties,
 )
 from tasmania.python.plot.utils import assert_sequence
-from tasmania.python.utils import typing
+from tasmania.python.utils import typingx
 
 
 SequenceType = (tuple, list)
@@ -41,10 +41,10 @@ SequenceType = (tuple, list)
 
 def get_time(
     states: Union[
-        Sequence[typing.DataArrayDict],
-        Sequence[Sequence[typing.DataArrayDict]],
+        Sequence[typingx.DataArrayDict],
+        Sequence[Sequence[typingx.DataArrayDict]],
     ]
-) -> typing.Datetime:
+) -> typingx.Datetime:
     for level0 in states:
         if isinstance(level0, dict):  # level0 is a state dictionary
             if "time" in level0:
@@ -88,9 +88,9 @@ class Plot(Monitor):
         *drawers: Drawer,
         interactive: bool = True,
         print_time: Optional[str] = None,
-        init_time: Optional[typing.Datetime] = None,
-        figure_properties: Optional[typing.options_dict_t] = None,
-        axes_properties: Optional[typing.options_dict_t] = None
+        init_time: Optional[typingx.Datetime] = None,
+        figure_properties: Optional[typingx.options_dict_t] = None,
+        axes_properties: Optional[typingx.options_dict_t] = None
     ) -> None:
         """
         Parameters
@@ -164,7 +164,7 @@ class Plot(Monitor):
 
     def store(
         self,
-        *states: typing.DataArrayDict,
+        *states: typingx.DataArrayDict,
         fig: Optional[plt.Figure] = None,
         ax: Optional[plt.Axes] = None,
         save_dest: Optional[str] = None,
@@ -314,8 +314,8 @@ class PlotComposite:
         ncols: int = 1,
         interactive: bool = True,
         print_time: Optional[str] = None,
-        init_time: Optional[typing.Datetime] = None,
-        figure_properties: Optional[typing.options_dict_t] = None
+        init_time: Optional[typingx.Datetime] = None,
+        figure_properties: Optional[typingx.options_dict_t] = None
     ) -> None:
         """
         Parameters
@@ -415,12 +415,12 @@ class PlotComposite:
 
     def store(
         self,
-        *states: Union[typing.DataArrayDict, Sequence[typing.DataArrayDict]],
+        *states: Union[typingx.DataArrayDict, Sequence[typingx.DataArrayDict]],
         fig: Optional[plt.Figure] = None,
         save_dest: Optional[str] = None,
         show: bool = False
     ) -> plt.Figure:
-        """ Use the input states to update the plot.
+        """Use the input states to update the plot.
 
         Parameters
         ----------

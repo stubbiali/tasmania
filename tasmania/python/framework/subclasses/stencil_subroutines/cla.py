@@ -26,7 +26,7 @@ from typing import Optional, Tuple, Union
 from tasmania.third_party import cupy, gt4py
 
 from tasmania.python.framework.stencil import stencil_subroutine
-from tasmania.python.utils import typing
+from tasmania.python.utils import typingx
 
 
 @stencil_subroutine.register(backend="numpy", stencil="thomas")
@@ -117,8 +117,8 @@ if gt4py:
     @stencil_subroutine.register(backend="gt4py*", stencil="setup_thomas")
     @gtscript.function
     def setup_tridiagonal_system_gt4py(
-        gamma: float, w: typing.gtfield_t, phi: typing.gtfield_t
-    ) -> "Tuple[typing.gtfield_t, typing.gtfield_t, typing.gtfield_t]":
+        gamma: float, w: typingx.GTField, phi: typingx.GTField
+    ) -> "Tuple[typingx.GTField, typingx.GTField, typingx.GTField]":
         a = gamma * w[0, 0, -1]
         c = -gamma * w[0, 0, 1]
         d = phi[0, 0, 0] - gamma * (
@@ -129,8 +129,8 @@ if gt4py:
     @stencil_subroutine.register(backend="gt4py*", stencil="setup_thomas_bc")
     @gtscript.function
     def setup_tridiagonal_system_bc_gt4py(
-        phi: typing.gtfield_t,
-    ) -> "Tuple[typing.gtfield_t, typing.gtfield_t, typing.gtfield_t]":
+        phi: typingx.GTField,
+    ) -> "Tuple[typingx.GTField, typingx.GTField, typingx.GTField]":
         a = 0.0
         c = 0.0
         d = phi[0, 0, 0]

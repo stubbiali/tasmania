@@ -27,18 +27,16 @@ from sympl import (
     ImplicitTendencyComponent,
     ImplicitTendencyComponentComposite,
 )
-from sympl._core.base_components import (
-    InputChecker,
-    DiagnosticChecker,
-    OutputChecker,
+from sympl._core.dynamic_checkers import (
+    InflowComponentChecker,
+    OutflowComponentChecker,
 )
 from sympl._core.units import clean_units
 from typing import Optional, TYPE_CHECKING, Tuple
 
 from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
-from tasmania.python.framework.fakes import FakeComponent
 from tasmania.python.framework.register import factorize
-from tasmania.python.utils import typing as ty
+from tasmania.python.utils import typingx as ty
 from tasmania.python.utils.dict import DataArrayDictOperator
 from tasmania.python.utils.framework import check_property_compatibility
 from tasmania.python.utils.storage import deepcopy_dataarray
@@ -126,12 +124,18 @@ class STSTendencyStepper(abc.ABC):
         self.diagnostic_properties = self._get_diagnostic_properties()
         self.output_properties = self._get_output_properties()
 
-        self._input_checker = InputChecker(self)
-        self._provisional_input_checker = InputChecker(
-            FakeComponent(self, "provisional_input_properties")
+        self._input_checker = InflowComponentChecker.factory(
+            "input_properties", self
         )
-        self._diagnostic_checker = DiagnosticChecker(self)
-        self._output_checker = OutputChecker(self)
+        self._provisional_input_checker = InflowComponentChecker.factory(
+            "provisional_input_properties", self
+        )
+        self._diagnostic_checker = OutflowComponentChecker.factory(
+            "diagnostic_properties", self
+        )
+        self._output_checker = OutflowComponentChecker.factory(
+            "output_properties", self
+        )
 
         enforce_hb = enforce_horizontal_boundary
         if enforce_hb:
@@ -280,18 +284,24 @@ class STSTendencyStepper(abc.ABC):
         out_state : dict[str, sympl.DataArray]
             The output (stepped) state.
         """
-        self._input_checker.check_inputs(state)
-        self._provisional_input_checker.check_inputs(prv_state)
+        self._input_checker.check(state)
+        self._provisional_input_checker.check(prv_state)
 
         diagnostics, out_state = self._call(state, prv_state, timestep)
 
-        self._diagnostic_checker.check_diagnostics(
-            {key: val for key, val in diagnostics.items() if key != "time"}
+        self._diagnostic_checker.check(
+            {
+                key: val.data
+                for key, val in diagnostics.items()
+                if key != "time"
+            },
+            state,
         )
         diagnostics["time"] = state["time"]
 
-        self._output_checker.check_outputs(
-            {key: val for key, val in out_state.items() if key != "time"}
+        self._output_checker.check(
+            {key: val.data for key, val in out_state.items() if key != "time"},
+            state,
         )
         out_state["time"] = state["time"] + timestep
 

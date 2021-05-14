@@ -53,10 +53,10 @@ def get_upwind_flux_y_gt4py(v, phi):
     return flux
 
 
-@register(name="upwind")
 class Upwind(IsentropicHorizontalFlux):
     """Upwind scheme."""
 
+    name = "upwind"
     extent = 1
     order = 1
     externals = {

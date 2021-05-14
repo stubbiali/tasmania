@@ -23,30 +23,31 @@
 import abc
 import math
 import numpy as np
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING
+
+from sympl._core.factory import AbstractFactory
 
 from gt4py import gtscript
 
-from tasmania.python.framework.register import factorize
 from tasmania.python.framework.stencil import StencilFactory
 from tasmania.python.framework.tag import stencil_definition
-from tasmania.python.utils import typing as ty
 
 if TYPE_CHECKING:
+    from sympl._core.typingx import NDArrayLike
+
     from tasmania.python.framework.options import (
         BackendOptions,
         StorageOptions,
     )
+    from tasmania.python.utils.typingx import TripletInt
 
 
-class HorizontalSmoothing(StencilFactory, abc.ABC):
+class HorizontalSmoothing(AbstractFactory, StencilFactory):
     """Apply horizontal numerical smoothing to a generic (prognostic) field."""
-
-    registry = {}
 
     def __init__(
         self: "HorizontalSmoothing",
-        shape: ty.TripletInt,
+        shape: "TripletInt",
         smooth_coeff: float,
         smooth_coeff_max: float,
         smooth_damp_depth: int,
@@ -78,7 +79,6 @@ class HorizontalSmoothing(StencilFactory, abc.ABC):
         super().__init__(backend, backend_options, storage_options)
 
         # store input arguments needed at run-time
-        self._backend = backend
         self._shape = shape
         self._nb = nb
 
@@ -106,7 +106,7 @@ class HorizontalSmoothing(StencilFactory, abc.ABC):
         self._stencil_copy = self.compile("copy")
 
     @abc.abstractmethod
-    def __call__(self, phi: ty.Storage, phi_out: ty.Storage) -> None:
+    def __call__(self, phi: "NDArrayLike", phi_out: "NDArrayLike") -> None:
         """Apply horizontal smoothing to a prognostic field.
 
         Parameters
@@ -119,71 +119,6 @@ class HorizontalSmoothing(StencilFactory, abc.ABC):
         pass
 
     @staticmethod
-    def factory(
-        smooth_type: str,
-        shape: ty.TripletInt,
-        smooth_coeff: float,
-        smooth_coeff_max: float,
-        smooth_damp_depth: int,
-        nb: Optional[int] = None,
-        *,
-        backend: str = "numpy",
-        backend_options: Optional["BackendOptions"] = None,
-        storage_options: Optional["StorageOptions"] = None
-    ) -> "HorizontalSmoothing":
-        """Get an instance of a registered derived class.
-
-        Parameters
-        ----------
-        smooth_type : str
-            String specifying the smoothing technique to implement. Either:
-
-            * 'first_order';
-            * 'first_order_1dx';
-            * 'first_order_1dy';
-            * 'second_order';
-            * 'second_order_1dx';
-            * 'second_order_1dy';
-            * 'third_order';
-            * 'third_order_1dx';
-            * 'third_order_1dy'.
-
-        shape : tuple[int]
-            Shape of the 3-D arrays which should be filtered.
-        smooth_coeff : float
-            Value for the smoothing coefficient far from the top boundary.
-        smooth_coeff_max : float
-            Maximum value for the smoothing coefficient.
-        smooth_damp_depth : int
-            Depth of, i.e., number of vertical regions in the damping region.
-        nb : `int`, optional
-            Number of boundary layers.
-        backend : `str`, optional
-            The backend.
-        backend_options : `BackendOptions`, optional
-            Backend-specific options.
-        storage_options : `StorageOptions`, optional
-            Storage-related options.
-
-        Return
-        ------
-        obj :
-            Instance of the suitable derived class.
-        """
-        args = (
-            shape,
-            smooth_coeff,
-            smooth_coeff_max,
-            smooth_damp_depth,
-            nb,
-            backend,
-            backend_options,
-            storage_options,
-        )
-        obj = factorize(smooth_type, HorizontalSmoothing, args)
-        return obj
-
-    @staticmethod
     @stencil_definition(backend=("numpy", "cupy"), stencil="smoothing")
     @abc.abstractmethod
     def _smoothing_numpy(
@@ -191,8 +126,8 @@ class HorizontalSmoothing(StencilFactory, abc.ABC):
         in_gamma: np.ndarray,
         out_phi: np.ndarray,
         *,
-        origin: ty.TripletInt,
-        domain: ty.TripletInt
+        origin: "TripletInt",
+        domain: "TripletInt"
     ) -> None:
         pass
 

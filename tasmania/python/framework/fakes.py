@@ -22,8 +22,8 @@
 #
 from typing import TYPE_CHECKING, Tuple
 
-from tasmania.python.framework.base_components import TendencyComponent
-from tasmania.python.utils import typing as ty
+from tasmania.python.framework.core_components import TendencyComponent
+from tasmania.python.utils import typingx as ty
 
 if TYPE_CHECKING:
     from tasmania.python.domain.domain import Domain

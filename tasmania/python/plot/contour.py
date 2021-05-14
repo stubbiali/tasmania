@@ -28,7 +28,7 @@ from tasmania.python.plot.drawer import Drawer
 from tasmania.python.plot.plot_utils import make_contour
 from tasmania.python.plot.retrievers import DataRetriever
 from tasmania.python.plot.utils import to_units
-from tasmania.python.utils import typing
+from tasmania.python.utils import typingx
 
 if TYPE_CHECKING:
     from tasmania.python.domain.grid import Grid
@@ -60,7 +60,7 @@ class Contour(Drawer):
         zaxis_units: Optional[str] = None,
         zaxis_x: Optional[int] = None,
         zaxis_y: Optional[int] = None,
-        properties: Optional[typing.options_dict_t] = None,
+        properties: Optional[typingx.options_dict_t] = None,
     ) -> None:
         """
         Parameters
@@ -245,7 +245,7 @@ class Contour(Drawer):
                     )
 
     def __call__(
-        self, state: typing.DataArrayDict, fig: plt.Figure, ax: plt.Axes
+        self, state: typingx.DataArrayDict, fig: plt.Figure, ax: plt.Axes
     ) -> None:
         """
         Call operator generating the contour plot.
@@ -258,7 +258,7 @@ def make_contour_xy(
     xaxis_units: str,
     yaxis_units: str,
     field_retriever: DataRetriever,
-    state: typing.DataArrayDict,
+    state: typingx.DataArrayDict,
     ax: plt.Axes,
     **kwargs
 ) -> None:
@@ -285,7 +285,7 @@ def make_contour_xz(
     xaxis_units: str,
     zaxis_units: str,
     field_retriever: DataRetriever,
-    state: typing.DataArrayDict,
+    state: typingx.DataArrayDict,
     ax: plt.Axes,
     **kwargs
 ) -> None:
@@ -312,7 +312,7 @@ def make_contour_xh(
     xaxis_units: str,
     zaxis_retriever: DataRetriever,
     field_retriever: DataRetriever,
-    state: typing.DataArrayDict,
+    state: typingx.DataArrayDict,
     ax: plt.Axes,
     **kwargs
 ) -> None:
@@ -347,7 +347,7 @@ def make_contour_yz(
     yaxis_units: str,
     zaxis_units: str,
     field_retriever: DataRetriever,
-    state: typing.DataArrayDict,
+    state: typingx.DataArrayDict,
     ax: plt.Axes,
     **kwargs
 ):
@@ -374,7 +374,7 @@ def make_contour_yh(
     yaxis_units: str,
     zaxis_retriever: DataRetriever,
     field_retriever: DataRetriever,
-    state: typing.DataArrayDict,
+    state: typingx.DataArrayDict,
     ax: plt.Axes,
     **kwargs
 ) -> None:

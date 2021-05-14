@@ -25,9 +25,9 @@ from typing import Optional, Sequence, TYPE_CHECKING, Tuple
 
 from gt4py import gtscript
 
-from tasmania.python.framework.base_components import ImplicitTendencyComponent
+from tasmania.python.framework.core_components import ImplicitTendencyComponent
 from tasmania.python.framework.tag import stencil_definition
-from tasmania.python.utils import typing as ty
+from tasmania.python.utils import typingx as ty
 
 if TYPE_CHECKING:
     from tasmania.python.domain.domain import Domain
@@ -100,7 +100,9 @@ class IsentropicImplicitVerticalAdvectionDiagnostic(ImplicitTendencyComponent):
 
         # set the storage shape
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
-        storage_shape = self.get_storage_shape(storage_shape, (nx, ny, nz + 1))
+        storage_shape = self.get_field_storage_shape(
+            storage_shape, (nx, ny, nz + 1)
+        )
 
         # allocate the gstorages collecting the stencil outputs
         self._out_s = self.zeros(shape=storage_shape)
@@ -726,7 +728,9 @@ class IsentropicImplicitVerticalAdvectionPrognostic(ImplicitTendencyComponent):
 
         # set the storage shape
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
-        storage_shape = self.get_storage_shape(storage_shape, (nx, ny, nz + 1))
+        storage_shape = self.get_field_storage_shape(
+            storage_shape, (nx, ny, nz + 1)
+        )
 
         # allocate the storages collecting the stencil outputs
         self._tnd_s = self.zeros(shape=storage_shape)

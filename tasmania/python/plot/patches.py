@@ -31,7 +31,7 @@ from tasmania.python.plot.plot_utils import (
     make_lineplot,
     make_rectangle,
 )
-from tasmania.python.utils import typing
+from tasmania.python.utils import typingx
 
 
 class Annotation(Drawer):
@@ -40,7 +40,7 @@ class Annotation(Drawer):
     """
 
     def __init__(
-        self, properties: Optional[typing.options_dict_t] = None
+        self, properties: Optional[typingx.options_dict_t] = None
     ) -> None:
         """
         Parameters
@@ -53,7 +53,7 @@ class Annotation(Drawer):
         super().__init__(properties)
 
     def __call__(
-        self, state: typing.DataArrayDict, fig: plt.Figure, ax: plt.Axes
+        self, state: typingx.DataArrayDict, fig: plt.Figure, ax: plt.Axes
     ) -> None:
         add_annotation(ax, **self.properties)
 
@@ -63,7 +63,7 @@ class Circle(Drawer):
     Drawer plotting a circle.
     """
 
-    def __init__(self, properties: Optional[typing.options_dict_t] = None):
+    def __init__(self, properties: Optional[typingx.options_dict_t] = None):
         """
         Parameters
         ----------
@@ -75,7 +75,7 @@ class Circle(Drawer):
         super().__init__(properties)
 
     def __call__(
-        self, state: typing.DataArrayDict, fig: plt.Figure, ax: plt.Axes
+        self, state: typingx.DataArrayDict, fig: plt.Figure, ax: plt.Axes
     ) -> None:
         make_circle(ax, **self.properties)
 
@@ -85,7 +85,7 @@ class Rectangle(Drawer):
     Drawer plotting a rectangle.
     """
 
-    def __init__(self, properties: Optional[typing.options_dict_t] = None):
+    def __init__(self, properties: Optional[typingx.options_dict_t] = None):
         """
         Parameters
         ----------
@@ -97,7 +97,7 @@ class Rectangle(Drawer):
         super().__init__(properties)
 
     def __call__(
-        self, state: typing.DataArrayDict, fig: plt.Figure, ax: plt.Axes
+        self, state: typingx.DataArrayDict, fig: plt.Figure, ax: plt.Axes
     ) -> None:
         make_rectangle(ax, **self.properties)
 
@@ -111,7 +111,7 @@ class Segment(Drawer):
         self,
         x: np.ndarray,
         y: np.ndarray,
-        properties: Optional[typing.options_dict_t] = None,
+        properties: Optional[typingx.options_dict_t] = None,
     ) -> None:
         """
         Parameters
@@ -131,7 +131,7 @@ class Segment(Drawer):
         super().__init__(properties)
 
     def __call__(
-        self, state: typing.DataArrayDict, fig: plt.Figure, ax: plt.Axes
+        self, state: typingx.DataArrayDict, fig: plt.Figure, ax: plt.Axes
     ) -> None:
         make_lineplot(
             np.array(self.x), np.array(self.y), ax, **self.properties

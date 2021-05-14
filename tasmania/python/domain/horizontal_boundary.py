@@ -28,7 +28,7 @@ from typing import Any, Dict, Optional, Sequence, TYPE_CHECKING
 from tasmania.python.domain.grid import Grid, NumericalGrid
 from tasmania.python.framework.register import factorize
 from tasmania.python.framework.stencil import StencilFactory
-from tasmania.python.utils import typing as ty
+from tasmania.python.utils import typingx as ty
 from tasmania.python.utils.storage import deepcopy_dataarray
 
 if TYPE_CHECKING:

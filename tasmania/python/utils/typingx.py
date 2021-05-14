@@ -23,15 +23,6 @@
 import datetime as dt
 import numpy as np
 import pandas as pd
-from sympl import (
-    DataArray,
-    DiagnosticComponent,
-    DiagnosticComponentComposite,
-    ImplicitTendencyComponent,
-    ImplicitTendencyComponentComposite,
-    TendencyComponent,
-    TendencyComponentComposite,
-)
 from typing import (
     Any,
     Dict,
@@ -49,15 +40,27 @@ try:
 except ImportError:
     cp = np
 
+from sympl import (
+    DataArray,
+    DiagnosticComponent,
+    DiagnosticComponentComposite,
+    ImplicitTendencyComponent,
+    ImplicitTendencyComponentComposite,
+    TendencyComponent,
+    TendencyComponentComposite,
+)
+from sympl._core.typingx import Component as SymplComponent
+
 from gt4py import gtscript, storage as gt_storage
 
 if TYPE_CHECKING:
     from tasmania.python.framework._base import (
         BaseConcurrentCoupling,
-        BaseDiagnostic2Tendency,
+        BaseFromDiagnosticToTendency,
         BaseDiagnosticComponentComposite,
-        BaseTendency2Diagnostic,
+        BaseFromTendencyToDiagnostic,
     )
+    from tasmania.python.framework.dycore import DynamicalCore
     from tasmania.python.framework.sts_tendency_stepper import (
         STSTendencyStepper,
     )
@@ -81,7 +84,7 @@ DiagnosticComponent = Union[
     "BaseDiagnosticComponentComposite",
 ]
 dtype_t = type
-gtfield_t = gtscript.Field["dtype"]
+GTField = gtscript.Field["dtype"]
 gtstorage_dict_t = Dict[str, Union[TimeDelta, gtstorage_t]]
 mutable_array_dict_t = Dict[str, Union[TimeDelta, array_t]]
 mutable_dataarray_dict_t = Dict[str, Union[TimeDelta, dataarray_t]]
@@ -89,7 +92,9 @@ mutable_gtstorage_dict_t = Dict[str, Union[TimeDelta, gtstorage_t]]
 mutable_options_dict_t = Dict[str, Any]
 options_dict_t = Dict[str, Any]
 PairInt = Tuple[int, int]
-PromoterComponent = Union["BaseDiagnostic2Tendency", "BaseTendency2Diagnostic"]
+PromoterComponent = Union[
+    "BaseFromDiagnosticToTendency", "BaseFromTendencyToDiagnostic"
+]
 properties_mapping_t = Union[Mapping[str, Any], MutableMapping[str, Any]]
 TendencyComponent = Union[
     ImplicitTendencyComponent,
@@ -102,9 +107,5 @@ TripletBool = Union[Tuple[bool, bool, bool], Sequence[bool]]
 TripletInt = Union[Tuple[int, int, int], Sequence[int]]
 
 Component = Union[
-    DiagnosticComponent,
-    PromoterComponent,
-    "STSTendencyStepper",
-    TendencyComponent,
-    "TendencyStepper",
+    "DynamicalCore", PromoterComponent, "STSTendencyStepper", "SymplComponent"
 ]

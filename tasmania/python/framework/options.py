@@ -25,7 +25,16 @@ import numpy as np
 from typing import Any, Mapping, Sequence, TYPE_CHECKING, Type, Union
 
 if TYPE_CHECKING:
-    import sympl
+    from sympl._core.core_components import (
+        DiagnosticComponent,
+        ImplicitTendencyComponent,
+        TendencyComponent,
+    )
+    from sympl._core.composite import (
+        DiagnosticComponentComposite,
+        ImplicitTendencyComponentComposite,
+        TendencyComponentComposite,
+    )
 
     from tasmania.python.framework.concurrent_coupling import (
         ConcurrentCoupling,
@@ -72,12 +81,12 @@ class StorageOptions:
 class TimeIntegrationOptions:
     # mandatory
     component: Union[
-        "sympl.DiagnosticComponent",
-        "sympl.DiagnosticComponentComposite",
-        "sympl.ImplicitTendencyComponent",
-        "sympl.ImplicitTendencyComponentComposite",
-        "sympl.TendencyComponent",
-        "sympl.TendencyComponentComposite",
+        "DiagnosticComponent",
+        "DiagnosticComponentComposite",
+        "ImplicitTendencyComponent",
+        "ImplicitTendencyComponentComposite",
+        "TendencyComponent",
+        "TendencyComponentComposite",
         "ConcurrentCoupling",
     ] = None
 

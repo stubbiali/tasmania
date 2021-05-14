@@ -25,5 +25,4 @@ from tasmania.python.isentropic.dynamics.subclasses import (
     minimal_horizontal_fluxes,
     minimal_vertical_fluxes,
     prognostics,
-    vertical_fluxes,
 )

@@ -22,15 +22,14 @@
 #
 from gt4py import gtscript
 
-from tasmania.python.framework.register import register
 from tasmania.python.framework.tag import stencil_subroutine
 from tasmania.python.physics.microphysics.utils import SedimentationFlux
 
 
-@register(name="first_order_upwind")
 class FirstOrderUpwind(SedimentationFlux):
-    """ The standard, first-order accurate upwind method. """
+    """The standard, first-order accurate upwind method."""
 
+    name = "first_order_upwind"
     nb = 1
 
     @staticmethod

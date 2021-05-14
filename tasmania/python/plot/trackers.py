@@ -29,14 +29,14 @@ from tasmania.python.plot.drawer import Drawer
 from tasmania.python.plot.profile import LineProfile
 from tasmania.python.plot.retrievers import DataRetriever
 from tasmania.python.plot.plot_utils import make_contourf, make_lineplot
-from tasmania.python.utils import typing
+from tasmania.python.utils import typingx
 
 if TYPE_CHECKING:
     from tasmania.python.domain.grid import Grid
 
 
 class TimeSeries(Drawer):
-    """ Drawer which visualizes a time series. """
+    """Drawer which visualizes a time series."""
 
     def __init__(
         self,
@@ -47,10 +47,10 @@ class TimeSeries(Drawer):
         y: int = 0,
         z: int = 0,
         time_mode: str = "elapsed",
-        init_time: Optional[typing.Datetime] = None,
+        init_time: Optional[typingx.Datetime] = None,
         time_units: str = "s",
         time_on_xaxis: bool = True,
-        properties: Optional[typing.options_dict_t] = None,
+        properties: Optional[typingx.options_dict_t] = None,
     ) -> None:
         """
         Parameters
@@ -117,11 +117,11 @@ class TimeSeries(Drawer):
 
     def __call__(
         self,
-        state: typing.DataArrayDict,
+        state: typingx.DataArrayDict,
         fig: Optional[plt.Figure] = None,
         ax: Optional[plt.Axes] = None,
     ) -> None:
-        """ Call operator updating and visualizing the time series. """
+        """Call operator updating and visualizing the time series."""
         if self._tmode == "elapsed":
             self._itime = state["time"] if self._itime is None else self._itime
             ctime = DataArray(
@@ -142,7 +142,7 @@ class TimeSeries(Drawer):
 
 
 class HovmollerDiagram(Drawer):
-    """ Drawer which generates a Hovmoller diagram. """
+    """Drawer which generates a Hovmoller diagram."""
 
     def __init__(
         self,
@@ -158,9 +158,9 @@ class HovmollerDiagram(Drawer):
         axis_y: Optional[int] = None,
         axis_z: Optional[int] = None,
         time_mode: str = "elapsed",
-        init_time: Optional[typing.Datetime] = None,
+        init_time: Optional[typingx.Datetime] = None,
         time_units: str = "s",
-        properties: Optional[typing.options_dict_t] = None,
+        properties: Optional[typingx.options_dict_t] = None,
     ) -> None:
         """
         Parameters
@@ -279,11 +279,11 @@ class HovmollerDiagram(Drawer):
 
     def __call__(
         self,
-        state: typing.DataArrayDict,
+        state: typingx.DataArrayDict,
         fig: Optional[plt.Figure] = None,
         ax: Optional[plt.Axes] = None,
     ) -> None:
-        """ Call operator generating the plot. """
+        """Call operator generating the plot."""
         if self._tmode == "elapsed":
             self._itime = state["time"] if self._itime is None else self._itime
             ctime = DataArray(

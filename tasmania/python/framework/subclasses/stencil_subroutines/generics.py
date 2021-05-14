@@ -20,30 +20,28 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from tasmania.python.isentropic.dynamics.vertical_fluxes import (
-    IsentropicVerticalFlux,
-)
-from tasmania.python.framework.register import register
+from typing import TYPE_CHECKING
+
+from gt4py import gtscript
+
+from tasmania.python.framework.stencil import stencil_subroutine
+
+if TYPE_CHECKING:
+    import numpy as np
+
+    from tasmania.python.utils.typingx import GTField
 
 
-@register(name="upwind")
-class Upwind(IsentropicVerticalFlux):
-    @staticmethod
-    def __call__(
-        dt,
-        dz,
-        w,
-        s,
-        s_prv,
-        su,
-        su_prv,
-        sv,
-        sv_prv,
-        sqv=None,
-        sqv_prv=None,
-        sqc=None,
-        sqc_prv=None,
-        sqr=None,
-        sqr_prv=None,
-    ):
-        raise NotImplementedError()
+@stencil_subroutine.register(backend=("numpy", "cupy"), stencil="set_output")
+def set_output_numpy(
+    lhs: "np.ndarray", rhs: "np.ndarray", overwrite: bool
+) -> None:
+    lhs[...] = rhs if overwrite else lhs + rhs
+
+
+@stencil_subroutine.register(backend="gt4py*", stencil="set_output")
+@gtscript.function
+def set_output_gt4py(
+    lhs: "GTField", rhs: "GTField", overwrite: bool
+) -> "GTField":
+    return rhs if overwrite else lhs + rhs

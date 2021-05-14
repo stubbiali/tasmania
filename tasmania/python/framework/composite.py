@@ -31,14 +31,14 @@ from tasmania.python.framework._base import (
     BaseConcurrentCoupling,
     BaseDiagnosticComponentComposite,
 )
-from tasmania.python.utils import typing
+from tasmania.python.utils import typingx
 from tasmania.python.utils.framework import get_input_properties
-from tasmania.python.utils.utils import assert_sequence
 
 
 class DiagnosticComponentComposite(BaseDiagnosticComponentComposite):
     """
-    Callable class wrapping and chaining a set of component computing *only* diagnostics.
+    Callable class wrapping and chaining a set of component computing *only*
+    diagnostics.
 
     Attributes
     ----------
@@ -71,9 +71,7 @@ class DiagnosticComponentComposite(BaseDiagnosticComponentComposite):
     allowed_component_type = allowed_diagnostic_type + allowed_tendency_type
 
     def __init__(
-        self,
-        *args: typing.DiagnosticComponent,
-        execution_policy: str = "serial"
+        self, *args: DiagnosticComponent, execution_policy: str = "serial"
     ) -> None:
         """
         Parameters
@@ -128,7 +126,7 @@ class DiagnosticComponentComposite(BaseDiagnosticComponentComposite):
         )
 
     def __call__(
-        self, state: typing.DataArrayDict, timestep: typing.TimeDelta,
+        self, state: typingx.DataArrayDict, timestep: typingx.TimeDelta
     ):
         """
         Retrieve diagnostics from the input state by sequentially calling
@@ -154,7 +152,7 @@ class DiagnosticComponentComposite(BaseDiagnosticComponentComposite):
         return self._call(state, timestep)
 
     def _call_serial(
-        self, state: typing.DataArrayDict, timestep: typing.TimeDelta,
+        self, state: typingx.DataArrayDict, timestep: typingx.TimeDelta
     ):
         return_dict = {}
 

@@ -31,11 +31,13 @@ from tasmania.python.framework.options import StorageOptions
 from tasmania.python.utils.backend import get_gt_backend
 
 if TYPE_CHECKING:
-    from tasmania.python.utils.typing import Storage
+    from tasmania.python.utils.typingx import Storage
 
 
 if gt:
 
+    # >>> old storage
+    # <<< new storage
     from gt4py.storage.definitions import SyncState
 
     @as_storage.register(backend="gt4py*")
@@ -52,6 +54,9 @@ if gt:
         backend = as_storage_gt4py.__tasmania_runtime__["backend"]
         defaults = get_gt_backend(backend)
         so = storage_options or StorageOptions
+        # >>> old storage
+        # return gt.storage.from_array(data, defaults, so.aligned_index)
+        # <<< new storage
         sync_state = SyncState()
         sync_state.state = 1
         return gt.storage.as_storage(
@@ -73,6 +78,9 @@ if gt:
         backend = as_storage_gt4py.__tasmania_runtime__["backend"]
         defaults = get_gt_backend(backend)
         so = storage_options or StorageOptions
+        # >>> old storage
+        # return gt.storage.from_array(data, defaults, so.aligned_index)
+        # <<< new storage
         return gt.storage.as_storage(
             data=data,
             dtype=so.dtype,
@@ -93,6 +101,9 @@ if gt:
             backend = as_storage_gt4py.__tasmania_runtime__["backend"]
             defaults = get_gt_backend(backend)
             so = storage_options or StorageOptions
+            # >>> old storage
+            # return gt.storage.from_array(data, defaults, so.aligned_index)
+            # <<< new storage
             sync_state = SyncState()
             sync_state.state = 2
             return gt.storage.as_storage(

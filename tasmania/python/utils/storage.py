@@ -31,7 +31,7 @@ except ImportError:
     cp = np
 
 from tasmania.python.framework.allocators import as_storage
-from tasmania.python.utils import typing as ty
+from tasmania.python.utils import typingx as ty
 
 if TYPE_CHECKING:
     from tasmania.python.domain.domain import Domain
@@ -258,7 +258,7 @@ def get_dataarray_3d(
 
 
 def get_dataarray_dict(
-    array_dict: ty.StorageDict, grid: "Grid", properties: ty.PropertiesDict,
+    array_dict: ty.StorageDict, grid: "Grid", properties: ty.PropertiesDict
 ) -> ty.DataArrayDict:
     """
     Parameters
@@ -317,7 +317,7 @@ def get_dataarray_dict(
 
 
 def get_array_dict(
-    dataarray_dict: ty.DataArrayDict, properties: ty.PropertiesDict,
+    dataarray_dict: ty.DataArrayDict, properties: ty.PropertiesDict
 ) -> ty.StorageDict:
     """
     Parameters
@@ -455,6 +455,19 @@ def get_numerical_state(
                 )
 
     return nstate
+
+
+def get_min_storage_shape(name, grid):
+    out = (
+        grid.nx + 1
+        if "at_u_locations" in name or "at_uv_locations" in name
+        else grid.nx,
+        grid.ny + 1
+        if "at_v_locations" in name or "at_uv_locations" in name
+        else grid.ny,
+        grid.nz + 1 if "on_interface_levels" in name else grid.nz,
+    )
+    return out
 
 
 def get_storage_shape(

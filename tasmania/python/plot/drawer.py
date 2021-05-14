@@ -24,7 +24,7 @@ import abc
 from matplotlib import pyplot as plt
 from typing import Optional
 
-from tasmania.python.utils import typing
+from tasmania.python.utils import typingx
 
 
 class Drawer(abc.ABC):
@@ -37,7 +37,7 @@ class Drawer(abc.ABC):
     """
 
     def __init__(
-        self, properties: Optional[typing.options_dict_t] = None
+        self, properties: Optional[typingx.options_dict_t] = None
     ) -> None:
         """
         Parameters
@@ -50,9 +50,9 @@ class Drawer(abc.ABC):
 
     @abc.abstractmethod
     def __call__(
-        self, state: typing.DataArrayDict, fig: plt.Figure, ax: plt.Axes
+        self, state: typingx.DataArrayDict, fig: plt.Figure, ax: plt.Axes
     ) -> None:
-        """ Call operator generating the plot.
+        """Call operator generating the plot.
 
         Parameters
         ----------

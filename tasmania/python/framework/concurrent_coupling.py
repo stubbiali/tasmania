@@ -20,8 +20,8 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-import copy
-import numpy as np
+from typing import Dict, Optional, TYPE_CHECKING, Tuple, Union
+
 from sympl import (
     DiagnosticComponent,
     DiagnosticComponentComposite as SymplDiagnosticComponentComposite,
@@ -29,35 +29,38 @@ from sympl import (
     TendencyComponentComposite,
     ImplicitTendencyComponent,
     ImplicitTendencyComponentComposite,
-    combine_component_properties,
 )
-from sympl._core.units import clean_units
-from typing import Optional, TYPE_CHECKING, Tuple, Union
+from sympl._core.dynamic_checkers import (
+    InflowComponentChecker,
+    OutflowComponentChecker,
+)
+from sympl._core.static_checkers import StaticComponentChecker
+from sympl._core.static_operators import StaticComponentOperator
 
 from tasmania.python.framework._base import (
     BaseConcurrentCoupling,
     BaseDiagnosticComponentComposite,
 )
-from tasmania.python.framework.promoters import (
-    Diagnostic2Tendency,
-    Tendency2Diagnostic,
+from tasmania.python.framework.concurrent_coupling_utils import (
+    DynamicOperator,
+    StaticChecker,
+    StaticOperator,
 )
-from tasmania.python.utils import typing
+from tasmania.python.framework.promoter import (
+    FromDiagnosticToTendency,
+    FromTendencyToDiagnostic,
+)
+from tasmania.python.utils import typingx
 from tasmania.python.utils.dict import DataArrayDictOperator
-from tasmania.python.utils.framework import (
-    check_t2d,
-    check_properties_compatibility,
-    get_input_properties,
-    get_tendency_properties,
-)
-from tasmania.python.utils.time import Timer
-from tasmania.python.utils.utils import assert_sequence
 
 if TYPE_CHECKING:
+    from sympl._core.typingx import DataArrayDict
+
     from tasmania.python.framework.options import (
         BackendOptions,
         StorageOptions,
     )
+    from tasmania.python.utils.typingx import PromoterComponent
 
 
 class ConcurrentCoupling(BaseConcurrentCoupling):
@@ -101,19 +104,29 @@ class ConcurrentCoupling(BaseConcurrentCoupling):
         ImplicitTendencyComponentComposite,
         BaseConcurrentCoupling,
     )
-    allowed_promoter_type = (Diagnostic2Tendency, Tendency2Diagnostic)
+    allowed_promoter_type = (
+        FromDiagnosticToTendency,
+        FromTendencyToDiagnostic,
+    )
     allowed_component_type = (
         allowed_diagnostic_type + allowed_tendency_type + allowed_promoter_type
     )
 
+    def __new__(cls, *args, **kwargs):
+        if len(args) == 1 and isinstance(args[0], BaseConcurrentCoupling):
+            return args[0]
+        else:
+            return super().__new__(cls)
+
     def __init__(
         self,
         *args: Union[
-            typing.DiagnosticComponent,
-            typing.TendencyComponent,
-            typing.PromoterComponent,
+            DiagnosticComponent,
+            TendencyComponent,
+            "PromoterComponent",
         ],
         execution_policy: str = "serial",
+        enable_checks: bool = True,
         backend: str = "numpy",
         backend_options: Optional["BackendOptions"] = None,
         storage_options: Optional["StorageOptions"] = None
@@ -149,6 +162,8 @@ class ConcurrentCoupling(BaseConcurrentCoupling):
                     are passed to this object, and diagnostics computed by
                     a component are not usable by any other component.
 
+        enable_checks : `bool`, optional
+            ``True`` to run all sanity checks, ``False`` otherwise.
         backend : `str`, optional
             The backend.
         backend_options : `BackendOptions`, optional
@@ -156,78 +171,93 @@ class ConcurrentCoupling(BaseConcurrentCoupling):
         storage_options : `StorageOptions`, optional
             Storage-related options.
         """
-        assert_sequence(args, reftype=self.allowed_component_type)
-        self._component_list = args
+        if not getattr(self, "_initialized", False):
+            super().__init__()
 
-        self._policy = execution_policy
-        self._call = (
-            self._call_serial
-            if execution_policy == "serial"
-            else self._call_asparallel
-        )
-
-        # ensure that a tendency is actually computed before it gets moved around
-        # by a Tendency2Diagnostic
-        check_t2d(args, Tendency2Diagnostic)
-
-        # set properties
-        self.input_properties = self._init_input_properties()
-        self.tendency_properties = self._init_tendency_properties()
-        self.diagnostic_properties = self._init_diagnostic_properties()
-
-        # ensure that dimensions and units of the variables present
-        # in both input_properties and tendency_properties are compatible
-        # across the two dictionaries
-        output_properties = copy.deepcopy(self.tendency_properties)
-        for key in output_properties:
-            output_properties[key]["units"] = clean_units(
-                self.tendency_properties[key]["units"] + " s"
+            self._components = args
+            self._policy = (
+                execution_policy
+                if execution_policy in ("serial", "as_parallel")
+                else "serial"
             )
-        check_properties_compatibility(
-            self.input_properties,
-            output_properties,
-            properties1_name="input_properties",
-            properties2_name="output_properties",
-        )
-
-        self._dict_op = DataArrayDictOperator(
-            backend=backend,
-            backend_options=backend_options,
-            storage_options=storage_options,
-        )
-
-    def _init_input_properties(self) -> typing.PropertiesDict:
-        t2d_type = Tendency2Diagnostic
-        components_list = []
-        for component in self.component_list:
-            components_list.append(
-                {
-                    "component": component,
-                    "attribute_name": "input_properties"
-                    if not isinstance(component, t2d_type)
-                    else None,
-                    "consider_diagnostics": self._policy == "serial",
-                }
+            self._enable_checks = enable_checks
+            self._call = (
+                self._call_serial
+                if execution_policy == "serial"
+                else self._call_asparallel
             )
-        return get_input_properties(components_list)
 
-    def _init_tendency_properties(self) -> typing.PropertiesDict:
-        t2d_type = Tendency2Diagnostic
-        return get_tendency_properties(self.component_list, t2d_type)
+            # static checks
+            if enable_checks:
+                StaticChecker.check(self)
 
-    def _init_diagnostic_properties(self) -> typing.PropertiesDict:
-        return combine_component_properties(
-            self.component_list, "diagnostic_properties"
-        )
+            # set properties
+            self.input_properties = StaticOperator.get_input_properties(self)
+            self.tendency_properties = StaticOperator.get_tendency_properties(
+                self
+            )
+            self.diagnostic_properties = (
+                StaticOperator.get_diagnostic_properties(self)
+            )
+
+            # double-check properties
+            if enable_checks:
+                StaticComponentChecker.factory("input_properties").check(self)
+                StaticComponentChecker.factory("tendency_properties").check(
+                    self
+                )
+                StaticComponentChecker.factory("diagnostic_properties").check(
+                    self
+                )
+
+            # set overwrite_tendencies
+            self.overwrite_tendencies = (
+                StaticOperator.get_overwrite_tendencies(self)
+            )
+
+            # dynamic checkers
+            if enable_checks:
+                self._input_checker = InflowComponentChecker.factory(
+                    "input_properties", self
+                )
+                self._tendency_inflow_checker = InflowComponentChecker.factory(
+                    "tendency_properties", self
+                )
+                self._tendency_outflow_checker = (
+                    OutflowComponentChecker.factory(
+                        "tendency_properties", self
+                    )
+                )
+                self._diagnostic_inflow_checker = (
+                    InflowComponentChecker.factory(
+                        "diagnostic_properties", self
+                    )
+                )
+                self._diagnostic_outflow_checker = (
+                    OutflowComponentChecker.factory(
+                        "diagnostic_properties", self
+                    )
+                )
+
+            # dynamic operators
+            self._cc_operator = DynamicOperator(self)
+
+            # dict operator
+            self._dict_operator = DataArrayDictOperator(
+                backend=backend,
+                backend_options=backend_options,
+                storage_options=storage_options,
+            )
+
+            # avoiding infinite loops
+            self._initialized = True
 
     @property
-    def component_list(
+    def components(
         self,
     ) -> Tuple[
         Union[
-            typing.DiagnosticComponent,
-            typing.TendencyComponent,
-            typing.PromoterComponent,
+            DiagnosticComponent, TendencyComponent, typingx.PromoterComponent
         ]
     ]:
         """
@@ -236,11 +266,27 @@ class ConcurrentCoupling(BaseConcurrentCoupling):
         tuple :
             The wrapped components.
         """
-        return self._component_list
+        return self._components
+
+    @property
+    def execution_policy(self) -> str:
+        return self._policy
+
+    def allocate_tendencies(self, state: "DataArrayDict") -> "DataArrayDict":
+        return self._cc_operator.allocate_tendencies(state)
+
+    def allocate_diagnostics(self, state: "DataArrayDict") -> "DataArrayDict":
+        return self._cc_operator.allocate_diagnostics(state)
 
     def __call__(
-        self, state: typing.DataArrayDict, timestep: typing.TimeDelta,
-    ) -> Tuple[typing.DataArrayDict, typing.DataArrayDict]:
+        self,
+        state: "DataArrayDict",
+        timestep: typingx.TimeDelta,
+        *,
+        out_tendencies: Optional["DataArrayDict"] = None,
+        out_diagnostics: Optional["DataArrayDict"] = None,
+        overwrite_tendencies: Optional[Dict[str, bool]] = None
+    ) -> Tuple["DataArrayDict", "DataArrayDict"]:
         """
         Execute the wrapped components to calculate tendencies and retrieve
         diagnostics with the help of the input state.
@@ -262,99 +308,149 @@ class ConcurrentCoupling(BaseConcurrentCoupling):
             :class:`sympl.DataArray`\s storing the tendencies for those
             variables.
         """
-        tendencies, diagnostics = self._call(state, timestep)
+        out_tendencies = out_tendencies if out_tendencies is not None else {}
+        out_diagnostics = (
+            out_diagnostics if out_diagnostics is not None else {}
+        )
+        overwrite_tendencies = (
+            overwrite_tendencies if overwrite_tendencies is not None else {}
+        )
 
-        try:
-            tendencies["time"] = state["time"]
-            diagnostics["time"] = state["time"]
-        except KeyError:
-            pass
+        if self.execution_policy == "serial":
+            self._call_serial(
+                state,
+                timestep,
+                out_tendencies,
+                out_diagnostics,
+                overwrite_tendencies,
+            )
+        else:
+            self._call_asparallel(
+                state,
+                timestep,
+                out_tendencies,
+                out_diagnostics,
+                overwrite_tendencies,
+            )
 
-        return tendencies, diagnostics
+        if "time" in state:
+            out_tendencies["time"] = state["time"]
+            out_diagnostics["time"] = state["time"]
+
+        return out_tendencies, out_diagnostics
 
     def _call_serial(
-        self, state: typing.DataArrayDict, timestep: typing.TimeDelta,
-    ) -> Tuple[typing.DataArrayDict, typing.DataArrayDict]:
-        """ Process the components in 'serial' runtime mode. """
+        self,
+        state: "DataArrayDict",
+        timestep: typingx.TimeDelta,
+        out_tendencies: "DataArrayDict",
+        out_diagnostics: "DataArrayDict",
+        overwrite_tendencies: Dict[str, bool],
+    ) -> None:
+        """Process the components in 'serial' runtime mode."""
+        sco = StaticComponentOperator.factory("diagnostic_properties")
         aux_state = {}
         aux_state.update(state)
 
-        out_tendencies = {}
-        out_diagnostics = {}
+        for component, self_overwrite_tendencies in zip(
+            self.components, self.overwrite_tendencies
+        ):
+            if isinstance(component, self.allowed_diagnostic_type):
+                component(aux_state, out=out_diagnostics)
+            elif isinstance(component, self.allowed_tendency_type):
+                ot = {
+                    name: self_overwrite_tendencies[name]
+                    and overwrite_tendencies.get(name, True)
+                    for name in self_overwrite_tendencies
+                }
 
-        for component in self._component_list:
-            if isinstance(component, self.__class__.allowed_diagnostic_type):
-                diagnostics = component(aux_state)
-                aux_state.update(diagnostics)
-                out_diagnostics.update(diagnostics)
-            elif isinstance(component, self.__class__.allowed_tendency_type):
                 try:
-                    tendencies, diagnostics = component(aux_state)
+                    component(
+                        aux_state,
+                        out_tendencies=out_tendencies,
+                        out_diagnostics=out_diagnostics,
+                        overwrite_tendencies=ot,
+                    )
                 except TypeError:
-                    tendencies, diagnostics = component(aux_state, timestep)
+                    component(
+                        aux_state,
+                        timestep,
+                        out_tendencies=out_tendencies,
+                        out_diagnostics=out_diagnostics,
+                        overwrite_tendencies=ot,
+                    )
 
-                Timer.start(label="tendency_type, iadd")
-                self._dict_op.iadd(
-                    out_tendencies,
-                    tendencies,
-                    field_properties=self.tendency_properties,
-                    unshared_variables_in_output=True,
-                )
-                aux_state.update(diagnostics)
-                out_diagnostics.update(diagnostics)
-                Timer.stop()
-            elif isinstance(component, Tendency2Diagnostic):
-                diagnostics = component(out_tendencies)
-                aux_state.update(diagnostics)
-                out_diagnostics.update(diagnostics)
+                # Timer.start(label="tendency_type, iadd")
+                # self._dict_op.iadd(
+                #     out_tendencies,
+                #     tendencies,
+                #     field_properties=self.tendency_properties,
+                #     unshared_variables_in_output=True,
+                # )
+                # Timer.stop()
+
+            elif isinstance(component, FromTendencyToDiagnostic):
+                component(out_tendencies, out=out_diagnostics)
             else:  # diagnostic to tendency
-                tendencies = component(aux_state)
+                component(aux_state, out=out_tendencies)
+                # Timer.start(label="diagnostic_to_tendency, iadd")
+                # self._dict_operator.iadd(
+                #     out_tendencies,
+                #     tendencies,
+                #     field_properties=self.tendency_properties,
+                #     unshared_variables_in_output=True,
+                # )
+                # Timer.stop()
 
-                Timer.start(label="diagnostic_to_tendency, iadd")
-                self._dict_op.iadd(
-                    out_tendencies,
-                    tendencies,
-                    field_properties=self.tendency_properties,
-                    unshared_variables_in_output=True,
-                )
-                Timer.stop()
-
-        return out_tendencies, out_diagnostics
+            sub_diagnostics = {
+                name: out_diagnostics[name]
+                for name in sco.get_properties(component)
+            }
+            aux_state.update(sub_diagnostics)
 
     def _call_asparallel(
-        self, state: typing.DataArrayDict, timestep: typing.TimeDelta,
-    ) -> Tuple[typing.DataArrayDict, typing.DataArrayDict]:
-        """ Process the components in 'as_parallel' runtime mode. """
-        out_tendencies = {}
-        out_diagnostics = {}
-
-        for component in self._component_list:
-            if isinstance(component, self.__class__.allowed_diagnostic_type):
-                diagnostics = component(state)
-                out_diagnostics.update(diagnostics)
-            elif isinstance(component, self.__class__.allowed_tendency_type):
+        self,
+        state: "DataArrayDict",
+        timestep: typingx.TimeDelta,
+        out_tendencies: "DataArrayDict",
+        out_diagnostics: "DataArrayDict",
+        overwrite_tendencies: Dict[str, bool],
+    ) -> None:
+        """Process the components in 'as_parallel' runtime mode."""
+        for component, self_overwrite_tendencies in zip(
+            self.components, self.overwrite_tendencies
+        ):
+            if isinstance(component, self.allowed_diagnostic_type):
+                component(state, out=out_diagnostics)
+            elif isinstance(component, self.allowed_tendency_type):
+                ot = {
+                    name: self_overwrite_tendencies[name]
+                    and overwrite_tendencies.get(name, True)
+                    for name in self_overwrite_tendencies
+                }
                 try:
-                    tendencies, diagnostics = component(state)
+                    component(
+                        state,
+                        out_tendencies=out_tendencies,
+                        out_diagnostics=out_diagnostics,
+                        overwrite_tendencies=ot,
+                    )
                 except TypeError:
-                    tendencies, diagnostics = component(state, timestep)
-
-                self._dict_op.iadd(
-                    out_tendencies,
-                    tendencies,
-                    field_properties=self.tendency_properties,
-                    unshared_variables_in_output=True,
-                )
-                out_diagnostics.update(diagnostics)
-            elif isinstance(component, Tendency2Diagnostic):
+                    component(
+                        state,
+                        timestep,
+                        out_tendencies=out_tendencies,
+                        out_diagnostics=out_diagnostics,
+                        overwrite_tendencies=ot,
+                    )
+            elif isinstance(component, FromTendencyToDiagnostic):
                 # do nothing
                 pass
             else:  # diagnostics to tendencies
-                tendencies = component(state)
-                self._dict_op.iadd(
-                    out_tendencies,
-                    tendencies,
-                    field_properties=self.tendency_properties,
-                    unshared_variables_in_output=True,
-                )
-
-        return out_tendencies, out_diagnostics
+                component(state, out=out_tendencies)
+                # self._dict_operator.iadd(
+                #     out_tendencies,
+                #     tendencies,
+                #     field_properties=self.tendency_properties,
+                #     unshared_variables_in_output=True,
+                # )

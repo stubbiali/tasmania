@@ -45,7 +45,7 @@ class RK3WS(RK2):
     def stages(self):
         return 3
 
-    def __call__(self, stage, state, tendencies, timestep):
+    def __call__(self, stage, state, tendencies, timestep, out_state):
         nx, ny = self._grid_xy.nx, self._grid_xy.ny
         nb = self._nb
 
@@ -69,8 +69,8 @@ class RK3WS(RK2):
 
         self._stencil_args["in_u_tmp"] = state["x_velocity"]
         self._stencil_args["in_v_tmp"] = state["y_velocity"]
-        self._stencil_args["out_u"] = self._stencil_output[2 * stage]
-        self._stencil_args["out_v"] = self._stencil_output[2 * stage + 1]
+        self._stencil_args["out_u"] = out_state["x_velocity"]
+        self._stencil_args["out_v"] = out_state["y_velocity"]
         if "x_velocity" in tendencies:
             self._stencil_args["in_u_tnd"] = tendencies["x_velocity"]
         if "y_velocity" in tendencies:
@@ -87,8 +87,4 @@ class RK3WS(RK2):
             validate_args=self.backend_options.validate_args
         )
 
-        return {
-            "time": state["time"] + dtr,
-            "x_velocity": self._stencil_args["out_u"],
-            "y_velocity": self._stencil_args["out_v"],
-        }
+        out_state["time"] = state["time"] + dtr

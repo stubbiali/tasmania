@@ -22,23 +22,32 @@
 #
 from typing import Optional, Sequence, TYPE_CHECKING, Tuple, Union
 
+from sympl._core.time import FakeTimer as Timer
+
+# from sympl._core.time import Timer
+
 from tasmania.python.dwarfs.diagnostics import (
     HorizontalVelocity,
     WaterConstituent,
 )
-from tasmania.python.dwarfs.horizontal_smoothing import HorizontalSmoothing
 from tasmania.python.dwarfs.vertical_damping import VerticalDamping
 from tasmania.python.framework.dycore import DynamicalCore
 from tasmania.python.isentropic.dynamics.prognostic import IsentropicPrognostic
-from tasmania.python.utils import typing as ty
-from tasmania.python.utils.storage import (
-    get_dataarray_3d,
-    get_storage_shape,
-)
-from tasmania.python.utils.time import Timer
+from tasmania.python.utils import typingx as ty
 
 if TYPE_CHECKING:
+    from sympl._core.typingx import NDArrayLikeDict, PropertyDict
+
     from tasmania.python.domain.domain import Domain
+    from tasmania.python.framework.options import (
+        BackendOptions,
+        StorageOptions,
+    )
+    from tasmania.python.utils.typingx import (
+        DiagnosticComponent,
+        TendencyComponent,
+        TimeDelta,
+    )
 
 
 # convenient shortcuts
@@ -59,13 +68,13 @@ class IsentropicDynamicalCore(DynamicalCore):
     def __init__(
         self,
         domain: "Domain",
-        intermediate_tendency_component: Optional[ty.TendencyComponent] = None,
-        intermediate_diagnostic_component: Optional[
-            Union[ty.DiagnosticComponent, ty.TendencyComponent]
+        fast_tendency_component: Optional["TendencyComponent"] = None,
+        fast_diagnostic_component: Optional[
+            Union["DiagnosticComponent", "TendencyComponent"]
         ] = None,
         substeps: int = 0,
-        fast_tendency_component: Optional[ty.TendencyComponent] = None,
-        fast_diagnostic_component: Optional[ty.DiagnosticComponent] = None,
+        superfast_tendency_component: Optional["TendencyComponent"] = None,
+        superfast_diagnostic_component: Optional["DiagnosticComponent"] = None,
         moist: bool = False,
         time_integration_scheme: str = "forward_euler_si",
         horizontal_flux_scheme: str = "upwind",
@@ -88,6 +97,7 @@ class IsentropicDynamicalCore(DynamicalCore):
         smooth_moist_coeff_max: float = 0.24,
         smooth_moist_damp_depth: int = 10,
         *,
+        enable_checks: bool = True,
         backend: str = "numpy",
         backend_options: Optional["BackendOptions"] = None,
         storage_shape: Optional[Sequence[int]] = None,
@@ -98,7 +108,7 @@ class IsentropicDynamicalCore(DynamicalCore):
         ----------
         domain : tasmania.Domain
             The :class:`~tasmania.Domain` holding the grid underneath.
-        intermediate_tendency_component : `obj`, optional
+        fast_tendency_component : `obj`, optional
             An instance of either
 
             * :class:`~sympl.TendencyComponent`,
@@ -110,7 +120,7 @@ class IsentropicDynamicalCore(DynamicalCore):
             prescribing physics tendencies and retrieving diagnostic quantities.
             This object is called at the beginning of each stage on the latest
             provisional state.
-        intermediate_diagnostic_component : `obj`, optional
+        fast_diagnostic_component : `obj`, optional
             An instance of either
 
             * :class:`sympl.TendencyComponent`,
@@ -128,7 +138,7 @@ class IsentropicDynamicalCore(DynamicalCore):
         substeps : `int`, optional
             Number of substeps to perform. Defaults to 0, meaning that no
             form of substepping is carried out.
-        fast_tendency_component : `obj`, optional
+        superfast_tendency_component : `obj`, optional
             An instance of either
 
             * :class:`sympl.TendencyComponent`,
@@ -141,7 +151,7 @@ class IsentropicDynamicalCore(DynamicalCore):
             This object is called at the beginning of each substep on the
             latest provisional state. This parameter is ignored if ``substeps``
             is not positive.
-        fast_diagnostic_component : `obj`, optional
+        superfast_diagnostic_component : `obj`, optional
             An instance of either
 
             * :class:`sympl.DiagnosticComponent`,
@@ -221,6 +231,8 @@ class IsentropicDynamicalCore(DynamicalCore):
         smooth_moist_damp_depth : `int`, optional
             Number of vertical layers in the smoothing damping region for the
             water constituents. Defaults to 10.
+        enable_checks : `bool`, optional
+            TODO
         backend : `str`, optional
             The backend.
         backend_options : `BackendOptions`, optional
@@ -230,15 +242,6 @@ class IsentropicDynamicalCore(DynamicalCore):
         storage_options : `StorageOptions`, optional
             Storage-related options.
         """
-        #
-        # set storage shape
-        #
-        g = domain.numerical_grid
-        storage_shape = get_storage_shape(
-            storage_shape, (g.nx + 1, g.ny + 1, g.nz + 1)
-        )
-        self._storage_shape = storage_shape
-
         #
         # input parameters
         #
@@ -253,15 +256,20 @@ class IsentropicDynamicalCore(DynamicalCore):
         #
         # parent constructor
         #
+        g = domain.numerical_grid
         super().__init__(
             domain,
-            intermediate_tendency_component,
-            intermediate_diagnostic_component,
-            substeps,
             fast_tendency_component,
             fast_diagnostic_component,
+            substeps,
+            superfast_tendency_component,
+            superfast_diagnostic_component,
+            enable_checks=enable_checks,
             backend=backend,
             backend_options=backend_options,
+            storage_shape=self.get_storage_shape(
+                storage_shape, (g.nx + 1, g.ny + 1, g.nz + 1)
+            ),
             storage_options=storage_options,
         )
 
@@ -276,7 +284,7 @@ class IsentropicDynamicalCore(DynamicalCore):
             moist,
             backend=self.backend,
             backend_options=self.backend_options,
-            storage_shape=storage_shape,
+            storage_shape=self.storage_shape,
             storage_options=self.storage_options,
             **kwargs,
         )
@@ -292,37 +300,9 @@ class IsentropicDynamicalCore(DynamicalCore):
                 damp_max,
                 backend=self.backend,
                 backend_options=self.backend_options,
-                storage_shape=storage_shape,
+                storage_shape=self.storage_shape,
                 storage_options=self.storage_options,
             )
-
-        #
-        # numerical smoothing
-        #
-        if smooth:
-            self._smoother = HorizontalSmoothing.factory(
-                smooth_type,
-                storage_shape,
-                smooth_coeff,
-                smooth_coeff_max,
-                smooth_damp_depth,
-                self.horizontal_boundary.nb,
-                backend=self.backend,
-                backend_options=self.backend_options,
-                storage_options=self.storage_options,
-            )
-            if moist and smooth_moist:
-                self._smoother_moist = HorizontalSmoothing.factory(
-                    smooth_moist_type,
-                    storage_shape,
-                    smooth_moist_coeff,
-                    smooth_moist_coeff_max,
-                    smooth_moist_damp_depth,
-                    self.horizontal_boundary.nb,
-                    backend=self.backend,
-                    backend_options=self.backend_options,
-                    storage_options=self.storage_options,
-                )
 
         #
         # diagnostics
@@ -344,17 +324,12 @@ class IsentropicDynamicalCore(DynamicalCore):
             )
 
         #
-        # the method implementing each stage
-        #
-        self._stage_array_call = (
-            self.stage_array_call_dry
-            if not moist
-            else self.stage_array_call_moist
-        )
-
-        #
         # temporary and output arrays
         #
+        self._s_now = None
+        self._su_now = None
+        self._sv_now = None
+
         if moist:
             self._sqv_now = self.zeros(shape=storage_shape)
             self._sqc_now = self.zeros(shape=storage_shape)
@@ -362,40 +337,17 @@ class IsentropicDynamicalCore(DynamicalCore):
             self._sqv_int = self.zeros(shape=storage_shape)
             self._sqc_int = self.zeros(shape=storage_shape)
             self._sqr_int = self.zeros(shape=storage_shape)
-            self._qv_new = self.zeros(shape=storage_shape)
-            self._qc_new = self.zeros(shape=storage_shape)
-            self._qr_new = self.zeros(shape=storage_shape)
+            self._sqv_new = self.zeros(shape=storage_shape)
+            self._sqc_new = self.zeros(shape=storage_shape)
+            self._sqr_new = self.zeros(shape=storage_shape)
 
         if damp:
             self._s_ref = self.zeros(shape=storage_shape)
-            self._s_damped = self.zeros(shape=storage_shape)
             self._su_ref = self.zeros(shape=storage_shape)
-            self._su_damped = self.zeros(shape=storage_shape)
             self._sv_ref = self.zeros(shape=storage_shape)
-            self._sv_damped = self.zeros(shape=storage_shape)
-            # if moist:
-            #     self._qv_ref = self.zeros(shape=storage_shape)
-            #     self._qv_damped = self.zeros(shape=storage_shape)
-            #     self._qc_ref = self.zeros(shape=storage_shape)
-            #     self._qc_damped = self.zeros(shape=storage_shape)
-            #     self._qr_ref = self.zeros(shape=storage_shape)
-            #     self._qr_damped = self.zeros(shape=storage_shape)
-
-        if smooth:
-            self._s_smoothed = self.zeros(shape=storage_shape)
-            self._su_smoothed = self.zeros(shape=storage_shape)
-            self._sv_smoothed = self.zeros(shape=storage_shape)
-
-        if smooth_moist:
-            self._qv_smoothed = self.zeros(shape=storage_shape)
-            self._qc_smoothed = self.zeros(shape=storage_shape)
-            self._qr_smoothed = self.zeros(shape=storage_shape)
-
-        self._u_out = self.zeros(shape=storage_shape)
-        self._v_out = self.zeros(shape=storage_shape)
 
     @property
-    def stage_input_properties(self) -> ty.PropertiesDict:
+    def stage_input_properties(self) -> "PropertyDict":
         g = self.grid
         dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
         dims_stg_x = (g.x_at_u_locations.dims[0], g.y.dims[0], g.z.dims[0])
@@ -430,9 +382,9 @@ class IsentropicDynamicalCore(DynamicalCore):
         return return_dict
 
     @property
-    def substep_input_properties(self) -> ty.PropertiesDict:
+    def substep_input_properties(self) -> "PropertyDict":
         dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])
-        ftends, fdiags = self._fast_tc, self._fast_dc
+        ftends, fdiags = self._superfast_tc, self._superfast_dc
 
         return_dict = {}
 
@@ -524,7 +476,7 @@ class IsentropicDynamicalCore(DynamicalCore):
         return return_dict
 
     @property
-    def stage_tendency_properties(self) -> ty.PropertiesDict:
+    def stage_tendency_properties(self) -> "PropertyDict":
         dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])
 
         return_dict = {
@@ -550,11 +502,11 @@ class IsentropicDynamicalCore(DynamicalCore):
         return return_dict
 
     @property
-    def substep_tendency_properties(self) -> ty.PropertiesDict:
+    def substep_tendency_properties(self) -> "PropertyDict":
         return self.stage_tendency_properties
 
     @property
-    def stage_output_properties(self) -> ty.PropertiesDict:
+    def stage_output_properties(self) -> "PropertyDict":
         g = self.grid
         dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
         dims_stg_x = (g.x_at_u_locations.dims[0], g.y.dims[0], g.z.dims[0])
@@ -611,7 +563,7 @@ class IsentropicDynamicalCore(DynamicalCore):
         return return_dict
 
     @property
-    def substep_output_properties(self) -> ty.PropertiesDict:
+    def substep_output_properties(self) -> "PropertyDict":
         if not hasattr(self, "__substep_output_properties"):
             dims = (
                 self.grid.x.dims[0],
@@ -686,63 +638,31 @@ class IsentropicDynamicalCore(DynamicalCore):
     def substep_fractions(self) -> Union[float, Tuple[float, ...]]:
         return self._prognostic.substep_fractions
 
-    def allocate_output_state(self) -> ty.StorageDict:
-        """ Allocate memory only for the prognostic fields. """
-        g = self.grid
-
-        out_state = {}
-
-        names = [
-            "air_isentropic_density",
-            "x_velocity_at_u_locations",
-            "x_momentum_isentropic",
-            "y_velocity_at_v_locations",
-            "y_momentum_isentropic",
-        ]
-        if self._moist:
-            names.append(mfwv)
-            names.append(mfcw)
-            names.append(mfpw)
-
-        for name in names:
-            dims = self.output_properties[name]["dims"]
-            units = self.output_properties[name]["units"]
-
-            grid_shape = (
-                g.nx + 1 if "at_u_locations" in dims[0] else g.nx,
-                g.ny + 1 if "at_v_locations" in dims[1] else g.ny,
-                g.nz + 1 if "on_interface_levels" in dims[2] else g.nz,
-            )
-
-            out_state[name] = get_dataarray_3d(
-                self.zeros(shape=self._storage_shape),
-                g,
-                units,
-                name=name,
-                grid_shape=grid_shape,
-                set_coordinates=False,
-            )
-
-        return out_state
-
     def stage_array_call(
         self,
         stage: int,
-        raw_state: ty.StorageDict,
-        raw_tendencies: ty.StorageDict,
-        timestep: ty.TimeDelta,
-    ) -> ty.StorageDict:
-        return self._stage_array_call(
-            stage, raw_state, raw_tendencies, timestep
-        )
+        state: "NDArrayLikeDict",
+        tendencies: "NDArrayLikeDict",
+        timestep: "TimeDelta",
+        out_state: "NDArrayLikeDict",
+    ) -> None:
+        if self._moist:
+            self.stage_array_call_moist(
+                stage, state, tendencies, timestep, out_state
+            )
+        else:
+            self.stage_array_call_dry(
+                stage, state, tendencies, timestep, out_state
+            )
 
     def stage_array_call_dry(
         self,
         stage: int,
-        raw_state: ty.StorageDict,
-        raw_tendencies: ty.StorageDict,
-        timestep: ty.TimeDelta,
-    ) -> ty.StorageDict:
+        state: "NDArrayLikeDict",
+        tendencies: "NDArrayLikeDict",
+        timestep: "TimeDelta",
+        out_state: "NDArrayLikeDict",
+    ) -> None:
         """Integrate the state over a stage of the dry dynamical core."""
         # shortcuts
         hb = self.horizontal_boundary
@@ -777,110 +697,66 @@ class IsentropicDynamicalCore(DynamicalCore):
             Timer.stop()
 
             # save the current solution
-            self._s_now = raw_state["air_isentropic_density"]
-            self._su_now = raw_state["x_momentum_isentropic"]
-            self._sv_now = raw_state["y_momentum_isentropic"]
+            self._s_now = state["air_isentropic_density"]
+            self._su_now = state["x_momentum_isentropic"]
+            self._sv_now = state["y_momentum_isentropic"]
 
         # perform the prognostic step
         Timer.start(label="prognostic")
-        raw_state_new = self._prognostic.stage_call(
-            stage, timestep, raw_state, raw_tendencies
+        self._prognostic.stage_call(
+            stage, timestep, state, tendencies, out_state
         )
         Timer.stop()
 
         # apply the lateral boundary conditions
         Timer.start(label="boundary_conditions")
-        hb.enforce_raw(raw_state_new, out_properties)
+        hb.enforce_raw(out_state, out_properties)
         Timer.stop()
 
         # extract the stepped prognostic model variables
-        s_new = raw_state_new["air_isentropic_density"]
-        su_new = raw_state_new["x_momentum_isentropic"]
-        sv_new = raw_state_new["y_momentum_isentropic"]
+        s_new = out_state["air_isentropic_density"]
+        su_new = out_state["x_momentum_isentropic"]
+        sv_new = out_state["y_momentum_isentropic"]
 
-        damped = False
         if self._damp and (
             self._damp_at_every_stage or stage == self.stages - 1
         ):
-            damped = True
-
+            Timer.start(label="vertical_damping")
             # apply vertical damping
-            self._damper(
-                timestep, self._s_now, s_new, self._s_ref, self._s_damped
-            )
-            self._damper(
-                timestep, self._su_now, su_new, self._su_ref, self._su_damped
-            )
-            self._damper(
-                timestep, self._sv_now, sv_new, self._sv_ref, self._sv_damped
-            )
-
-        # properly set pointers to current solution
-        s_new = self._s_damped if damped else s_new
-        su_new = self._su_damped if damped else su_new
-        sv_new = self._sv_damped if damped else sv_new
-
-        smoothed = False
-        if self._smooth and (
-            self._smooth_at_every_stage or stage == self.stages - 1
-        ):
-            smoothed = True
-
-            # apply horizontal smoothing
-            self._smoother(s_new, self._s_smoothed)
-            self._smoother(su_new, self._su_smoothed)
-            self._smoother(sv_new, self._sv_smoothed)
-
-            # apply horizontal boundary conditions
-            raw_state_smoothed = {
-                "time": raw_state_new["time"],
-                "air_isentropic_density": self._s_smoothed,
-                "x_momentum_isentropic": self._su_smoothed,
-                "y_momentum_isentropic": self._sv_smoothed,
-            }
-            hb.enforce_raw(raw_state_smoothed, out_properties)
-
-        # properly set pointers to output solution
-        s_out = self._s_smoothed if smoothed else s_new
-        su_out = self._su_smoothed if smoothed else su_new
-        sv_out = self._sv_smoothed if smoothed else sv_new
+            self._damper(timestep, self._s_now, s_new, self._s_ref, s_new)
+            self._damper(timestep, self._su_now, su_new, self._su_ref, su_new)
+            self._damper(timestep, self._sv_now, sv_new, self._sv_ref, sv_new)
+            Timer.stop()
 
         # diagnose the velocity components
         self._velocity_components.get_velocity_components(
-            s_out, su_out, sv_out, self._u_out, self._v_out
+            s_new,
+            su_new,
+            sv_new,
+            out_state["x_velocity_at_u_locations"],
+            out_state["y_velocity_at_v_locations"],
         )
         hb.set_outermost_layers_x(
-            self._u_out,
+            out_state["x_velocity_at_u_locations"],
             field_name="x_velocity_at_u_locations",
             field_units=out_properties["x_velocity_at_u_locations"]["units"],
-            time=raw_state_new["time"],
+            time=out_state["time"],
         )
         hb.set_outermost_layers_y(
-            self._v_out,
+            out_state["y_velocity_at_v_locations"],
             field_name="y_velocity_at_v_locations",
             field_units=out_properties["y_velocity_at_v_locations"]["units"],
-            time=raw_state_new["time"],
+            time=out_state["time"],
         )
-
-        # instantiate the output state
-        raw_state_out = {
-            "time": raw_state_new["time"],
-            "air_isentropic_density": s_out,
-            "x_momentum_isentropic": su_out,
-            "x_velocity_at_u_locations": self._u_out,
-            "y_momentum_isentropic": sv_out,
-            "y_velocity_at_v_locations": self._v_out,
-        }
-
-        return raw_state_out
 
     def stage_array_call_moist(
         self,
         stage: int,
-        raw_state: ty.StorageDict,
-        raw_tendencies: ty.StorageDict,
-        timestep: ty.TimeDelta,
-    ) -> ty.StorageDict:
+        state: "NDArrayLikeDict",
+        tendencies: "NDArrayLikeDict",
+        timestep: "TimeDelta",
+        out_state: "NDArrayLikeDict",
+    ) -> None:
         """Integrate the state over a stage of the moist dynamical core."""
         # shortcuts
         hb = self.horizontal_boundary
@@ -906,36 +782,18 @@ class IsentropicDynamicalCore(DynamicalCore):
                     .to_units("kg m^-1 K^-1 s^-1")
                     .data
                 )
-
-                # self._qv_ref[...] = (
-                #     ref_state[mfwv].to_units("g g^-1").values
-                # )
-                # self._qc_ref[...] = (
-                #     ref_state[mfcw].to_units("g g^-1").values
-                # )
-                # self._qr_ref[...] = (
-                #     ref_state[mfpw].to_units("g g^-1").values
-                # )
             except KeyError:
                 raise RuntimeError(
                     "Reference state not set in the object handling the "
                     "horizontal boundary conditions, but needed by the "
                     "wave absorber."
                 )
-
-            # save the current solution
-            self._s_now = raw_state["air_isentropic_density"]
-            self._su_now = raw_state["x_momentum_isentropic"]
-            self._sv_now = raw_state["y_momentum_isentropic"]
-            # self._qv_now = raw_state[mfwv]
-            # self._qc_now = raw_state[mfcw]
-            # self._qr_now = raw_state[mfpw]
             Timer.stop()
 
-        s_now = raw_state["air_isentropic_density"]
-        qv_now = raw_state[mfwv]
-        qc_now = raw_state[mfcw]
-        qr_now = raw_state[mfpw]
+            # save the current solution
+            self._s_now = state["air_isentropic_density"]
+            self._su_now = state["x_momentum_isentropic"]
+            self._sv_now = state["y_momentum_isentropic"]
 
         # diagnose the isentropic density of all water constituents
         Timer.start(label="diagnose_sq")
@@ -943,204 +801,96 @@ class IsentropicDynamicalCore(DynamicalCore):
         sqc = self._sqc_now if stage == 0 else self._sqc_int
         sqr = self._sqr_now if stage == 0 else self._sqr_int
         self._water_constituent.get_density_of_water_constituent(
-            s_now, qv_now, sqv
+            state["air_isentropic_density"], state[mfwv], sqv
         )
         self._water_constituent.get_density_of_water_constituent(
-            s_now, qc_now, sqc
+            state["air_isentropic_density"], state[mfcw], sqc
         )
         self._water_constituent.get_density_of_water_constituent(
-            s_now, qr_now, sqr
+            state["air_isentropic_density"], state[mfpw], sqr
         )
-        raw_state["isentropic_density_of_water_vapor"] = sqv
-        raw_state["isentropic_density_of_cloud_liquid_water"] = sqc
-        raw_state["isentropic_density_of_precipitation_water"] = sqr
+        state["isentropic_density_of_water_vapor"] = sqv
+        state["isentropic_density_of_cloud_liquid_water"] = sqc
+        state["isentropic_density_of_precipitation_water"] = sqr
+        out_state["isentropic_density_of_water_vapor"] = self._sqv_new
+        out_state["isentropic_density_of_cloud_liquid_water"] = self._sqc_new
+        out_state["isentropic_density_of_precipitation_water"] = self._sqr_new
         Timer.stop()
 
         # perform the prognostic step
         Timer.start(label="prognostic")
-        raw_state_new = self._prognostic.stage_call(
-            stage, timestep, raw_state, raw_tendencies
+        self._prognostic.stage_call(
+            stage, timestep, state, tendencies, out_state
         )
         Timer.stop()
 
         # extract the stepped prognostic model variables
-        s_new = raw_state_new["air_isentropic_density"]
-        su_new = raw_state_new["x_momentum_isentropic"]
-        sv_new = raw_state_new["y_momentum_isentropic"]
-        sqv_new = raw_state_new["isentropic_density_of_water_vapor"]
-        sqc_new = raw_state_new["isentropic_density_of_cloud_liquid_water"]
-        sqr_new = raw_state_new["isentropic_density_of_precipitation_water"]
+        s_new = out_state["air_isentropic_density"]
+        su_new = out_state["x_momentum_isentropic"]
+        sv_new = out_state["y_momentum_isentropic"]
+        sqv_new = out_state.pop("isentropic_density_of_water_vapor")
+        sqc_new = out_state.pop("isentropic_density_of_cloud_liquid_water")
+        sqr_new = out_state.pop("isentropic_density_of_precipitation_water")
 
         # diagnose the mass fraction of all water constituents
         Timer.start(label="diagnose_q")
         self._water_constituent.get_mass_fraction_of_water_constituent_in_air(
-            s_new, sqv_new, self._qv_new
+            s_new, sqv_new, out_state[mfwv]
         )
-        raw_state_new[mfwv] = self._qv_new
         self._water_constituent.get_mass_fraction_of_water_constituent_in_air(
-            s_new, sqc_new, self._qc_new
+            s_new, sqc_new, out_state[mfcw]
         )
-        raw_state_new[mfcw] = self._qc_new
         self._water_constituent.get_mass_fraction_of_water_constituent_in_air(
-            s_new, sqr_new, self._qr_new
+            s_new, sqr_new, out_state[mfpw]
         )
-        raw_state_new[mfpw] = self._qr_new
         Timer.stop()
 
         # apply the lateral boundary conditions
         Timer.start(label="boundary_conditions")
-        hb.enforce_raw(raw_state_new, out_properties)
+        hb.enforce_raw(out_state, out_properties)
         Timer.stop()
 
-        damped = False
         if self._damp and (
             self._damp_at_every_stage or stage == self.stages - 1
         ):
-            damped = True
-
             # apply vertical damping
             Timer.start(label="vertical_damping")
-            self._damper(
-                timestep, self._s_now, s_new, self._s_ref, self._s_damped
-            )
-            self._damper(
-                timestep, self._su_now, su_new, self._su_ref, self._su_damped
-            )
-            self._damper(
-                timestep, self._sv_now, sv_new, self._sv_ref, self._sv_damped
-            )
+            self._damper(timestep, self._s_now, s_new, self._s_ref, s_new)
+            self._damper(timestep, self._su_now, su_new, self._su_ref, su_new)
+            self._damper(timestep, self._sv_now, sv_new, self._sv_ref, sv_new)
             Timer.stop()
-
-            # self._damper(
-            #     timestep,
-            #     self._qv_now,
-            #     self._qv_new,
-            #     self._qv_ref,
-            #     self._qv_damped,
-            # )
-            # self._damper(
-            #     timestep,
-            #     self._qc_now,
-            #     self._qc_new,
-            #     self._qc_ref,
-            #     self._qc_damped,
-            # )
-            # self._damper(
-            #     timestep,
-            #     self._qr_now,
-            #     self._qr_new,
-            #     self._qr_ref,
-            #     self._qr_damped,
-            # )
-
-        # properly set pointers to current solution
-        s_new = self._s_damped if damped else s_new
-        su_new = self._su_damped if damped else su_new
-        sv_new = self._sv_damped if damped else sv_new
-        qv_new = self._qv_new  # self._qv_damped if damped else self._qv_new
-        qc_new = self._qc_new  # self._qc_damped if damped else self._qc_new
-        qr_new = self._qr_new  # self._qr_damped if damped else self._qr_new
-
-        smoothed = False
-        if self._smooth and (
-            self._smooth_at_every_stage or stage == self.stages - 1
-        ):
-            smoothed = True
-
-            Timer.start(label="horizontal_smoothing_dry")
-
-            # apply horizontal smoothing
-            self._smoother(s_new, self._s_smoothed)
-            self._smoother(su_new, self._su_smoothed)
-            self._smoother(sv_new, self._sv_smoothed)
-
-            # apply horizontal boundary conditions
-            raw_state_smoothed = {
-                "time": raw_state_new["time"],
-                "air_isentropic_density": self._s_smoothed,
-                "x_momentum_isentropic": self._su_smoothed,
-                "y_momentum_isentropic": self._sv_smoothed,
-            }
-            hb.enforce_raw(raw_state_smoothed, out_properties)
-
-            Timer.stop()
-
-        # properly set pointers to output solution
-        s_out = self._s_smoothed if smoothed else s_new
-        su_out = self._su_smoothed if smoothed else su_new
-        sv_out = self._sv_smoothed if smoothed else sv_new
-
-        smoothed_moist = False
-        if self._smooth_moist and (
-            self._smooth_moist_at_every_stage or stage == self.stages - 1
-        ):
-            smoothed_moist = True
-
-            Timer.start(label="horizontal_smoothing_moist")
-
-            # apply horizontal smoothing
-            self._smoother_moist(qv_new, self._qv_smoothed)
-            self._smoother_moist(qc_new, self._qc_smoothed)
-            self._smoother_moist(qr_new, self._qr_smoothed)
-
-            # apply horizontal boundary conditions
-            raw_state_smoothed = {
-                "time": raw_state_new["time"],
-                mfwv: self._qv_smoothed,
-                mfcw: self._qc_smoothed,
-                mfpw: self._qr_smoothed,
-            }
-            hb.enforce_raw(raw_state_smoothed, out_properties)
-
-            Timer.stop()
-
-        # properly set pointers to output solution
-        qv_out = self._qv_smoothed if smoothed_moist else qv_new
-        qc_out = self._qc_smoothed if smoothed_moist else qc_new
-        qr_out = self._qr_smoothed if smoothed_moist else qr_new
 
         # diagnose the velocity components
         Timer.start(label="velocity")
         self._velocity_components.get_velocity_components(
-            s_out, su_out, sv_out, self._u_out, self._v_out
+            s_new,
+            su_new,
+            sv_new,
+            out_state["x_velocity_at_u_locations"],
+            out_state["y_velocity_at_v_locations"],
         )
         hb.set_outermost_layers_x(
-            self._u_out,
+            out_state["x_velocity_at_u_locations"],
             field_name="x_velocity_at_u_locations",
             field_units=out_properties["x_velocity_at_u_locations"]["units"],
-            time=raw_state_new["time"],
+            time=out_state["time"],
         )
         hb.set_outermost_layers_y(
-            self._v_out,
+            out_state["y_velocity_at_v_locations"],
             field_name="y_velocity_at_v_locations",
             field_units=out_properties["y_velocity_at_v_locations"]["units"],
-            time=raw_state_new["time"],
+            time=out_state["time"],
         )
         Timer.stop()
-
-        # instantiate the output state
-        raw_state_out = {
-            "time": raw_state_new["time"],
-            "air_isentropic_density": s_out,
-            mfwv: qv_out,
-            mfcw: qc_out,
-            mfpw: qr_out,
-            "x_momentum_isentropic": su_out,
-            "x_velocity_at_u_locations": self._u_out,
-            "y_momentum_isentropic": sv_out,
-            "y_velocity_at_v_locations": self._v_out,
-        }
-
-        return raw_state_out
 
     def substep_array_call(
         self,
         stage: int,
         substep: int,
-        raw_state: ty.StorageDict,
-        raw_stage_state: ty.StorageDict,
-        raw_tmp_state: ty.StorageDict,
-        raw_tendencies: ty.StorageDict,
-        timestep: ty.TimeDelta,
-    ) -> ty.StorageDict:
+        raw_state: "NDArrayLikeDict",
+        raw_stage_state: "NDArrayLikeDict",
+        raw_tmp_state: "NDArrayLikeDict",
+        raw_tendencies: "NDArrayLikeDict",
+        timestep: "TimeDelta",
+    ) -> "NDArrayLikeDict":
         raise NotImplementedError()

@@ -28,7 +28,7 @@ from tasmania.python.plot.drawer import Drawer
 from tasmania.python.plot.plot_utils import make_quiver
 from tasmania.python.plot.retrievers import DataRetriever
 from tasmania.python.plot.utils import to_units
-from tasmania.python.utils import typing
+from tasmania.python.utils import typingx
 
 if TYPE_CHECKING:
     from tasmania.python.domain.grid import Grid
@@ -66,7 +66,7 @@ class Quiver(Drawer):
         zaxis_units: Optional[str] = None,
         zaxis_x: Optional[int] = None,
         zaxis_y: Optional[int] = None,
-        properties: Optional[typing.options_dict_t] = None,
+        properties: Optional[typingx.options_dict_t] = None,
     ) -> None:
         """
         Parameters
@@ -308,9 +308,9 @@ class Quiver(Drawer):
                     )
 
     def __call__(
-        self, state: typing.DataArrayDict, fig: plt.Figure, ax: plt.Axes
+        self, state: typingx.DataArrayDict, fig: plt.Figure, ax: plt.Axes
     ) -> None:
-        """ Call operator generating the quiver plot. """
+        """Call operator generating the quiver plot."""
         self._slave(state, fig, ax)
 
 
@@ -321,7 +321,7 @@ def make_quiver_xy(
     xcomp_retriever: DataRetriever,
     ycomp_retriever: DataRetriever,
     scalar_retriever: DataRetriever,
-    state: typing.DataArrayDict,
+    state: typingx.DataArrayDict,
     fig: plt.Figure,
     ax: plt.Axes,
     **kwargs
@@ -403,7 +403,7 @@ def make_quiver_xz(
     xcomp_retriever: DataRetriever,
     zcomp_retriever: DataRetriever,
     scalar_retriever: DataRetriever,
-    state: typing.DataArrayDict,
+    state: typingx.DataArrayDict,
     fig: plt.Figure,
     ax: plt.Axes,
     **kwargs
@@ -485,7 +485,7 @@ def make_quiver_xh(
     xcomp_retriever: DataRetriever,
     zcomp_retriever: DataRetriever,
     scalar_retriever: DataRetriever,
-    state: typing.DataArrayDict,
+    state: typingx.DataArrayDict,
     fig: plt.Figure,
     ax: plt.Axes,
     **kwargs
@@ -500,7 +500,7 @@ def make_quiver_yz(
     ycomp_retriever: DataRetriever,
     zcomp_retriever: DataRetriever,
     scalar_retriever: DataRetriever,
-    state: typing.DataArrayDict,
+    state: typingx.DataArrayDict,
     fig: plt.Figure,
     ax: plt.Axes,
     **kwargs
@@ -582,7 +582,7 @@ def make_quiver_yh(
     ycomp_retriever: DataRetriever,
     zcomp_retriever: DataRetriever,
     scalar_retriever: DataRetriever,
-    state: typing.DataArrayDict,
+    state: typingx.DataArrayDict,
     fig: plt.Figure,
     ax: plt.Axes,
     **kwargs

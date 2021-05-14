@@ -26,11 +26,11 @@ from typing import List, Optional, Sequence, Union
 
 from tasmania.python.domain.grid import Grid
 from tasmania.python.plot.utils import to_units
-from tasmania.python.utils import typing
+from tasmania.python.utils import typingx
 
 
 class DataRetriever:
-    """ Functor retrieving a raw scalar field from a state dictionary. """
+    """Functor retrieving a raw scalar field from a state dictionary."""
 
     def __init__(
         self,
@@ -72,7 +72,7 @@ class DataRetriever:
         self.y = y if y is not None else slice(0, None)
         self.z = z if z is not None else slice(0, None)
 
-    def __call__(self, state: typing.DataArrayDict) -> typing.array_t:
+    def __call__(self, state: typingx.DataArrayDict) -> typingx.array_t:
         """
         Retrieve the field.
 
@@ -550,8 +550,8 @@ class DataRetrieverComposite:
 
     def __call__(
         self,
-        *args: Union[typing.DataArrayDict, Sequence[typing.DataArrayDict]]
-    ) -> List[typing.array_t]:
+        *args: Union[typingx.DataArrayDict, Sequence[typingx.DataArrayDict]]
+    ) -> List[typingx.array_t]:
         """
         Retrieve the field(s).
 

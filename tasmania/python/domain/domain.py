@@ -26,7 +26,7 @@ from typing import Any, Dict, Optional, Sequence, TYPE_CHECKING
 from tasmania.python.domain.grid import PhysicalGrid
 from tasmania.python.domain.horizontal_boundary import HorizontalBoundary
 from tasmania.python.framework.allocators import as_storage
-from tasmania.python.utils import typing as ty
+from tasmania.python.utils import typingx as ty
 
 if TYPE_CHECKING:
     from tasmania.python.domain.grid import NumericalGrid

@@ -33,7 +33,7 @@ except (ImportError, ModuleNotFoundError):
 import gt4py as gt
 
 from tasmania.python.framework.generic_functions import to_numpy
-from tasmania.python.utils import typing
+from tasmania.python.utils import typingx
 from tasmania.python.utils.data import get_physical_constants
 from tasmania.python.utils.storage import get_dataarray_3d
 
@@ -208,7 +208,7 @@ def get_isothermal_isentropic_analytical_solution(
 
 def convert_relative_humidity_to_water_vapor(
     method: str, p: DataArray, t: DataArray, rh: DataArray
-) -> typing.array_t:
+) -> typingx.array_t:
     """
     Convert relative humidity to water vapor mixing ratio.
 
@@ -240,9 +240,9 @@ def convert_relative_humidity_to_water_vapor(
         for humidity_. Retrieved from `<https://www.vaisala.com>`_.
     """
     # Extract the raw arrays as ndarrays
-    p_np = p.to_units("Pa").values
-    t_np = t.to_units("K").values
-    rh_np = rh.to_units("1").values
+    p_np = to_numpy(p.to_units("Pa").data)
+    t_np = to_numpy(t.to_units("K").data)
+    rh_np = to_numpy(rh.to_units("1").data)
 
     # Get the saturation water vapor pressure
     if method == "tetens":
@@ -260,8 +260,7 @@ def convert_relative_humidity_to_water_vapor(
 
     # Compute the mixing ratio of water vapor
     B = 0.62198
-    qv = np.zeros_like(t_np)
-    qv[...] = np.where(p_sat >= 0.616 * p_np, 0, B * pw / (p_np - pw))
+    qv = np.where(p_sat >= 0.616 * p_np, 0, B * pw / (p_np - pw))
 
     return qv
 

@@ -34,7 +34,7 @@ from tasmania.python.domain.topography import (
     NumericalTopography,
 )
 from tasmania.python.framework.options import StorageOptions
-from tasmania.python.utils import typing as ty
+from tasmania.python.utils import typingx as ty
 from tasmania.python.utils.utils import (
     smaller_than as lt,
     smaller_or_equal_than as le,
@@ -159,7 +159,7 @@ class Grid:
 
     @property
     def nz(self: "Grid") -> int:
-        """ Number of vertical main levels. """
+        """Number of vertical main levels."""
         return self._nz
 
     @property
@@ -239,7 +239,7 @@ class Grid:
 
 
 class PhysicalGrid(Grid):
-    """ Three-dimensional rectilinear grid covering a physical domain. """
+    """Three-dimensional rectilinear grid covering a physical domain."""
 
     def __init__(
         self: "PhysicalGrid",

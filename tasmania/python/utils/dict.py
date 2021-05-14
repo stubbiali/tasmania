@@ -22,12 +22,17 @@
 #
 from typing import Optional, TYPE_CHECKING
 
+from sympl._core.time import FakeTimer as Timer
+
+# from sympl._core.time import Timer
+
 from tasmania.python.framework.stencil import StencilFactory
-from tasmania.python.utils import typing
+from tasmania.python.utils import typingx
 from tasmania.python.utils.storage import deepcopy_dataarray
-from tasmania.python.utils.time import Timer
 
 if TYPE_CHECKING:
+    from sympl._core.typingx import DataArrayDict
+
     from tasmania.python.framework.options import (
         BackendOptions,
         StorageOptions,
@@ -72,8 +77,8 @@ class DataArrayDictOperator(StencilFactory):
 
     def copy(
         self,
-        dst: typing.DataArrayDict,
-        src: typing.DataArrayDict,
+        dst: typingx.DataArrayDict,
+        src: typingx.DataArrayDict,
         unshared_variables_in_output: bool = False,
     ) -> None:
         """
@@ -126,12 +131,12 @@ class DataArrayDictOperator(StencilFactory):
 
     def add(
         self,
-        dict1: typing.DataArrayDict,
-        dict2: typing.DataArrayDict,
-        out: Optional[typing.DataArrayDict] = None,
-        field_properties: Optional[typing.PropertiesDict] = None,
+        dict1: typingx.DataArrayDict,
+        dict2: typingx.DataArrayDict,
+        out: Optional[typingx.DataArrayDict] = None,
+        field_properties: Optional[typingx.PropertiesDict] = None,
         unshared_variables_in_output: bool = False,
-    ) -> typing.DataArrayDict:
+    ) -> typingx.DataArrayDict:
         """Add up two dictionaries item-wise.
 
         Parameters
@@ -224,9 +229,9 @@ class DataArrayDictOperator(StencilFactory):
 
     def iadd(
         self,
-        dict1: typing.DataArrayDict,
-        dict2: typing.DataArrayDict,
-        field_properties: Optional[typing.PropertiesDict] = None,
+        dict1: typingx.DataArrayDict,
+        dict2: typingx.DataArrayDict,
+        field_properties: Optional[typingx.PropertiesDict] = None,
         unshared_variables_in_output: bool = False,
         deepcopy_unshared_variables: bool = False,
     ) -> None:
@@ -292,12 +297,12 @@ class DataArrayDictOperator(StencilFactory):
 
     def sub(
         self,
-        dict1: typing.DataArrayDict,
-        dict2: typing.DataArrayDict,
-        out: Optional[typing.DataArrayDict] = None,
-        field_properties: Optional[typing.PropertiesDict] = None,
+        dict1: typingx.DataArrayDict,
+        dict2: typingx.DataArrayDict,
+        out: Optional[typingx.DataArrayDict] = None,
+        field_properties: Optional[typingx.PropertiesDict] = None,
         unshared_variables_in_output: bool = False,
-    ) -> typing.DataArrayDict:
+    ) -> typingx.DataArrayDict:
         """Compute the item-wise difference between two dictionaries.
 
         Parameters
@@ -412,9 +417,9 @@ class DataArrayDictOperator(StencilFactory):
 
     def isub(
         self,
-        dict1: typing.DataArrayDict,
-        dict2: typing.DataArrayDict,
-        field_properties: Optional[typing.PropertiesDict] = None,
+        dict1: typingx.DataArrayDict,
+        dict2: typingx.DataArrayDict,
+        field_properties: Optional[typingx.PropertiesDict] = None,
         unshared_variables_in_output: bool = False,
     ) -> None:
         """In-place variant of `add`.
@@ -491,12 +496,12 @@ class DataArrayDictOperator(StencilFactory):
 
     def scale(
         self,
-        dictionary: typing.DataArrayDict,
+        dictionary: typingx.DataArrayDict,
         factor: float,
-        out: Optional[typing.DataArrayDict] = None,
-        field_properties: Optional[typing.PropertiesDict] = None,
-    ) -> typing.DataArrayDict:
-        """ TODO """
+        out: Optional[typingx.DataArrayDict] = None,
+        field_properties: Optional[typingx.PropertiesDict] = None,
+    ) -> typingx.DataArrayDict:
+        """TODO"""
 
         field_properties = field_properties or {}
 
@@ -538,11 +543,11 @@ class DataArrayDictOperator(StencilFactory):
 
     def iscale(
         self,
-        dictionary: typing.DataArrayDict,
+        dictionary: typingx.DataArrayDict,
         factor: float,
-        field_properties: Optional[typing.PropertiesDict] = None,
+        field_properties: Optional[typingx.PropertiesDict] = None,
     ) -> None:
-        """ TODO """
+        """TODO"""
 
         field_properties = field_properties or {}
 
@@ -568,13 +573,13 @@ class DataArrayDictOperator(StencilFactory):
 
     def addsub(
         self,
-        dict1: typing.DataArrayDict,
-        dict2: typing.DataArrayDict,
-        dict3: typing.DataArrayDict,
-        out: Optional[typing.DataArrayDict] = None,
-        field_properties: Optional[typing.PropertiesDict] = None,
-    ) -> typing.DataArrayDict:
-        """ TODO """
+        dict1: typingx.DataArrayDict,
+        dict2: typingx.DataArrayDict,
+        dict3: typingx.DataArrayDict,
+        out: Optional[typingx.DataArrayDict] = None,
+        field_properties: Optional[typingx.PropertiesDict] = None,
+    ) -> typingx.DataArrayDict:
+        """TODO"""
 
         field_properties = field_properties or {}
 
@@ -623,12 +628,12 @@ class DataArrayDictOperator(StencilFactory):
 
     def iaddsub(
         self,
-        dict1: typing.DataArrayDict,
-        dict2: typing.DataArrayDict,
-        dict3: typing.DataArrayDict,
-        field_properties: Optional[typing.PropertiesDict] = None,
+        dict1: typingx.DataArrayDict,
+        dict2: typingx.DataArrayDict,
+        dict3: typingx.DataArrayDict,
+        field_properties: Optional[typingx.PropertiesDict] = None,
     ) -> None:
-        """ TODO """
+        """TODO"""
 
         field_properties = field_properties or {}
 
@@ -662,13 +667,13 @@ class DataArrayDictOperator(StencilFactory):
 
     def fma(
         self,
-        dict1: typing.DataArrayDict,
-        dict2: typing.DataArrayDict,
+        dict1: typingx.DataArrayDict,
+        dict2: typingx.DataArrayDict,
         factor: float,
-        out: Optional[typing.DataArrayDict] = None,
-        field_properties: Optional[typing.PropertiesDict] = None,
-    ) -> typing.DataArrayDict:
-        """ TODO """
+        out: Optional[typingx.DataArrayDict] = None,
+        field_properties: Optional[typingx.PropertiesDict] = None,
+    ) -> typingx.DataArrayDict:
+        """TODO"""
 
         field_properties = field_properties or {}
 
@@ -714,13 +719,13 @@ class DataArrayDictOperator(StencilFactory):
     def sts_rk2_0(
         self,
         dt: float,
-        state: typing.DataArrayDict,
-        state_prv: typing.DataArrayDict,
-        tnd: typing.DataArrayDict,
-        out: Optional[typing.DataArrayDict] = None,
-        field_properties: Optional[typing.PropertiesDict] = None,
-    ) -> typing.DataArrayDict:
-        """ TODO """
+        state: typingx.DataArrayDict,
+        state_prv: typingx.DataArrayDict,
+        tnd: typingx.DataArrayDict,
+        out: Optional[typingx.DataArrayDict] = None,
+        field_properties: Optional[typingx.PropertiesDict] = None,
+    ) -> typingx.DataArrayDict:
+        """TODO"""
 
         field_properties = field_properties or {}
 
@@ -769,13 +774,13 @@ class DataArrayDictOperator(StencilFactory):
     def sts_rk3ws_0(
         self,
         dt: float,
-        state: typing.DataArrayDict,
-        state_prv: typing.DataArrayDict,
-        tnd: typing.DataArrayDict,
-        out: Optional[typing.DataArrayDict] = None,
-        field_properties: Optional[typing.PropertiesDict] = None,
-    ) -> typing.DataArrayDict:
-        """ TODO """
+        state: typingx.DataArrayDict,
+        state_prv: typingx.DataArrayDict,
+        tnd: typingx.DataArrayDict,
+        out: Optional[typingx.DataArrayDict] = None,
+        field_properties: Optional[typingx.PropertiesDict] = None,
+    ) -> typingx.DataArrayDict:
+        """TODO"""
 
         field_properties = field_properties or {}
 
@@ -820,3 +825,11 @@ class DataArrayDictOperator(StencilFactory):
             )
 
         return out
+
+    @staticmethod
+    def update_swap(dct1: "DataArrayDict", dct2: "DataArrayDict") -> None:
+        for key in dct2:
+            if key in dct1:
+                dct1[key], dct2[key] = dct2[key], dct1[key]
+            else:
+                dct1[key] = dct2[key]

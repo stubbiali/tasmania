@@ -27,7 +27,7 @@ from typing import Any, Callable, Optional, Sequence, Type, Union
 from tasmania.python.framework import protocol as prt
 from tasmania.python.framework.allocators import Allocator, AsStorage
 from tasmania.python.framework.options import BackendOptions, StorageOptions
-from tasmania.python.utils import typing as ty
+from tasmania.python.utils import typingx as ty
 from tasmania.python.utils.exceptions import FactoryRegistryError
 from tasmania.python.utils.protocol import (
     Registry,
@@ -209,12 +209,24 @@ class StencilFactory(abc.ABC):
         backend_options: Optional[BackendOptions] = None,
         storage_options: Optional[StorageOptions] = None,
     ) -> None:
-        self.backend = backend or "numpy"
-        self.backend_options = backend_options or BackendOptions()
-        self.storage_options = storage_options or StorageOptions()
+        self._backend = backend or "numpy"
+        self._backend_options = backend_options or BackendOptions()
+        self._storage_options = storage_options or StorageOptions()
 
         self._registry = Registry()
         self._fill_registry()
+
+    @property
+    def backend(self) -> str:
+        return self._backend
+
+    @property
+    def backend_options(self) -> BackendOptions:
+        return self._backend_options
+
+    @property
+    def storage_options(self) -> StorageOptions:
+        return self._storage_options
 
     def as_storage(
         self: "StencilFactory",

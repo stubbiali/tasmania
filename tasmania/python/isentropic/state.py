@@ -31,7 +31,7 @@ except (ImportError, ModuleNotFoundError):
 
 from tasmania.python.framework.allocators import as_storage, ones, zeros
 from tasmania.python.framework.generic_functions import to_numpy
-from tasmania.python.utils import typing
+from tasmania.python.utils import typingx
 from tasmania.python.utils.data import get_physical_constants
 from tasmania.python.utils.meteo import (
     convert_relative_humidity_to_water_vapor,
@@ -63,7 +63,7 @@ mfpw = "mass_fraction_of_precipitation_water_in_air"
 
 def get_isentropic_state_from_brunt_vaisala_frequency(
     grid: "Grid",
-    time: typing.Datetime,
+    time: typingx.Datetime,
     x_velocity: DataArray,
     y_velocity: DataArray,
     brunt_vaisala: DataArray,
@@ -75,7 +75,7 @@ def get_isentropic_state_from_brunt_vaisala_frequency(
     backend: str = "numpy",
     storage_shape: Optional[Sequence[int]] = None,
     storage_options: Optional["StorageOptions"] = None,
-) -> typing.DataArrayDict:
+) -> typingx.DataArrayDict:
     """
     Compute a valid state for the isentropic model given
     the Brunt-Vaisala frequency.
@@ -422,7 +422,7 @@ def get_isentropic_state_from_brunt_vaisala_frequency(
 
 def get_isentropic_state_from_temperature(
     grid: "Grid",
-    time: typing.Datetime,
+    time: typingx.Datetime,
     x_velocity: DataArray,
     y_velocity: DataArray,
     background_temperature: DataArray,
@@ -438,7 +438,7 @@ def get_isentropic_state_from_temperature(
     backend: str = "numpy",
     storage_shape: Optional[Sequence[int]] = None,
     storage_options: Optional["StorageOptions"] = None,
-) -> typing.DataArrayDict:
+) -> typingx.DataArrayDict:
     """
     Compute a valid state for the isentropic model given
     the air temperature.

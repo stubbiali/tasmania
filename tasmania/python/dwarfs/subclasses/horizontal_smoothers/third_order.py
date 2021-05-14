@@ -23,13 +23,13 @@
 from gt4py import gtscript
 
 from tasmania.python.dwarfs.horizontal_smoothing import HorizontalSmoothing
-from tasmania.python.framework.register import register
 from tasmania.python.framework.tag import stencil_definition
 
 
-@register(name="third_order")
 class ThirdOrder(HorizontalSmoothing):
-    """ Two-dimensional third-order smoothing. """
+    """Two-dimensional third-order smoothing."""
+
+    name = "third_order"
 
     def __init__(
         self,
@@ -37,10 +37,11 @@ class ThirdOrder(HorizontalSmoothing):
         smooth_coeff,
         smooth_coeff_max,
         smooth_damp_depth,
-        nb,
-        backend,
-        backend_options,
-        storage_options,
+        nb=None,
+        *,
+        backend="numpy",
+        backend_options=None,
+        storage_options=None,
     ):
         nb = 3 if (nb is None or nb < 3) else nb
         super().__init__(
@@ -107,9 +108,7 @@ class ThirdOrder(HorizontalSmoothing):
 
     @staticmethod
     @stencil_definition(backend=("numpy", "cupy"), stencil="smoothing")
-    def _smoothing_numpy(
-        in_phi, in_gamma, out_phi, *, origin, domain, **kwargs
-    ):
+    def _smoothing_numpy(in_phi, in_gamma, out_phi, *, origin, domain):
         i = slice(origin[0], origin[0] + domain[0])
         im3 = slice(origin[0] - 3, origin[0] + domain[0] - 3)
         im2 = slice(origin[0] - 2, origin[0] + domain[0] - 2)
@@ -169,9 +168,10 @@ class ThirdOrder(HorizontalSmoothing):
             )
 
 
-@register(name="third_order_1dx")
 class ThirdOrder1DX(HorizontalSmoothing):
-    """ One-dimensional third-order smoothing along the x-direction. """
+    """One-dimensional third-order smoothing along the x-direction."""
+
+    name = "third_order_1dx"
 
     def __init__(
         self,
@@ -179,10 +179,11 @@ class ThirdOrder1DX(HorizontalSmoothing):
         smooth_coeff,
         smooth_coeff_max,
         smooth_damp_depth,
-        nb,
-        backend,
-        backend_options,
-        storage_options,
+        nb=None,
+        *,
+        backend="numpy",
+        backend_options=None,
+        storage_options=None,
     ):
         nb = 3 if (nb is None or nb < 3) else nb
         super().__init__(
@@ -233,9 +234,7 @@ class ThirdOrder1DX(HorizontalSmoothing):
 
     @staticmethod
     @stencil_definition(backend=("numpy", "cupy"), stencil="smoothing")
-    def _smoothing_numpy(
-        in_phi, in_gamma, out_phi, *, origin, domain, **kwargs
-    ):
+    def _smoothing_numpy(in_phi, in_gamma, out_phi, *, origin, domain):
         i = slice(origin[0], origin[0] + domain[0])
         im3 = slice(origin[0] - 3, origin[0] + domain[0] - 3)
         im2 = slice(origin[0] - 2, origin[0] + domain[0] - 2)
@@ -277,9 +276,10 @@ class ThirdOrder1DX(HorizontalSmoothing):
             )
 
 
-@register(name="third_order_1dy")
 class ThirdOrder1DY(HorizontalSmoothing):
-    """ One-dimensional third-order smoothing along the y-direction. """
+    """One-dimensional third-order smoothing along the y-direction."""
+
+    name = "third_order_1dy"
 
     def __init__(
         self,
@@ -287,10 +287,11 @@ class ThirdOrder1DY(HorizontalSmoothing):
         smooth_coeff,
         smooth_coeff_max,
         smooth_damp_depth,
-        nb,
-        backend,
-        backend_options,
-        storage_options,
+        nb=None,
+        *,
+        backend="numpy",
+        backend_options=None,
+        storage_options=None,
     ):
         nb = 3 if (nb is None or nb < 3) else nb
         super().__init__(
@@ -341,9 +342,7 @@ class ThirdOrder1DY(HorizontalSmoothing):
 
     @staticmethod
     @stencil_definition(backend=("numpy", "cupy"), stencil="smoothing")
-    def _smoothing_numpy(
-        in_phi, in_gamma, out_phi, *, origin, domain, **kwargs
-    ):
+    def _smoothing_numpy(in_phi, in_gamma, out_phi, *, origin, domain):
         i = slice(origin[0], origin[0] + domain[0])
         j = slice(origin[1], origin[1] + domain[1])
         jm3 = slice(origin[1] - 3, origin[1] + domain[1] - 3)

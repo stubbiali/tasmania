@@ -22,14 +22,14 @@
 #
 from gt4py import gtscript
 
-from tasmania.python.framework.register import register
 from tasmania.python.framework.tag import stencil_definition
 from tasmania.python.dwarfs.horizontal_smoothing import HorizontalSmoothing
 
 
-@register(name="first_order")
 class FirstOrder(HorizontalSmoothing):
-    """ Two-dimensional first-order smoothing. """
+    """Two-dimensional first-order smoothing."""
+
+    name = "first_order"
 
     def __init__(
         self,
@@ -37,10 +37,11 @@ class FirstOrder(HorizontalSmoothing):
         smooth_coeff,
         smooth_coeff_max,
         smooth_damp_depth,
-        nb,
-        backend,
-        backend_options,
-        storage_options,
+        nb=None,
+        *,
+        backend="numpy",
+        backend_options=None,
+        storage_options=None,
     ):
         nb = 1 if (nb is None or nb < 1) else nb
         super().__init__(
@@ -107,9 +108,7 @@ class FirstOrder(HorizontalSmoothing):
 
     @staticmethod
     @stencil_definition(backend=("numpy", "cupy"), stencil="smoothing")
-    def _smoothing_numpy(
-        in_phi, in_gamma, out_phi, *, origin, domain, **kwargs
-    ):
+    def _smoothing_numpy(in_phi, in_gamma, out_phi, *, origin, domain):
         i = slice(origin[0], origin[0] + domain[0])
         im1 = slice(origin[0] - 1, origin[0] + domain[0] - 1)
         ip1 = slice(origin[0] + 1, origin[0] + domain[0] + 1)
@@ -145,9 +144,10 @@ class FirstOrder(HorizontalSmoothing):
             )
 
 
-@register(name="first_order_1dx")
 class FirstOrder1DX(HorizontalSmoothing):
-    """ One-dimensional first-order smoothing along the x-direction. """
+    """One-dimensional first-order smoothing along the x-direction."""
+
+    name = "first_order_1dx"
 
     def __init__(
         self,
@@ -155,10 +155,11 @@ class FirstOrder1DX(HorizontalSmoothing):
         smooth_coeff,
         smooth_coeff_max,
         smooth_damp_depth,
-        nb,
-        backend,
-        backend_options,
-        storage_options,
+        nb=None,
+        *,
+        backend="numpy",
+        backend_options=None,
+        storage_options=None,
     ):
         nb = 1 if (nb is None or nb < 1) else nb
         super().__init__(
@@ -209,9 +210,7 @@ class FirstOrder1DX(HorizontalSmoothing):
 
     @staticmethod
     @stencil_definition(backend=("numpy", "cupy"), stencil="smoothing")
-    def _smoothing_numpy(
-        in_phi, in_gamma, out_phi, *, origin, domain, **kwargs
-    ):
+    def _smoothing_numpy(in_phi, in_gamma, out_phi, *, origin, domain):
         i = slice(origin[0], origin[0] + domain[0])
         im1 = slice(origin[0] - 1, origin[0] + domain[0] - 1)
         ip1 = slice(origin[0] + 1, origin[0] + domain[0] + 1)
@@ -235,9 +234,10 @@ class FirstOrder1DX(HorizontalSmoothing):
             ] + 0.25 * in_gamma[0, 0, 0] * (in_phi[-1, 0, 0] + in_phi[1, 0, 0])
 
 
-@register(name="first_order_1dy")
 class FirstOrder1DY(HorizontalSmoothing):
-    """ One-dimensional first-order smoothing along the y-direction. """
+    """One-dimensional first-order smoothing along the y-direction."""
+
+    name = "first_order_1dy"
 
     def __init__(
         self,
@@ -245,10 +245,11 @@ class FirstOrder1DY(HorizontalSmoothing):
         smooth_coeff,
         smooth_coeff_max,
         smooth_damp_depth,
-        nb,
-        backend,
-        backend_options,
-        storage_options,
+        nb=None,
+        *,
+        backend="numpy",
+        backend_options=None,
+        storage_options=None,
     ):
         nb = 1 if (nb is None or nb < 1) else nb
         super().__init__(
@@ -299,9 +300,7 @@ class FirstOrder1DY(HorizontalSmoothing):
 
     @staticmethod
     @stencil_definition(backend=("numpy", "cupy"), stencil="smoothing")
-    def _smoothing_numpy(
-        in_phi, in_gamma, out_phi, *, origin, domain, **kwargs
-    ):
+    def _smoothing_numpy(in_phi, in_gamma, out_phi, *, origin, domain):
         i = slice(origin[0], origin[0] + domain[0])
         j = slice(origin[1], origin[1] + domain[1])
         jm1 = slice(origin[1] - 1, origin[1] + domain[1] - 1)

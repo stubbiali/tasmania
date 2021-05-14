@@ -22,7 +22,6 @@
 #
 from gt4py import gtscript
 
-from tasmania.python.framework.register import register
 from tasmania.python.framework.tag import stencil_subroutine
 from tasmania.python.isentropic.dynamics.horizontal_fluxes import (
     IsentropicMinimalHorizontalFlux,
@@ -37,10 +36,10 @@ from tasmania.python.isentropic.dynamics.subclasses.horizontal_fluxes.fifth_orde
 )
 
 
-@register(name="fifth_order_upwind")
 class FifthOrderUpwind(IsentropicMinimalHorizontalFlux):
-    """ Fifth-order upwind scheme. """
+    """Fifth-order upwind scheme."""
 
+    name = "fifth_order_upwind"
     extent = 3
     order = 5
     externals = {

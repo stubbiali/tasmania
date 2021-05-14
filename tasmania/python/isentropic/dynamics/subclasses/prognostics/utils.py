@@ -25,7 +25,7 @@ import numpy as np
 from gt4py import gtscript
 
 from tasmania.python.framework.stencil import stencil_definition
-from tasmania.python.utils import typing
+from tasmania.python.utils import typingx
 
 
 # convenient aliases
@@ -63,8 +63,8 @@ def step_forward_euler_numpy(
     dt: float,
     dx: float,
     dy: float,
-    origin: typing.TripletInt,
-    domain: typing.TripletInt
+    origin: typingx.TripletInt,
+    domain: typingx.TripletInt
 ) -> None:
     i = slice(origin[0], origin[0] + domain[0])
     j = slice(origin[1], origin[1] + domain[1])
@@ -155,8 +155,8 @@ def step_forward_euler_momentum_numpy(
     dx: float,
     dy: float,
     eps: float,
-    origin: typing.TripletInt,
-    domain: typing.TripletInt
+    origin: typingx.TripletInt,
+    domain: typingx.TripletInt
 ) -> None:
     i = slice(origin[0], origin[0] + domain[0])
     im1 = slice(origin[0] - 1, origin[0] + domain[0] - 1)

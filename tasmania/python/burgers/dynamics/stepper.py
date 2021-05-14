@@ -31,14 +31,17 @@ from tasmania.python.burgers.dynamics.advection import BurgersAdvection
 from tasmania.python.framework.register import factorize
 from tasmania.python.framework.stencil import StencilFactory
 from tasmania.python.framework.tag import stencil_definition
-from tasmania.python.utils import typing as ty
+from tasmania.python.utils import typingx as ty
 
 if TYPE_CHECKING:
+    from sympl._core.typingx import NDArrayLikeDict
+
     from tasmania.python.domain.horizontal_grid import HorizontalGrid
     from tasmania.python.framework.options import (
         BackendOptions,
         StorageOptions,
     )
+    from tasmania.python.utils.typingx import TimeDelta
 
 
 class BurgersStepper(StencilFactory, abc.ABC):
@@ -76,14 +79,10 @@ class BurgersStepper(StencilFactory, abc.ABC):
             Storage-related options.
         """
         super().__init__(backend, backend_options, storage_options)
-
         self._grid_xy = grid_xy
-
         self._advection = BurgersAdvection.factory(flux_scheme, backend)
-
         assert nb >= self._advection.extent
         self._nb = nb
-
         self._forward_euler = None
 
     @property
@@ -101,10 +100,11 @@ class BurgersStepper(StencilFactory, abc.ABC):
     def __call__(
         self: "BurgersStepper",
         stage: int,
-        state: ty.StorageDict,
-        tendencies: ty.StorageDict,
-        timestep: ty.TimeDelta,
-    ) -> ty.StorageDict:
+        state: "NDArrayLikeDict",
+        tendencies: "NDArrayLikeDict",
+        timestep: "TimeDelta",
+        out_state: "NDArrayLikeDict",
+    ) -> None:
         """
         Performing a stage of the time integrator.
 
@@ -180,13 +180,7 @@ class BurgersStepper(StencilFactory, abc.ABC):
     def _stencil_initialize(
         self: "BurgersStepper", tendencies: ty.StorageDict
     ) -> None:
-        storage_shape = (self._grid_xy.nx, self._grid_xy.ny, 1)
-
         self._stencil_args = {}
-        self._stencil_output = tuple(
-            self.zeros(shape=storage_shape) for _ in range(2 * self.stages)
-        )
-
         dtype = self.storage_options.dtype
         self.backend_options.dtypes = {"dtype": dtype}
         self.backend_options.externals = {
@@ -319,7 +313,7 @@ class BurgersStepper(StencilFactory, abc.ABC):
         ie, je, ke = ib + domain[0], jb + domain[1], kb + domain[2]
 
         adv_u_x, adv_u_y, adv_v_x, adv_v_y = advection(
-            dx=dx, dy=dy, u=in_u_tmp, v=in_v_tmp,
+            dx=dx, dy=dy, u=in_u_tmp, v=in_v_tmp
         )
 
         if tnd_u:

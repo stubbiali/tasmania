@@ -20,9 +20,11 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from sympl._core.base_components import TendencyChecker as SymplTendencyChecker
+from sympl._core.dynamic_checkers import (
+    TendencyDynamicComponentChecker as SymplTendencyChecker,
+)
 
-from tasmania.python.utils import typing
+from tasmania.python.utils import typingx
 
 
 class SubsetTendencyChecker(SymplTendencyChecker):
@@ -30,16 +32,16 @@ class SubsetTendencyChecker(SymplTendencyChecker):
     Ensure that the input dictionary is a *subset* of `tendency_properties`.
     """
 
-    def __init__(self, component: typing.TendencyComponent) -> None:
+    def __init__(self, component: typingx.TendencyComponent) -> None:
         super().__init__(component)
 
     def check_tendencies(
-        self, tendency_dict: typing.properties_mapping_t
+        self, tendency_dict: typingx.properties_mapping_t
     ) -> None:
         __tendency_dict = {
             key: value for key, value in tendency_dict.items() if key != "time"
         }
-        self._check_extra_tendencies(__tendency_dict)
+        self.check_extra_tendencies(__tendency_dict)
 
 
 class SupersetTendencyChecker(SymplTendencyChecker):
@@ -47,13 +49,13 @@ class SupersetTendencyChecker(SymplTendencyChecker):
     Ensure that the input dictionary is a *superset* of `tendency_properties`.
     """
 
-    def __init__(self, component: typing.TendencyComponent) -> None:
+    def __init__(self, component: typingx.TendencyComponent) -> None:
         super().__init__(component)
 
     def check_tendencies(
-        self, tendency_dict: typing.properties_mapping_t
+        self, tendency_dict: typingx.properties_mapping_t
     ) -> None:
         __tendency_dict = {
             key: value for key, value in tendency_dict.items() if key != "time"
         }
-        self._check_missing_tendencies(__tendency_dict)
+        self.check_missing_tendencies(__tendency_dict)

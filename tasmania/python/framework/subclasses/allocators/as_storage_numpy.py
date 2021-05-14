@@ -30,7 +30,7 @@ from tasmania.python.framework.allocators import as_storage
 from tasmania.python.framework.options import StorageOptions
 
 if TYPE_CHECKING:
-    from tasmania.python.utils.typing import Storage
+    from tasmania.python.utils.typingx import Storage
 
 
 @as_storage.register(backend="numpy")
@@ -70,4 +70,7 @@ if gt:
         storage_options: Optional[StorageOptions] = None
     ) -> np.ndarray:
         data.synchronize()
+        # >>> old storage
+        # return data
+        # <<< new storage
         return data.to_numpy()

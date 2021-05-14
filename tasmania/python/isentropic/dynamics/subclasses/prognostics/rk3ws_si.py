@@ -20,6 +20,10 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+from sympl._core.time import FakeTimer as Timer
+
+# from sympl._core.time import Timer
+
 from tasmania.python.isentropic.dynamics.diagnostics import (
     IsentropicDiagnostics,
 )
@@ -27,7 +31,6 @@ from tasmania.python.isentropic.dynamics.horizontal_fluxes import (
     IsentropicMinimalHorizontalFlux,
 )
 from tasmania.python.isentropic.dynamics.prognostic import IsentropicPrognostic
-from tasmania.python.framework.register import register
 
 
 # convenient aliases
@@ -36,19 +39,21 @@ mfcw = "mass_fraction_of_cloud_liquid_water_in_air"
 mfpw = "mass_fraction_of_precipitation_water_in_air"
 
 
-@register(name="rk3ws_si")
 class RK3WSSI(IsentropicPrognostic):
     """The semi-implicit three-stages Runge-Kutta scheme."""
+
+    name = "rk3ws_si"
 
     def __init__(
         self,
         horizontal_flux_scheme,
         domain,
         moist,
-        backend,
-        backend_options,
-        storage_shape,
-        storage_options,
+        *,
+        backend="numpy",
+        backend_options=None,
+        storage_shape=None,
+        storage_options=None,
         **kwargs
     ):
         # call parent's constructor
@@ -104,7 +109,7 @@ class RK3WSSI(IsentropicPrognostic):
     def substep_fractions(self):
         return 1.0 / 3.0, 0.5, 1.0
 
-    def stage_call(self, stage, timestep, state, tendencies=None):
+    def stage_call(self, stage, timestep, state, tendencies, out_state):
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
         nb = self.horizontal_boundary.nb
         tendencies = tendencies or {}
@@ -139,21 +144,6 @@ class RK3WSSI(IsentropicPrognostic):
                     "isentropic_density_of_precipitation_water"
                 ]
 
-        # grab the tendencies
-        if "air_isentropic_density" in tendencies:
-            self._s_tnd = tendencies["air_isentropic_density"]
-        if "x_momentum_isentropic" in tendencies:
-            self._su_tnd = tendencies["x_momentum_isentropic"]
-        if "y_momentum_isentropic" in tendencies:
-            self._sv_tnd = tendencies["y_momentum_isentropic"]
-        if self._moist:
-            if mfwv in tendencies:
-                self._qv_tnd = tendencies[mfwv]
-            if mfcw in tendencies:
-                self._qc_tnd = tendencies[mfcw]
-            if mfpw in tendencies:
-                self._qr_tnd = tendencies[mfpw]
-
         # set inputs for the first stencil
         dt = dt.total_seconds()
         dx = self._grid.dx.to_units("m").values.item()
@@ -161,8 +151,8 @@ class RK3WSSI(IsentropicPrognostic):
         stencil_args = {
             "s_now": self._s_now,
             "s_int": state["air_isentropic_density"],
-            "s_tnd": self._s_tnd,
-            "s_new": self._s_new,
+            "s_tnd": tendencies.get("air_isentropic_density", None),
+            "s_new": out_state["air_isentropic_density"],
             "u_int": state["x_velocity_at_u_locations"],
             "v_int": state["y_velocity_at_v_locations"],
             "su_int": state["x_momentum_isentropic"],
@@ -173,24 +163,29 @@ class RK3WSSI(IsentropicPrognostic):
                 {
                     "sqv_now": self._sqv_now,
                     "sqv_int": state["isentropic_density_of_water_vapor"],
-                    "qv_tnd": self._qv_tnd,
-                    "sqv_new": self._sqv_new,
+                    "qv_tnd": tendencies.get(mfwv, None),
+                    "sqv_new": out_state["isentropic_density_of_water_vapor"],
                     "sqc_now": self._sqc_now,
                     "sqc_int": state[
                         "isentropic_density_of_cloud_liquid_water"
                     ],
-                    "qc_tnd": self._qc_tnd,
-                    "sqc_new": self._sqc_new,
+                    "qc_tnd": tendencies.get(mfcw, None),
+                    "sqc_new": out_state[
+                        "isentropic_density_of_cloud_liquid_water"
+                    ],
                     "sqr_now": self._sqr_now,
                     "sqr_int": state[
                         "isentropic_density_of_precipitation_water"
                     ],
-                    "qr_tnd": self._qr_tnd,
-                    "sqr_new": self._sqr_new,
+                    "qr_tnd": tendencies.get(mfpw, None),
+                    "sqr_new": out_state[
+                        "isentropic_density_of_precipitation_water"
+                    ],
                 }
             )
 
         # step the isentropic density and the water species
+        Timer.start(label="stencil")
         self._stencil(
             **stencil_args,
             dt=dt,
@@ -201,40 +196,46 @@ class RK3WSSI(IsentropicPrognostic):
             exec_info=self.backend_options.exec_info,
             validate_args=self.backend_options.validate_args
         )
+        Timer.stop()
 
         # apply the boundary conditions on the stepped isentropic density
+        Timer.start(label="boundary")
         self.horizontal_boundary.enforce_field(
-            self._s_new,
+            out_state["air_isentropic_density"],
             "air_isentropic_density",
             "kg m^-2 K^-1",
             time=state["time"] + dtr,
         )
+        Timer.stop()
 
         # diagnose the Montgomery potential from the stepped isentropic density
+        Timer.start(label="montgomery")
         self._diagnostics.get_montgomery_potential(
-            self._s_new, self._pt, self._mtg_new
+            out_state["air_isentropic_density"], self._pt, self._mtg_new
         )
+        Timer.stop()
 
         # set inputs for the second stencil
         stencil_args = {
             "s_now": self._s_now,
             "s_int": state["air_isentropic_density"],
-            "s_new": self._s_new,
+            "s_new": out_state["air_isentropic_density"],
             "u_int": state["x_velocity_at_u_locations"],
             "v_int": state["y_velocity_at_v_locations"],
             "mtg_now": self._mtg_now,
             "mtg_new": self._mtg_new,
             "su_now": self._su_now,
             "su_int": state["x_momentum_isentropic"],
-            "su_tnd": self._su_tnd,
-            "su_new": self._su_new,
+            "su_tnd": tendencies.get("x_momentum_isentropic"),
+            "su_new": out_state["x_momentum_isentropic"],
             "sv_now": self._sv_now,
             "sv_int": state["y_momentum_isentropic"],
-            "sv_tnd": self._sv_tnd,
-            "sv_new": self._sv_new,
+            "sv_tnd": tendencies.get("y_momentum_isentropic"),
+            "sv_new": out_state["y_momentum_isentropic"],
         }
 
         # step the momenta
+        Timer.start(label="stencil_momenrum")
         self._stencil_momentum(
             **stencil_args,
             dt=dt,
@@ -246,27 +247,13 @@ class RK3WSSI(IsentropicPrognostic):
             exec_info=self.backend_options.exec_info,
             validate_args=self.backend_options.validate_args
         )
+        Timer.stop()
 
-        # collect the outputs
-        out_state = {
-            "time": state["time"] + dtr,
-            "air_isentropic_density": self._s_new,
-            "x_momentum_isentropic": self._su_new,
-            "y_momentum_isentropic": self._sv_new,
-        }
-        if self._moist:
-            out_state.update(
-                {
-                    "isentropic_density_of_water_vapor": self._sqv_new,
-                    "isentropic_density_of_cloud_liquid_water": self._sqc_new,
-                    "isentropic_density_of_precipitation_water": self._sqr_new,
-                }
-            )
+        # set time
+        out_state["time"] = state["time"] + dtr
 
-        return out_state
-
-    def _stencils_allocate_outputs(self):
-        super()._stencils_allocate_outputs()
+    def _stencils_allocate_temporaries(self):
+        super()._stencils_allocate_temporaries()
 
         # allocate the storage which will collect the Montgomery potential
         # retrieved from the updated isentropic density
@@ -298,3 +285,6 @@ class RK3WSSI(IsentropicPrognostic):
         # compile the stencils
         self._stencil = self.compile("step_forward_euler")
         self._stencil_momentum = self.compile("step_forward_euler_momentum")
+
+        # allocate temporaries
+        self._stencils_allocate_temporaries()

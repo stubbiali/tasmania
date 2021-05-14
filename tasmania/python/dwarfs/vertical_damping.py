@@ -23,32 +23,33 @@
 import abc
 import math
 import numpy as np
-from typing import Optional, Sequence, TYPE_CHECKING
+from typing import Sequence, TYPE_CHECKING
+
+from sympl._core.factory import AbstractFactory
 
 from gt4py import gtscript
 
 from tasmania.python.framework.base_components import GridComponent
-from tasmania.python.framework.register import factorize
 from tasmania.python.framework.stencil import StencilFactory
 from tasmania.python.framework.tag import stencil_definition
-from tasmania.python.utils import typing as ty
 from tasmania.python.utils.utils import greater_or_equal_than as ge
 
 if TYPE_CHECKING:
+    from sympl._core.typingx import NDArrayLike
+
     from tasmania.python.domain.grid import Grid
     from tasmania.python.framework.options import (
         BackendOptions,
         StorageOptions,
     )
+    from tasmania.python.utils.typingx import TimeDelta, TripletInt
 
 
-class VerticalDamping(GridComponent, StencilFactory, abc.ABC):
+class VerticalDamping(AbstractFactory, GridComponent, StencilFactory):
     """
     Abstract base class whose derived classes implement different
     vertical damping, i.e. wave absorbing, techniques.
     """
-
-    registry = {}
 
     def __init__(
         self: "VerticalDamping",
@@ -95,7 +96,7 @@ class VerticalDamping(GridComponent, StencilFactory, abc.ABC):
         self._damp_depth = damp_depth
         self._tunits = time_units
         storage_shape = self.get_storage_shape(
-            storage_shape, max_shape=(grid.nx + 1, grid.ny + 1, grid.nz + 1),
+            storage_shape, max_shape=(grid.nx + 1, grid.ny + 1, grid.nz + 1)
         )
         self._shape = storage_shape
 
@@ -127,11 +128,11 @@ class VerticalDamping(GridComponent, StencilFactory, abc.ABC):
     @abc.abstractmethod
     def __call__(
         self: "VerticalDamping",
-        dt: ty.TimeDelta,
-        field_now: ty.Storage,
-        field_new: ty.Storage,
-        field_ref: ty.Storage,
-        field_out: ty.Storage,
+        dt: "TimeDelta",
+        field_now: "NDArrayLike",
+        field_new: "NDArrayLike",
+        field_ref: "NDArrayLike",
+        field_out: "NDArrayLike",
     ) -> None:
         """Apply vertical damping to a generic field.
 
@@ -155,63 +156,6 @@ class VerticalDamping(GridComponent, StencilFactory, abc.ABC):
         pass
 
     @staticmethod
-    def factory(
-        damp_type: str,
-        grid: "Grid",
-        damp_depth: int,
-        damp_coeff_max: float,
-        time_units: str = "s",
-        *,
-        backend: str = "numpy",
-        backend_options: Optional["BackendOptions"] = None,
-        storage_shape: Optional[Sequence[int]] = None,
-        storage_options: Optional["StorageOptions"] = None
-    ) -> "VerticalDamping":
-        """
-        Static method which returns an instance of the derived class
-        implementing the damping method specified by `damp_type`.
-
-        Parameters
-        ----------
-        damp_type : str
-            String specifying the damper to implement. Either:
-
-                * 'rayleigh', for a Rayleigh damper.
-
-        grid : tasmania.Grid
-            The underlying grid.
-        damp_depth : int
-            Number of vertical layers in the damping region.
-        damp_coeff_max : float
-            Maximum value for the damping coefficient.
-        time_units : `str`, optional
-            Time units to be used throughout the class. Defaults to 's'.
-        backend : `str`, optional
-            The backend.
-        backend_options : `BackendOptions`, optional
-            Backend-specific options.
-        storage_options : `StorageOptions`, optional
-            Storage-related options.
-
-        Return
-        ------
-        obj :
-            An instance of the appropriate derived class.
-        """
-        args = (
-            grid,
-            damp_depth,
-            damp_coeff_max,
-            time_units,
-            backend,
-            backend_options,
-            storage_shape,
-            storage_options,
-        )
-        obj = factorize(damp_type, VerticalDamping, args)
-        return obj
-
-    @staticmethod
     @stencil_definition(backend=("numpy", "cupy"), stencil="damping")
     @abc.abstractmethod
     def _damping_numpy(
@@ -222,8 +166,8 @@ class VerticalDamping(GridComponent, StencilFactory, abc.ABC):
         out_phi: np.ndarray,
         *,
         dt: float,
-        origin: ty.TripletInt,
-        domain: ty.TripletInt
+        origin: "TripletInt",
+        domain: "TripletInt"
     ) -> None:
         pass
 

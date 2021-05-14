@@ -30,7 +30,7 @@ from tasmania.python.framework.allocators import as_storage
 from tasmania.python.framework.options import StorageOptions
 
 if TYPE_CHECKING:
-    from tasmania.python.utils.typing import Storage
+    from tasmania.python.utils.typingx import Storage
 
 
 if cp:

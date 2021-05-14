@@ -23,30 +23,31 @@
 import abc
 import math
 import numpy as np
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING
+
+from sympl._core.factory import AbstractFactory
 
 from gt4py import gtscript
 
-from tasmania.python.framework.register import factorize
 from tasmania.python.framework.stencil import StencilFactory
 from tasmania.python.framework.tag import stencil_definition
-from tasmania.python.utils import typing as ty
 
 if TYPE_CHECKING:
+    from sympl._core.typingx import NDArrayLike
+
     from tasmania.python.framework.options import (
         BackendOptions,
         StorageOptions,
     )
+    from tasmania.python.utils.typingx import TripletInt
 
 
-class HorizontalDiffusion(StencilFactory, abc.ABC):
+class HorizontalDiffusion(AbstractFactory, StencilFactory):
     """Calculate the tendency due to horizontal diffusion."""
-
-    registry = {}
 
     def __init__(
         self: "HorizontalDiffusion",
-        shape: ty.TripletInt,
+        shape: "TripletInt",
         dx: float,
         dy: float,
         diffusion_coeff: float,
@@ -109,11 +110,18 @@ class HorizontalDiffusion(StencilFactory, abc.ABC):
 
         # initialize the underlying stencil
         self.backend_options.dtypes = {"dtype": dtype}
+        self.backend_options.externals = {
+            "set_output": self.stencil_subroutine("set_output")
+        }
         self._stencil = self.compile("diffusion")
 
     @abc.abstractmethod
     def __call__(
-        self: "HorizontalDiffusion", phi: ty.Storage, phi_tnd: ty.Storage,
+        self: "HorizontalDiffusion",
+        phi: "NDArrayLike",
+        phi_tnd: "NDArrayLike",
+        *,
+        overwrite_output: bool = True
     ) -> None:
         """Calculate the tendency.
 
@@ -123,70 +131,10 @@ class HorizontalDiffusion(StencilFactory, abc.ABC):
             A 3-D prognostic field.
         phi_tnd : array-like
             Output buffer in which to place the result.
+        overwrite_output : `bool`, optional
+            TODO
         """
         pass
-
-    @staticmethod
-    def factory(
-        diffusion_type: str,
-        shape: ty.TripletInt,
-        dx: float,
-        dy: float,
-        diffusion_coeff: float,
-        diffusion_coeff_max: float,
-        diffusion_damp_depth: int,
-        nb: Optional[int] = None,
-        *,
-        backend: str = "numpy",
-        backend_options: Optional["BackendOptions"] = None,
-        storage_options: Optional["StorageOptions"] = None
-    ) -> "HorizontalDiffusion":
-        """
-        Parameters
-        ----------
-        diffusion_type : str
-            String specifying the diffusion technique to implement.
-        shape : tuple[int]
-            Shape of the 3-D arrays for which tendencies should be computed.
-        dx : float
-            The grid spacing along the first horizontal dimension.
-        dy : float
-            The grid spacing along the second horizontal dimension.
-        diffusion_coeff : float
-            Value for the diffusion coefficient far from the top boundary.
-        diffusion_coeff_max : float
-            Maximum value for the diffusion coefficient.
-        diffusion_damp_depth : int
-            Depth of, i.e., number of vertical regions in the damping region.
-        nb : `int`, optional
-            Number of boundary layers. If not specified, this is derived
-            from the extent of the underlying stencil.
-        backend : `str`, optional
-            The backend.
-        backend_options : `BackendOptions`, optional
-            Backend-specific options.
-        storage_options : `StorageOptions`, optional
-            Storage-related options.
-
-        Return
-        ------
-        obj :
-            Instance of the appropriate derived class.
-        """
-        args = (
-            shape,
-            dx,
-            dy,
-            diffusion_coeff,
-            diffusion_coeff_max,
-            diffusion_damp_depth,
-            nb,
-            backend,
-            backend_options,
-            storage_options,
-        )
-        obj = factorize(diffusion_type, HorizontalDiffusion, args)
-        return obj
 
     @staticmethod
     @stencil_definition(backend=("numpy", "cupy"), stencil="diffusion")
@@ -198,8 +146,9 @@ class HorizontalDiffusion(StencilFactory, abc.ABC):
         *,
         dx: float,
         dy: float,
-        origin: ty.TripletInt,
-        domain: ty.TripletInt
+        ow_out_phi: bool,
+        origin: "TripletInt",
+        domain: "TripletInt"
     ) -> None:
         pass
 
@@ -212,7 +161,8 @@ class HorizontalDiffusion(StencilFactory, abc.ABC):
         out_phi: gtscript.Field["dtype"],
         *,
         dx: float,
-        dy: float
+        dy: float,
+        ow_out_phi: bool
     ) -> None:
         pass
 
@@ -226,8 +176,9 @@ class HorizontalDiffusion(StencilFactory, abc.ABC):
         *,
         dx: float,
         dy: float,
-        origin: ty.TripletInt,
-        domain: ty.TripletInt
+        ow_out_phi: bool,
+        origin: "TripletInt",
+        domain: "TripletInt"
     ) -> None:
         pass
 

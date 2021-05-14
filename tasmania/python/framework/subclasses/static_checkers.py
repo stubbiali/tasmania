@@ -20,14 +20,17 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from tasmania.python.isentropic.dynamics.vertical_fluxes import (
-    IsentropicBoussinesqMinimalVerticalFlux,
-)
-from tasmania.python.utils.framework_utils import register
+from sympl._core.static_checkers import StaticComponentChecker
 
 
-@register(name="upwind")
-class Upwind(IsentropicBoussinesqMinimalVerticalFlux):
+class InputTendencyStaticComponentChecker(StaticComponentChecker):
+    name = "input_tendency_properties"
+    properties_name = "input_tendency_properties"
+
     @staticmethod
-    def __call__(dt, dz, w, s, su, sv, ddmtg, sqv=None, sqc=None, sqr=None):
-        raise NotImplementedError()
+    def wrap_units(units):
+        """
+        Convert the units of a field into the units of the temporal variation
+        of that field.
+        """
+        return units + " s^-1"

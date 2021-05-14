@@ -24,14 +24,14 @@ import numba
 
 from gt4py import gtscript
 
-from tasmania.python.framework.register import register
 from tasmania.python.framework.tag import stencil_definition
 from tasmania.python.dwarfs.horizontal_diffusion import HorizontalDiffusion
 
 
-@register(name="fourth_order")
 class FourthOrder(HorizontalDiffusion):
-    """ Two-dimensional fourth-order diffusion. """
+    """Two-dimensional fourth-order diffusion."""
+
+    name = "fourth_order"
 
     def __init__(
         self,
@@ -41,10 +41,11 @@ class FourthOrder(HorizontalDiffusion):
         diffusion_coeff,
         diffusion_coeff_max,
         diffusion_damp_depth,
-        nb,
-        backend,
-        backend_options,
-        storage_options,
+        nb=None,
+        *,
+        backend="numpy",
+        backend_options=None,
+        storage_options=None,
     ):
         nb = 2 if (nb is None or nb < 2) else nb
         lb = 2 * nb + 1
@@ -66,7 +67,7 @@ class FourthOrder(HorizontalDiffusion):
             storage_options,
         )
 
-    def __call__(self, phi, phi_tnd):
+    def __call__(self, phi, phi_tnd, *, overwrite_output=True):
         # shortcuts
         dx, dy, nb = self._dx, self._dy, self._nb
         nx, ny, nz = self._shape
@@ -78,6 +79,7 @@ class FourthOrder(HorizontalDiffusion):
             out_phi=phi_tnd,
             dx=dx,
             dy=dy,
+            ow_out_phi=overwrite_output,
             origin=(nb, nb, 0),
             domain=(nx - 2 * nb, ny - 2 * nb, nz),
             exec_info=self.backend_options.exec_info,
@@ -86,7 +88,9 @@ class FourthOrder(HorizontalDiffusion):
 
     @staticmethod
     @stencil_definition(backend=("numpy", "cupy"), stencil="diffusion")
-    def _stencil_numpy(in_phi, in_gamma, out_phi, *, dx, dy, origin, domain):
+    def _stencil_numpy(
+        in_phi, in_gamma, out_phi, *, dx, dy, ow_out_phi, origin, domain
+    ):
         i = slice(origin[0], origin[0] + domain[0])
         ip2 = slice(origin[0] + 2, origin[0] + domain[0] + 2)
         ip1 = slice(origin[0] + 1, origin[0] + domain[0] + 1)
@@ -98,7 +102,7 @@ class FourthOrder(HorizontalDiffusion):
         jm1 = slice(origin[1] - 1, origin[1] + domain[1] - 1)
         jm2 = slice(origin[1] - 2, origin[1] + domain[1] - 2)
 
-        out_phi[i, j] = in_gamma[i, j] * (
+        tmp = in_gamma[i, j] * (
             (
                 -in_phi[im2, j]
                 + 16.0 * in_phi[im1, j]
@@ -116,6 +120,7 @@ class FourthOrder(HorizontalDiffusion):
             )
             / (12.0 * dy * dy)
         )
+        set_output(out_phi[i, j], tmp, ow_out_phi)
 
     @staticmethod
     @stencil_definition(backend="gt4py*", stencil="diffusion")
@@ -125,10 +130,13 @@ class FourthOrder(HorizontalDiffusion):
         out_phi: gtscript.Field["dtype"],
         *,
         dx: float,
-        dy: float
+        dy: float,
+        ow_out_phi: bool
     ) -> None:
+        from __externals__ import set_output
+
         with computation(PARALLEL), interval(...):
-            out_phi = in_gamma[0, 0, 0] * (
+            tmp = in_gamma[0, 0, 0] * (
                 (
                     -in_phi[-2, 0, 0]
                     + 16.0 * in_phi[-1, 0, 0]
@@ -146,6 +154,7 @@ class FourthOrder(HorizontalDiffusion):
                 )
                 / (12.0 * dy * dy)
             )
+            out_phi = set_output(out_phi, tmp, ow_out_phi)
 
     @staticmethod
     @stencil_definition(backend="numba:cpu", stencil="diffusion")
@@ -185,9 +194,10 @@ class FourthOrder(HorizontalDiffusion):
         )
 
 
-@register(name="fourth_order_1dx")
 class FourthOrder1DX(HorizontalDiffusion):
-    """ One-dimensional fourth-order diffusion along the x-direction. """
+    """One-dimensional fourth-order diffusion along the x-direction."""
+
+    name = "fourth_order_1dx"
 
     def __init__(
         self,
@@ -197,10 +207,11 @@ class FourthOrder1DX(HorizontalDiffusion):
         diffusion_coeff,
         diffusion_coeff_max,
         diffusion_damp_depth,
-        nb,
-        backend,
-        backend_options,
-        storage_options,
+        nb=None,
+        *,
+        backend="numpy",
+        backend_options=None,
+        storage_options=None,
     ):
         nb = 2 if (nb is None or nb < 2) else nb
         lb = 2 * nb + 1
@@ -222,7 +233,7 @@ class FourthOrder1DX(HorizontalDiffusion):
             storage_options,
         )
 
-    def __call__(self, phi, phi_tnd):
+    def __call__(self, phi, phi_tnd, *, overwrite_output=True):
         # shortcuts
         dx, dy, nb = self._dx, self._dy, self._nb
         nx, ny, nz = self._shape
@@ -234,6 +245,7 @@ class FourthOrder1DX(HorizontalDiffusion):
             out_phi=phi_tnd,
             dx=dx,
             dy=dy,
+            ow_out_phi=overwrite_output,
             origin=(nb, 0, 0),
             domain=(nx - 2 * nb, ny, nz),
             exec_info=self.backend_options.exec_info,
@@ -243,7 +255,7 @@ class FourthOrder1DX(HorizontalDiffusion):
     @staticmethod
     @stencil_definition(backend=("numpy", "cupy"), stencil="diffusion")
     def _stencil_numpy(
-        in_phi, in_gamma, out_phi, *, dx, dy, origin, domain, **kwargs
+        in_phi, in_gamma, out_phi, *, dx, dy, ow_out_phi, origin, domain
     ):
         i = slice(origin[0], origin[0] + domain[0])
         ip2 = slice(origin[0] + 2, origin[0] + domain[0] + 2)
@@ -252,7 +264,7 @@ class FourthOrder1DX(HorizontalDiffusion):
         im2 = slice(origin[0] - 2, origin[0] + domain[0] - 2)
         j = slice(origin[1], origin[1] + domain[1])
 
-        out_phi[i, j] = (
+        tmp = (
             in_gamma[i, j]
             * (
                 -in_phi[im2, j]
@@ -263,6 +275,7 @@ class FourthOrder1DX(HorizontalDiffusion):
             )
             / (12.0 * dx * dx)
         )
+        set_output(out_phi[i, j], tmp, ow_out_phi)
 
     @staticmethod
     @stencil_definition(backend="gt4py*", stencil="diffusion")
@@ -272,10 +285,13 @@ class FourthOrder1DX(HorizontalDiffusion):
         out_phi: gtscript.Field["dtype"],
         *,
         dx: float,
-        dy: float = 0.0
+        dy: float = 0.0,
+        ow_out_phi: bool
     ) -> None:
+        from __externals__ import set_output
+
         with computation(PARALLEL), interval(...):
-            out_phi = (
+            tmp = (
                 in_gamma[0, 0, 0]
                 * (
                     -in_phi[-2, 0, 0]
@@ -286,6 +302,7 @@ class FourthOrder1DX(HorizontalDiffusion):
                 )
                 / (12.0 * dx * dx)
             )
+            out_phi = set_output(out_phi, tmp, ow_out_phi)
 
     @staticmethod
     @stencil_definition(backend="numba:cpu", stencil="diffusion")
@@ -317,9 +334,10 @@ class FourthOrder1DX(HorizontalDiffusion):
         )
 
 
-@register(name="fourth_order_1dy")
 class FourthOrder1DY(HorizontalDiffusion):
-    """ One-dimensional fourth-order diffusion along the y-direction. """
+    """One-dimensional fourth-order diffusion along the y-direction."""
+
+    name = "fourth_order_1dy"
 
     def __init__(
         self,
@@ -329,10 +347,11 @@ class FourthOrder1DY(HorizontalDiffusion):
         diffusion_coeff,
         diffusion_coeff_max,
         diffusion_damp_depth,
-        nb,
-        backend,
-        backend_options,
-        storage_options,
+        nb=None,
+        *,
+        backend="numpy",
+        backend_options=None,
+        storage_options=None,
     ):
         nb = 2 if (nb is None or nb < 2) else nb
         lb = 2 * nb + 1
@@ -354,7 +373,7 @@ class FourthOrder1DY(HorizontalDiffusion):
             storage_options,
         )
 
-    def __call__(self, phi, phi_tnd):
+    def __call__(self, phi, phi_tnd, *, overwrite_output=True):
         # shortcuts
         dx, dy, nb = self._dx, self._dy, self._nb
         nx, ny, nz = self._shape
@@ -366,6 +385,7 @@ class FourthOrder1DY(HorizontalDiffusion):
             out_phi=phi_tnd,
             dx=dx,
             dy=dy,
+            ow_out_phi=overwrite_output,
             origin=(0, nb, 0),
             domain=(nx, ny - 2 * nb, nz),
             exec_info=self.backend_options.exec_info,
@@ -375,7 +395,7 @@ class FourthOrder1DY(HorizontalDiffusion):
     @staticmethod
     @stencil_definition(backend=("numpy", "cupy"), stencil="diffusion")
     def _stencil_numpy(
-        in_phi, in_gamma, out_phi, *, dx, dy, origin, domain, **kwargs
+        in_phi, in_gamma, out_phi, *, dx, dy, ow_out_phi, origin, domain
     ):
         i = slice(origin[0], origin[0] + domain[0])
         j = slice(origin[1], origin[1] + domain[1])
@@ -384,7 +404,7 @@ class FourthOrder1DY(HorizontalDiffusion):
         jm1 = slice(origin[1] - 1, origin[1] + domain[1] - 1)
         jm2 = slice(origin[1] - 2, origin[1] + domain[1] - 2)
 
-        out_phi[i, j] = (
+        tmp = (
             in_gamma[i, j]
             * (
                 -in_phi[i, jm2]
@@ -395,6 +415,7 @@ class FourthOrder1DY(HorizontalDiffusion):
             )
             / (12.0 * dy * dy)
         )
+        set_output(out_phi[i, j], tmp, ow_out_phi)
 
     @staticmethod
     @stencil_definition(backend="gt4py*", stencil="diffusion")
@@ -404,10 +425,13 @@ class FourthOrder1DY(HorizontalDiffusion):
         out_phi: gtscript.Field["dtype"],
         *,
         dx: float = 0.0,
-        dy: float
+        dy: float,
+        ow_out_phi: bool
     ) -> None:
+        from __externals__ import set_output
+
         with computation(PARALLEL), interval(...):
-            out_phi = (
+            tmp = (
                 in_gamma[0, 0, 0]
                 * (
                     -in_phi[0, -2, 0]
@@ -418,6 +442,7 @@ class FourthOrder1DY(HorizontalDiffusion):
                 )
                 / (12.0 * dy * dy)
             )
+            out_phi = set_output(out_phi, tmp, ow_out_phi)
 
     @staticmethod
     @stencil_definition(backend="numba:cpu", stencil="diffusion")

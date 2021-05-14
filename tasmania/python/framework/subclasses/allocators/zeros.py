@@ -57,6 +57,17 @@ if gt:
         backend = zeros_gt4py.__tasmania_runtime__["backend"]
         defaults = get_gt_backend(backend)
         so = storage_options or StorageOptions()
+        # >>> old storage
+        # if len(shape) == 1:
+        #     mask = (False, False, True)
+        # elif len(shape) == 2:
+        #     mask = (True, True, False)
+        # else:
+        #     mask = (True, True, True)
+        # return gt.storage.zeros(
+        #     defaults, so.aligned_index, shape, dtype=so.dtype, mask=mask
+        # )
+        # <<< new storage
         return gt.storage.zeros(
             shape,
             dtype=so.dtype,

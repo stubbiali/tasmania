@@ -27,7 +27,7 @@ from typing import Optional, TYPE_CHECKING
 
 from tasmania.python.framework.options import StorageOptions
 from tasmania.python.framework.stencil import StencilFactory
-from tasmania.python.utils import typing as ty
+from tasmania.python.utils import typingx as ty
 from tasmania.python.utils.storage import get_dataarray_3d
 
 if TYPE_CHECKING:

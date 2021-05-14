@@ -24,13 +24,14 @@ from sympl import DataArray
 from typing import Mapping, Optional, Sequence, TYPE_CHECKING
 
 from tasmania.python.dwarfs.diagnostics import HorizontalVelocity
-from tasmania.python.framework.base_components import DiagnosticComponent
+from tasmania.python.framework.core_components import DiagnosticComponent
 from tasmania.python.isentropic.dynamics.diagnostics import (
     IsentropicDiagnostics as Core,
 )
-from tasmania.python.utils import typing as ty
 
 if TYPE_CHECKING:
+    from sympl._core.typingx import NDArrayLikeDict, PropertyDict
+
     from tasmania.python.domain.domain import Domain
     from tasmania.python.framework.options import (
         BackendOptions,
@@ -77,6 +78,7 @@ class IsentropicDiagnostics(DiagnosticComponent):
         pt: DataArray,
         physical_constants: Optional[Mapping[str, DataArray]] = None,
         *,
+        enable_checks: bool = True,
         backend: str = "numpy",
         backend_options: Optional["BackendOptions"] = None,
         storage_shape: Optional[Sequence[int]] = None,
@@ -114,6 +116,8 @@ class IsentropicDiagnostics(DiagnosticComponent):
             :func:`tasmania.utils.data_utils.get_physical_constants` and
             :obj:`tasmania.physics.isentropic.IsentropicDiagnostics._d_physical_constants`
             for the default values.
+        enable_checks : `bool`, optional
+            TODO
         backend : `str`, optional
             The backend.
         backend_options : `BackendOptions`, optional
@@ -132,35 +136,25 @@ class IsentropicDiagnostics(DiagnosticComponent):
             domain,
             grid_type,
             physical_constants=physical_constants,
-            backend=backend,
-            backend_options=backend_options,
-            storage_options=storage_options,
-        )
-
-        # instantiate the class computing the diagnostic variables
-        nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
-        storage_shape = self.get_storage_shape(storage_shape, (nx, ny, nz + 1))
-        self._core = Core(
-            self.grid,
-            physical_constants=physical_constants,
+            enable_checks=enable_checks,
             backend=backend,
             backend_options=backend_options,
             storage_shape=storage_shape,
             storage_options=storage_options,
         )
 
-        # allocate the storages collecting the output fields calculated
-        # by the stencils
-        self._out_p = self.zeros(shape=storage_shape)
-        self._out_exn = self.zeros(shape=storage_shape)
-        self._out_mtg = self.zeros(shape=storage_shape)
-        self._out_h = self.zeros(shape=storage_shape)
-        if moist:
-            self._out_r = self.zeros(shape=storage_shape)
-            self._out_t = self.zeros(shape=storage_shape)
+        # instantiate the class computing the diagnostic variables
+        self._core = Core(
+            self.grid,
+            physical_constants=physical_constants,
+            backend=self.backend,
+            backend_options=self.backend_options,
+            storage_shape=self.storage_shape,
+            storage_options=self.storage_options,
+        )
 
     @property
-    def input_properties(self) -> ty.PropertiesDict:
+    def input_properties(self) -> "PropertyDict":
         dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])
 
         return_dict = {
@@ -170,7 +164,7 @@ class IsentropicDiagnostics(DiagnosticComponent):
         return return_dict
 
     @property
-    def diagnostic_properties(self) -> ty.PropertiesDict:
+    def diagnostic_properties(self) -> "PropertyDict":
         dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])
         dims_stgz = (dims[0], dims[1], self.grid.z_on_interface_levels.dims[0])
 
@@ -193,25 +187,25 @@ class IsentropicDiagnostics(DiagnosticComponent):
 
         return return_dict
 
-    def array_call(self, state: ty.Storage) -> ty.StorageDict:
-        s = state["air_isentropic_density"]
+    def array_call(
+        self, state: "NDArrayLikeDict", out: "NDArrayLikeDict"
+    ) -> None:
         self._core.get_diagnostic_variables(
-            s, self._pt, self._out_p, self._out_exn, self._out_mtg, self._out_h
+            state["air_isentropic_density"],
+            self._pt,
+            out["air_pressure_on_interface_levels"],
+            out["exner_function_on_interface_levels"],
+            out["montgomery_potential"],
+            out["height_on_interface_levels"],
         )
-        diagnostics = {
-            "air_pressure_on_interface_levels": self._out_p,
-            "exner_function_on_interface_levels": self._out_exn,
-            "montgomery_potential": self._out_mtg,
-            "height_on_interface_levels": self._out_h,
-        }
         if self._moist:
             self._core.get_density_and_temperature(
-                s, self._out_exn, self._out_h, self._out_r, self._out_t
+                state["air_isentropic_density"],
+                out["exner_function_on_interface_levels"],
+                out["height_on_interface_levels"],
+                out["air_density"],
+                out["air_temperature"],
             )
-            diagnostics["air_density"] = self._out_r
-            diagnostics["air_temperature"] = self._out_t
-
-        return diagnostics
 
 
 class IsentropicVelocityComponents(DiagnosticComponent):
@@ -226,6 +220,7 @@ class IsentropicVelocityComponents(DiagnosticComponent):
         self,
         domain: "Domain",
         *,
+        enable_checks: bool = True,
         backend: str = "numpy",
         backend_options: Optional["BackendOptions"] = None,
         storage_shape: Optional[Sequence[int]] = None,
@@ -236,6 +231,8 @@ class IsentropicVelocityComponents(DiagnosticComponent):
         ----------
         domain : tasmania.Domain
             The :class:`~tasmania.Domain` holding the grid underneath.
+        enable_checks : `bool`, optional
+            TODO
         backend : `str`, optional
             The backend.
         backend_options : `BackendOptions`, optional
@@ -249,8 +246,10 @@ class IsentropicVelocityComponents(DiagnosticComponent):
         super().__init__(
             domain,
             "numerical",
+            enable_checks=enable_checks,
             backend=backend,
             backend_options=backend_options,
+            storage_shape=storage_shape,
             storage_options=storage_options,
         )
 
@@ -258,23 +257,13 @@ class IsentropicVelocityComponents(DiagnosticComponent):
         self._core = HorizontalVelocity(
             self.grid,
             staggering=True,
-            backend=backend,
-            backend_options=backend_options,
-            storage_options=storage_options,
+            backend=self.backend,
+            backend_options=self.backend_options,
+            storage_options=self.storage_options,
         )
-
-        # set the shape of the storages
-        nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
-        storage_shape = self.get_storage_shape(
-            storage_shape, (nx + 1, ny + 1, nz)
-        )
-
-        # allocate the storages gathering the output fields
-        self._out_u = self.zeros(shape=storage_shape)
-        self._out_v = self.zeros(shape=storage_shape)
 
     @property
-    def input_properties(self) -> ty.PropertiesDict:
+    def input_properties(self) -> "PropertyDict":
         g = self.grid
         dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
 
@@ -293,7 +282,7 @@ class IsentropicVelocityComponents(DiagnosticComponent):
         return return_dict
 
     @property
-    def diagnostic_properties(self) -> ty.PropertiesDict:
+    def diagnostic_properties(self) -> "PropertyDict":
         g = self.grid
         dims_x = (g.x_at_u_locations.dims[0], g.y.dims[0], g.z.dims[0])
         dims_y = (g.x.dims[0], g.y_at_v_locations.dims[0], g.z.dims[0])
@@ -305,34 +294,28 @@ class IsentropicVelocityComponents(DiagnosticComponent):
 
         return return_dict
 
-    def array_call(self, state: ty.StorageDict) -> ty.StorageDict:
-        # extract the required model variables from the input state
-        s = state["air_isentropic_density"]
-        su = state["x_momentum_isentropic"]
-        sv = state["y_momentum_isentropic"]
-
+    def array_call(
+        self, state: "NDArrayLikeDict", out: "NDArrayLikeDict"
+    ) -> None:
         # diagnose the velocity components
-        self._core.get_velocity_components(s, su, sv, self._out_u, self._out_v)
+        self._core.get_velocity_components(
+            state["air_isentropic_density"],
+            state["x_momentum_isentropic"],
+            state["y_momentum_isentropic"],
+            out["x_velocity_at_u_locations"],
+            out["y_velocity_at_v_locations"],
+        )
 
         # enforce the boundary conditions
-        hb = self.horizontal_boundary
-        hb.set_outermost_layers_x(
-            self._out_u,
+        self.horizontal_boundary.set_outermost_layers_x(
+            out["x_velocity_at_u_locations"],
             field_name="x_velocity_at_u_locations",
             field_units="m s^-1",
             time=state["time"],
         )
-        hb.set_outermost_layers_y(
-            self._out_v,
+        self.horizontal_boundary.set_outermost_layers_y(
+            out["y_velocity_at_v_locations"],
             field_name="y_velocity_at_v_locations",
             field_units="m s^-1",
             time=state["time"],
         )
-
-        # instantiate the output dictionary
-        diagnostics = {
-            "x_velocity_at_u_locations": self._out_u,
-            "y_velocity_at_v_locations": self._out_v,
-        }
-
-        return diagnostics
