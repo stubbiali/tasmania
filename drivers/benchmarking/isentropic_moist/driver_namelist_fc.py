@@ -21,7 +21,10 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 import click
+
 import sympl
+from sympl._core.time import Timer
+
 import tasmania as taz
 
 from drivers.benchmarking.isentropic_moist import namelist_fc
@@ -94,17 +97,8 @@ def main(backend=None, namelist="namelist_fc.py", no_log=False):
     )
     domain.horizontal_boundary.reference_state = state
 
-    # add tendency_of_air_potential_temperature to the state
-    state["tendency_of_air_potential_temperature"] = taz.get_dataarray_3d(
-        taz.zeros(nl.backend, shape=storage_shape, storage_options=nl.so),
-        cgrid,
-        "K s^-1",
-        grid_shape=(cgrid.nx, cgrid.ny, cgrid.nz),
-        set_coordinates=False,
-    )
-
     # ============================================================
-    # The intermediate tendencies
+    # The fast tendencies
     # ============================================================
     args = []
 
@@ -113,6 +107,7 @@ def main(backend=None, namelist="namelist_fc.py", no_log=False):
         domain,
         grid_type="numerical",
         coriolis_parameter=nl.coriolis_parameter,
+        enable_checks=nl.enable_checks,
         backend=nl.backend,
         backend_options=nl.bo,
         storage_shape=storage_shape,
@@ -124,6 +119,7 @@ def main(backend=None, namelist="namelist_fc.py", no_log=False):
     turb = taz.IsentropicSmagorinsky(
         domain,
         nl.smagorinsky_constant,
+        enable_checks=nl.enable_checks,
         backend=nl.backend,
         backend_options=nl.bo,
         storage_shape=storage_shape,
@@ -141,6 +137,7 @@ def main(backend=None, namelist="namelist_fc.py", no_log=False):
         autoconversion_threshold=nl.autoconversion_threshold,
         autoconversion_rate=nl.autoconversion_rate,
         collection_rate=nl.collection_rate,
+        enable_checks=nl.enable_checks,
         backend=nl.backend,
         backend_options=nl.bo,
         storage_shape=storage_shape,
@@ -154,6 +151,7 @@ def main(backend=None, namelist="namelist_fc.py", no_log=False):
         grid_type="numerical",
         air_pressure_on_interface_levels=True,
         saturation_rate=nl.saturation_rate,
+        enable_checks=nl.enable_checks,
         backend=nl.backend,
         backend_options=nl.bo,
         storage_shape=storage_shape,
@@ -162,7 +160,15 @@ def main(backend=None, namelist="namelist_fc.py", no_log=False):
     args.append(sa)
 
     # component promoting air_potential_temperature to state variable
-    t2d = taz.AirPotentialTemperature2Diagnostic(domain, "numerical")
+    t2d = taz.AirPotentialTemperatureToDiagnostic(
+        domain,
+        "numerical",
+        enable_checks=nl.enable_checks,
+        backend=nl.backend,
+        backend_options=nl.bo,
+        storage_shape=storage_shape,
+        storage_options=nl.so,
+    )
     args.append(t2d)
 
     if nl.vertical_advection:
@@ -172,6 +178,7 @@ def main(backend=None, namelist="namelist_fc.py", no_log=False):
             flux_scheme=nl.vertical_flux_scheme,
             moist=True,
             tendency_of_air_potential_temperature_on_interface_levels=False,
+            enable_checks=nl.enable_checks,
             backend=nl.backend,
             backend_options=nl.bo,
             storage_shape=storage_shape,
@@ -183,6 +190,7 @@ def main(backend=None, namelist="namelist_fc.py", no_log=False):
     rfv = taz.KesslerFallVelocity(
         domain,
         "numerical",
+        enable_checks=nl.enable_checks,
         backend=nl.backend,
         backend_options=nl.bo,
         storage_shape=storage_shape,
@@ -195,6 +203,7 @@ def main(backend=None, namelist="namelist_fc.py", no_log=False):
         domain,
         "numerical",
         sedimentation_flux_scheme=nl.sedimentation_flux_scheme,
+        enable_checks=nl.enable_checks,
         backend=nl.backend,
         backend_options=nl.bo,
         storage_shape=storage_shape,
@@ -203,16 +212,17 @@ def main(backend=None, namelist="namelist_fc.py", no_log=False):
     args.append(sd)
 
     # wrap the components in a ConcurrentCoupling object
-    inter_tends = taz.ConcurrentCoupling(
+    fast_tends = taz.ConcurrentCoupling(
         *args,
         execution_policy="serial",
+        enable_checks=nl.enable_checks,
         backend=nl.backend,
         backend_options=nl.bo,
         storage_options=nl.so
     )
 
     # ============================================================
-    # The intermediate diagnostics
+    # The fast diagnostics
     # ============================================================
     # component retrieving the diagnostic variables
     pt = sympl.DataArray(
@@ -224,6 +234,7 @@ def main(backend=None, namelist="namelist_fc.py", no_log=False):
         grid_type="numerical",
         moist=True,
         pt=pt,
+        enable_checks=nl.enable_checks,
         backend=nl.backend,
         backend_options=nl.bo,
         storage_shape=storage_shape,
@@ -239,6 +250,7 @@ def main(backend=None, namelist="namelist_fc.py", no_log=False):
     ap = taz.Precipitation(
         domain,
         "numerical",
+        enable_checks=nl.enable_checks,
         backend=nl.backend,
         backend_options=nl.bo,
         storage_shape=storage_shape,
@@ -253,6 +265,7 @@ def main(backend=None, namelist="namelist_fc.py", no_log=False):
         nl.smooth_coeff,
         nl.smooth_coeff_max,
         nl.smooth_damp_depth,
+        enable_checks=nl.enable_checks,
         backend=nl.backend,
         backend_options=nl.bo,
         storage_shape=storage_shape,
@@ -263,6 +276,7 @@ def main(backend=None, namelist="namelist_fc.py", no_log=False):
     # component calculating the velocity components
     vc = taz.IsentropicVelocityComponents(
         domain,
+        enable_checks=nl.enable_checks,
         backend=nl.backend,
         backend_options=nl.bo,
         storage_shape=storage_shape,
@@ -271,8 +285,13 @@ def main(backend=None, namelist="namelist_fc.py", no_log=False):
     args.append(vc)
 
     # wrap the components in a ConcurrentCoupling object
-    slow_diags = taz.DiagnosticComponentComposite(
-        *args, execution_policy="serial"
+    slow_diags = taz.ConcurrentCoupling(
+        *args,
+        execution_policy="serial",
+        enable_checks=nl.enable_checks,
+        backend=nl.backend,
+        backend_options=nl.bo,
+        storage_options=nl.so
     )
 
     # ============================================================
@@ -282,11 +301,11 @@ def main(backend=None, namelist="namelist_fc.py", no_log=False):
         domain,
         moist=True,
         # parameterizations
-        intermediate_tendency_component=inter_tends,
-        intermediate_diagnostic_component=dv,
+        fast_tendency_component=fast_tends,
+        fast_diagnostic_component=dv,
         substeps=nl.substeps,
-        fast_tendency_component=None,
-        fast_diagnostic_component=None,
+        superfast_tendency_component=None,
+        superfast_diagnostic_component=None,
         # numerical scheme
         time_integration_scheme=nl.time_integration_scheme,
         horizontal_flux_scheme=nl.horizontal_flux_scheme,
@@ -303,10 +322,8 @@ def main(backend=None, namelist="namelist_fc.py", no_log=False):
         damp_depth=nl.damp_depth,
         damp_max=nl.damp_max,
         damp_at_every_stage=nl.damp_at_every_stage,
-        # horizontal smoothing
-        smooth=False,
-        smooth_moist=False,
         # backend settings
+        enable_checks=nl.enable_checks,
         backend=nl.backend,
         backend_options=nl.bo,
         storage_shape=storage_shape,
@@ -324,26 +341,52 @@ def main(backend=None, namelist="namelist_fc.py", no_log=False):
         backend=nl.backend, backend_options=nl.bo, storage_options=nl.so
     )
 
-    for i in range(nt):
+    # start timing
+    Timer.start(label="compute_time")
+
+    # update the (time-dependent) topography
+    dycore.update_topography(dt)
+
+    # calculate the dynamics
+    state_new = dycore(state, {}, dt)
+    state_new["accumulated_precipitation"] = taz.deepcopy_dataarray(
+        state["accumulated_precipitation"],
+        backend=nl.backend,
+        storage_options=nl.so,
+    )
+
+    # calculate the slow physics
+    _, diagnostics = slow_diags(state_new, dt)
+    dict_op.update_swap(state_new, diagnostics)
+
+    # stop timing
+    Timer.stop(label="compute_time")
+
+    for i in range(1, nt):
         # start timing
-        taz.Timer.start(label="compute_time")
+        Timer.start(label="compute_time")
+
+        # swap old and new state
+        state, state_new = state_new, state
 
         # update the (time-dependent) topography
         dycore.update_topography((i + 1) * dt)
 
         # calculate the dynamics
-        state_new = dycore(state, {}, dt)
-
-        # update the state
-        dict_op.copy(state, state_new)
+        # state_new = dycore(state, {}, dt)
+        # state_new["accumulated_precipitation"] = taz.deepcopy_dataarray(
+        #     state["accumulated_precipitation"],
+        #     backend=nl.backend,
+        #     storage_options=nl.so,
+        # )
+        dycore(state, {}, dt, out_state=state_new)
 
         # calculate the slow physics
-        if slow_diags is not None:
-            diagnostics = slow_diags(state, dt)
-            dict_op.copy(state, diagnostics, unshared_variables_in_output=True)
+        slow_diags(state_new, dt, out_diagnostics=diagnostics)
+        dict_op.update_swap(state_new, diagnostics)
 
         # stop timing
-        taz.Timer.stop(label="compute_time")
+        Timer.stop(label="compute_time")
 
     print("Simulation successfully completed. HOORAY!")
 
@@ -351,26 +394,22 @@ def main(backend=None, namelist="namelist_fc.py", no_log=False):
     # Post-processing
     # ============================================================
     # print umax and vmax for validation
-    u = taz.to_numpy(state["x_velocity_at_u_locations"].data)
+    u = taz.to_numpy(state_new["x_velocity_at_u_locations"].data)
     umax = u[:, :-1, :-1].max()
-    v = taz.to_numpy(state["y_velocity_at_v_locations"].data)
+    v = taz.to_numpy(state_new["y_velocity_at_v_locations"].data)
     vmax = v[:-1, :, :-1].max()
-    print(f"Validation: umax = {umax:.5f}, vmax = {vmax:.5f}")
+    print(f"Validation: umax = {umax:.10f}, vmax = {vmax:.10f}")
 
     # print logs
-    print(
-        f"Compute time: "
-        f"{taz.python.utils.time.Timer.get_time('compute_time', 's'):.3f}"
-        f" s."
-    )
+    print(f"Compute time: {Timer.get_time('compute_time', 's'):.3f} s.")
 
     if not no_log:
         # save to file
         exec_info_to_csv(nl.exec_info_csv, nl.backend, nl.bo)
         run_info_to_csv(
-            nl.run_info_csv, backend, taz.Timer.get_time("compute_time", "s")
+            nl.run_info_csv, backend, Timer.get_time("compute_time", "s")
         )
-        taz.Timer.log(nl.log_txt, "s")
+        Timer.log(nl.log_txt, "s")
 
 
 if __name__ == "__main__":

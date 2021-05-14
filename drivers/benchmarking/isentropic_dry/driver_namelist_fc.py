@@ -23,7 +23,6 @@
 import click
 import sympl
 import tasmania as taz
-import tasmania.python.utils.time
 
 from drivers.benchmarking.isentropic_dry import namelist_fc
 from drivers.benchmarking.utils import (
@@ -103,6 +102,7 @@ def main(backend=None, namelist="namelist_fc.py", no_log=False):
         domain,
         grid_type="numerical",
         coriolis_parameter=nl.coriolis_parameter,
+        enable_checks=nl.enable_checks,
         backend=nl.backend,
         backend_options=nl.bo,
         storage_shape=storage_shape,
@@ -114,6 +114,7 @@ def main(backend=None, namelist="namelist_fc.py", no_log=False):
     turb = taz.IsentropicSmagorinsky(
         domain,
         nl.smagorinsky_constant,
+        enable_checks=nl.enable_checks,
         backend=nl.backend,
         backend_options=nl.bo,
         storage_shape=storage_shape,
@@ -125,6 +126,7 @@ def main(backend=None, namelist="namelist_fc.py", no_log=False):
     inter_tends = taz.ConcurrentCoupling(
         *args,
         execution_policy="serial",
+        enable_checks=nl.enable_checks,
         backend=nl.backend,
         backend_options=nl.bo,
         storage_options=nl.so
@@ -143,6 +145,7 @@ def main(backend=None, namelist="namelist_fc.py", no_log=False):
         grid_type="numerical",
         moist=False,
         pt=pt,
+        enable_checks=nl.enable_checks,
         backend=nl.backend,
         backend_options=nl.bo,
         storage_shape=storage_shape,
@@ -161,6 +164,7 @@ def main(backend=None, namelist="namelist_fc.py", no_log=False):
         nl.smooth_coeff,
         nl.smooth_coeff_max,
         nl.smooth_damp_depth,
+        enable_checks=nl.enable_checks,
         backend=nl.backend,
         backend_options=nl.bo,
         storage_shape=storage_shape,
@@ -171,6 +175,7 @@ def main(backend=None, namelist="namelist_fc.py", no_log=False):
     # component calculating the velocity components
     vc = taz.IsentropicVelocityComponents(
         domain,
+        enable_checks=nl.enable_checks,
         backend=nl.backend,
         backend_options=nl.bo,
         storage_shape=storage_shape,
@@ -179,9 +184,7 @@ def main(backend=None, namelist="namelist_fc.py", no_log=False):
     args.append(vc)
 
     # wrap the components in a ConcurrentCoupling object
-    slow_diags = taz.DiagnosticComponentComposite(
-        *args, execution_policy="serial"
-    )
+    slow_diags = taz.ConcurrentCoupling(*args, execution_policy="serial")
 
     # ============================================================
     # The dynamical core
@@ -190,11 +193,11 @@ def main(backend=None, namelist="namelist_fc.py", no_log=False):
         domain,
         moist=False,
         # parameterizations
-        intermediate_tendency_component=inter_tends,
-        intermediate_diagnostic_component=dv,
+        fast_tendency_component=inter_tends,
+        fast_diagnostic_component=dv,
         substeps=nl.substeps,
-        fast_tendency_component=None,
-        fast_diagnostic_component=None,
+        superfast_tendency_component=None,
+        superfast_diagnostic_component=None,
         # numerical scheme
         time_integration_scheme=nl.time_integration_scheme,
         horizontal_flux_scheme=nl.horizontal_flux_scheme,
@@ -211,10 +214,8 @@ def main(backend=None, namelist="namelist_fc.py", no_log=False):
         damp_depth=nl.damp_depth,
         damp_max=nl.damp_max,
         damp_at_every_stage=nl.damp_at_every_stage,
-        # horizontal smoothing
-        smooth=False,
-        smooth_moist=False,
         # backend settings
+        enable_checks=nl.enable_checks,
         backend=nl.backend,
         backend_options=nl.bo,
         storage_shape=storage_shape,
@@ -232,25 +233,41 @@ def main(backend=None, namelist="namelist_fc.py", no_log=False):
         backend=nl.backend, backend_options=nl.bo, storage_options=nl.so
     )
 
-    for i in range(nt):
+    # start timing
+    taz.Timer.start(label="compute_time")
+
+    # update the (time-dependent) topography
+    dycore.update_topography(dt)
+
+    # calculate the dynamics
+    state_new = dycore(state, {}, dt)
+
+    # calculate the slow physics
+    _, diagnostics = slow_diags(state_new, dt)
+    dict_op.update_swap(state_new, diagnostics)
+
+    # stop timing
+    taz.Timer.stop(label="compute_time")
+
+    for i in range(1, nt):
         # start timing
-        tasmania.python.utils.time.Timer.start(label="compute_time")
+        taz.Timer.start(label="compute_time")
+
+        # swap the old and new state
+        state, state_new = state_new, state
 
         # update the (time-dependent) topography
         dycore.update_topography((i + 1) * dt)
 
         # calculate the dynamics
-        state_new = dycore(state, {}, dt)
-
-        # update the state
-        dict_op.copy(state, state_new)
+        dycore(state, {}, dt, out_state=state_new)
 
         # calculate the slow physics
-        diagnostics = slow_diags(state, dt)
-        dict_op.copy(state, diagnostics, unshared_variables_in_output=True)
+        slow_diags(state_new, dt, out_diagnostics=diagnostics)
+        dict_op.update_swap(state_new, diagnostics)
 
         # stop timing
-        tasmania.python.utils.time.Timer.stop(label="compute_time")
+        taz.Timer.stop(label="compute_time")
 
     print("Simulation successfully completed. HOORAY!")
 
@@ -258,16 +275,16 @@ def main(backend=None, namelist="namelist_fc.py", no_log=False):
     # Post-processing
     # ============================================================
     # print umax and vmax for validation
-    u = taz.to_numpy(state["x_velocity_at_u_locations"].data)
+    u = taz.to_numpy(state_new["x_velocity_at_u_locations"].data)
     umax = u[:, :-1, :-1].max()
-    v = taz.to_numpy(state["y_velocity_at_v_locations"].data)
+    v = taz.to_numpy(state_new["y_velocity_at_v_locations"].data)
     vmax = v[:-1, :, :-1].max()
     print(f"Validation: umax = {umax:.5f}, vmax = {vmax:.5f}")
 
     # print logs
     print(
         f"Compute time: "
-        f"{tasmania.python.utils.time.Timer.get_time('compute_time', 's'):.3f}"
+        f"{taz.Timer.get_time('compute_time', 's'):.3f}"
         f" s."
     )
 
@@ -277,9 +294,9 @@ def main(backend=None, namelist="namelist_fc.py", no_log=False):
         run_info_to_csv(
             nl.run_info_csv,
             backend,
-            tasmania.python.utils.time.Timer.get_time("compute_time", "s"),
+            taz.Timer.get_time("compute_time", "s"),
         )
-        tasmania.python.utils.time.Timer.log(nl.log_txt, "s")
+        taz.Timer.log(nl.log_txt, "s")
 
 
 if __name__ == "__main__":

@@ -47,7 +47,7 @@ hb_type = "relaxed"
 nb = 3
 hb_kwargs = {"nr": 6}
 
-# backend settings
+# backend and low-level settings
 backend = "gt4py:gtmc"
 bo = taz.BackendOptions(
     # gt4py
@@ -66,6 +66,7 @@ bo = taz.BackendOptions(
 so = taz.StorageOptions(
     dtype=np.float64, aligned_index=(nb, nb, 0), managed="gt4py"
 )
+enable_checks = False
 
 # topography
 topo_type = "gaussian"
@@ -143,15 +144,15 @@ niter = 100
 hostname = socket.gethostname()
 if "nid" in hostname:
     if os.path.exists("/scratch/snx3000"):
-        prefix = "/scratch/snx3000/subbiali/timing/oop"
+        prefix = "/scratch/snx3000/subbiali/timing/oop/20210430"
     else:
-        prefix = "/scratch/snx3000tds/subbiali/timing/oop"
+        prefix = "/scratch/snx3000tds/subbiali/timing/oop/20210430"
 elif "daint" in hostname:
-    prefix = "/scratch/snx3000/subbiali/timing/oop"
+    prefix = "/scratch/snx3000/subbiali/timing/oop/20210430"
 elif "dom" in hostname:
-    prefix = "/scratch/snx3000tds/subbiali/timing/oop"
+    prefix = "/scratch/snx3000tds/subbiali/timing/oop/20210430"
 else:
-    prefix = "../timing/oop"
+    prefix = "../timing/oop/mbp"
 exec_info_csv = os.path.join(prefix, f"isentropic_moist_exec_fc_{backend}.csv")
 run_info_csv = os.path.join(prefix, "isentropic_moist_run_fc.csv")
 log_txt = os.path.join(prefix, f"isentropic_moist_log_fc_{backend}.txt")

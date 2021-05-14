@@ -47,9 +47,10 @@ ny = 10 * (2 ** factor) + 1
 hb_type = "dirichlet"
 nb = 3
 hb_kwargs = {"core": zsof}
+# hb_kwargs = {"nr": 8}
 
-# backend settings
-backend = "gt4py:gtmc"
+# backend settings and low-level details
+backend = "gt4py:gtx86"
 bo = taz.BackendOptions(
     # gt4py
     build_info={},
@@ -67,6 +68,7 @@ bo = taz.BackendOptions(
 so = taz.StorageOptions(
     dtype=np.float64, aligned_index=(nb, nb, 0), managed="gt4py"
 )
+enable_checks = False
 
 # numerical scheme
 time_integration_scheme = "rk3ws"

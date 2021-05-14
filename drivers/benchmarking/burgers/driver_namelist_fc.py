@@ -93,7 +93,7 @@ def main(backend=None, namelist="namelist_fc.py", no_log=False):
     domain.horizontal_boundary.reference_state = state
 
     # ============================================================
-    # The intermediate tendencies
+    # The fast tendencies
     # ============================================================
     # component calculating the Laplacian of the velocity
     diff = taz.BurgersHorizontalDiffusion(
@@ -101,6 +101,7 @@ def main(backend=None, namelist="namelist_fc.py", no_log=False):
         "numerical",
         nl.diffusion_type,
         nl.diffusion_coeff,
+        enable_checks=nl.enable_checks,
         backend=nl.backend,
         backend_options=nl.bo,
         storage_options=nl.so,
@@ -111,9 +112,10 @@ def main(backend=None, namelist="namelist_fc.py", no_log=False):
     # ============================================================
     dycore = taz.BurgersDynamicalCore(
         domain,
-        intermediate_tendency_component=diff,
+        fast_tendency_component=diff,
         time_integration_scheme=nl.time_integration_scheme,
         flux_scheme=nl.flux_scheme,
+        enable_checks=nl.enable_checks,
         backend=nl.backend,
         backend_options=nl.bo,
         storage_options=nl.so,
@@ -130,13 +132,26 @@ def main(backend=None, namelist="namelist_fc.py", no_log=False):
         backend=nl.backend, backend_options=nl.bo, storage_options=nl.so
     )
 
-    for i in range(nt):
+    # start timing
+    tasmania.python.utils.time.Timer.start("compute_time")
+
+    # step the solution
+    state_new = dycore(state, {}, dt)
+    state_new["time"] = nl.init_time + dt
+
+    # stop timing
+    tasmania.python.utils.time.Timer.stop()
+
+    for i in range(1, nt):
         # start timing
         tasmania.python.utils.time.Timer.start("compute_time")
 
+        # swap old and new states
+        state, state_new = state_new, state
+
         # step the solution
-        dict_op.copy(state, dycore(state, {}, dt))
-        state["time"] = nl.init_time + (i + 1) * dt
+        dycore(state, {}, dt, out_state=state_new)
+        state_new["time"] = nl.init_time + (i + 1) * dt
 
         # stop timing
         tasmania.python.utils.time.Timer.stop()
@@ -147,11 +162,12 @@ def main(backend=None, namelist="namelist_fc.py", no_log=False):
     # Post-processing
     # ============================================================
     # compute the error
-    u = taz.to_numpy(state["x_velocity"].data)
-    uex = zsof(
-        state["time"], ngrid, field_name="x_velocity", field_units="m s^-1"
-    )
-    print(f"RMSE(u) = {np.linalg.norm(u - uex) / np.sqrt(u.size):.5E} m/s")
+    u = taz.to_numpy(state_new["x_velocity"].data)
+    # uex = zsof(
+    #     state["time"], ngrid, field_name="x_velocity", field_units="m s^-1"
+    # )
+    # print(f"RMSE(u) = {np.linalg.norm(u - uex) / np.sqrt(u.size):.5E} m/s")
+    print(f"max(u) = {u.max():.5f} m/s")
 
     # print logs
     print(

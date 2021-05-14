@@ -47,7 +47,7 @@ hb_type = "relaxed"
 nb = 3
 hb_kwargs = {"nr": 6}
 
-# backend settings
+# backend and low-level settings
 backend = "gt4py:gtx86"
 bo = taz.BackendOptions(
     # gt4py
@@ -66,6 +66,7 @@ bo = taz.BackendOptions(
 so = taz.StorageOptions(
     dtype=np.float64, aligned_index=(nb, nb, 0), managed="gt4py"
 )
+enable_checks = False
 
 # topography
 topo_type = "gaussian"
@@ -92,13 +93,13 @@ b = 0.375
 c = 0.25
 
 # advection
-horizontal_flux_scheme = "centered"
+horizontal_flux_scheme = "fifth_order_upwind"
 
 # damping
 damp = True
 damp_type = "rayleigh"
 damp_depth = 15
-damp_max = 0.0002
+damp_max = 0.0005
 damp_at_every_stage = False
 
 # horizontal smoothing
