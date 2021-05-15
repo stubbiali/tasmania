@@ -23,7 +23,7 @@
 import abc
 
 from tasmania.python.domain.grid import Grid
-from tasmania.python.utils import typing as ty
+from tasmania.python.utils import typingx as ty
 
 
 class BaseLoader(abc.ABC):

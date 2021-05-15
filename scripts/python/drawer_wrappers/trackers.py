@@ -24,7 +24,7 @@ from datetime import datetime
 import json
 
 from tasmania.python.plot.trackers import HovmollerDiagram, TimeSeries
-from tasmania.python.utils import typing as ty
+from tasmania.python.utils import typingx as ty
 
 from scripts.python.data_loaders.base import BaseLoader
 from scripts.python.drawer_wrappers.base import DrawerWrapper

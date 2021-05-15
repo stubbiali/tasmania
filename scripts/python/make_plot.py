@@ -27,7 +27,7 @@ from matplotlib import pyplot as plt
 from typing import List, Optional, Sequence, Tuple, Union
 
 from tasmania.python.plot.monitors import Plot
-from tasmania.python.utils import typing as ty
+from tasmania.python.utils import typingx as ty
 
 
 class PlotWrapper:

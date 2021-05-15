@@ -23,7 +23,7 @@
 import json
 
 from tasmania.python.domain.grid import Grid
-from tasmania.python.utils import typing as ty
+from tasmania.python.utils import typingx as ty
 
 from scripts.python.data_loaders.base import BaseLoader
 from scripts.python.data_loaders.mounter import DatasetMounter

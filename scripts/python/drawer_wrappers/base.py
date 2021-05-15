@@ -23,7 +23,7 @@
 import abc
 
 from tasmania.python.plot.drawer import Drawer
-from tasmania.python.utils import typing as ty
+from tasmania.python.utils import typingx as ty
 
 from scripts.python.data_loaders.base import BaseLoader
 

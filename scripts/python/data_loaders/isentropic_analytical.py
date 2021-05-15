@@ -24,7 +24,7 @@ import json
 from sympl import DataArray
 
 from tasmania.python.domain.grid import Grid
-from tasmania.python.utils import typing as ty
+from tasmania.python.utils import typingx as ty
 from tasmania.python.utils.dict import DataArrayDictOperator
 from tasmania.python.utils.meteo import (
     get_isothermal_isentropic_analytical_solution,

@@ -23,7 +23,7 @@
 import json
 
 from tasmania.python.plot.offline import Line
-from tasmania.python.utils import typing as ty
+from tasmania.python.utils import typingx as ty
 
 from scripts.python.data_loaders.composite import CompositeLoader
 from scripts.python.drawer_wrappers.base import DrawerWrapper

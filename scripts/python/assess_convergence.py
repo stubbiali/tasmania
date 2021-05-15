@@ -29,7 +29,7 @@ import tasmania as taz
 field_name = "precipitation"
 field_units = "mm hr^-1"
 
-prefix = "../../data/pdc_paper/isentropic_diagnostic/"
+prefix = "../../data/pdc_paper/isentropic_prognostic/"
 
 reference_dataset = {
     "filename": "isentropic_moist_rk3ws_si_fifth_order_upwind_rk2_nx2561_ny1_nz60_"

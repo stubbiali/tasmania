@@ -21,7 +21,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 from tasmania.python.domain.grid import Grid
-from tasmania.python.utils import typing as ty
+from tasmania.python.utils import typingx as ty
 from tasmania.python.utils.io import load_netcdf_dataset
 
 

@@ -58,7 +58,7 @@
 	},
 	"axes_properties": {
 		"fontsize": 16,
-		"title_center": "$\\mathbf{(a)}$ Time: 00:40:00",
+		"title_center": "",
 		"title_left": "",
 		"title_right": "",
 		"x_label": "$\\Delta x$ [km]",

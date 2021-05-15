@@ -27,7 +27,7 @@ from sympl import DataArray
 
 from tasmania.python.burgers.state import ZhaoSolutionFactory
 from tasmania.python.domain.grid import Grid
-from tasmania.python.utils import typing as ty
+from tasmania.python.utils import typingx as ty
 from tasmania.python.utils.storage import get_dataarray_3d
 
 from scripts.python.data_loaders.base import BaseLoader
