@@ -123,7 +123,7 @@ if gt:
 
 if numba:
 
-    @stencil_compiler.register(backend="numba:cpu")
+    @stencil_compiler.register(backend="numba:cpu*")
     def compiler_numba_cpu(definition, *, backend_options=None):
         bo = backend_options or BackendOptions()
 

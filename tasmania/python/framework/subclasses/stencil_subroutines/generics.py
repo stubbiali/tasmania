@@ -20,6 +20,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+import numba
 from typing import TYPE_CHECKING
 
 from gt4py import gtscript
@@ -33,7 +34,7 @@ if TYPE_CHECKING:
 
 
 @stencil_subroutine.register(
-    backend=("numpy", "cupy", "numba:cpu"), stencil="set_output"
+    backend=("numpy", "cupy", "numba:cpu:numpy"), stencil="set_output"
 )
 def set_output_numpy(
     lhs: "np.ndarray", rhs: "np.ndarray", overwrite: bool
@@ -47,3 +48,17 @@ def set_output_gt4py(
     lhs: "GTField", rhs: "GTField", overwrite: bool
 ) -> "GTField":
     return rhs if overwrite else lhs + rhs
+
+
+@stencil_subroutine.register(backend="numba:cpu:stencil", stencil="set_output")
+def set_output_numba(
+    lhs: "np.ndarray", rhs: "np.ndarray", overwrite: bool
+) -> "np.ndarray":
+    def core_def(_lhs, _rhs, _overwrite):
+        return _rhs[0, 0, 0] if _overwrite else _lhs[0, 0, 0] + _rhs[0, 0, 0]
+
+    core = numba.stencil(core_def)
+
+    core(lhs, rhs, overwrite, out=lhs)
+
+    return lhs

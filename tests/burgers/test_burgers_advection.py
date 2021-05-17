@@ -77,7 +77,7 @@ class WrappingStencil(StencilFactory):
 
     @staticmethod
     @stencil_definition(
-        backend=("numpy", "cupy", "numba:cpu"), stencil="stencil"
+        backend=("numpy", "cupy", "numba:cpu:numpy"), stencil="stencil"
     )
     def burgers_advection_numpy(
         in_u,
@@ -123,25 +123,25 @@ class WrappingStencil(StencilFactory):
                 dx=dx, dy=dy, u=in_u, v=in_v
             )
 
-    # @staticmethod
-    # @stencil_definition(backend="numba:cpu", stencil="stencil")
-    # def burgers_advection_numba(
-    #     in_u,
-    #     in_v,
-    #     out_adv_u_x,
-    #     out_adv_u_y,
-    #     out_adv_v_x,
-    #     out_adv_v_y,
-    #     *,
-    #     dx,
-    #     dy
-    # ):
-    #     (
-    #         out_adv_u_x[...],
-    #         out_adv_u_y[...],
-    #         out_adv_v_x[...],
-    #         out_adv_v_y[...],
-    #     ) = call_func(dx=dx, dy=dy, u=in_u, v=in_v)
+    @staticmethod
+    @stencil_definition(backend="numba:cpu:stencil", stencil="stencil")
+    def burgers_advection_numba(
+        in_u,
+        in_v,
+        out_adv_u_x,
+        out_adv_u_y,
+        out_adv_v_x,
+        out_adv_v_y,
+        *,
+        dx,
+        dy
+    ):
+        (
+            out_adv_u_x[...],
+            out_adv_u_y[...],
+            out_adv_v_x[...],
+            out_adv_v_y[...],
+        ) = call_func(dx=dx, dy=dy, u=in_u, v=in_v)
 
 
 def first_order_advection(dx, dy, u, v, phi):

@@ -167,7 +167,7 @@ def main(backend=None, namelist="namelist_fc.py", no_log=False):
     #     state["time"], ngrid, field_name="x_velocity", field_units="m s^-1"
     # )
     # print(f"RMSE(u) = {np.linalg.norm(u - uex) / np.sqrt(u.size):.5E} m/s")
-    print(f"max(u) = {u.max():.5f} m/s")
+    print(f"Validation: max(u) = {u.max():.8f} m/s")
 
     # print logs
     print(
