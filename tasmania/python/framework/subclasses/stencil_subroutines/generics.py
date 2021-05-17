@@ -32,7 +32,9 @@ if TYPE_CHECKING:
     from tasmania.python.utils.typingx import GTField
 
 
-@stencil_subroutine.register(backend=("numpy", "cupy"), stencil="set_output")
+@stencil_subroutine.register(
+    backend=("numpy", "cupy", "numba:cpu"), stencil="set_output"
+)
 def set_output_numpy(
     lhs: "np.ndarray", rhs: "np.ndarray", overwrite: bool
 ) -> None:

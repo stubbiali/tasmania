@@ -137,7 +137,9 @@ class HorizontalDiffusion(AbstractFactory, StencilFactory):
         pass
 
     @staticmethod
-    @stencil_definition(backend=("numpy", "cupy"), stencil="diffusion")
+    @stencil_definition(
+        backend=("numpy", "cupy", "numba:cpu"), stencil="diffusion"
+    )
     @abc.abstractmethod
     def _stencil_numpy(
         in_phi: np.ndarray,
@@ -166,21 +168,21 @@ class HorizontalDiffusion(AbstractFactory, StencilFactory):
     ) -> None:
         pass
 
-    @staticmethod
-    @stencil_definition(backend="numba:cpu", stencil="diffusion")
-    @abc.abstractmethod
-    def _stencil_numba_cpu(
-        in_phi: np.ndarray,
-        in_gamma: np.ndarray,
-        out_phi: np.ndarray,
-        *,
-        dx: float,
-        dy: float,
-        ow_out_phi: bool,
-        origin: "TripletInt",
-        domain: "TripletInt"
-    ) -> None:
-        pass
+    # @staticmethod
+    # @stencil_definition(backend="numba:cpu", stencil="diffusion")
+    # @abc.abstractmethod
+    # def _stencil_numba_cpu(
+    #     in_phi: np.ndarray,
+    #     in_gamma: np.ndarray,
+    #     out_phi: np.ndarray,
+    #     *,
+    #     dx: float,
+    #     dy: float,
+    #     ow_out_phi: bool,
+    #     origin: "TripletInt",
+    #     domain: "TripletInt"
+    # ) -> None:
+    #     pass
 
     # @staticmethod
     # @stencil_definition(backend="taichi:*", stencil="diffusion")

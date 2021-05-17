@@ -107,13 +107,13 @@ class BurgersAdvection(StencilFactory, abc.ABC):
         """
         pass
 
-    @staticmethod
-    @stencil_subroutine(backend="numba:cpu", stencil="advection")
-    @abc.abstractmethod
-    def call_numba_cpu(
-        dx: float, dy: float, u: np.ndarray, v: np.ndarray
-    ) -> "Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]":
-        pass
+    # @staticmethod
+    # @stencil_subroutine(backend="numba:cpu", stencil="advection")
+    # @abc.abstractmethod
+    # def call_numba_cpu(
+    #     dx: float, dy: float, u: np.ndarray, v: np.ndarray
+    # ) -> "Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]":
+    #     pass
 
     @staticmethod
     def factory(flux_scheme: str, backend: str) -> "BurgersAdvection":

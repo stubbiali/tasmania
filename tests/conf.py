@@ -81,7 +81,8 @@ dawn_backend = dawn_cpu_backend.union(dawn_gpu_backend)
 numba_backend = numba_cpu_backend.union(numba_gpu_backend)
 cpu_backend = cpu_backend.union(
     gt_cpu_backend,
-    gtc_cpu_backend,  # dawn_cpu_backend, numba_cpu_backend
+    gtc_cpu_backend,
+    numba_cpu_backend,  # dawn_cpu_backend
 )
 gpu_backend = gpu_backend.union(
     gt_gpu_backend,

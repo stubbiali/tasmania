@@ -192,7 +192,9 @@ class BurgersStepper(StencilFactory, abc.ABC):
         self._forward_euler = self.compile("forward_euler")
 
     @staticmethod
-    @stencil_definition(backend=("numpy", "cupy"), stencil="forward_euler")
+    @stencil_definition(
+        backend=("numpy", "cupy", "numba:cpu"), stencil="forward_euler"
+    )
     def _forward_euler_numpy(
         in_u: np.ndarray,
         in_v: np.ndarray,
@@ -277,77 +279,77 @@ class BurgersStepper(StencilFactory, abc.ABC):
                     adv_v_x[0, 0, 0] + adv_v_y[0, 0, 0]
                 )
 
-    @staticmethod
-    @stencil_definition(backend="numba:cpu", stencil="forward_euler")
-    def _forward_euler_numba_cpu(
-        in_u: np.ndarray,
-        in_v: np.ndarray,
-        in_u_tmp: np.ndarray,
-        in_v_tmp: np.ndarray,
-        out_u: np.ndarray,
-        out_v: np.ndarray,
-        in_u_tnd: Optional[np.ndarray] = None,
-        in_v_tnd: Optional[np.ndarray] = None,
-        *,
-        dt: float,
-        dx: float,
-        dy: float,
-        origin: ty.TripletInt,
-        domain: ty.TripletInt
-    ) -> None:
-        # >>> stencil definitions
-        def step_def(phi, adv_x, adv_y, dt):
-            return phi[0, 0, 0] - dt * (adv_x[0, 0, 0] + adv_y[0, 0, 0])
-
-        def step_tnd_def(phi, adv_x, adv_y, tnd, dt):
-            return phi[0, 0, 0] - dt * (
-                adv_x[0, 0, 0] + adv_y[0, 0, 0] - tnd[0, 0, 0]
-            )
-
-        # >>> stencil compilations
-        step = numba.stencil(step_def)
-        step_tnd = numba.stencil(step_tnd_def)
-
-        # >>> calculations
-        ib, jb, kb = origin
-        ie, je, ke = ib + domain[0], jb + domain[1], kb + domain[2]
-
-        adv_u_x, adv_u_y, adv_v_x, adv_v_y = advection(
-            dx=dx, dy=dy, u=in_u_tmp, v=in_v_tmp
-        )
-
-        if tnd_u:
-            step_tnd(
-                in_u[ib:ie, jb:je, kb:ke],
-                adv_u_x[ib:ie, jb:je, kb:ke],
-                adv_u_y[ib:ie, jb:je, kb:ke],
-                in_u_tnd[ib:ie, jb:je, kb:ke],
-                dt,
-                out=out_u[ib:ie, jb:je, kb:ke],
-            )
-        else:
-            step(
-                in_u[ib:ie, jb:je, kb:ke],
-                adv_u_x[ib:ie, jb:je, kb:ke],
-                adv_u_y[ib:ie, jb:je, kb:ke],
-                dt,
-                out=out_u[ib:ie, jb:je, kb:ke],
-            )
-
-        if tnd_v:
-            step_tnd(
-                in_v[ib:ie, jb:je, kb:ke],
-                adv_v_x[ib:ie, jb:je, kb:ke],
-                adv_v_y[ib:ie, jb:je, kb:ke],
-                in_v_tnd[ib:ie, jb:je, kb:ke],
-                dt,
-                out=out_v[ib:ie, jb:je, kb:ke],
-            )
-        else:
-            step(
-                in_v[ib:ie, jb:je, kb:ke],
-                adv_v_x[ib:ie, jb:je, kb:ke],
-                adv_v_y[ib:ie, jb:je, kb:ke],
-                dt,
-                out=out_v[ib:ie, jb:je, kb:ke],
-            )
+    # @staticmethod
+    # @stencil_definition(backend="numba:cpu", stencil="forward_euler")
+    # def _forward_euler_numba_cpu(
+    #     in_u: np.ndarray,
+    #     in_v: np.ndarray,
+    #     in_u_tmp: np.ndarray,
+    #     in_v_tmp: np.ndarray,
+    #     out_u: np.ndarray,
+    #     out_v: np.ndarray,
+    #     in_u_tnd: Optional[np.ndarray] = None,
+    #     in_v_tnd: Optional[np.ndarray] = None,
+    #     *,
+    #     dt: float,
+    #     dx: float,
+    #     dy: float,
+    #     origin: ty.TripletInt,
+    #     domain: ty.TripletInt
+    # ) -> None:
+    #     # >>> stencil definitions
+    #     def step_def(phi, adv_x, adv_y, dt):
+    #         return phi[0, 0, 0] - dt * (adv_x[0, 0, 0] + adv_y[0, 0, 0])
+    #
+    #     def step_tnd_def(phi, adv_x, adv_y, tnd, dt):
+    #         return phi[0, 0, 0] - dt * (
+    #             adv_x[0, 0, 0] + adv_y[0, 0, 0] - tnd[0, 0, 0]
+    #         )
+    #
+    #     # >>> stencil compilations
+    #     step = numba.stencil(step_def)
+    #     step_tnd = numba.stencil(step_tnd_def)
+    #
+    #     # >>> calculations
+    #     ib, jb, kb = origin
+    #     ie, je, ke = ib + domain[0], jb + domain[1], kb + domain[2]
+    #
+    #     adv_u_x, adv_u_y, adv_v_x, adv_v_y = advection(
+    #         dx=dx, dy=dy, u=in_u_tmp, v=in_v_tmp
+    #     )
+    #
+    #     if tnd_u:
+    #         step_tnd(
+    #             in_u[ib:ie, jb:je, kb:ke],
+    #             adv_u_x[ib:ie, jb:je, kb:ke],
+    #             adv_u_y[ib:ie, jb:je, kb:ke],
+    #             in_u_tnd[ib:ie, jb:je, kb:ke],
+    #             dt,
+    #             out=out_u[ib:ie, jb:je, kb:ke],
+    #         )
+    #     else:
+    #         step(
+    #             in_u[ib:ie, jb:je, kb:ke],
+    #             adv_u_x[ib:ie, jb:je, kb:ke],
+    #             adv_u_y[ib:ie, jb:je, kb:ke],
+    #             dt,
+    #             out=out_u[ib:ie, jb:je, kb:ke],
+    #         )
+    #
+    #     if tnd_v:
+    #         step_tnd(
+    #             in_v[ib:ie, jb:je, kb:ke],
+    #             adv_v_x[ib:ie, jb:je, kb:ke],
+    #             adv_v_y[ib:ie, jb:je, kb:ke],
+    #             in_v_tnd[ib:ie, jb:je, kb:ke],
+    #             dt,
+    #             out=out_v[ib:ie, jb:je, kb:ke],
+    #         )
+    #     else:
+    #         step(
+    #             in_v[ib:ie, jb:je, kb:ke],
+    #             adv_v_x[ib:ie, jb:je, kb:ke],
+    #             adv_v_y[ib:ie, jb:je, kb:ke],
+    #             dt,
+    #             out=out_v[ib:ie, jb:je, kb:ke],
+    #         )

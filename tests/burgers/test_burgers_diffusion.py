@@ -55,11 +55,11 @@ from tests.utilities import hyp_settings
 
 
 class SecondOrder(TendencyComponentTestSuite):
-    def __init__(self, hyp_data, domain_suite):
-        self.smooth_coeff = hyp_data.draw(
+    def __init__(self, domain_suite):
+        self.smooth_coeff = domain_suite.hyp_data.draw(
             st_floats(min_value=0, max_value=1), label="smooth_coeff"
         )
-        super().__init__(hyp_data, domain_suite)
+        super().__init__(domain_suite)
 
     @cached_property
     def component(self):
@@ -97,7 +97,7 @@ class SecondOrder(TendencyComponentTestSuite):
             label="state",
         )
 
-    def get_tendencies_and_diagnostics(self, raw_state_np):
+    def get_tendencies_and_diagnostics(self, raw_state_np, dt=None):
         tendencies = {
             "x_velocity": self.get_validation_field(
                 raw_state_np, "x_velocity"
@@ -126,9 +126,16 @@ class SecondOrder(TendencyComponentTestSuite):
 @pytest.mark.parametrize("backend", conf.backend)
 @pytest.mark.parametrize("dtype", conf.dtype)
 def test_second_order(data, backend, dtype):
-    ds = DomainSuite(data, backend, dtype, zaxis_length=(1, 1), nb_min=1)
+    ds = DomainSuite(
+        data,
+        backend,
+        dtype,
+        zaxis_length=(1, 1),
+        nb_min=1,
+        check_rebuild=False,
+    )
     assume(ds.grid.nx > 2 or ds.grid.ny > 2)
-    ts = SecondOrder(data, ds)
+    ts = SecondOrder(ds)
     ts.run()
 
 
@@ -176,9 +183,16 @@ class FourthOrder(SecondOrder):
 @pytest.mark.parametrize("backend", conf.backend)
 @pytest.mark.parametrize("dtype", conf.dtype)
 def test_fourth_order(data, backend, dtype):
-    ds = DomainSuite(data, backend, dtype, zaxis_length=(1, 1), nb_min=2)
+    ds = DomainSuite(
+        data,
+        backend,
+        dtype,
+        zaxis_length=(1, 1),
+        nb_min=2,
+        check_rebuild=False,
+    )
     assume(ds.grid.nx > 4 or ds.grid.ny > 4)
-    ts = FourthOrder(data, ds)
+    ts = FourthOrder(ds)
     ts.run()
 
 

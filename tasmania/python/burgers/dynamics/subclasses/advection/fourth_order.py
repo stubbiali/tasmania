@@ -34,7 +34,9 @@ class FourthOrder(BurgersAdvection):
     extent = 2
 
     @staticmethod
-    @stencil_subroutine(backend=("numpy", "cupy"), stencil="advection")
+    @stencil_subroutine(
+        backend=("numpy", "cupy", "numba:cpu"), stencil="advection"
+    )
     def call_numpy(dx, dy, u, v):
         adv_u_x = (
             u[2:-2, 2:-2]
@@ -98,38 +100,38 @@ class FourthOrder(BurgersAdvection):
 
         return adv_u_x, adv_u_y, adv_v_x, adv_v_y
 
-    @staticmethod
-    @stencil_subroutine(backend="numba:cpu", stencil="advection")
-    def call_numba_cpu(dx, dy, u, v):
-        # >>> stencil definitions
-        def advection_x_def(u, phi, dx):
-            return (
-                u[0, 0, 0]
-                / (12.0 * dx)
-                * (
-                    8.0 * (phi[+1, 0, 0] - phi[-1, 0, 0])
-                    - (phi[+2, 0, 0] - phi[-2, 0, 0])
-                )
-            )
-
-        def advection_y_def(v, phi, dy):
-            return (
-                v[0, 0, 0]
-                / (12.0 * dy)
-                * (
-                    8.0 * (phi[0, +1, 0] - phi[0, -1, 0])
-                    - (phi[0, +2, 0] - phi[0, -2, 0])
-                )
-            )
-
-        # >>> stencil compilations
-        advection_x = numba.stencil(advection_x_def)
-        advection_y = numba.stencil(advection_y_def)
-
-        # >>> calculations
-        adv_u_x = advection_x(u, u, dx)
-        adv_u_y = advection_y(v, u, dy)
-        adv_v_x = advection_x(u, v, dx)
-        adv_v_y = advection_y(v, v, dy)
-
-        return adv_u_x, adv_u_y, adv_v_x, adv_v_y
+    # @staticmethod
+    # @stencil_subroutine(backend="numba:cpu", stencil="advection")
+    # def call_numba_cpu(dx, dy, u, v):
+    #     # >>> stencil definitions
+    #     def advection_x_def(u, phi, dx):
+    #         return (
+    #             u[0, 0, 0]
+    #             / (12.0 * dx)
+    #             * (
+    #                 8.0 * (phi[+1, 0, 0] - phi[-1, 0, 0])
+    #                 - (phi[+2, 0, 0] - phi[-2, 0, 0])
+    #             )
+    #         )
+    #
+    #     def advection_y_def(v, phi, dy):
+    #         return (
+    #             v[0, 0, 0]
+    #             / (12.0 * dy)
+    #             * (
+    #                 8.0 * (phi[0, +1, 0] - phi[0, -1, 0])
+    #                 - (phi[0, +2, 0] - phi[0, -2, 0])
+    #             )
+    #         )
+    #
+    #     # >>> stencil compilations
+    #     advection_x = numba.stencil(advection_x_def)
+    #     advection_y = numba.stencil(advection_y_def)
+    #
+    #     # >>> calculations
+    #     adv_u_x = advection_x(u, u, dx)
+    #     adv_u_y = advection_y(v, u, dy)
+    #     adv_v_x = advection_x(u, v, dx)
+    #     adv_v_y = advection_y(v, v, dy)
+    #
+    #     return adv_u_x, adv_u_y, adv_v_x, adv_v_y

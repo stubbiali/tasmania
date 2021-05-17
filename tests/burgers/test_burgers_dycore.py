@@ -61,7 +61,7 @@ def test_forward_euler(data, backend, dtype):
     aligned_index = data.draw(
         st_one_of(conf.aligned_index), label="aligned_index"
     )
-    bo = BackendOptions(rebuild=False)
+    bo = BackendOptions(rebuild=False, check_rebuild=True)
     so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
 
     nb = data.draw(
@@ -169,7 +169,7 @@ def test_forward_euler_oop(data, backend, dtype):
     aligned_index = data.draw(
         st_one_of(conf.aligned_index), label="aligned_index"
     )
-    bo = BackendOptions(rebuild=False)
+    bo = BackendOptions(rebuild=False, check_rebuild=True)
     so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
 
     nb = data.draw(
@@ -316,7 +316,7 @@ def test_rk2(data, backend, dtype):
     aligned_index = data.draw(
         st_one_of(conf.aligned_index), label="aligned_index"
     )
-    bo = BackendOptions(rebuild=False)
+    bo = BackendOptions(rebuild=False, check_rebuild=True)
     so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
 
     nb = data.draw(
@@ -445,7 +445,7 @@ def test_rk2_oop(data, backend, dtype):
     aligned_index = data.draw(
         st_one_of(conf.aligned_index), label="aligned_index"
     )
-    bo = BackendOptions(rebuild=False)
+    bo = BackendOptions(rebuild=False, check_rebuild=True)
     so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
 
     nb = data.draw(
@@ -634,7 +634,7 @@ def test_rk3ws(data, backend, dtype):
     aligned_index = data.draw(
         st_one_of(conf.aligned_index), label="aligned_index"
     )
-    bo = BackendOptions(rebuild=False)
+    bo = BackendOptions(rebuild=False, check_rebuild=True)
     so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
 
     nb = data.draw(
@@ -784,7 +784,7 @@ def test_rk3ws_oop(data, backend, dtype):
     aligned_index = data.draw(
         st_one_of(conf.aligned_index), label="aligned_index"
     )
-    bo = BackendOptions(rebuild=False)
+    bo = BackendOptions(rebuild=False, check_rebuild=True)
     so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
 
     nb = data.draw(
@@ -1005,5 +1005,4 @@ def test_rk3ws_oop(data, backend, dtype):
 
 
 if __name__ == "__main__":
-    # pytest.main([__file__])
-    test_forward_euler_oop("gt4py:gtx86", float)
+    pytest.main([__file__])

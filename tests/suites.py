@@ -67,11 +67,14 @@ class DomainSuite:
         yaxis_length: Optional["PairInt"] = None,
         zaxis_length: Optional["PairInt"] = None,
         nb_min: Optional[int] = None,
+        check_rebuild: bool = True
     ):
         self.hyp_data = hyp_data
 
         self.backend = backend
-        self.backend_options = BackendOptions(rebuild=False)
+        self.backend_options = BackendOptions(
+            rebuild=False, check_rebuild=check_rebuild
+        )
         aligned_index = hyp_data.draw(
             st_one_of(conf.aligned_index), label="aligned_index"
         )

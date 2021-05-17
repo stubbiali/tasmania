@@ -87,7 +87,9 @@ class FourthOrder(HorizontalDiffusion):
         )
 
     @staticmethod
-    @stencil_definition(backend=("numpy", "cupy"), stencil="diffusion")
+    @stencil_definition(
+        backend=("numpy", "cupy", "numba:cpu"), stencil="diffusion"
+    )
     def _stencil_numpy(
         in_phi, in_gamma, out_phi, *, dx, dy, ow_out_phi, origin, domain
     ):
@@ -156,42 +158,42 @@ class FourthOrder(HorizontalDiffusion):
             )
             out_phi = set_output(out_phi, tmp, ow_out_phi)
 
-    @staticmethod
-    @stencil_definition(backend="numba:cpu", stencil="diffusion")
-    def _stencil_numba_cpu(
-        in_phi, in_gamma, out_phi, *, dx, dy, origin, domain
-    ):
-        def core_def(phi, gamma, dx, dy):
-            return gamma[0, 0, 0] * (
-                (
-                    -phi[-2, 0, 0]
-                    + 16.0 * phi[-1, 0, 0]
-                    - 30.0 * phi[0, 0, 0]
-                    + 16.0 * phi[1, 0, 0]
-                    - phi[2, 0, 0]
-                )
-                / (12.0 * dx * dx)
-                + (
-                    -phi[0, -2, 0]
-                    + 16.0 * phi[0, -1, 0]
-                    - 30.0 * phi[0, 0, 0]
-                    + 16.0 * phi[0, 1, 0]
-                    - phi[0, 2, 0]
-                )
-                / (12.0 * dy * dy)
-            )
-
-        core = numba.stencil(core_def)
-
-        ib, jb, kb = origin[0] - 2, origin[1] - 2, origin[2]
-        ie, je, ke = ib + domain[0] + 4, jb + domain[1] + 4, kb + domain[2]
-        core(
-            in_phi[ib:ie, jb:je, kb:ke],
-            in_gamma[ib:ie, jb:je, kb:ke],
-            dx,
-            dy,
-            out=out_phi[ib:ie, jb:je, kb:ke],
-        )
+    # @staticmethod
+    # @stencil_definition(backend="numba:cpu", stencil="diffusion")
+    # def _stencil_numba_cpu(
+    #     in_phi, in_gamma, out_phi, *, dx, dy, origin, domain
+    # ):
+    #     def core_def(phi, gamma, dx, dy):
+    #         return gamma[0, 0, 0] * (
+    #             (
+    #                 -phi[-2, 0, 0]
+    #                 + 16.0 * phi[-1, 0, 0]
+    #                 - 30.0 * phi[0, 0, 0]
+    #                 + 16.0 * phi[1, 0, 0]
+    #                 - phi[2, 0, 0]
+    #             )
+    #             / (12.0 * dx * dx)
+    #             + (
+    #                 -phi[0, -2, 0]
+    #                 + 16.0 * phi[0, -1, 0]
+    #                 - 30.0 * phi[0, 0, 0]
+    #                 + 16.0 * phi[0, 1, 0]
+    #                 - phi[0, 2, 0]
+    #             )
+    #             / (12.0 * dy * dy)
+    #         )
+    #
+    #     core = numba.stencil(core_def)
+    #
+    #     ib, jb, kb = origin[0] - 2, origin[1] - 2, origin[2]
+    #     ie, je, ke = ib + domain[0] + 4, jb + domain[1] + 4, kb + domain[2]
+    #     core(
+    #         in_phi[ib:ie, jb:je, kb:ke],
+    #         in_gamma[ib:ie, jb:je, kb:ke],
+    #         dx,
+    #         dy,
+    #         out=out_phi[ib:ie, jb:je, kb:ke],
+    #     )
 
 
 class FourthOrder1DX(HorizontalDiffusion):
@@ -253,7 +255,9 @@ class FourthOrder1DX(HorizontalDiffusion):
         )
 
     @staticmethod
-    @stencil_definition(backend=("numpy", "cupy"), stencil="diffusion")
+    @stencil_definition(
+        backend=("numpy", "cupy", "numba:cpu"), stencil="diffusion"
+    )
     def _stencil_numpy(
         in_phi, in_gamma, out_phi, *, dx, dy, ow_out_phi, origin, domain
     ):
@@ -304,34 +308,34 @@ class FourthOrder1DX(HorizontalDiffusion):
             )
             out_phi = set_output(out_phi, tmp, ow_out_phi)
 
-    @staticmethod
-    @stencil_definition(backend="numba:cpu", stencil="diffusion")
-    def _stencil_numba_cpu(
-        in_phi, in_gamma, out_phi, *, dx, dy=0.0, origin, domain
-    ):
-        def core_def(phi, gamma, dx):
-            return (
-                gamma[0, 0, 0]
-                * (
-                    -phi[-2, 0, 0]
-                    + 16.0 * phi[-1, 0, 0]
-                    - 30.0 * phi[0, 0, 0]
-                    + 16.0 * phi[1, 0, 0]
-                    - phi[2, 0, 0]
-                )
-                / (12.0 * dx * dx)
-            )
-
-        core = numba.stencil(core_def)
-
-        ib, jb, kb = origin[0] - 2, origin[1], origin[2]
-        ie, je, ke = ib + domain[0] + 4, jb + domain[1], kb + domain[2]
-        core(
-            in_phi[ib:ie, jb:je, kb:ke],
-            in_gamma[ib:ie, jb:je, kb:ke],
-            dx,
-            out=out_phi[ib:ie, jb:je, kb:ke],
-        )
+    # @staticmethod
+    # @stencil_definition(backend="numba:cpu", stencil="diffusion")
+    # def _stencil_numba_cpu(
+    #     in_phi, in_gamma, out_phi, *, dx, dy=0.0, origin, domain
+    # ):
+    #     def core_def(phi, gamma, dx):
+    #         return (
+    #             gamma[0, 0, 0]
+    #             * (
+    #                 -phi[-2, 0, 0]
+    #                 + 16.0 * phi[-1, 0, 0]
+    #                 - 30.0 * phi[0, 0, 0]
+    #                 + 16.0 * phi[1, 0, 0]
+    #                 - phi[2, 0, 0]
+    #             )
+    #             / (12.0 * dx * dx)
+    #         )
+    #
+    #     core = numba.stencil(core_def)
+    #
+    #     ib, jb, kb = origin[0] - 2, origin[1], origin[2]
+    #     ie, je, ke = ib + domain[0] + 4, jb + domain[1], kb + domain[2]
+    #     core(
+    #         in_phi[ib:ie, jb:je, kb:ke],
+    #         in_gamma[ib:ie, jb:je, kb:ke],
+    #         dx,
+    #         out=out_phi[ib:ie, jb:je, kb:ke],
+    #     )
 
 
 class FourthOrder1DY(HorizontalDiffusion):
@@ -393,7 +397,9 @@ class FourthOrder1DY(HorizontalDiffusion):
         )
 
     @staticmethod
-    @stencil_definition(backend=("numpy", "cupy"), stencil="diffusion")
+    @stencil_definition(
+        backend=("numpy", "cupy", "numba:cpu"), stencil="diffusion"
+    )
     def _stencil_numpy(
         in_phi, in_gamma, out_phi, *, dx, dy, ow_out_phi, origin, domain
     ):
@@ -444,31 +450,31 @@ class FourthOrder1DY(HorizontalDiffusion):
             )
             out_phi = set_output(out_phi, tmp, ow_out_phi)
 
-    @staticmethod
-    @stencil_definition(backend="numba:cpu", stencil="diffusion")
-    def _stencil_numba_cpu(
-        in_phi, in_gamma, out_phi, *, dx=0.0, dy, origin, domain
-    ):
-        def core_def(phi, gamma, dy):
-            return (
-                gamma[0, 0, 0]
-                * (
-                    -phi[0, -2, 0]
-                    + 16.0 * phi[0, -1, 0]
-                    - 30.0 * phi[0, 0, 0]
-                    + 16.0 * phi[0, 1, 0]
-                    - phi[0, 2, 0]
-                )
-                / (12.0 * dy * dy)
-            )
-
-        core = numba.stencil(core_def)
-
-        ib, jb, kb = origin[0], origin[1] - 2, origin[2]
-        ie, je, ke = ib + domain[0], jb + domain[1] + 4, kb + domain[2]
-        core(
-            in_phi[ib:ie, jb:je, kb:ke],
-            in_gamma[ib:ie, jb:je, kb:ke],
-            dy,
-            out=out_phi[ib:ie, jb:je, kb:ke],
-        )
+    # @staticmethod
+    # @stencil_definition(backend="numba:cpu", stencil="diffusion")
+    # def _stencil_numba_cpu(
+    #     in_phi, in_gamma, out_phi, *, dx=0.0, dy, origin, domain
+    # ):
+    #     def core_def(phi, gamma, dy):
+    #         return (
+    #             gamma[0, 0, 0]
+    #             * (
+    #                 -phi[0, -2, 0]
+    #                 + 16.0 * phi[0, -1, 0]
+    #                 - 30.0 * phi[0, 0, 0]
+    #                 + 16.0 * phi[0, 1, 0]
+    #                 - phi[0, 2, 0]
+    #             )
+    #             / (12.0 * dy * dy)
+    #         )
+    #
+    #     core = numba.stencil(core_def)
+    #
+    #     ib, jb, kb = origin[0], origin[1] - 2, origin[2]
+    #     ie, je, ke = ib + domain[0], jb + domain[1] + 4, kb + domain[2]
+    #     core(
+    #         in_phi[ib:ie, jb:je, kb:ke],
+    #         in_gamma[ib:ie, jb:je, kb:ke],
+    #         dy,
+    #         out=out_phi[ib:ie, jb:je, kb:ke],
+    #     )

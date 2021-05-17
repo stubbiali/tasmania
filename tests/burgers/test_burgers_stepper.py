@@ -65,7 +65,7 @@ def test_forward_euler(data, backend, dtype):
     aligned_index = data.draw(
         st_one_of(conf.aligned_index), label="aligned_index"
     )
-    bo = BackendOptions(rebuild=False)
+    bo = BackendOptions(rebuild=False, check_rebuild=True)
     so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
 
     nb = data.draw(
@@ -184,9 +184,7 @@ def test_rk2(data, backend, dtype):
     aligned_index = data.draw(
         st_one_of(conf.aligned_index), label="aligned_index"
     )
-    bo = BackendOptions(
-        cache=True, nopython=True, parallel=True, rebuild=False
-    )
+    bo = BackendOptions(rebuild=False, check_rebuild=True)
     so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
 
     nb = data.draw(
@@ -336,7 +334,7 @@ def test_rk3ws(data, backend, dtype):
     aligned_index = data.draw(
         st_one_of(conf.aligned_index), label="aligned_index"
     )
-    bo = BackendOptions(rebuild=False)
+    bo = BackendOptions(rebuild=False, check_rebuild=True)
     so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
 
     nb = data.draw(
