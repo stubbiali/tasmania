@@ -40,7 +40,6 @@ from tasmania.python.framework.core_components import (
 )
 from tasmania.python.framework.tag import stencil_definition
 from tasmania.python.physics.microphysics.utils import SedimentationFlux
-from tasmania.python.utils import typingx as ty
 
 if TYPE_CHECKING:
     from sympl._core.typingx import NDArrayLikeDict, PropertyDict
@@ -243,7 +242,7 @@ class KesslerMicrophysics(TendencyComponent):
 
     @property
     def tendency_properties(self) -> "PropertyDict":
-        grid = self._grid
+        grid = self.grid
         dims = (grid.x.dims[0], grid.y.dims[0], grid.z.dims[0])
 
         return_dict = {
@@ -265,7 +264,7 @@ class KesslerMicrophysics(TendencyComponent):
     @property
     def diagnostic_properties(self) -> "PropertyDict":
         if self._rain_evaporation and self._pttd:
-            grid = self._grid
+            grid = self.grid
             dims = (grid.x.dims[0], grid.y.dims[0], grid.z.dims[0])
             return {
                 "tendency_of_air_potential_temperature": {
@@ -331,7 +330,9 @@ class KesslerMicrophysics(TendencyComponent):
         )
 
     @staticmethod
-    @stencil_definition(backend=("numpy", "cupy"), stencil="kessler")
+    @stencil_definition(
+        backend=("numpy", "cupy", "numba:cpu:numpy"), stencil="kessler"
+    )
     def _kessler_numpy(
         in_rho: np.ndarray,
         in_p: np.ndarray,
@@ -708,7 +709,9 @@ class KesslerSaturationAdjustmentDiagnostic(ImplicitTendencyComponent):
         )
 
     @staticmethod
-    @stencil_definition(backend=("numpy", "cupy"), stencil="saturation")
+    @stencil_definition(
+        backend=("numpy", "cupy", "numba:cpu:numpy"), stencil="saturation"
+    )
     def _saturation_diagnostic_numpy(
         in_p: np.ndarray,
         in_t: np.ndarray,
@@ -1043,7 +1046,9 @@ class KesslerSaturationAdjustmentPrognostic(TendencyComponent):
         )
 
     @staticmethod
-    @stencil_definition(backend=("numpy", "cupy"), stencil="saturation")
+    @stencil_definition(
+        backend=("numpy", "cupy", "numba:cpu:numpy"), stencil="saturation"
+    )
     def _saturation_prognostic_numpy(
         in_p: np.ndarray,
         in_t: np.ndarray,
@@ -1255,7 +1260,9 @@ class KesslerFallVelocity(DiagnosticComponent):
         )
 
     @staticmethod
-    @stencil_definition(backend=("numpy", "cupy"), stencil="fall_velocity")
+    @stencil_definition(
+        backend=("numpy", "cupy", "numba:cpu:numpy"), stencil="fall_velocity"
+    )
     def _fall_velocity_numpy(
         in_rho: np.ndarray,
         in_rho_s: np.ndarray,
@@ -1277,7 +1284,7 @@ class KesslerFallVelocity(DiagnosticComponent):
                 * np.where(in_qr[i, j, k] > 0.0, in_qr[i, j, k], 0.0)
             )
             ** 0.1346
-            * (in_rho_s[i, j, np.newaxis] / in_rho[i, j, k]) ** 0.5
+            * (in_rho_s[i, j, k] / in_rho[i, j, k]) ** 0.5
         )
 
     @staticmethod
@@ -1415,7 +1422,9 @@ class KesslerSedimentation(ImplicitTendencyComponent):
         )
 
     @staticmethod
-    @stencil_definition(backend=("numpy", "cupy"), stencil="sedimentation")
+    @stencil_definition(
+        backend=("numpy", "cupy", "numba:cpu:numpy"), stencil="sedimentation"
+    )
     def _sedimentation_numpy(
         in_rho: np.ndarray,
         in_h: np.ndarray,
@@ -1439,9 +1448,8 @@ class KesslerSedimentation(ImplicitTendencyComponent):
             q=in_qr[i, j, kb:ke],
             vt=in_vt[i, j, kb:ke],
         )
-        set_output(
-            out_tnd_qr[i, j, kb : kb + sflux_extent], 0.0, ow_out_tnd_qr
-        )
+        if ow_out_tnd_qr:
+            out_tnd_qr[i, j, kb : kb + sflux_extent] = 0.0
         set_output(
             out_tnd_qr[i, j, kb + sflux_extent : ke],
             dfdz / in_rho[i, j, kb + sflux_extent : ke],

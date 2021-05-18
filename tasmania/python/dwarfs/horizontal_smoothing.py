@@ -119,7 +119,9 @@ class HorizontalSmoothing(AbstractFactory, StencilFactory):
         pass
 
     @staticmethod
-    @stencil_definition(backend=("numpy", "cupy"), stencil="smoothing")
+    @stencil_definition(
+        backend=("numpy", "cupy", "numba:cpu:numpy"), stencil="smoothing"
+    )
     @abc.abstractmethod
     def _smoothing_numpy(
         in_phi: np.ndarray,

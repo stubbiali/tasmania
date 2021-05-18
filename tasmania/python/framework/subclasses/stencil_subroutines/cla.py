@@ -23,7 +23,7 @@
 import numpy as np
 from typing import Optional, Tuple, Union
 
-from tasmania.third_party import cupy, gt4py
+from tasmania.third_party import cupy, gt4py, numba
 
 from tasmania.python.framework.stencil import stencil_subroutine
 from tasmania.python.utils import typingx
@@ -135,3 +135,12 @@ if gt4py:
         c = 0.0
         d = phi[0, 0, 0]
         return a, c, d
+
+
+if numba:
+    stencil_subroutine.register(thomas_numpy, "numba:cpu:numpy", "thomas")
+    stencil_subroutine.register(
+        setup_tridiagonal_system_numpy,
+        "numba:cpu:numpy",
+        ("setup_thomas", "setup_thomas_bc"),
+    )

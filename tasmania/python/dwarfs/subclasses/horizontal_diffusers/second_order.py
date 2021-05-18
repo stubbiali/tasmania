@@ -90,7 +90,7 @@ class SecondOrder(HorizontalDiffusion):
     @stencil_definition(
         backend=("numpy", "cupy", "numba:cpu:numpy"), stencil="diffusion"
     )
-    def _stencil_numpy(
+    def _diffusion_numpy(
         in_phi, in_gamma, out_phi, *, dx, dy, ow_out_phi, origin, domain
     ):
         i = slice(origin[0], origin[0] + domain[0])
@@ -109,7 +109,7 @@ class SecondOrder(HorizontalDiffusion):
 
     @staticmethod
     @stencil_definition(backend="gt4py*", stencil="diffusion")
-    def _stencil_gt4py(
+    def _diffusion_gt4py(
         in_phi: gtscript.Field["dtype"],
         in_gamma: gtscript.Field["dtype"],
         out_phi: gtscript.Field["dtype"],
@@ -131,7 +131,7 @@ class SecondOrder(HorizontalDiffusion):
 
     @staticmethod
     @stencil_definition(backend="numba:cpu:stencil", stencil="diffusion")
-    def _stencil_numba_cpu(
+    def _diffusion_numba_cpu(
         in_phi, in_gamma, out_phi, *, dx, dy, ow_out_phi, origin, domain
     ):
         def core_def(phi, gamma, dx, dy):
@@ -155,7 +155,7 @@ class SecondOrder(HorizontalDiffusion):
 
     # @staticmethod
     # @stencil_definition(backend="taichi:*", stencil="diffusion")
-    # def _stencil_taichi(
+    # def _diffusion_taichi(
     #     in_phi: "taichi.template()",
     #     in_gamma: "taichi.template()",
     #     out_phi: "taichi.template()",
@@ -241,7 +241,7 @@ class SecondOrder1DX(HorizontalDiffusion):
     @stencil_definition(
         backend=("numpy", "cupy", "numba:cpu:numpy"), stencil="diffusion"
     )
-    def _stencil_numpy(
+    def _diffusion_numpy(
         in_phi, in_gamma, out_phi, *, dx, dy, ow_out_phi, origin, domain
     ):
         i = slice(origin[0], origin[0] + domain[0])
@@ -258,7 +258,7 @@ class SecondOrder1DX(HorizontalDiffusion):
 
     @staticmethod
     @stencil_definition(backend="gt4py*", stencil="diffusion")
-    def _stencil_gt4py(
+    def _diffusion_gt4py(
         in_phi: gtscript.Field["dtype"],
         in_gamma: gtscript.Field["dtype"],
         out_phi: gtscript.Field["dtype"],
@@ -279,7 +279,7 @@ class SecondOrder1DX(HorizontalDiffusion):
 
     @staticmethod
     @stencil_definition(backend="numba:cpu:stencil", stencil="diffusion")
-    def _stencil_numba_cpu(
+    def _diffusion_numba_cpu(
         in_phi, in_gamma, out_phi, *, dx, dy=0.0, ow_out_phi, origin, domain
     ):
         def core_def(phi, gamma, dx):
@@ -361,7 +361,7 @@ class SecondOrder1DY(HorizontalDiffusion):
     @stencil_definition(
         backend=("numpy", "cupy", "numba:cpu:numpy"), stencil="diffusion"
     )
-    def _stencil_numpy(
+    def _diffusion_numpy(
         in_phi, in_gamma, out_phi, *, dx, dy, ow_out_phi, origin, domain
     ):
         i = slice(origin[0], origin[0] + domain[0])
@@ -378,7 +378,7 @@ class SecondOrder1DY(HorizontalDiffusion):
 
     @staticmethod
     @stencil_definition(backend="gt4py*", stencil="diffusion")
-    def _stencil_gt4py(
+    def _diffusion_gt4py(
         in_phi: gtscript.Field["dtype"],
         in_gamma: gtscript.Field["dtype"],
         out_phi: gtscript.Field["dtype"],
@@ -399,7 +399,7 @@ class SecondOrder1DY(HorizontalDiffusion):
 
     @staticmethod
     @stencil_definition(backend="numba:cpu:stencil", stencil="diffusion")
-    def _stencil_numba_cpu(
+    def _diffusion_numba_cpu(
         in_phi, in_gamma, out_phi, *, dx=0.0, dy, ow_out_phi, origin, domain
     ):
         def core_def(phi, gamma, dy):

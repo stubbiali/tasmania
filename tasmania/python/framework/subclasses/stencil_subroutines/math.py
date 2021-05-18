@@ -77,8 +77,13 @@ if gt4py:
 
 
 if numba:
+    stencil_subroutine.register(absolute_numpy, "numba:cpu:numpy", "absolute")
+    stencil_subroutine.register(positive_numpy, "numba:cpu:numpy", "positive")
+    stencil_subroutine.register(negative_numpy, "numba:cpu:numpy", "negative")
 
-    @stencil_subroutine.register(backend="numba:cpu", stencil="absolute")
+    @stencil_subroutine.register(
+        backend="numba:cpu:stencil", stencil="absolute"
+    )
     def absolute_numba_cpu(phi):
         def core_def(field):
             return field[0, 0, 0] if field[0, 0, 0] > 0 else -field[0, 0, 0]
@@ -87,7 +92,9 @@ if numba:
 
         return core(phi)
 
-    @stencil_subroutine.register(backend="numba:cpu", stencil="positive")
+    @stencil_subroutine.register(
+        backend="numba:cpu:stencil", stencil="positive"
+    )
     def positive_numba_cpu(phi):
         def core_def(field):
             return field[0, 0, 0] if field[0, 0, 0] > 0 else 0
@@ -96,7 +103,9 @@ if numba:
 
         return core(phi)
 
-    @stencil_subroutine.register(backend="numba:cpu", stencil="negative")
+    @stencil_subroutine.register(
+        backend="numba:cpu:stencil", stencil="negative"
+    )
     def negative_numba_cpu(phi):
         def core_def(field):
             return -field[0, 0, 0] if field[0, 0, 0] < 0 else 0

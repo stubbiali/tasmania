@@ -107,7 +107,9 @@ class ThirdOrder(HorizontalSmoothing):
         )
 
     @staticmethod
-    @stencil_definition(backend=("numpy", "cupy"), stencil="smoothing")
+    @stencil_definition(
+        backend=("numpy", "cupy", "numba:cpu:numpy"), stencil="smoothing"
+    )
     def _smoothing_numpy(in_phi, in_gamma, out_phi, *, origin, domain):
         i = slice(origin[0], origin[0] + domain[0])
         im3 = slice(origin[0] - 3, origin[0] + domain[0] - 3)
@@ -233,7 +235,9 @@ class ThirdOrder1DX(HorizontalSmoothing):
         )
 
     @staticmethod
-    @stencil_definition(backend=("numpy", "cupy"), stencil="smoothing")
+    @stencil_definition(
+        backend=("numpy", "cupy", "numba:cpu:numpy"), stencil="smoothing"
+    )
     def _smoothing_numpy(in_phi, in_gamma, out_phi, *, origin, domain):
         i = slice(origin[0], origin[0] + domain[0])
         im3 = slice(origin[0] - 3, origin[0] + domain[0] - 3)
@@ -341,7 +345,9 @@ class ThirdOrder1DY(HorizontalSmoothing):
         )
 
     @staticmethod
-    @stencil_definition(backend=("numpy", "cupy"), stencil="smoothing")
+    @stencil_definition(
+        backend=("numpy", "cupy", "numba:cpu:numpy"), stencil="smoothing"
+    )
     def _smoothing_numpy(in_phi, in_gamma, out_phi, *, origin, domain):
         i = slice(origin[0], origin[0] + domain[0])
         j = slice(origin[1], origin[1] + domain[1])

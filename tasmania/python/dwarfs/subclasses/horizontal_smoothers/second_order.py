@@ -107,7 +107,9 @@ class SecondOrder(HorizontalSmoothing):
         )
 
     @staticmethod
-    @stencil_definition(backend=("numpy", "cupy"), stencil="smoothing")
+    @stencil_definition(
+        backend=("numpy", "cupy", "numba:cpu:numpy"), stencil="smoothing"
+    )
     def _smoothing_numpy(in_phi, in_gamma, out_phi, *, origin, domain):
         i = slice(origin[0], origin[0] + domain[0])
         im2 = slice(origin[0] - 2, origin[0] + domain[0] - 2)
@@ -221,7 +223,9 @@ class SecondOrder1DX(HorizontalSmoothing):
         )
 
     @staticmethod
-    @stencil_definition(backend=("numpy", "cupy"), stencil="smoothing")
+    @stencil_definition(
+        backend=("numpy", "cupy", "numba:cpu:numpy"), stencil="smoothing"
+    )
     def _smoothing_numpy(in_phi, in_gamma, out_phi, *, origin, domain):
         i = slice(origin[0], origin[0] + domain[0])
         im2 = slice(origin[0] - 2, origin[0] + domain[0] - 2)
@@ -323,7 +327,9 @@ class SecondOrder1DY(HorizontalSmoothing):
         )
 
     @staticmethod
-    @stencil_definition(backend=("numpy", "cupy"), stencil="smoothing")
+    @stencil_definition(
+        backend=("numpy", "cupy", "numba:cpu:numpy"), stencil="smoothing"
+    )
     def _smoothing_numpy(in_phi, in_gamma, out_phi, *, origin, domain):
         i = slice(origin[0], origin[0] + domain[0])
         j = slice(origin[1], origin[1] + domain[1])

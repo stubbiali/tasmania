@@ -131,12 +131,15 @@ if numba:
         externals = {}
         for name, value in bo.externals.items():
             if isinstance(value, collections.Callable):
-                externals[name] = numba.jit(
-                    value,
-                    cache=bo.cache,
-                    nopython=bo.nopython,
-                    parallel=bo.parallel,
-                )
+                try:
+                    externals[name] = numba.jit(
+                        value,
+                        cache=bo.cache,
+                        nopython=bo.nopython,
+                        parallel=bo.parallel,
+                    )
+                except TypeError:
+                    externals[name] = value
             else:
                 externals[name] = value
 

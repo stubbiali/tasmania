@@ -141,8 +141,16 @@ if gt4py:
 
 
 if numba:
+    stencil_definition.register(irelax_numpy, "numba:cpu:numpy", "irelax")
+    stencil_definition.register(relax_numpy, "numba:cpu:numpy", "relax")
+    stencil_definition.register(
+        sts_rk2_0_numpy, "numba:cpu:numpy", "sts_rk2_0"
+    )
+    stencil_definition.register(
+        sts_rk3ws_0_numpy, "numba:cpu:numpy", "sts_rk3ws_0"
+    )
 
-    @stencil_definition.register(backend="numba:cpu", stencil="irelax")
+    @stencil_definition.register(backend="numba:cpu:stencil", stencil="irelax")
     def irelax_numba_cpu(in_gamma, in_phi_ref, inout_phi, *, origin, domain):
         def core_def(gamma, phi, phi_ref):
             if gamma[0, 0, 0] == 0.0:
@@ -165,7 +173,7 @@ if numba:
             out=inout_phi[ib:ie, jb:je, kb:ke],
         )
 
-    @stencil_definition.register(backend="numba:cpu", stencil="relax")
+    @stencil_definition.register(backend="numba:cpu:stencil", stencil="relax")
     def relax_numba_cpu(
         in_gamma, in_phi, in_phi_ref, out_phi, *, origin, domain
     ):
@@ -190,7 +198,9 @@ if numba:
             out=out_phi[ib:ie, jb:je, kb:ke],
         )
 
-    @stencil_definition.register(backend="numba:cpu", stencil="sts_rk2_0")
+    @stencil_definition.register(
+        backend="numba:cpu:stencil", stencil="sts_rk2_0"
+    )
     def sts_rk2_0_numba_cpu(
         in_field, in_field_prv, in_tnd, out_field, *, dt, origin, domain
     ):
@@ -211,7 +221,9 @@ if numba:
             out=out_field[ib:ie, jb:je, kb:ke],
         )
 
-    @stencil_definition.register(backend="numba:cpu", stencil="sts_rk3ws_0")
+    @stencil_definition.register(
+        backend="numba:cpu:stencil", stencil="sts_rk3ws_0"
+    )
     def sts_rk3ws_0_numba_cpu(
         in_field, in_field_prv, in_tnd, out_field, *, dt, origin, domain
     ):

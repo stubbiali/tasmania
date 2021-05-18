@@ -22,7 +22,7 @@
 #
 import numpy as np
 
-from tasmania.third_party import cupy, gt4py
+from tasmania.third_party import cupy, gt4py, numba
 
 from tasmania.python.framework.stencil import stencil_subroutine
 
@@ -62,3 +62,9 @@ if gt4py:
             + in_field[0, +1, 0]
         )
         return out_field
+
+
+if numba:
+    stencil_subroutine.register(
+        laplacian_numpy, "numba:cpu:numpy", "laplacian"
+    )

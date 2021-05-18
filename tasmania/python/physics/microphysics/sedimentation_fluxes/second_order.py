@@ -33,7 +33,9 @@ class SecondOrderUpwind(SedimentationFlux):
     nb = 2
 
     @staticmethod
-    @stencil_subroutine(backend=("numpy", "cupy"), stencil="flux")
+    @stencil_subroutine(
+        backend=("numpy", "cupy", "numba:cpu:numpy"), stencil="flux"
+    )
     def call_numpy(rho, h, q, vt):
         # evaluate the space-dependent coefficients occurring in the
         # second-order upwind finite difference approximation of the

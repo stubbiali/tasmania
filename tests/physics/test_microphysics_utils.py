@@ -226,7 +226,9 @@ class WrappingStencil(StencilFactory):
         )
 
     @staticmethod
-    @stencil_definition(backend=("numpy", "cupy"), stencil="stencil")
+    @stencil_definition(
+        backend=("numpy", "cupy", "numba:cpu:numpy"), stencil="stencil"
+    )
     def stencil_numpy_defs(rho, h, qr, vt, dfdz, *, origin, domain):
         i = slice(origin[0], origin[0] + domain[0])
         j = slice(origin[1], origin[1] + domain[1])

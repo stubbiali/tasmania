@@ -92,7 +92,7 @@ def test(data, backend, dtype):
     aligned_index = data.draw(
         st_one_of(conf_aligned_index), label="aligned_index"
     )
-    bo = BackendOptions(rebuild=False)
+    bo = BackendOptions(rebuild=False, cache=True, check_rebuild=False)
     so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
 
     domain = data.draw(
@@ -160,7 +160,16 @@ def test(data, backend, dtype):
     # ========================================
     phi_out = zeros(backend, shape=shape, storage_options=so)
     assert_rayleigh(
-        ngrid, depth, backend, bo, so, dt, phi_now, phi_new, phi_ref, phi_out,
+        ngrid,
+        depth,
+        backend,
+        bo,
+        so,
+        dt,
+        phi_now,
+        phi_new,
+        phi_ref,
+        phi_out,
     )
 
 

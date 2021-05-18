@@ -63,5 +63,7 @@ if gt4py:
 
 
 if numba:
-    stencil_definition.register(copy_numpy, "numba:cpu", "copy")
-    stencil_definition.register(copychange_numpy, "numba:cpu", "copychange")
+    stencil_definition.register(copy_numpy, "numba:cpu:numpy", "copy")
+    stencil_definition.register(
+        copychange_numpy, "numba:cpu:numpy", "copychange"
+    )

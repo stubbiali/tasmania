@@ -23,7 +23,7 @@
 from copy import deepcopy
 import numpy as np
 
-from tasmania.third_party import cupy, gt4py
+from tasmania.third_party import cupy, gt4py, numba
 
 from tasmania.python.framework.stencil import stencil_definition
 
@@ -99,3 +99,7 @@ if gt4py:
                 if beta[0, 0, 0] != 0.0
                 else (delta[0, 0, 0] - c[0, 0, 0] * x[0, 0, 1]) / b[0, 0, 0]
             )
+
+
+if numba:
+    stencil_definition.register(thomas_numpy, "numba:cpu:numpy", "thomas")

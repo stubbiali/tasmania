@@ -58,24 +58,24 @@ if gt:
         defaults = get_gt_backend(backend)
         so = storage_options or StorageOptions()
         # >>> old storage
-        if len(shape) == 1:
-            mask = (False, False, True)
-        elif len(shape) == 2:
-            mask = (True, True, False)
-        else:
-            mask = (True, True, True)
-        return gt.storage.zeros(
-            defaults, so.aligned_index, shape, dtype=so.dtype, mask=mask
-        )
-        # <<< new storage
+        # if len(shape) == 1:
+        #     mask = (False, False, True)
+        # elif len(shape) == 2:
+        #     mask = (True, True, False)
+        # else:
+        #     mask = (True, True, True)
         # return gt.storage.zeros(
-        #     shape,
-        #     dtype=so.dtype,
-        #     aligned_index=so.aligned_index,
-        #     defaults=defaults,
-        #     halo=so.halo,
-        #     managed=so.managed,
+        #     defaults, so.aligned_index, shape, dtype=so.dtype, mask=mask
         # )
+        # <<< new storage
+        return gt.storage.zeros(
+            shape,
+            dtype=so.dtype,
+            aligned_index=so.aligned_index,
+            defaults=defaults,
+            halo=so.halo,
+            managed=so.managed,
+        )
 
 
 # if ti:

@@ -163,7 +163,9 @@ class Smagorinsky2d(TendencyComponent):
         )
 
     @staticmethod
-    @stencil_definition(backend=("numpy", "cupy"), stencil="smagorinsky")
+    @stencil_definition(
+        backend=("numpy", "cupy", "numba:cpu:numpy"), stencil="smagorinsky"
+    )
     def _stencil_numpy(
         in_u: np.ndarray,
         in_v: np.ndarray,
@@ -210,7 +212,10 @@ class Smagorinsky2d(TendencyComponent):
             out_v_tnd = set_output(out_v_tnd, tmp_out_v_tnd, ow_out_v_tnd)
 
     @staticmethod
-    @stencil_subroutine(backend=("numpy", "cupy"), stencil="smagorinsky_core")
+    @stencil_subroutine(
+        backend=("numpy", "cupy", "numba:cpu:numpy"),
+        stencil="smagorinsky_core",
+    )
     def _core_numpy(u, v, dx, dy, cs, ib, ie, jb, je, k):
         s00 = (
             u[ib : ie + 2, jb - 1 : je + 1, k]

@@ -183,7 +183,9 @@ class HorizontalVelocity(GridComponent, StencilFactory):
         )
 
     @staticmethod
-    @stencil_definition(backend=("numpy", "cupy"), stencil="momenta")
+    @stencil_definition(
+        backend=("numpy", "cupy", "numba:cpu:numpy"), stencil="momenta"
+    )
     def _diagnose_momenta_numpy(
         in_d: np.ndarray,
         in_u: np.ndarray,
@@ -231,7 +233,9 @@ class HorizontalVelocity(GridComponent, StencilFactory):
                 out_dv = in_d * in_v
 
     @staticmethod
-    @stencil_definition(backend=("numpy", "cupy"), stencil="velocity_x")
+    @stencil_definition(
+        backend=("numpy", "cupy", "numba:cpu:numpy"), stencil="velocity_x"
+    )
     def _diagnose_velocity_x_numpy(
         in_d: np.ndarray,
         in_du: np.ndarray,
@@ -270,7 +274,9 @@ class HorizontalVelocity(GridComponent, StencilFactory):
                 out_u = in_du / in_d
 
     @staticmethod
-    @stencil_definition(backend=("numpy", "cupy"), stencil="velocity_y")
+    @stencil_definition(
+        backend=("numpy", "cupy", "numba:cpu:numpy"), stencil="velocity_y"
+    )
     def _diagnose_velocity_y_numpy(
         in_d: np.ndarray,
         in_dv: np.ndarray,
@@ -426,7 +432,9 @@ class WaterConstituent(GridComponent, StencilFactory):
         )
 
     @staticmethod
-    @stencil_definition(backend=("numpy", "cupy"), stencil="density")
+    @stencil_definition(
+        backend=("numpy", "cupy", "numba:cpu:numpy"), stencil="density"
+    )
     def _diagnose_density_numpy(
         in_d: np.ndarray,
         in_q: np.ndarray,
@@ -462,7 +470,9 @@ class WaterConstituent(GridComponent, StencilFactory):
                 out_dq = in_d * in_q
 
     @staticmethod
-    @stencil_definition(backend=("numpy", "cupy"), stencil="mass_fraction")
+    @stencil_definition(
+        backend=("numpy", "cupy", "numba:cpu:numpy"), stencil="mass_fraction"
+    )
     def _diagnose_mass_fraction_numpy(
         in_d: np.ndarray,
         in_dq: np.ndarray,

@@ -39,9 +39,13 @@ from tests.utilities import compare_arrays, hyp_settings
 
 
 class Smagorinsky2dTestSuite(TendencyComponentTestSuite):
-    def __init__(self, hyp_data, domain_suite, *, storage_shape):
-        self.storage_shape = storage_shape
-        super().__init__(hyp_data, domain_suite)
+    def __init__(self, domain_suite):
+        super().__init__(domain_suite)
+        self.storage_shape = (
+            self.storage_shape
+            if self.storage_shape
+            else (self.ds.grid.nx, self.ds.grid.ny, self.ds.grid.nz)
+        )
 
     @cached_property
     def component(self):
@@ -101,7 +105,7 @@ class Smagorinsky2dTestSuite(TendencyComponentTestSuite):
 
         return state
 
-    def get_tendencies_and_diagnostics(self, raw_state_np):
+    def get_tendencies_and_diagnostics(self, raw_state_np, dt=None):
         cs = self.component._cs
         dx = self.ds.grid.dx.to_units("m").values.item()
         dy = self.ds.grid.dy.to_units("m").values.item()
@@ -155,8 +159,7 @@ class Smagorinsky2dTestSuite(TendencyComponentTestSuite):
 @pytest.mark.parametrize("dtype", conf.dtype)
 def test_smagorinsky2d(data, backend, dtype):
     ds = DomainSuite(data, backend, dtype, grid_type="numerical", nb_min=2)
-    storage_shape = (ds.grid.nx, ds.grid.ny, ds.grid.nz)
-    ts = Smagorinsky2dTestSuite(data, ds, storage_shape=storage_shape)
+    ts = Smagorinsky2dTestSuite(ds)
     ts.run()
 
 

@@ -47,8 +47,11 @@ def addsub_numpy(in_a, in_b, in_c, out_d, *, origin, domain):
 
 @stencil_definition.register(backend="numpy", stencil="clip")
 def clip_numpy(in_field, out_field, *, origin, domain):
-    idx = tuple(slice(o, o + d) for o, d in zip(origin, domain))
-    out_field[idx] = np.where(in_field[idx] > 0, in_field[idx], 0)
+    ib, jb, kb = origin
+    ie, je, ke = ib + domain[0], jb + domain[1], kb + domain[2]
+    out_field[ib:ie, jb:je, kb:ke] = np.where(
+        in_field[ib:ie, jb:je, kb:ke] > 0, in_field[ib:ie, jb:je, kb:ke], 0
+    )
 
 
 @stencil_definition.register(backend="cupy", stencil="clip")
@@ -296,8 +299,23 @@ if gt4py:
 
 
 if numba:
+    stencil_definition.register(abs_numpy, "numba:cpu:numpy", "abs")
+    stencil_definition.register(add_numpy, "numba:cpu:numpy", "add")
+    stencil_definition.register(addsub_numpy, "numba:cpu:numpy", "addsub")
+    stencil_definition.register(clip_numpy, "numba:cpu:numpy", "clip")
+    stencil_definition.register(fma_numpy, "numba:cpu:numpy", "fma")
+    stencil_definition.register(iabs_numpy, "numba:cpu:numpy", "iabs")
+    stencil_definition.register(iadd_numpy, "numba:cpu:numpy", "iadd")
+    stencil_definition.register(iaddsub_numpy, "numba:cpu:numpy", "iaddsub")
+    stencil_definition.register(iclip_numpy, "numba:cpu:numpy", "iclip")
+    stencil_definition.register(imul_numpy, "numba:cpu:numpy", "imul")
+    stencil_definition.register(iscale_numpy, "numba:cpu:numpy", "iscale")
+    stencil_definition.register(isub_numpy, "numba:cpu:numpy", "isub")
+    stencil_definition.register(mul_numpy, "numba:cpu:numpy", "mul")
+    stencil_definition.register(scale_numpy, "numba:cpu:numpy", "scale")
+    stencil_definition.register(sub_numpy, "numba:cpu:numpy", "sub")
 
-    @stencil_definition.register(backend="numba:cpu", stencil="abs")
+    @stencil_definition.register(backend="numba:cpu:stencil", stencil="abs")
     def abs_numba_cpu(in_field, out_field, *, origin, domain):
         def core_def(phi):
             return phi[0, 0, 0] if phi[0, 0, 0] > 0 else -phi[0, 0, 0]
@@ -308,7 +326,7 @@ if numba:
         ie, je, ke = ib + domain[0], jb + domain[1], kb + domain[2]
         core(in_field[ib:ie, jb:je, kb:ke], out=out_field[ib:ie, jb:je, kb:ke])
 
-    @stencil_definition.register(backend="numba:cpu", stencil="add")
+    @stencil_definition.register(backend="numba:cpu:stencil", stencil="add")
     def add_numba_cpu(in_a, in_b, out_c, *, origin, domain):
         def core_def(a, b):
             return a[0, 0, 0] + b[0, 0, 0]
@@ -323,7 +341,7 @@ if numba:
             out=out_c[ib:ie, jb:je, kb:ke],
         )
 
-    @stencil_definition.register(backend="numba:cpu", stencil="addsub")
+    @stencil_definition.register(backend="numba:cpu:stencil", stencil="addsub")
     def addsub_numba_cpu(in_a, in_b, in_c, out_d, *, origin, domain):
         def core_def(a, b, c):
             return a[0, 0, 0] + b[0, 0, 0] - c[0, 0, 0]
@@ -339,7 +357,7 @@ if numba:
             out=out_d[ib:ie, jb:je, kb:ke],
         )
 
-    @stencil_definition.register(backend="numba:cpu", stencil="clip")
+    @stencil_definition.register(backend="numba:cpu:stencil", stencil="clip")
     def clip_numba_cpu(in_field, out_field, *, origin, domain):
         def core_def(phi):
             return phi[0, 0, 0] if phi[0, 0, 0] > 0 else 0
@@ -350,7 +368,7 @@ if numba:
         ie, je, ke = ib + domain[0], jb + domain[1], kb + domain[2]
         core(in_field[ib:ie, jb:je, kb:ke], out=out_field[ib:ie, jb:je, kb:ke])
 
-    @stencil_definition.register(backend="numba:cpu", stencil="fma")
+    @stencil_definition.register(backend="numba:cpu:stencil", stencil="fma")
     def fma_numba_cpu(in_a, in_b, out_c, *, f, origin, domain):
         def core_def(a, b, f):
             return a[0, 0, 0] + f * b[0, 0, 0]
@@ -366,7 +384,7 @@ if numba:
             out=out_c[ib:ie, jb:je, kb:ke],
         )
 
-    @stencil_definition.register(backend="numba:cpu", stencil="fma")
+    @stencil_definition.register(backend="numba:cpu:stencil", stencil="fma")
     def fma_numba_cpu(in_a, in_b, out_c, *, f, origin, domain):
         def core_def(a, b, f):
             return a[0, 0, 0] + f * b[0, 0, 0]
@@ -382,7 +400,7 @@ if numba:
             out=out_c[ib:ie, jb:je, kb:ke],
         )
 
-    @stencil_definition.register(backend="numba:cpu", stencil="iabs")
+    @stencil_definition.register(backend="numba:cpu:stencil", stencil="iabs")
     def iabs_numba_cpu(inout_field, *, origin, domain):
         def core_def(phi):
             return phi[0, 0, 0] if phi[0, 0, 0] > 0 else -phi[0, 0, 0]
@@ -396,7 +414,7 @@ if numba:
             out=inout_field[ib:ie, jb:je, kb:ke],
         )
 
-    @stencil_definition.register(backend="numba:cpu", stencil="iadd")
+    @stencil_definition.register(backend="numba:cpu:stencil", stencil="iadd")
     def iadd_numba_cpu(inout_a, in_b, *, origin, domain):
         def core_def(a, b):
             return a[0, 0, 0] + b[0, 0, 0]
@@ -411,7 +429,9 @@ if numba:
             out=inout_a[ib:ie, jb:je, kb:ke],
         )
 
-    @stencil_definition.register(backend="numba:cpu", stencil="iaddsub")
+    @stencil_definition.register(
+        backend="numba:cpu:stencil", stencil="iaddsub"
+    )
     def iaddsub_numba_cpu(inout_a, in_b, in_c, *, origin, domain):
         def core_def(a, b, c):
             return a[0, 0, 0] + b[0, 0, 0] - c[0, 0, 0]
@@ -427,7 +447,7 @@ if numba:
             out=inout_a[ib:ie, jb:je, kb:ke],
         )
 
-    @stencil_definition.register(backend="numba:cpu", stencil="iclip")
+    @stencil_definition.register(backend="numba:cpu:stencil", stencil="iclip")
     def iclip_numba_cpu(inout_field, *, origin, domain):
         def core_def(phi):
             return phi[0, 0, 0] if phi[0, 0, 0] > 0 else 0
@@ -441,7 +461,7 @@ if numba:
             out=inout_field[ib:ie, jb:je, kb:ke],
         )
 
-    @stencil_definition.register(backend="numba:cpu", stencil="imul")
+    @stencil_definition.register(backend="numba:cpu:stencil", stencil="imul")
     def imul_numba_cpu(inout_a, in_b, *, origin, domain):
         def core_def(a, b):
             return a[0, 0, 0] * b[0, 0, 0]
@@ -456,7 +476,7 @@ if numba:
             out=inout_a[ib:ie, jb:je, kb:ke],
         )
 
-    @stencil_definition.register(backend="numba:cpu", stencil="iscale")
+    @stencil_definition.register(backend="numba:cpu:stencil", stencil="iscale")
     def iscale_numba_cpu(inout_a, *, f, origin, domain):
         def core_def(a, f):
             return f * a[0, 0, 0]
@@ -467,7 +487,7 @@ if numba:
         ie, je, ke = ib + domain[0], jb + domain[1], kb + domain[2]
         core(inout_a[ib:ie, jb:je, kb:ke], f, out=inout_a[ib:ie, jb:je, kb:ke])
 
-    @stencil_definition.register(backend="numba:cpu", stencil="isub")
+    @stencil_definition.register(backend="numba:cpu:stencil", stencil="isub")
     def isub_numba_cpu(inout_a, in_b, *, origin, domain):
         def core_def(a, b):
             return a[0, 0, 0] - b[0, 0, 0]
@@ -482,7 +502,7 @@ if numba:
             out=inout_a[ib:ie, jb:je, kb:ke],
         )
 
-    @stencil_definition.register(backend="numba:cpu", stencil="mul")
+    @stencil_definition.register(backend="numba:cpu:stencil", stencil="mul")
     def mul_numba_cpu(in_a, in_b, out_c, *, origin, domain):
         def core_def(a, b):
             return a[0, 0, 0] * b[0, 0, 0]
@@ -497,7 +517,7 @@ if numba:
             out=out_c[ib:ie, jb:je, kb:ke],
         )
 
-    @stencil_definition.register(backend="numba:cpu", stencil="scale")
+    @stencil_definition.register(backend="numba:cpu:stencil", stencil="scale")
     def scale_numba_cpu(in_a, out_a, *, f, origin, domain):
         def core_def(a, f):
             return f * a[0, 0, 0]
@@ -508,7 +528,7 @@ if numba:
         ie, je, ke = ib + domain[0], jb + domain[1], kb + domain[2]
         core(in_a[ib:ie, jb:je, kb:ke], f, out=out_a[ib:ie, jb:je, kb:ke])
 
-    @stencil_definition.register(backend="numba:cpu", stencil="sub")
+    @stencil_definition.register(backend="numba:cpu:stencil", stencil="sub")
     def sub_numba_cpu(in_a, in_b, out_c, *, origin, domain):
         def core_def(a, b):
             return a[0, 0, 0] - b[0, 0, 0]

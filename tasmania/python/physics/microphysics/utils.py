@@ -39,7 +39,6 @@ from tasmania.python.framework.tag import (
     stencil_subroutine,
 )
 from tasmania.python.utils import typingx as ty
-from tasmania.python.framework.register import factorize
 
 if TYPE_CHECKING:
     from sympl._core.typingx import NDArrayLikeDict, PropertyDict
@@ -288,7 +287,8 @@ class Precipitation(ImplicitTendencyComponent):
 
     @staticmethod
     @stencil_definition(
-        backend=("numpy", "cupy"), stencil="accumulated_precipitation"
+        backend=("numpy", "cupy", "numba:cpu:numpy"),
+        stencil="accumulated_precipitation",
     )
     def _accumulated_precipitation_numpy(
         in_rho: np.ndarray,
@@ -346,7 +346,9 @@ class SedimentationFlux(AbstractFactory, StencilFactory):
         super().__init__(backend)
 
     @staticmethod
-    @stencil_subroutine(backend=("numpy", "cupy"), stencil="flux")
+    @stencil_subroutine(
+        backend=("numpy", "cupy", "numba:cpu:numpy"), stencil="flux"
+    )
     @abc.abstractmethod
     def call_numpy(
         rho: np.ndarray, h: np.ndarray, q: np.ndarray, vt: np.ndarray

@@ -85,7 +85,9 @@ class Rayleigh(VerticalDamping):
         #         field_out[:, :, dnk:nk] = field_new[:, :, dnk:nk]
 
     @staticmethod
-    @stencil_definition(backend=("numpy", "cupy"), stencil="damping")
+    @stencil_definition(
+        backend=("numpy", "cupy", "numba:cpu:numpy"), stencil="damping"
+    )
     def _damping_numpy(
         in_phi_now,
         in_phi_new,

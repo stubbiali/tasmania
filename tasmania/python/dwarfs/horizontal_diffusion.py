@@ -141,7 +141,7 @@ class HorizontalDiffusion(AbstractFactory, StencilFactory):
         backend=("numpy", "cupy", "numba:cpu:numpy"), stencil="diffusion"
     )
     @abc.abstractmethod
-    def _stencil_numpy(
+    def _diffusion_numpy(
         in_phi: np.ndarray,
         in_gamma: np.ndarray,
         out_phi: np.ndarray,
@@ -157,7 +157,7 @@ class HorizontalDiffusion(AbstractFactory, StencilFactory):
     @staticmethod
     @stencil_definition(backend="gt4py*", stencil="diffusion")
     @abc.abstractmethod
-    def _stencil_gt4py(
+    def _diffusion_gt4py(
         in_phi: gtscript.Field["dtype"],
         in_gamma: gtscript.Field["dtype"],
         out_phi: gtscript.Field["dtype"],
@@ -171,7 +171,7 @@ class HorizontalDiffusion(AbstractFactory, StencilFactory):
     @staticmethod
     @stencil_definition(backend="numba:cpu:stencil", stencil="diffusion")
     @abc.abstractmethod
-    def _stencil_numba_cpu(
+    def _diffusion_numba_cpu(
         in_phi: np.ndarray,
         in_gamma: np.ndarray,
         out_phi: np.ndarray,
@@ -187,7 +187,7 @@ class HorizontalDiffusion(AbstractFactory, StencilFactory):
     # @staticmethod
     # @stencil_definition(backend="taichi:*", stencil="diffusion")
     # @abc.abstractmethod
-    # def _stencil_taichi(
+    # def _diffusion_taichi(
     #     in_phi: "taichi.template()",
     #     in_gamma: "taichi.template()",
     #     out_phi: "taichi.template()",

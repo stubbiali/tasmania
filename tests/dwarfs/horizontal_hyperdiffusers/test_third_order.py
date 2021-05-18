@@ -170,7 +170,7 @@ def test(data, backend, dtype):
     aligned_index = data.draw(
         st_one_of(conf_aligned_index), label="aligned_index"
     )
-    bo = BackendOptions(rebuild=False)
+    bo = BackendOptions(rebuild=False, cache=True, check_rebuild=False)
     so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
 
     nb = data.draw(hyp_st.integers(min_value=3, max_value=max(3, conf_nb)))

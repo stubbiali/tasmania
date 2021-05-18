@@ -28,14 +28,16 @@ from gt4py import gtscript
 
 from tasmania.python.framework.core_components import DiagnosticComponent
 from tasmania.python.framework.tag import stencil_definition
-from tasmania.python.utils import typingx as ty
 
 if TYPE_CHECKING:
+    from sympl._core.typingx import NDArrayLikeDict, PropertyDict
+
     from tasmania.python.domain.domain import Domain
     from tasmania.python.framework.options import (
         BackendOptions,
         StorageOptions,
     )
+    from tasmania.python.utils.typingx import TripletInt
 
 
 class DryStaticEnergy(DiagnosticComponent):
@@ -73,6 +75,7 @@ class DryStaticEnergy(DiagnosticComponent):
             physical_constants,
             backend=backend,
             backend_options=backend_options,
+            storage_shape=storage_shape,
             storage_options=storage_options,
         )
 
@@ -81,12 +84,6 @@ class DryStaticEnergy(DiagnosticComponent):
         self._cp = self.rpc[
             "specific_heat_of_dry_air_at_constant_pressure"
         ]  # debug purposes
-
-        # set the storage shape
-        storage_shape = self.get_field_storage_shape(storage_shape)
-
-        # allocate the storage collecting the output
-        self._out_dse = self.zeros(shape=storage_shape)
 
         # instantiate the underlying stencil object
         dtype = self.storage_options.dtype
@@ -99,7 +96,7 @@ class DryStaticEnergy(DiagnosticComponent):
         self._stencil = self.compile("static_energy")
 
     @property
-    def input_properties(self) -> ty.PropertiesDict:
+    def input_properties(self) -> "PropertyDict":
         g = self.grid
         dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
         dims_stgz = (g.x.dims[0], g.y.dims[0], g.z_on_interface_levels.dims[0])
@@ -116,7 +113,7 @@ class DryStaticEnergy(DiagnosticComponent):
         return return_dict
 
     @property
-    def diagnostic_properties(self) -> ty.PropertiesDict:
+    def diagnostic_properties(self) -> "PropertyDict":
         g = self.grid
         dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
 
@@ -126,7 +123,9 @@ class DryStaticEnergy(DiagnosticComponent):
 
         return return_dict
 
-    def array_call(self, state: ty.StorageDict) -> ty.StorageDict:
+    def array_call(
+        self, state: "NDArrayLikeDict", out: "NDArrayLikeDict"
+    ) -> None:
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
 
         in_t = state["air_temperature"]
@@ -135,7 +134,7 @@ class DryStaticEnergy(DiagnosticComponent):
             if self._stgz
             else state["height"]
         )
-        out_dse = self._out_dse
+        out_dse = out["montgomery_potential"]
 
         self._stencil(
             in_t=in_t,
@@ -147,19 +146,17 @@ class DryStaticEnergy(DiagnosticComponent):
             validate_args=self.backend_options.validate_args,
         )
 
-        diagnostics = {"montgomery_potential": out_dse}
-
-        return diagnostics
-
-    @stencil_definition(backend=("numpy", "cupy"), stencil="static_energy")
+    @stencil_definition(
+        backend=("numpy", "cupy", "numba:cpu:numpy"), stencil="static_energy"
+    )
     def _stencil_numpy(
         self,
         in_t: np.ndarray,
         in_h: np.ndarray,
         out_dse: np.ndarray,
         *,
-        origin: ty.TripletInt,
-        domain: ty.TripletInt
+        origin: "TripletInt",
+        domain: "TripletInt"
     ):
         i = slice(origin[0], origin[0] + domain[0])
         j = slice(origin[1], origin[1] + domain[1])
@@ -219,17 +216,12 @@ class MoistStaticEnergy(DiagnosticComponent):
             physical_constants,
             backend=backend,
             backend_options=backend_options,
+            storage_shape=storage_shape,
             storage_options=storage_options,
         )
 
         # set physical parameters values
         self._lhvw = self.rpc["latent_heat_of_vaporization_of_water"]
-
-        # set the storage shape
-        storage_shape = self.get_field_storage_shape(storage_shape)
-
-        # allocate the storage collecting the output
-        self._out_mse = self.zeros(shape=storage_shape)
 
         # instantiate the underlying stencil object
         dtype = self.storage_options.dtype
@@ -237,10 +229,10 @@ class MoistStaticEnergy(DiagnosticComponent):
         self.backend_options.externals = {
             "lhvw": self.rpc["latent_heat_of_vaporization_of_water"]
         }
-        self._stencil = self.compile("static_energy")
+        self._stencil = self.compile("moist_static_energy")
 
     @property
-    def input_properties(self) -> ty.PropertiesDict:
+    def input_properties(self) -> "PropertyDict":
         g = self.grid
         dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
 
@@ -255,7 +247,7 @@ class MoistStaticEnergy(DiagnosticComponent):
         return return_dict
 
     @property
-    def diagnostic_properties(self) -> ty.PropertiesDict:
+    def diagnostic_properties(self) -> "PropertyDict":
         g = self.grid
         dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
 
@@ -265,12 +257,14 @@ class MoistStaticEnergy(DiagnosticComponent):
 
         return return_dict
 
-    def array_call(self, state: ty.StorageDict) -> ty.StorageDict:
+    def array_call(
+        self, state: "NDArrayLikeDict", out: "NDArrayLikeDict"
+    ) -> None:
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
 
         in_dse = state["montgomery_potential"]
         in_qv = state["mass_fraction_of_water_vapor_in_air"]
-        out_mse = self._out_mse
+        out_mse = out["moist_static_energy"]
 
         self._stencil(
             in_dse=in_dse,
@@ -282,19 +276,18 @@ class MoistStaticEnergy(DiagnosticComponent):
             validate_args=self.backend_options.validate_args,
         )
 
-        diagnostics = {"moist_static_energy": out_mse}
-
-        return diagnostics
-
-    @stencil_definition(backend=("numpy", "cupy"), stencil="static_energy")
+    @stencil_definition(
+        backend=("numpy", "cupy", "numba:cpu:numpy"),
+        stencil="moist_static_energy",
+    )
     def _stencil_numpy(
         self,
         in_dse: np.ndarray,
         in_qv: np.ndarray,
         out_mse: np.ndarray,
         *,
-        origin: ty.TripletInt,
-        domain: ty.TripletInt
+        origin: "TripletInt",
+        domain: "TripletInt"
     ):
         i = slice(origin[0], origin[0] + domain[0])
         j = slice(origin[1], origin[1] + domain[1])
@@ -303,7 +296,7 @@ class MoistStaticEnergy(DiagnosticComponent):
         out_mse[i, j, k] = in_dse[i, j, k] + lhvw * in_qv[i, j, k]
 
     @staticmethod
-    @stencil_definition(backend="gt4py*", stencil="static_energy")
+    @stencil_definition(backend="gt4py*", stencil="moist_static_energy")
     def _stencil_gt4py(
         in_dse: gtscript.Field["dtype"],
         in_qv: gtscript.Field["dtype"],

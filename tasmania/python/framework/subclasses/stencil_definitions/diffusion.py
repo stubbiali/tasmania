@@ -20,7 +20,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from tasmania.third_party import cupy, gt4py
+from tasmania.third_party import cupy, gt4py, numba
 
 from tasmania.python.framework.stencil import stencil_definition
 
@@ -98,3 +98,9 @@ if gt4py:
                 + flux_y[0, 0, 0]
                 - flux_y[0, -1, 0]
             )
+
+
+if numba:
+    stencil_definition.register(
+        diffusion_numpy, "numba:cpu:numpy", "diffusion"
+    )

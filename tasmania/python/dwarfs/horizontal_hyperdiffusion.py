@@ -210,9 +210,11 @@ class HorizontalHyperDiffusion(StencilFactory, abc.ABC):
         return obj
 
     @staticmethod
-    @stencil_definition(backend=("numpy", "cupy"), stencil="hyperdiffusion")
+    @stencil_definition(
+        backend=("numpy", "cupy", "numba:cpu:numpy"), stencil="hyperdiffusion"
+    )
     @abc.abstractmethod
-    def _stencil_numpy(
+    def _hyperdiffusion_numpy(
         in_phi: np.ndarray,
         in_gamma: np.ndarray,
         out_phi: np.ndarray,
@@ -227,7 +229,7 @@ class HorizontalHyperDiffusion(StencilFactory, abc.ABC):
     @staticmethod
     @stencil_definition(backend="gt4py*", stencil="hyperdiffusion")
     @abc.abstractmethod
-    def _stencil_gt4py(
+    def _hyperdiffusion_gt4py(
         in_phi: gtscript.Field["dtype"],
         in_gamma: gtscript.Field["dtype"],
         out_phi: gtscript.Field["dtype"],
@@ -238,19 +240,25 @@ class HorizontalHyperDiffusion(StencilFactory, abc.ABC):
         pass
 
     @staticmethod
-    @stencil_subroutine(backend=("numpy", "cupy"), stencil="laplacian_x")
+    @stencil_subroutine(
+        backend=("numpy", "cupy", "numba:cpu:numpy"), stencil="laplacian_x"
+    )
     def stage_laplacian_x_numpy(dx: float, phi: np.ndarray) -> np.ndarray:
         lap = (phi[:-2] - 2.0 * phi[1:-1] + phi[2:]) / (dx * dx)
         return lap
 
     @staticmethod
-    @stencil_subroutine(backend=("numpy", "cupy"), stencil="laplacian_y")
+    @stencil_subroutine(
+        backend=("numpy", "cupy", "numba:cpu:numpy"), stencil="laplacian_y"
+    )
     def stage_laplacian_y_numpy(dy: float, phi: np.ndarray) -> np.ndarray:
         lap = (phi[:, :-2] - 2.0 * phi[:, 1:-1] + phi[:, 2:]) / (dy * dy)
         return lap
 
     @staticmethod
-    @stencil_subroutine(backend=("numpy", "cupy"), stencil="laplacian")
+    @stencil_subroutine(
+        backend=("numpy", "cupy", "numba:cpu:numpy"), stencil="laplacian"
+    )
     def stage_laplacian_numpy(
         dx: float, dy: float, phi: np.ndarray
     ) -> np.ndarray:

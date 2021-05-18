@@ -156,7 +156,9 @@ class VerticalDamping(AbstractFactory, GridComponent, StencilFactory):
         pass
 
     @staticmethod
-    @stencil_definition(backend=("numpy", "cupy"), stencil="damping")
+    @stencil_definition(
+        backend=("numpy", "cupy", "numba:cpu:numpy"), stencil="damping"
+    )
     @abc.abstractmethod
     def _damping_numpy(
         in_phi_now: np.ndarray,

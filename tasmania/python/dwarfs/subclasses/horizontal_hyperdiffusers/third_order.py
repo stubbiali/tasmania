@@ -78,8 +78,12 @@ class ThirdOrder(HorizontalHyperDiffusion):
         )
 
     @staticmethod
-    @stencil_definition(backend=("numpy", "cupy"), stencil="hyperdiffusion")
-    def _stencil_numpy(in_phi, in_gamma, out_phi, *, dx, dy, origin, domain):
+    @stencil_definition(
+        backend=("numpy", "cupy", "numba:cpu:numpy"), stencil="hyperdiffusion"
+    )
+    def _hyperdiffusion_numpy(
+        in_phi, in_gamma, out_phi, *, dx, dy, origin, domain
+    ):
         ib, ie = origin[0], origin[0] + domain[0]
         jb, je = origin[1], origin[1] + domain[1]
         k = slice(origin[2], origin[2] + domain[2])
@@ -92,7 +96,7 @@ class ThirdOrder(HorizontalHyperDiffusion):
 
     @staticmethod
     @stencil_definition(backend="gt4py*", stencil="hyperdiffusion")
-    def _stencil_gt4py(
+    def _hyperdiffusion_gt4py(
         in_phi: gtscript.Field["dtype"],
         in_gamma: gtscript.Field["dtype"],
         out_phi: gtscript.Field["dtype"],
@@ -162,8 +166,12 @@ class ThirdOrder1DX(HorizontalHyperDiffusion):
         )
 
     @staticmethod
-    @stencil_definition(backend=("numpy", "cupy"), stencil="hyperdiffusion")
-    def _stencil_numpy(in_phi, in_gamma, out_phi, *, dx, dy, origin, domain):
+    @stencil_definition(
+        backend=("numpy", "cupy", "numba:cpu:numpy"), stencil="hyperdiffusion"
+    )
+    def _hyperdiffusion_numpy(
+        in_phi, in_gamma, out_phi, *, dx, dy, origin, domain
+    ):
         ib, ie = origin[0], origin[0] + domain[0]
         jb, je = origin[1], origin[1] + domain[1]
         k = slice(origin[2], origin[2] + domain[2])
@@ -176,7 +184,7 @@ class ThirdOrder1DX(HorizontalHyperDiffusion):
 
     @staticmethod
     @stencil_definition(backend="gt4py*", stencil="hyperdiffusion")
-    def _stencil_gt4py(
+    def _hyperdiffusion_gt4py(
         in_phi: gtscript.Field["dtype"],
         in_gamma: gtscript.Field["dtype"],
         out_phi: gtscript.Field["dtype"],
@@ -242,9 +250,11 @@ class ThirdOrder1DY(HorizontalHyperDiffusion):
         )
 
     @staticmethod
-    @stencil_definition(backend=("numpy", "cupy"), stencil="hyperdiffusion")
-    def _stencil_numpy(
-        in_phi, in_gamma, out_phi, *, dx, dy, origin, domain, **kwargs
+    @stencil_definition(
+        backend=("numpy", "cupy", "numba:cpu:numpy"), stencil="hyperdiffusion"
+    )
+    def _hyperdiffusion_numpy(
+        in_phi, in_gamma, out_phi, *, dx, dy, origin, domain
     ):
         ib, ie = origin[0], origin[0] + domain[0]
         jb, je = origin[1], origin[1] + domain[1]
@@ -258,7 +268,7 @@ class ThirdOrder1DY(HorizontalHyperDiffusion):
 
     @staticmethod
     @stencil_definition(backend="gt4py*", stencil="hyperdiffusion")
-    def _stencil_gt4py(
+    def _hyperdiffusion_gt4py(
         in_phi: gtscript.Field["dtype"],
         in_gamma: gtscript.Field["dtype"],
         out_phi: gtscript.Field["dtype"],

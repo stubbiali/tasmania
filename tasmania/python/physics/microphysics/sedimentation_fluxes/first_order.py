@@ -33,7 +33,9 @@ class FirstOrderUpwind(SedimentationFlux):
     nb = 1
 
     @staticmethod
-    @stencil_subroutine(backend=("numpy", "cupy"), stencil="flux")
+    @stencil_subroutine(
+        backend=("numpy", "cupy", "numba:cpu:numpy"), stencil="flux"
+    )
     def call_numpy(rho, h, q, vt):
         dfdz = (
             rho[:, :, :-1] * q[:, :, :-1] * vt[:, :, :-1]
