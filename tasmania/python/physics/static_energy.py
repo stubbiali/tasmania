@@ -93,7 +93,7 @@ class DryStaticEnergy(DiagnosticComponent):
             "g": self.rpc["gravitational_acceleration"],
             "cp": self.rpc["specific_heat_of_dry_air_at_constant_pressure"],
         }
-        self._stencil = self.compile("static_energy")
+        self._stencil = self.compile_stencil("static_energy")
 
     @property
     def input_properties(self) -> "PropertyDict":
@@ -229,7 +229,7 @@ class MoistStaticEnergy(DiagnosticComponent):
         self.backend_options.externals = {
             "lhvw": self.rpc["latent_heat_of_vaporization_of_water"]
         }
-        self._stencil = self.compile("moist_static_energy")
+        self._stencil = self.compile_stencil("moist_static_energy")
 
     @property
     def input_properties(self) -> "PropertyDict":

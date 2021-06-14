@@ -22,32 +22,10 @@
 #
 from gt4py import gtscript
 
-from tasmania.python.framework.tag import stencil_subroutine
+from tasmania.python.framework.tag import subroutine_definition
 from tasmania.python.isentropic.dynamics.horizontal_fluxes import (
     IsentropicHorizontalFlux,
 )
-
-
-def get_centered_flux_x_numpy(u, phi):
-    flux = u[1:-1, :] * 0.5 * (phi[:-2, :] + phi[1:-1, :])
-    return flux
-
-
-def get_centered_flux_y_numpy(v, phi):
-    flux = v[:, 1:-1] * 0.5 * (phi[:, :-2] + phi[:, 1:-1])
-    return flux
-
-
-@gtscript.function
-def get_centered_flux_x_gt4py(u, phi):
-    flux = u[0, 0, 0] * 0.5 * (phi[-1, 0, 0] + phi[0, 0, 0])
-    return flux
-
-
-@gtscript.function
-def get_centered_flux_y_gt4py(v, phi):
-    flux = v[0, 0, 0] * 0.5 * (phi[0, -1, 0] + phi[0, 0, 0])
-    return flux
 
 
 class Centered(IsentropicHorizontalFlux):
@@ -56,14 +34,13 @@ class Centered(IsentropicHorizontalFlux):
     name = "centered"
     extent = 1
     order = 2
-    externals = {
-        "get_centered_flux_x_gt4py": get_centered_flux_x_gt4py,
-        "get_centered_flux_y_gt4py": get_centered_flux_y_gt4py,
-    }
+    external_names = ["get_centered_flux_x", "get_centered_flux_y"]
 
-    @stencil_subroutine(backend=("numpy", "cupy"), stencil="flux_dry")
+    @staticmethod
+    @subroutine_definition(
+        backend=("numpy", "cupy", "numba:cpu:numpy"), stencil="flux_dry"
+    )
     def flux_dry_numpy(
-        self,
         dt,
         dx,
         dy,
@@ -83,22 +60,24 @@ class Centered(IsentropicHorizontalFlux):
         return_list = []
 
         if compute_density_fluxes:
-            flux_s_x = get_centered_flux_x_numpy(u, s)
-            flux_s_y = get_centered_flux_y_numpy(v, s)
+            flux_s_x = get_centered_flux_x(u, s)
+            flux_s_y = get_centered_flux_y(v, s)
             return_list += [flux_s_x, flux_s_y]
 
         if compute_momentum_fluxes:
-            flux_su_x = get_centered_flux_x_numpy(u, su)
-            flux_su_y = get_centered_flux_y_numpy(v, su)
-            flux_sv_x = get_centered_flux_x_numpy(u, sv)
-            flux_sv_y = get_centered_flux_y_numpy(v, sv)
+            flux_su_x = get_centered_flux_x(u, su)
+            flux_su_y = get_centered_flux_y(v, su)
+            flux_sv_x = get_centered_flux_x(u, sv)
+            flux_sv_y = get_centered_flux_y(v, sv)
             return_list += [flux_su_x, flux_su_y, flux_sv_x, flux_sv_y]
 
         return return_list
 
-    @stencil_subroutine(backend=("numpy", "cupy"), stencil="flux_moist")
+    @staticmethod
+    @subroutine_definition(
+        backend=("numpy", "cupy", "numba:cpu:numpy"), stencil="flux_moist"
+    )
     def flux_moist_numpy(
-        self,
         dt,
         dx,
         dy,
@@ -117,12 +96,12 @@ class Centered(IsentropicHorizontalFlux):
         return_list = []
 
         if compute_water_species_fluxes:
-            flux_sqv_x = get_centered_flux_x_numpy(u, sqv)
-            flux_sqv_y = get_centered_flux_y_numpy(v, sqv)
-            flux_sqc_x = get_centered_flux_x_numpy(u, sqc)
-            flux_sqc_y = get_centered_flux_y_numpy(v, sqc)
-            flux_sqr_x = get_centered_flux_x_numpy(u, sqr)
-            flux_sqr_y = get_centered_flux_y_numpy(v, sqr)
+            flux_sqv_x = get_centered_flux_x(u, sqv)
+            flux_sqv_y = get_centered_flux_y(v, sqv)
+            flux_sqc_x = get_centered_flux_x(u, sqc)
+            flux_sqc_y = get_centered_flux_y(v, sqc)
+            flux_sqr_x = get_centered_flux_x(u, sqr)
+            flux_sqr_y = get_centered_flux_y(v, sqr)
             return_list += [
                 flux_sqv_x,
                 flux_sqv_y,
@@ -135,7 +114,7 @@ class Centered(IsentropicHorizontalFlux):
         return return_list
 
     @staticmethod
-    @stencil_subroutine(backend="gt4py*", stencil="flux_dry")
+    @subroutine_definition(backend="gt4py*", stencil="flux_dry")
     @gtscript.function
     def flux_dry_gt4py(
         dt,
@@ -151,16 +130,18 @@ class Centered(IsentropicHorizontalFlux):
         su_tnd=None,
         sv_tnd=None,
     ):
-        flux_s_x = get_centered_flux_x_gt4py(u=u, phi=s)
-        flux_s_y = get_centered_flux_y_gt4py(v=v, phi=s)
-        flux_su_x = get_centered_flux_x_gt4py(u=u, phi=su)
-        flux_su_y = get_centered_flux_y_gt4py(v=v, phi=su)
-        flux_sv_x = get_centered_flux_x_gt4py(u=u, phi=sv)
-        flux_sv_y = get_centered_flux_y_gt4py(v=v, phi=sv)
+        from __externals__ import get_centered_flux_x, get_centered_flux_y
+
+        flux_s_x = get_centered_flux_x(u=u, phi=s)
+        flux_s_y = get_centered_flux_y(v=v, phi=s)
+        flux_su_x = get_centered_flux_x(u=u, phi=su)
+        flux_su_y = get_centered_flux_y(v=v, phi=su)
+        flux_sv_x = get_centered_flux_x(u=u, phi=sv)
+        flux_sv_y = get_centered_flux_y(v=v, phi=sv)
         return flux_s_x, flux_s_y, flux_su_x, flux_su_y, flux_sv_x, flux_sv_y
 
     @staticmethod
-    @stencil_subroutine(backend="gt4py*", stencil="flux_moist")
+    @subroutine_definition(backend="gt4py*", stencil="flux_moist")
     @gtscript.function
     def flux_moist_gt4py(
         dt,
@@ -176,12 +157,14 @@ class Centered(IsentropicHorizontalFlux):
         qc_tnd=None,
         qr_tnd=None,
     ):
-        flux_sqv_x = get_centered_flux_x_gt4py(u=u, phi=sqv)
-        flux_sqv_y = get_centered_flux_y_gt4py(v=v, phi=sqv)
-        flux_sqc_x = get_centered_flux_x_gt4py(u=u, phi=sqc)
-        flux_sqc_y = get_centered_flux_y_gt4py(v=v, phi=sqc)
-        flux_sqr_x = get_centered_flux_x_gt4py(u=u, phi=sqr)
-        flux_sqr_y = get_centered_flux_y_gt4py(v=v, phi=sqr)
+        from __externals__ import get_centered_flux_x, get_centered_flux_y
+
+        flux_sqv_x = get_centered_flux_x(u=u, phi=sqv)
+        flux_sqv_y = get_centered_flux_y(v=v, phi=sqv)
+        flux_sqc_x = get_centered_flux_x(u=u, phi=sqc)
+        flux_sqc_y = get_centered_flux_y(v=v, phi=sqc)
+        flux_sqr_x = get_centered_flux_x(u=u, phi=sqr)
+        flux_sqr_y = get_centered_flux_y(v=v, phi=sqr)
         return (
             flux_sqv_x,
             flux_sqv_y,
@@ -190,3 +173,35 @@ class Centered(IsentropicHorizontalFlux):
             flux_sqr_x,
             flux_sqr_y,
         )
+
+    @staticmethod
+    @subroutine_definition(
+        backend=("numpy", "cupy", "numba:cpu:numpy"),
+        stencil="get_centered_flux_x",
+    )
+    def get_centered_flux_x_numpy(u, phi):
+        flux = u[1:-1, :] * 0.5 * (phi[:-2, :] + phi[1:-1, :])
+        return flux
+
+    @staticmethod
+    @subroutine_definition(backend="gt4py*", stencil="get_centered_flux_x")
+    @gtscript.function
+    def get_centered_flux_x_gt4py(u, phi):
+        flux = u[0, 0, 0] * 0.5 * (phi[-1, 0, 0] + phi[0, 0, 0])
+        return flux
+
+    @staticmethod
+    @subroutine_definition(
+        backend=("numpy", "cupy", "numba:cpu:numpy"),
+        stencil="get_centered_flux_y",
+    )
+    def get_centered_flux_y_numpy(v, phi):
+        flux = v[:, 1:-1] * 0.5 * (phi[:, :-2] + phi[:, 1:-1])
+        return flux
+
+    @staticmethod
+    @subroutine_definition(backend="gt4py*", stencil="get_centered_flux_y")
+    @gtscript.function
+    def get_centered_flux_y_gt4py(v, phi):
+        flux = v[0, 0, 0] * 0.5 * (phi[0, -1, 0] + phi[0, 0, 0])
+        return flux

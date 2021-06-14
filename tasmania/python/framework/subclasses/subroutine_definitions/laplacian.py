@@ -24,10 +24,10 @@ import numpy as np
 
 from tasmania.third_party import cupy, gt4py, numba
 
-from tasmania.python.framework.stencil import stencil_subroutine
+from tasmania.python.framework.stencil import subroutine_definition
 
 
-@stencil_subroutine.register(backend="numpy", stencil="laplacian")
+@subroutine_definition.register(backend="numpy", stencil="laplacian")
 def laplacian_numpy(in_field, out_field, *, origin, domain):
     ib, jb, kb = origin
     ie, je, ke = tuple(origin[i] + domain[i] for i in range(3))
@@ -43,13 +43,13 @@ def laplacian_numpy(in_field, out_field, *, origin, domain):
 
 
 if cupy:
-    stencil_subroutine.register(laplacian_numpy, "cupy", "laplacian")
+    subroutine_definition.register(laplacian_numpy, "cupy", "laplacian")
 
 
 if gt4py:
     from gt4py import gtscript
 
-    @stencil_subroutine.register(backend="gt4py*", stencil="laplacian")
+    @subroutine_definition.register(backend="gt4py*", stencil="laplacian")
     @gtscript.function
     def laplacian_gt4py(
         in_field: gtscript.Field["dtype"],
@@ -65,6 +65,6 @@ if gt4py:
 
 
 if numba:
-    stencil_subroutine.register(
+    subroutine_definition.register(
         laplacian_numpy, "numba:cpu:numpy", "laplacian"
     )

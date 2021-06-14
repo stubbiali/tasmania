@@ -74,3 +74,4 @@ if gt:
         # return data
         # <<< new storage
         return data.to_numpy()
+        # <<<

@@ -22,7 +22,7 @@
 #
 from gt4py import gtscript
 
-from tasmania.python.framework.tag import stencil_subroutine
+from tasmania.python.framework.tag import subroutine_definition
 from tasmania.python.physics.microphysics.utils import SedimentationFlux
 
 
@@ -33,7 +33,7 @@ class FirstOrderUpwind(SedimentationFlux):
     nb = 1
 
     @staticmethod
-    @stencil_subroutine(
+    @subroutine_definition(
         backend=("numpy", "cupy", "numba:cpu:numpy"), stencil="flux"
     )
     def call_numpy(rho, h, q, vt):
@@ -44,7 +44,7 @@ class FirstOrderUpwind(SedimentationFlux):
         return dfdz
 
     @staticmethod
-    @stencil_subroutine(backend="gt4py*", stencil="flux")
+    @subroutine_definition(backend="gt4py*", stencil="flux")
     @gtscript.function
     def call_gt4py(rho, h, q, vt):
         dfdz = (

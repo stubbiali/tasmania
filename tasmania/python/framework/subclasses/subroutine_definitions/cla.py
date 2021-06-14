@@ -25,11 +25,11 @@ from typing import Optional, Tuple, Union
 
 from tasmania.third_party import cupy, gt4py, numba
 
-from tasmania.python.framework.stencil import stencil_subroutine
+from tasmania.python.framework.stencil import subroutine_definition
 from tasmania.python.utils import typingx
 
 
-@stencil_subroutine.register(backend="numpy", stencil="thomas")
+@subroutine_definition.register(backend="numpy", stencil="thomas")
 def thomas_numpy(
     a: np.ndarray,
     b: np.ndarray,
@@ -71,8 +71,8 @@ def thomas_numpy(
         )
 
 
-@stencil_subroutine.register(backend="numpy", stencil="setup_thomas")
-@stencil_subroutine.register(backend="numpy", stencil="setup_thomas_bc")
+@subroutine_definition.register(backend="numpy", stencil="setup_thomas")
+@subroutine_definition.register(backend="numpy", stencil="setup_thomas_bc")
 def setup_tridiagonal_system_numpy(
     gamma: float,
     w: np.ndarray,
@@ -103,8 +103,8 @@ def setup_tridiagonal_system_numpy(
 
 
 if cupy:
-    stencil_subroutine.register(thomas_numpy, "cupy", "thomas")
-    stencil_subroutine.register(
+    subroutine_definition.register(thomas_numpy, "cupy", "thomas")
+    subroutine_definition.register(
         setup_tridiagonal_system_numpy,
         "cupy",
         ("setup_thomas", "setup_thomas_bc"),
@@ -114,7 +114,7 @@ if cupy:
 if gt4py:
     from gt4py import gtscript
 
-    @stencil_subroutine.register(backend="gt4py*", stencil="setup_thomas")
+    @subroutine_definition.register(backend="gt4py*", stencil="setup_thomas")
     @gtscript.function
     def setup_tridiagonal_system_gt4py(
         gamma: float, w: typingx.GTField, phi: typingx.GTField
@@ -126,7 +126,9 @@ if gt4py:
         )
         return a, c, d
 
-    @stencil_subroutine.register(backend="gt4py*", stencil="setup_thomas_bc")
+    @subroutine_definition.register(
+        backend="gt4py*", stencil="setup_thomas_bc"
+    )
     @gtscript.function
     def setup_tridiagonal_system_bc_gt4py(
         phi: typingx.GTField,
@@ -138,8 +140,8 @@ if gt4py:
 
 
 if numba:
-    stencil_subroutine.register(thomas_numpy, "numba:cpu:numpy", "thomas")
-    stencil_subroutine.register(
+    subroutine_definition.register(thomas_numpy, "numba:cpu:numpy", "thomas")
+    subroutine_definition.register(
         setup_tridiagonal_system_numpy,
         "numba:cpu:numpy",
         ("setup_thomas", "setup_thomas_bc"),

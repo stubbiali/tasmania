@@ -98,7 +98,7 @@ from tasmania.python.framework.stencil import (
     StencilCompiler,
     StencilDefinition,
     StencilFactory,
-    StencilSubroutine,
+    SubroutineDefinition,
 )
 from tasmania.python.framework.sts_tendency_stepper import STSTendencyStepper
 from tasmania.python.framework.tendency_stepper import TendencyStepper
@@ -207,3 +207,4 @@ __license__ = "GPLv3"
 #
 # prepare_numpy()
 # <<< new storage
+# <<<

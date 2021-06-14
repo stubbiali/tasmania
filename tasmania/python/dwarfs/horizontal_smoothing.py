@@ -102,8 +102,8 @@ class HorizontalSmoothing(AbstractFactory, StencilFactory):
 
         # initialize the underlying stencil
         self.backend_options.dtypes = {"dtype": dtype}
-        self._stencil_smooth = self.compile("smoothing")
-        self._stencil_copy = self.compile("copy")
+        self._stencil_smooth = self.compile_stencil("smoothing")
+        self._stencil_copy = self.compile_stencil("copy")
 
     @abc.abstractmethod
     def __call__(self, phi: "NDArrayLike", phi_out: "NDArrayLike") -> None:

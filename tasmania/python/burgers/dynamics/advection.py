@@ -28,7 +28,7 @@ from gt4py import gtscript
 
 from tasmania.python.framework.register import factorize, register
 from tasmania.python.framework.stencil import StencilFactory
-from tasmania.python.framework.tag import stencil_subroutine
+from tasmania.python.framework.tag import subroutine_definition
 from tasmania.python.utils import typingx
 
 
@@ -40,7 +40,7 @@ class BurgersAdvection(StencilFactory, abc.ABC):
     extent: int = 0
 
     @staticmethod
-    @stencil_subroutine(
+    @subroutine_definition(
         backend=("numpy", "cupy", "numba:cpu:numpy"), stencil="advection"
     )
     @abc.abstractmethod
@@ -76,7 +76,7 @@ class BurgersAdvection(StencilFactory, abc.ABC):
         pass
 
     @staticmethod
-    @stencil_subroutine(backend="gt4py*", stencil="advection")
+    @subroutine_definition(backend="gt4py*", stencil="advection")
     @gtscript.function
     @abc.abstractmethod
     def call_gt4py(
@@ -110,7 +110,7 @@ class BurgersAdvection(StencilFactory, abc.ABC):
         pass
 
     @staticmethod
-    @stencil_subroutine(backend="numba:cpu:stencil", stencil="advection")
+    @subroutine_definition(backend="numba:cpu:stencil", stencil="advection")
     @abc.abstractmethod
     def call_numba_cpu(
         dx: float, dy: float, u: np.ndarray, v: np.ndarray

@@ -54,7 +54,7 @@ class Sum(StencilFactory):
         )
         dtype = self.storage_options.dtype
         self.backend_options.dtypes = {"dtype": dtype}
-        self.sum = self.compile("sum")
+        self.sum = self.compile_stencil("sum")
 
     @staticmethod
     @stencil_definition(backend=("numpy", "cupy"), stencil="sum")

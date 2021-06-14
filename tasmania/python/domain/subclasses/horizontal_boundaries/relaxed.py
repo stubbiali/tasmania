@@ -103,7 +103,7 @@ class Relaxed(HorizontalBoundary):
 
         dtype = self.storage_options.dtype
         self.backend_options.dtypes = {"dtype": dtype}
-        self._stencil = self.compile("irelax")
+        self._stencil = self.compile_stencil("irelax")
 
     @property
     def ni(self):
@@ -344,7 +344,7 @@ class Relaxed1DX(HorizontalBoundary):
 
         dtype = self.storage_options.dtype
         self.backend_options.dtypes = {"dtype": dtype}
-        self._stencil = self.compile("irelax")
+        self._stencil = self.compile_stencil("irelax")
 
     @property
     def ni(self):
@@ -585,7 +585,7 @@ class Relaxed1DY(HorizontalBoundary):
 
         dtype = self.storage_options.dtype
         self.backend_options.dtypes = {"dtype": dtype}
-        self._stencil = self.compile("irelax")
+        self._stencil = self.compile_stencil("irelax")
 
     @property
     def ni(self):

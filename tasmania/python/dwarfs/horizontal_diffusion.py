@@ -111,9 +111,9 @@ class HorizontalDiffusion(AbstractFactory, StencilFactory):
         # initialize the underlying stencil
         self.backend_options.dtypes = {"dtype": dtype}
         self.backend_options.externals = {
-            "set_output": self.stencil_subroutine("set_output")
+            "set_output": self.get_subroutine_definition("set_output")
         }
-        self._stencil = self.compile("diffusion")
+        self._stencil = self.compile_stencil("diffusion")
 
     @abc.abstractmethod
     def __call__(

@@ -108,7 +108,7 @@ def run(backend):
     phi = tc.zeros(shape=shape)
     lap = tc.zeros(shape=shape)
 
-    stencil = tc.compile("lap")
+    stencil = tc.compile_stencil("lap")
 
     for _ in range(nt):
         Timer.start(label=backend)

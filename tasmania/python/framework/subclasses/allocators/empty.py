@@ -73,3 +73,4 @@ if gt:
             halo=so.halo,
             managed=so.managed,
         )
+        # <<<

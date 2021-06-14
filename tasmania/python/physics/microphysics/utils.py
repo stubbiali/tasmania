@@ -36,7 +36,7 @@ from tasmania.python.framework.core_components import (
 from tasmania.python.framework.stencil import StencilFactory
 from tasmania.python.framework.tag import (
     stencil_definition,
-    stencil_subroutine,
+    subroutine_definition,
 )
 from tasmania.python.utils import typingx as ty
 
@@ -104,7 +104,7 @@ class Clipping(DiagnosticComponent):
         )
         dtype = self.storage_options.dtype
         self.backend_options.dtypes = {"dtype": dtype}
-        self._stencil = self.compile("clip")
+        self._stencil = self.compile_stencil("clip")
 
     @property
     def input_properties(self) -> "PropertyDict":
@@ -207,7 +207,7 @@ class Precipitation(ImplicitTendencyComponent):
         self.backend_options.externals = {
             "rhow": self.rpc["density_of_liquid_water"]
         }
-        self._stencil = self.compile("accumulated_precipitation")
+        self._stencil = self.compile_stencil("accumulated_precipitation")
 
     @property
     def input_properties(self) -> "PropertyDict":
@@ -346,7 +346,7 @@ class SedimentationFlux(AbstractFactory, StencilFactory):
         super().__init__(backend)
 
     @staticmethod
-    @stencil_subroutine(
+    @subroutine_definition(
         backend=("numpy", "cupy", "numba:cpu:numpy"), stencil="flux"
     )
     @abc.abstractmethod
@@ -356,7 +356,7 @@ class SedimentationFlux(AbstractFactory, StencilFactory):
         pass
 
     @staticmethod
-    @stencil_subroutine(backend="gt4py*", stencil="flux")
+    @subroutine_definition(backend="gt4py*", stencil="flux")
     @gtscript.function
     @abc.abstractmethod
     def call_gt4py(

@@ -44,8 +44,8 @@ class SF(StencilFactory):
         )
         dtype = self.storage_options.dtype
         self.backend_options.dtypes = {"dtype": dtype}
-        self.stencil1 = self.compile("stencil1")
-        self.stencil2 = self.compile("stencil2")
+        self.stencil1 = self.compile_stencil("stencil1")
+        self.stencil2 = self.compile_stencil("stencil2")
 
     @staticmethod
     @stencil_definition(backend="gt4py*", stencil="stencil1")

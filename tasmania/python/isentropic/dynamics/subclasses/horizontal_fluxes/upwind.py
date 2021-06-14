@@ -25,7 +25,7 @@ import numpy as np
 from gt4py import gtscript
 
 from tasmania.python.framework.register import register
-from tasmania.python.framework.tag import stencil_subroutine
+from tasmania.python.framework.tag import subroutine_definition
 from tasmania.python.isentropic.dynamics.horizontal_fluxes import (
     IsentropicHorizontalFlux,
 )
@@ -64,7 +64,7 @@ class Upwind(IsentropicHorizontalFlux):
         "get_upwind_flux_y_gt4py": get_upwind_flux_y_gt4py,
     }
 
-    @stencil_subroutine(backend=("numpy", "cupy"), stencil="flux_dry")
+    @subroutine_definition(backend=("numpy", "cupy"), stencil="flux_dry")
     def flux_dry_numpy(
         self,
         dt,
@@ -99,7 +99,7 @@ class Upwind(IsentropicHorizontalFlux):
 
         return return_list
 
-    @stencil_subroutine(backend=("numpy", "cupy"), stencil="flux_moist")
+    @subroutine_definition(backend=("numpy", "cupy"), stencil="flux_moist")
     def flux_moist_numpy(
         self,
         dt,
@@ -138,7 +138,7 @@ class Upwind(IsentropicHorizontalFlux):
         return return_list
 
     @staticmethod
-    @stencil_subroutine(backend="gt4py*", stencil="flux_dry")
+    @subroutine_definition(backend="gt4py*", stencil="flux_dry")
     @gtscript.function
     def flux_dry_gt4py(
         dt,
@@ -163,7 +163,7 @@ class Upwind(IsentropicHorizontalFlux):
         return flux_s_x, flux_s_y, flux_su_x, flux_su_y, flux_sv_x, flux_sv_y
 
     @staticmethod
-    @stencil_subroutine(backend="gt4py*", stencil="flux_moist")
+    @subroutine_definition(backend="gt4py*", stencil="flux_moist")
     @gtscript.function
     def flux_moist_gt4py(
         dt,

@@ -167,7 +167,7 @@ class IsentropicVerticalAdvection(STSTendencyStepper, StencilFactory):
             "setup_tridiagonal_system": setup_tridiagonal_system,
             "setup_tridiagonal_system_bc": setup_tridiagonal_system_bc,
         }
-        self._stencil = self.compile("stencil")
+        self._stencil = self.compile_stencil("stencil")
 
     def _call(self, state, prv_state, timestep):
         # initialize the output state

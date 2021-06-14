@@ -30,7 +30,7 @@ from tasmania.python.framework.options import BackendOptions
 from tasmania.python.framework.stencil import (
     StencilCompiler,
     StencilDefinition,
-    StencilSubroutine,
+    SubroutineDefinition,
     StencilFactory,
 )
 from tasmania.python.framework.subclasses.stencil_compilers import (
@@ -63,13 +63,13 @@ class TestStencilSubroutine:
         assert all("positive" in r[f][backend] for backend in backends)
 
     def test_registry_keys(self):
-        self.check_registry_keys(StencilSubroutine.registry)
+        self.check_registry_keys(SubroutineDefinition.registry)
 
     @staticmethod
     def check_registry_values(r):
         f = "stencil_subroutine"
 
-        from tasmania.python.framework.subclasses.stencil_subroutines import (
+        from tasmania.python.framework.subclasses.subroutine_definitions import (
             laplacian,
             math,
         )
@@ -103,11 +103,11 @@ class TestStencilSubroutine:
             assert r[f]["gt4py*"]["positive"] == math.positive_gt4py
 
     def test_registry_values(self):
-        self.check_registry_values(StencilSubroutine.registry)
+        self.check_registry_values(SubroutineDefinition.registry)
 
     @staticmethod
     def check_factory(s):
-        from tasmania.python.framework.subclasses.stencil_subroutines import (
+        from tasmania.python.framework.subclasses.subroutine_definitions import (
             laplacian,
             math,
         )
@@ -154,7 +154,7 @@ class TestStencilSubroutine:
                 )
 
     def test_factory(self):
-        self.check_factory(StencilSubroutine)
+        self.check_factory(SubroutineDefinition)
 
 
 class TestStencilDefinition:
@@ -664,9 +664,11 @@ class TestStencilFactory:
     def test_default_registry_keys(self):
         sf = StencilFactory()
 
-        TestStencilCompiler.check_registry_keys(sf._default_compiler_registry)
+        TestStencilCompiler.check_registry_keys(
+            sf._default_stencil_compiler_registry
+        )
         TestStencilDefinition.check_registry_keys(
-            sf._default_definition_registry
+            sf._default_stencil_definition_registry
         )
         TestEmpty().check_registry_keys(
             sf._default_allocator_registry, "empty"
@@ -680,10 +682,10 @@ class TestStencilFactory:
         sf = StencilFactory()
 
         TestStencilCompiler.check_registry_values(
-            sf._default_compiler_registry
+            sf._default_stencil_compiler_registry
         )
         TestStencilDefinition.check_registry_values(
-            sf._default_definition_registry
+            sf._default_stencil_definition_registry
         )
         TestEmpty().check_registry_keys(
             sf._default_allocator_registry, "empty"
@@ -696,7 +698,7 @@ class TestStencilFactory:
     def test_default_factory(self):
         sf = StencilFactory()
 
-        TestStencilCompiler.check_factory(sf.compile)
+        TestStencilCompiler.check_factory(sf.compile_stencil)
         TestEmpty().check_factory(sf.empty)
         TestOnes().check_factory(sf.ones)
         TestZeros().check_factory(sf.zeros)

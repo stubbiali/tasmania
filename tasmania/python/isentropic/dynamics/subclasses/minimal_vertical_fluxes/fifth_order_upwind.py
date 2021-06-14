@@ -24,7 +24,7 @@ import numpy as np
 
 from gt4py import gtscript
 
-from tasmania.python.framework.tag import stencil_subroutine
+from tasmania.python.framework.tag import subroutine_definition
 from tasmania.python.isentropic.dynamics.vertical_fluxes import (
     IsentropicMinimalVerticalFlux,
 )
@@ -68,7 +68,7 @@ class FifthOrderUpwind(IsentropicMinimalVerticalFlux):
     }
 
     @staticmethod
-    @stencil_subroutine(backend=("numpy", "cupy"), stencil="flux_dry")
+    @subroutine_definition(backend=("numpy", "cupy"), stencil="flux_dry")
     def flux_dry_numpy(dt, dz, w, s, su, sv):
         flux_s = get_fifth_order_upwind_flux_numpy(w, s)
         flux_su = get_fifth_order_upwind_flux_numpy(w, su)
@@ -76,7 +76,7 @@ class FifthOrderUpwind(IsentropicMinimalVerticalFlux):
         return flux_s, flux_su, flux_sv
 
     @staticmethod
-    @stencil_subroutine(backend=("numpy", "cupy"), stencil="flux_moist")
+    @subroutine_definition(backend=("numpy", "cupy"), stencil="flux_moist")
     def flux_moist_numpy(dt, dz, w, sqv, sqc, sqr):
         flux_sqv = get_fifth_order_upwind_flux_numpy(w, sqv)
         flux_sqc = get_fifth_order_upwind_flux_numpy(w, sqc)
@@ -84,7 +84,7 @@ class FifthOrderUpwind(IsentropicMinimalVerticalFlux):
         return flux_sqv, flux_sqc, flux_sqr
 
     @staticmethod
-    @stencil_subroutine(backend="gt4py*", stencil="flux_dry")
+    @subroutine_definition(backend="gt4py*", stencil="flux_dry")
     @gtscript.function
     def flux_dry_gt4py(dt, dz, w, s, su, sv):
         flux_s = get_fifth_order_upwind_flux_gt4py(w=w, phi=s)
@@ -93,7 +93,7 @@ class FifthOrderUpwind(IsentropicMinimalVerticalFlux):
         return flux_s, flux_su, flux_sv
 
     @staticmethod
-    @stencil_subroutine(backend="gt4py*", stencil="flux_moist")
+    @subroutine_definition(backend="gt4py*", stencil="flux_moist")
     @gtscript.function
     def flux_moist_gt4py(dt, dz, w, sqv, sqc, sqr):
         flux_sqv = get_fifth_order_upwind_flux_gt4py(w=w, phi=sqv)

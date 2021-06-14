@@ -23,7 +23,7 @@
 from tasmania.python.framework.subclasses import (
     allocators,
     stencil_definitions,
-    stencil_subroutines,
+    subroutine_definitions,
     sts_tendency_steppers,
     tendency_steppers,
 )
@@ -32,3 +32,4 @@ from tasmania.python.framework.subclasses.dynamic_operators import *
 from tasmania.python.framework.subclasses.static_checkers import *
 from tasmania.python.framework.subclasses.static_operators import *
 from tasmania.python.framework.subclasses.stencil_compilers import *
+from tasmania.python.framework.subclasses.subroutine_compilers import *

@@ -23,12 +23,14 @@
 import numpy as np
 from typing import Optional, Sequence, TYPE_CHECKING
 
+from sympl._core.time import Timer
+
 from gt4py import gtscript
 
 from tasmania.python.framework.core_components import TendencyComponent
 from tasmania.python.framework.tag import (
     stencil_definition,
-    stencil_subroutine,
+    subroutine_definition,
 )
 
 if TYPE_CHECKING:
@@ -110,10 +112,10 @@ class Smagorinsky2d(TendencyComponent):
         dtype = self.storage_options.dtype
         self.backend_options.dtypes = {"dtype": dtype}
         self.backend_options.externals = {
-            "core": self.stencil_subroutine("smagorinsky_core"),
-            "set_output": self.stencil_subroutine("set_output"),
+            "core": self.get_subroutine_definition("smagorinsky_core"),
+            "set_output": self.get_subroutine_definition("set_output"),
         }
-        self._stencil = self.compile("smagorinsky")
+        self._stencil = self.compile_stencil("smagorinsky")
 
     @property
     def input_properties(self) -> "PropertyDict":
@@ -212,7 +214,7 @@ class Smagorinsky2d(TendencyComponent):
             out_v_tnd = set_output(out_v_tnd, tmp_out_v_tnd, ow_out_v_tnd)
 
     @staticmethod
-    @stencil_subroutine(
+    @subroutine_definition(
         backend=("numpy", "cupy", "numba:cpu:numpy"),
         stencil="smagorinsky_core",
     )
@@ -258,7 +260,7 @@ class Smagorinsky2d(TendencyComponent):
         return u_tnd, v_tnd
 
     @staticmethod
-    @stencil_subroutine(backend="gt4py*", stencil="smagorinsky_core")
+    @subroutine_definition(backend="gt4py*", stencil="smagorinsky_core")
     @gtscript.function
     def _core_gt4py(u, v, dx, dy, cs):
         s00 = (u[+1, 0, 0] - u[-1, 0, 0]) / (2.0 * dx)

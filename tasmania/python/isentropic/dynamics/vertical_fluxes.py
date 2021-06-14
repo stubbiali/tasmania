@@ -29,7 +29,7 @@ from sympl._core.factory import AbstractFactory
 from gt4py import gtscript
 
 from tasmania.python.framework.stencil import StencilFactory
-from tasmania.python.framework.tag import stencil_subroutine
+from tasmania.python.framework.tag import subroutine_definition
 
 
 class IsentropicMinimalVerticalFlux(AbstractFactory, StencilFactory):
@@ -49,7 +49,7 @@ class IsentropicMinimalVerticalFlux(AbstractFactory, StencilFactory):
         super().__init__(backend)
 
     @staticmethod
-    @stencil_subroutine(backend=("numpy", "cupy"), stencil="flux_dry")
+    @subroutine_definition(backend=("numpy", "cupy"), stencil="flux_dry")
     @abc.abstractmethod
     def flux_dry_numpy(
         dt: float,
@@ -62,7 +62,7 @@ class IsentropicMinimalVerticalFlux(AbstractFactory, StencilFactory):
         pass
 
     @staticmethod
-    @stencil_subroutine(backend=("numpy", "cupy"), stencil="flux_moist")
+    @subroutine_definition(backend=("numpy", "cupy"), stencil="flux_moist")
     @abc.abstractmethod
     def flux_moist_numpy(
         dt: float,
@@ -75,7 +75,7 @@ class IsentropicMinimalVerticalFlux(AbstractFactory, StencilFactory):
         pass
 
     @staticmethod
-    @stencil_subroutine(backend="gt4py*", stencil="flux_dry")
+    @subroutine_definition(backend="gt4py*", stencil="flux_dry")
     @gtscript.function
     @abc.abstractmethod
     def flux_dry_gt4py(
@@ -89,7 +89,7 @@ class IsentropicMinimalVerticalFlux(AbstractFactory, StencilFactory):
         pass
 
     @staticmethod
-    @stencil_subroutine(backend="gt4py*", stencil="flux_moist")
+    @subroutine_definition(backend="gt4py*", stencil="flux_moist")
     @gtscript.function
     @abc.abstractmethod
     def flux_moist_gt4py(

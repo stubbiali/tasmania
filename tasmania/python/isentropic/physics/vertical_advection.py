@@ -155,20 +155,22 @@ class IsentropicVerticalAdvection(TendencyComponent):
         dtype = self.storage_options.dtype
         self.backend_options.dtypes = {"dtype": dtype}
         self.backend_options.externals = {
-            # "compute_boundary": self.stencil_subroutine("first_order_boundary")
+            # "compute_boundary": self.get_subroutine_definition("first_order_boundary")
             # if self._vflux.order == 1
-            # else self.stencil_subroutine("second_order_boundary"),
+            # else self.get_subroutine_definition("second_order_boundary"),
             "flux_end": -self._vflux.extent + 1
             if self._vflux.extent > 1
             else None,
             "flux_extent": self._vflux.extent,
-            "get_flux_dry": self._vflux.stencil_subroutine("flux_dry"),
-            "get_flux_moist": self._vflux.stencil_subroutine("flux_moist"),
+            "get_flux_dry": self._vflux.get_subroutine_definition("flux_dry"),
+            "get_flux_moist": self._vflux.get_subroutine_definition(
+                "flux_moist"
+            ),
             "moist": moist,
-            "set_output": self.stencil_subroutine("set_output"),
+            "set_output": self.get_subroutine_definition("set_output"),
             "staggering": self._stgz,
         }
-        self._stencil = self.compile("stencil")
+        self._stencil = self.compile_stencil("stencil")
 
     @property
     def input_properties(self) -> "PropertyDict":
@@ -356,7 +358,7 @@ class IsentropicVerticalAdvection(TendencyComponent):
             sqv = sqc = sqr = None
 
         # compute the fluxes
-        fs, fsu, fsv = self._vflux.stencil_subroutine("flux_dry")(
+        fs, fsu, fsv = self._vflux.get_subroutine_definition("flux_dry")(
             dt=dt, dz=dz, w=w, s=in_s, su=in_su, sv=in_sv
         )
 
@@ -383,9 +385,9 @@ class IsentropicVerticalAdvection(TendencyComponent):
 
         if self._moist:
             # compute the fluxes
-            fsqv, fsqc, fsqr = self._vflux.stencil_subroutine("flux_moist")(
-                dt=dt, dz=dz, w=w, sqv=sqv, sqc=sqc, sqr=sqr
-            )
+            fsqv, fsqc, fsqr = self._vflux.get_subroutine_definition(
+                "flux_moist"
+            )(dt=dt, dz=dz, w=w, sqv=sqv, sqc=sqc, sqr=sqr)
 
             # calculate the tendency for the water vapor
             tmp_out_qv = np.zeros_like(in_qv)

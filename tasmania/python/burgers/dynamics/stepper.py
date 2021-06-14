@@ -184,12 +184,14 @@ class BurgersStepper(StencilFactory, abc.ABC):
         dtype = self.storage_options.dtype
         self.backend_options.dtypes = {"dtype": dtype}
         self.backend_options.externals = {
-            "advection": self._advection.stencil_subroutine("advection"),
+            "advection": self._advection.get_subroutine_definition(
+                "advection"
+            ),
             "extent": self._advection.extent,
             "tnd_u": "x_velocity" in tendencies,
             "tnd_v": "y_velocity" in tendencies,
         }
-        self._forward_euler = self.compile("forward_euler")
+        self._forward_euler = self.compile_stencil("forward_euler")
 
     @staticmethod
     @stencil_definition(

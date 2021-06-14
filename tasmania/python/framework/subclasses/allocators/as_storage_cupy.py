@@ -48,6 +48,12 @@ if cp:
     ) -> cp.ndarray:
         return cp.asarray(data)
 
+    @as_storage_cupy.register
+    def _(
+        data: cp.ndarray, *, storage_options: Optional[StorageOptions] = None
+    ) -> cp.ndarray:
+        return data
+
     if numba:
         as_storage.register(as_storage_cupy, backend="numba:gpu")
 

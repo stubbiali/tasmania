@@ -24,7 +24,7 @@ from typing import TYPE_CHECKING
 
 from tasmania.third_party import cupy, gt4py, numba
 
-from tasmania.python.framework.stencil import stencil_subroutine
+from tasmania.python.framework.stencil import subroutine_definition
 
 if TYPE_CHECKING:
     import numpy as np
@@ -32,7 +32,7 @@ if TYPE_CHECKING:
     from tasmania.python.utils.typingx import GTField
 
 
-@stencil_subroutine.register(backend="numpy", stencil="set_output")
+@subroutine_definition.register(backend="numpy", stencil="set_output")
 def set_output_numpy(
     lhs: "np.ndarray", rhs: "np.ndarray", overwrite: bool
 ) -> None:
@@ -40,13 +40,13 @@ def set_output_numpy(
 
 
 if cupy:
-    stencil_subroutine.register(set_output_numpy, "cupy", "set_output")
+    subroutine_definition.register(set_output_numpy, "cupy", "set_output")
 
 
 if gt4py:
     from gt4py import gtscript
 
-    @stencil_subroutine.register(backend="gt4py*", stencil="set_output")
+    @subroutine_definition.register(backend="gt4py*", stencil="set_output")
     @gtscript.function
     def set_output_gt4py(
         lhs: "GTField", rhs: "GTField", overwrite: bool
@@ -55,11 +55,11 @@ if gt4py:
 
 
 if numba:
-    stencil_subroutine.register(
+    subroutine_definition.register(
         set_output_numpy, "numba:cpu:numpy", "set_output"
     )
 
-    @stencil_subroutine.register(
+    @subroutine_definition.register(
         backend="numba:cpu:stencil", stencil="set_output"
     )
     def set_output_numba(

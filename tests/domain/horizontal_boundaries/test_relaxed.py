@@ -233,7 +233,11 @@ def test_enforce(data, backend, dtype):
     )
 
     ref_state = data.draw(
-        st_state(grid, backend=backend, storage_shape=storage_shape,)
+        st_state(
+            grid,
+            backend=backend,
+            storage_shape=storage_shape,
+        )
     )
 
     # ========================================
@@ -254,7 +258,7 @@ def test_enforce(data, backend, dtype):
     sf = StencilFactory(
         backend=backend, backend_options=bo, storage_options=so
     )
-    stencil_irelax = sf.compile("irelax")
+    stencil_irelax = sf.compile_stencil("irelax")
 
     # (nx, ny)
     nf_val = sf.as_storage(data=nfield)

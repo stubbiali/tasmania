@@ -242,7 +242,7 @@ def test_enforce(data, backend, dtype):
     sf = StencilFactory(
         backend=backend, backend_options=bo, storage_options=so
     )
-    stencil_irelax = sf.compile("irelax")
+    stencil_irelax = sf.compile_stencil("irelax")
 
     # (1, ny)
     nf_val = sf.as_storage(data=nfield)
@@ -277,7 +277,9 @@ def test_enforce(data, backend, dtype):
     nf_ref = ref_state["afield_at_u_locations"].data
     enforce(stencil_irelax, nf_val, nf_ref, hb, (2, ny, nz))
     validation(
-        nfield[: 2 * nb + 2, :ny, :nz], nf_val[: 2 * nb + 2, :ny, :nz], hb,
+        nfield[: 2 * nb + 2, :ny, :nz],
+        nf_val[: 2 * nb + 2, :ny, :nz],
+        hb,
     )
 
     # (2, ny+1)

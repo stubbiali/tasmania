@@ -200,9 +200,9 @@ class KesslerMicrophysics(TendencyComponent):
             "e": np.exp(1),
             "lhvw": self.rpc["latent_heat_of_vaporization_of_water"],
             "rain_evaporation": rain_evaporation,
-            "set_output": self.stencil_subroutine("set_output"),
+            "set_output": self.get_subroutine_definition("set_output"),
         }
-        self._stencil = self.compile("kessler")
+        self._stencil = self.compile_stencil("kessler")
 
     @property
     def input_properties(self) -> "PropertyDict":
@@ -605,9 +605,9 @@ class KesslerSaturationAdjustmentDiagnostic(ImplicitTendencyComponent):
             "e": np.exp(1),
             "lhvw": self.rpc["latent_heat_of_vaporization_of_water"],
             "rv": rv,
-            "set_output": self.stencil_subroutine("set_output"),
+            "set_output": self.get_subroutine_definition("set_output"),
         }
-        self._stencil = self.compile("saturation")
+        self._stencil = self.compile_stencil("saturation")
 
     @property
     def input_properties(self) -> "PropertyDict":
@@ -952,9 +952,9 @@ class KesslerSaturationAdjustmentPrognostic(TendencyComponent):
             "lhvw": self.rpc["latent_heat_of_vaporization_of_water"],
             "cp": self.rpc["specific_heat_of_dry_air_at_constant_pressure"],
             "rv": rv,
-            "set_output": self.stencil_subroutine("set_output"),
+            "set_output": self.get_subroutine_definition("set_output"),
         }
-        self._stencil = self.compile("saturation")
+        self._stencil = self.compile_stencil("saturation")
 
     @property
     def input_properties(self) -> "PropertyDict":
@@ -1218,7 +1218,7 @@ class KesslerFallVelocity(DiagnosticComponent):
         self._in_rho_s = self.zeros(shape=self.storage_shape)
         dtype = self.storage_options.dtype
         self.backend_options.dtypes = {"dtype": dtype}
-        self._stencil = self.compile("fall_velocity")
+        self._stencil = self.compile_stencil("fall_velocity")
 
     @property
     def input_properties(self) -> "PropertyDict":
@@ -1368,11 +1368,11 @@ class KesslerSedimentation(ImplicitTendencyComponent):
         dtype = self.storage_options.dtype
         self.backend_options.dtypes = {"dtype": dtype}
         self.backend_options.externals = {
-            "set_output": self.stencil_subroutine("set_output"),
-            "sflux": sflux.stencil_subroutine("flux"),
+            "set_output": self.get_subroutine_definition("set_output"),
+            "sflux": sflux.get_subroutine_definition("flux"),
             "sflux_extent": sflux.nb,
         }
-        self._stencil = self.compile("sedimentation")
+        self._stencil = self.compile_stencil("sedimentation")
 
     @property
     def input_properties(self) -> "PropertyDict":

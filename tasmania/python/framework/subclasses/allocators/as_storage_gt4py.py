@@ -40,6 +40,8 @@ if gt:
     # <<< new storage
     from gt4py.storage.definitions import SyncState
 
+    # <<<
+
     @as_storage.register(backend="gt4py*")
     @singledispatch
     def as_storage_gt4py(
@@ -68,6 +70,7 @@ if gt:
             managed=so.managed,
             sync_state=sync_state,
         )
+        # <<<
 
     @as_storage_gt4py.register
     def _(
@@ -89,6 +92,7 @@ if gt:
             halo=so.halo,
             managed=so.managed,
         )
+        # <<<
 
     if cp:
 
@@ -115,3 +119,4 @@ if gt:
                 managed=so.managed,
                 sync_state=sync_state,
             )
+            # <<<

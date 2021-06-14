@@ -24,35 +24,35 @@ import numpy as np
 
 from tasmania.third_party import cupy as cp, gt4py, numba
 
-from tasmania.python.framework.stencil import stencil_subroutine
+from tasmania.python.framework.stencil import subroutine_definition
 
 
-@stencil_subroutine.register(backend="numpy", stencil="absolute")
+@subroutine_definition.register(backend="numpy", stencil="absolute")
 def absolute_numpy(phi):
     return np.abs(phi)
 
 
-@stencil_subroutine.register(backend="numpy", stencil="positive")
+@subroutine_definition.register(backend="numpy", stencil="positive")
 def positive_numpy(phi):
     return np.where(phi > 0, phi, 0)
 
 
-@stencil_subroutine.register(backend="numpy", stencil="negative")
+@subroutine_definition.register(backend="numpy", stencil="negative")
 def negative_numpy(phi):
     return np.where(phi < 0, -phi, 0)
 
 
 if cp:
 
-    @stencil_subroutine.register(backend="cupy", stencil="absolute")
+    @subroutine_definition.register(backend="cupy", stencil="absolute")
     def absolute_cupy(phi):
         return cp.abs(phi)
 
-    @stencil_subroutine.register(backend="cupy", stencil="positive")
+    @subroutine_definition.register(backend="cupy", stencil="positive")
     def positive_cupy(phi):
         return cp.where(phi > 0, phi, 0)
 
-    @stencil_subroutine.register(backend="cupy", stencil="negative")
+    @subroutine_definition.register(backend="cupy", stencil="negative")
     def negative_cupy(phi):
         return cp.where(phi < 0, -phi, 0)
 
@@ -60,28 +60,34 @@ if cp:
 if gt4py:
     from gt4py import gtscript
 
-    @stencil_subroutine.register(backend="gt4py*", stencil="absolute")
+    @subroutine_definition.register(backend="gt4py*", stencil="absolute")
     @gtscript.function
     def absolute_gt4py(phi):
         return phi if phi > 0 else -phi
 
-    @stencil_subroutine.register(backend="gt4py*", stencil="positive")
+    @subroutine_definition.register(backend="gt4py*", stencil="positive")
     @gtscript.function
     def positive_gt4py(phi):
         return phi if phi > 0 else 0
 
-    @stencil_subroutine.register(backend="gt4py*", stencil="negative")
+    @subroutine_definition.register(backend="gt4py*", stencil="negative")
     @gtscript.function
     def negative_gt4py(phi):
         return -phi if phi < 0 else 0
 
 
 if numba:
-    stencil_subroutine.register(absolute_numpy, "numba:cpu:numpy", "absolute")
-    stencil_subroutine.register(positive_numpy, "numba:cpu:numpy", "positive")
-    stencil_subroutine.register(negative_numpy, "numba:cpu:numpy", "negative")
+    subroutine_definition.register(
+        absolute_numpy, "numba:cpu:numpy", "absolute"
+    )
+    subroutine_definition.register(
+        positive_numpy, "numba:cpu:numpy", "positive"
+    )
+    subroutine_definition.register(
+        negative_numpy, "numba:cpu:numpy", "negative"
+    )
 
-    @stencil_subroutine.register(
+    @subroutine_definition.register(
         backend="numba:cpu:stencil", stencil="absolute"
     )
     def absolute_numba_cpu(phi):
@@ -92,7 +98,7 @@ if numba:
 
         return core(phi)
 
-    @stencil_subroutine.register(
+    @subroutine_definition.register(
         backend="numba:cpu:stencil", stencil="positive"
     )
     def positive_numba_cpu(phi):
@@ -103,7 +109,7 @@ if numba:
 
         return core(phi)
 
-    @stencil_subroutine.register(
+    @subroutine_definition.register(
         backend="numba:cpu:stencil", stencil="negative"
     )
     def negative_numba_cpu(phi):

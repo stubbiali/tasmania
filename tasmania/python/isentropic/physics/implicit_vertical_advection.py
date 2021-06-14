@@ -119,10 +119,10 @@ class IsentropicImplicitVerticalAdvectionDiagnostic(ImplicitTendencyComponent):
         self.backend_options.externals = {
             "moist": moist,
             "vstaggering": self._stgz,
-            "setup": self.stencil_subroutine("setup_thomas"),
-            "setup_bc": self.stencil_subroutine("setup_thomas_bc"),
+            "setup": self.get_subroutine_definition("setup_thomas"),
+            "setup_bc": self.get_subroutine_definition("setup_thomas_bc"),
         }
-        self._stencil = self.compile("stencil")
+        self._stencil = self.compile_stencil("stencil")
 
     @property
     def input_properties(self) -> ty.PropertiesDict:
@@ -317,11 +317,11 @@ class IsentropicImplicitVerticalAdvectionDiagnostic(ImplicitTendencyComponent):
         b = self.ones(shape=in_s.shape)
         c = self.zeros(shape=in_s.shape)
         d = self.zeros(shape=in_s.shape)
-        setup = self.stencil_subroutine("setup_thomas")
+        setup = self.get_subroutine_definition("setup_thomas")
         setup(gamma, w, in_s, a, c, d, i=i, j=j, kstart=kstart, kstop=kstop)
 
         # solve the tridiagonal system
-        thomas = self.stencil_subroutine("thomas")
+        thomas = self.get_subroutine_definition("thomas")
         thomas(a, b, c, d, out_s, i=i, j=j, kstart=kstart, kstop=kstop)
 
         #
@@ -747,10 +747,10 @@ class IsentropicImplicitVerticalAdvectionPrognostic(ImplicitTendencyComponent):
         self.backend_options.externals = {
             "moist": moist,
             "vstaggering": self._stgz,
-            "setup": self.stencil_subroutine("setup_thomas"),
-            "setup_bc": self.stencil_subroutine("setup_thomas_bc"),
+            "setup": self.get_subroutine_definition("setup_thomas"),
+            "setup_bc": self.get_subroutine_definition("setup_thomas_bc"),
         }
-        self._stencil = self.compile("stencil")
+        self._stencil = self.compile_stencil("stencil")
 
     @property
     def input_properties(self) -> ty.PropertiesDict:
@@ -950,11 +950,11 @@ class IsentropicImplicitVerticalAdvectionPrognostic(ImplicitTendencyComponent):
         b = self.ones(shape=in_s.shape)
         c = self.zeros(shape=in_s.shape)
         d = self.zeros(shape=in_s.shape)
-        setup = self.stencil_subroutine("setup_thomas")
+        setup = self.get_subroutine_definition("setup_thomas")
         setup(gamma, w, in_s, a, c, d, i=i, j=j, kstart=kstart, kstop=kstop)
 
         # solve the tridiagonal system
-        thomas = self.stencil_subroutine("thomas")
+        thomas = self.get_subroutine_definition("thomas")
         out_s = self.zeros(shape=in_s.shape)
         thomas(a, b, c, d, out_s, i=i, j=j, kstart=kstart, kstop=kstop)
 

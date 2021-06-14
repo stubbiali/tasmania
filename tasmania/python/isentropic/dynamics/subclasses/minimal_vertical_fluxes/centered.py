@@ -22,7 +22,7 @@
 #
 from gt4py import gtscript
 
-from tasmania.python.framework.tag import stencil_subroutine
+from tasmania.python.framework.tag import subroutine_definition
 from tasmania.python.isentropic.dynamics.vertical_fluxes import (
     IsentropicMinimalVerticalFlux,
 )
@@ -48,7 +48,7 @@ class Centered(IsentropicMinimalVerticalFlux):
     externals = {"get_centered_flux_gt4py": get_centered_flux_gt4py}
 
     @staticmethod
-    @stencil_subroutine(backend=("numpy", "cupy"), stencil="flux_dry")
+    @subroutine_definition(backend=("numpy", "cupy"), stencil="flux_dry")
     def flux_dry_numpy(dt, dz, w, s, su, sv):
         flux_s = get_centered_flux_numpy(w, s)
         flux_su = get_centered_flux_numpy(w, su)
@@ -56,7 +56,7 @@ class Centered(IsentropicMinimalVerticalFlux):
         return flux_s, flux_su, flux_sv
 
     @staticmethod
-    @stencil_subroutine(backend=("numpy", "cupy"), stencil="flux_moist")
+    @subroutine_definition(backend=("numpy", "cupy"), stencil="flux_moist")
     def flux_moist_numpy(dt, dz, w, sqv, sqc, sqr):
         flux_sqv = get_centered_flux_numpy(w, sqv)
         flux_sqc = get_centered_flux_numpy(w, sqc)
@@ -64,7 +64,7 @@ class Centered(IsentropicMinimalVerticalFlux):
         return flux_sqv, flux_sqc, flux_sqr
 
     @staticmethod
-    @stencil_subroutine(backend="gt4py*", stencil="flux_dry")
+    @subroutine_definition(backend="gt4py*", stencil="flux_dry")
     @gtscript.function
     def flux_dry_gt4py(dt, dz, w, s, su, sv):
         flux_s = get_centered_flux_gt4py(w=w, phi=s)
@@ -73,7 +73,7 @@ class Centered(IsentropicMinimalVerticalFlux):
         return flux_s, flux_su, flux_sv
 
     @staticmethod
-    @stencil_subroutine(backend="gt4py*", stencil="flux_moist")
+    @subroutine_definition(backend="gt4py*", stencil="flux_moist")
     @gtscript.function
     def flux_moist_gt4py(dt, dz, w, sqv, sqc, sqr):
         flux_sqv = get_centered_flux_gt4py(w=w, phi=sqv)

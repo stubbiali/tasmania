@@ -139,14 +139,14 @@ class IsentropicDiagnostics(
         }
 
         # instantiate the underlying stencils
-        self._stencil_diagnostic_variables = self.compile(
+        self._stencil_diagnostic_variables = self.compile_stencil(
             "diagnostic_variables"
         )
-        self._stencil_density_and_temperature = self.compile(
+        self._stencil_density_and_temperature = self.compile_stencil(
             "density_and_temperature"
         )
-        self._stencil_montgomery = self.compile("montgomery")
-        self._stencil_height = self.compile("height")
+        self._stencil_montgomery = self.compile_stencil("montgomery")
+        self._stencil_height = self.compile_stencil("height")
 
     def get_diagnostic_variables(
         self,

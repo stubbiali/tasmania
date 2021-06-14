@@ -54,9 +54,9 @@ class WrappingStencil(StencilFactory):
         dtype = self.storage_options.dtype
         self.backend_options.dtypes = {"dtype": dtype}
         self.backend_options.externals = {
-            "call_func": self.core.stencil_subroutine("advection")
+            "call_func": self.core.get_subroutine_definition("advection")
         }
-        self.stencil = self.compile("stencil")
+        self.stencil = self.compile_stencil("stencil")
 
     def __call__(self, dx, dy, u, v, adv_u_x, adv_u_y, adv_v_x, adv_v_y):
         mi, mj, mk = u.shape

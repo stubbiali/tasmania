@@ -29,7 +29,7 @@ from sympl._core.factory import AbstractFactory
 from gt4py import gtscript
 
 from tasmania.python.framework.stencil import StencilFactory
-from tasmania.python.framework.tag import stencil_subroutine
+from tasmania.python.framework.tag import subroutine_definition
 
 
 class IsentropicHorizontalFlux(AbstractFactory, StencilFactory):
@@ -43,15 +43,17 @@ class IsentropicHorizontalFlux(AbstractFactory, StencilFactory):
     # class attributes
     extent: int = None
     order: int = None
-    externals: Dict[str, Any] = None
+    external_names: List[str] = None
 
     def __init__(self, *, backend: str) -> None:
         super().__init__(backend)
 
-    @stencil_subroutine(backend=("numpy", "cupy"), stencil="flux_dry")
+    @staticmethod
+    @subroutine_definition(
+        backend=("numpy", "cupy", "numba:cpu:numpy"), stencil="flux_dry"
+    )
     @abc.abstractmethod
     def flux_dry_numpy(
-        self,
         dt: float,
         dx: float,
         dy: float,
@@ -71,10 +73,12 @@ class IsentropicHorizontalFlux(AbstractFactory, StencilFactory):
     ) -> List[np.ndarray]:
         pass
 
-    @stencil_subroutine(backend=("numpy", "cupy"), stencil="flux_moist")
+    @staticmethod
+    @subroutine_definition(
+        backend=("numpy", "cupy", "numba:cpu:numpy"), stencil="flux_moist"
+    )
     @abc.abstractmethod
     def flux_moist_numpy(
-        self,
         dt: float,
         dx: float,
         dy: float,
@@ -93,7 +97,7 @@ class IsentropicHorizontalFlux(AbstractFactory, StencilFactory):
         pass
 
     @staticmethod
-    @stencil_subroutine(backend="gt4py*", stencil="flux_dry")
+    @subroutine_definition(backend="gt4py*", stencil="flux_dry")
     @gtscript.function
     @abc.abstractmethod
     def flux_dry_gt4py(
@@ -113,7 +117,7 @@ class IsentropicHorizontalFlux(AbstractFactory, StencilFactory):
         pass
 
     @staticmethod
-    @stencil_subroutine(backend="gt4py*", stencil="flux_moist")
+    @subroutine_definition(backend="gt4py*", stencil="flux_moist")
     @gtscript.function
     @abc.abstractmethod
     def flux_moist_gt4py(
@@ -150,7 +154,9 @@ class IsentropicMinimalHorizontalFlux(AbstractFactory, StencilFactory):
         super().__init__(backend)
 
     @staticmethod
-    @stencil_subroutine(backend=("numpy", "cupy"), stencil="flux_dry")
+    @subroutine_definition(
+        backend=("numpy", "cupy", "numba:cpu:numpy"), stencil="flux_dry"
+    )
     @abc.abstractmethod
     def flux_dry_numpy(
         dt: float,
@@ -172,7 +178,9 @@ class IsentropicMinimalHorizontalFlux(AbstractFactory, StencilFactory):
         pass
 
     @staticmethod
-    @stencil_subroutine(backend=("numpy", "cupy"), stencil="flux_moist")
+    @subroutine_definition(
+        backend=("numpy", "cupy", "numba:cpu:numpy"), stencil="flux_moist"
+    )
     @abc.abstractmethod
     def flux_moist_numpy(
         dt: float,
@@ -191,7 +199,7 @@ class IsentropicMinimalHorizontalFlux(AbstractFactory, StencilFactory):
         pass
 
     @staticmethod
-    @stencil_subroutine(backend="gt4py*", stencil="flux_dry")
+    @subroutine_definition(backend="gt4py*", stencil="flux_dry")
     @gtscript.function
     @abc.abstractmethod
     def flux_dry_gt4py(
@@ -211,7 +219,7 @@ class IsentropicMinimalHorizontalFlux(AbstractFactory, StencilFactory):
         pass
 
     @staticmethod
-    @stencil_subroutine(backend="gt4py*", stencil="flux_moist")
+    @subroutine_definition(backend="gt4py*", stencil="flux_moist")
     @gtscript.function
     @abc.abstractmethod
     def flux_moist_gt4py(

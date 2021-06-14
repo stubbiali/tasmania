@@ -31,7 +31,7 @@ from tasmania.python.framework.register import factorize
 from tasmania.python.framework.stencil import StencilFactory
 from tasmania.python.framework.tag import (
     stencil_definition,
-    stencil_subroutine,
+    subroutine_definition,
 )
 from tasmania.python.utils import typingx as ty
 
@@ -113,11 +113,11 @@ class HorizontalHyperDiffusion(StencilFactory, abc.ABC):
         # compile the underlying stencil
         self.backend_options.dtypes = {"dtype": dtype}
         self.backend_options.externals = {
-            "laplacian": self.stencil_subroutine("laplacian"),
-            "laplacian_x": self.stencil_subroutine("laplacian_x"),
-            "laplacian_y": self.stencil_subroutine("laplacian_y"),
+            "laplacian": self.get_subroutine_definition("laplacian"),
+            "laplacian_x": self.get_subroutine_definition("laplacian_x"),
+            "laplacian_y": self.get_subroutine_definition("laplacian_y"),
         }
-        self._stencil = self.compile("hyperdiffusion")
+        self._stencil = self.compile_stencil("hyperdiffusion")
 
     @abc.abstractmethod
     def __call__(self, phi: ty.Storage, phi_tnd: ty.Storage) -> None:
@@ -240,7 +240,7 @@ class HorizontalHyperDiffusion(StencilFactory, abc.ABC):
         pass
 
     @staticmethod
-    @stencil_subroutine(
+    @subroutine_definition(
         backend=("numpy", "cupy", "numba:cpu:numpy"), stencil="laplacian_x"
     )
     def stage_laplacian_x_numpy(dx: float, phi: np.ndarray) -> np.ndarray:
@@ -248,7 +248,7 @@ class HorizontalHyperDiffusion(StencilFactory, abc.ABC):
         return lap
 
     @staticmethod
-    @stencil_subroutine(
+    @subroutine_definition(
         backend=("numpy", "cupy", "numba:cpu:numpy"), stencil="laplacian_y"
     )
     def stage_laplacian_y_numpy(dy: float, phi: np.ndarray) -> np.ndarray:
@@ -256,7 +256,7 @@ class HorizontalHyperDiffusion(StencilFactory, abc.ABC):
         return lap
 
     @staticmethod
-    @stencil_subroutine(
+    @subroutine_definition(
         backend=("numpy", "cupy", "numba:cpu:numpy"), stencil="laplacian"
     )
     def stage_laplacian_numpy(
@@ -270,21 +270,21 @@ class HorizontalHyperDiffusion(StencilFactory, abc.ABC):
         return lap
 
     @staticmethod
-    @stencil_subroutine(backend="gt4py*", stencil="laplacian_x")
+    @subroutine_definition(backend="gt4py*", stencil="laplacian_x")
     @gtscript.function
     def stage_laplacian_x(dx: float, phi: ty.GTField) -> ty.GTField:
         lap = (phi[-1, 0, 0] - 2.0 * phi[0, 0, 0] + phi[1, 0, 0]) / (dx * dx)
         return lap
 
     @staticmethod
-    @stencil_subroutine(backend="gt4py*", stencil="laplacian_y")
+    @subroutine_definition(backend="gt4py*", stencil="laplacian_y")
     @gtscript.function
     def stage_laplacian_y(dy: float, phi: ty.GTField) -> ty.GTField:
         lap = (phi[0, -1, 0] - 2.0 * phi[0, 0, 0] + phi[0, 1, 0]) / (dy * dy)
         return lap
 
     @staticmethod
-    @stencil_subroutine(backend="gt4py*", stencil="laplacian")
+    @subroutine_definition(backend="gt4py*", stencil="laplacian")
     @gtscript.function
     def stage_laplacian(dx: float, dy: float, phi: ty.GTField) -> ty.GTField:
         lap = (phi[-1, 0, 0] - 2.0 * phi[0, 0, 0] + phi[1, 0, 0]) / (

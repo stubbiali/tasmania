@@ -27,7 +27,7 @@ from gt4py import gtscript
 
 from tasmania.python.burgers.dynamics.advection import BurgersAdvection
 from tasmania.python.framework.register import register
-from tasmania.python.framework.tag import stencil_subroutine
+from tasmania.python.framework.tag import subroutine_definition
 
 
 @register("third_order")
@@ -35,7 +35,7 @@ class ThirdOrder(BurgersAdvection):
     extent = 2
 
     @staticmethod
-    @stencil_subroutine(
+    @subroutine_definition(
         backend=("numpy", "cupy", "numba:cpu:numpy"), stencil="advection"
     )
     def call_numpy(dx, dy, u, v):
@@ -82,7 +82,7 @@ class ThirdOrder(BurgersAdvection):
         return adv_u_x, adv_u_y, adv_v_x, adv_v_y
 
     @staticmethod
-    @stencil_subroutine(backend="gt4py*", stencil="advection")
+    @subroutine_definition(backend="gt4py*", stencil="advection")
     @gtscript.function
     def call_gt4py(dx, dy, u, v):
         abs_u = abs(u)  # u if u > 0 else -u
@@ -124,7 +124,7 @@ class ThirdOrder(BurgersAdvection):
         return adv_u_x, adv_u_y, adv_v_x, adv_v_y
 
     @staticmethod
-    @stencil_subroutine(backend="numba:cpu:stencil", stencil="advection")
+    @subroutine_definition(backend="numba:cpu:stencil", stencil="advection")
     def call_numba_cpu(dx, dy, u, v):
         # >>> stencil definitions
         def absolute_def(phi):

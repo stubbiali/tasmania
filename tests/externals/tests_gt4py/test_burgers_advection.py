@@ -29,7 +29,7 @@ from tasmania.python.framework.options import BackendOptions, StorageOptions
 from tasmania.python.framework.stencil import StencilFactory
 from tasmania.python.framework.tag import (
     stencil_definition,
-    stencil_subroutine,
+    subroutine_definition,
 )
 
 from tests.utilities import compare_arrays
@@ -41,7 +41,7 @@ class ThirdOrder(StencilFactory):
         self.nb = 2
         dtype = self.storage_options.dtype
         self.backend_options.dtypes = {"dtype": dtype}
-        self.stencil = self.compile("burgers_advection")
+        self.stencil = self.compile_stencil("burgers_advection")
 
     def __call__(self, dx, dy, u, v, adv_u_x, adv_u_y, adv_v_x, adv_v_y):
         nb = self.nb
@@ -124,7 +124,7 @@ class ThirdOrderSubroutine(StencilFactory):
         self.backend_options.externals = {
             "advection": self.stencil_subroutine("advection")
         }
-        self.stencil = self.compile("burgers_advection")
+        self.stencil = self.compile_stencil("burgers_advection")
 
     def __call__(self, dx, dy, u, v, adv_u_x, adv_u_y, adv_v_x, adv_v_y):
         nb = self.nb
@@ -144,7 +144,7 @@ class ThirdOrderSubroutine(StencilFactory):
         )
 
     @staticmethod
-    @stencil_subroutine(backend="gt4py*", stencil="advection")
+    @subroutine_definition(backend="gt4py*", stencil="advection")
     @gtscript.function
     def advection_gt4py(u, v, dx, dy):
         abs_u = u if u > 0 else -u

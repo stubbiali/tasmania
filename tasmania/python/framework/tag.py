@@ -70,7 +70,8 @@ def stencil_compiler(
 
 
 def stencil_definition(
-    backend: Union[str, Sequence[str]], stencil: Union[str, Sequence[str]],
+    backend: Union[str, Sequence[str]],
+    stencil: Union[str, Sequence[str]],
 ) -> Callable:
     return multiregister(
         args=(
@@ -84,13 +85,14 @@ def stencil_definition(
     )
 
 
-def stencil_subroutine(
-    backend: Union[str, Sequence[str]], stencil: Union[str, Sequence[str]],
+def subroutine_definition(
+    backend: Union[str, Sequence[str]],
+    stencil: Union[str, Sequence[str]],
 ) -> Callable:
     return multiregister(
         args=(
             "function",
-            "stencil_subroutine",
+            "subroutine_definition",
             "backend",
             backend,
             "stencil",

@@ -52,7 +52,8 @@ master_key_values = (
     "ones",
     "stencil_compiler",
     "stencil_definition",
-    "stencil_subroutine",
+    "subroutine_compiler",
+    "subroutine_definition",
     "zeros",
 )
 

@@ -89,7 +89,7 @@ def run(backend):
     phi = ti.field(float, shape=shape)  # laplacian.zeros(shape=shape)
     lap = ti.field(float, shape=shape)  # laplacian.zeros(shape=shape)
 
-    stencil = laplacian.compile("lap")
+    stencil = laplacian.compile_stencil("lap")
 
     stencil(phi, lap)
 

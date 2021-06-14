@@ -85,9 +85,13 @@ class HorizontalVelocity(GridComponent, StencilFactory):
         dtype = self.storage_options.dtype
         self.backend_options.dtypes = {"dtype": dtype}
         self.backend_options.externals = {"staggering": staggering}
-        self._stencil_diagnosing_momenta = self.compile("momenta")
-        self._stencil_diagnosing_velocity_x = self.compile("velocity_x")
-        self._stencil_diagnosing_velocity_y = self.compile("velocity_y")
+        self._stencil_diagnosing_momenta = self.compile_stencil("momenta")
+        self._stencil_diagnosing_velocity_x = self.compile_stencil(
+            "velocity_x"
+        )
+        self._stencil_diagnosing_velocity_y = self.compile_stencil(
+            "velocity_y"
+        )
 
     def get_momenta(
         self: "HorizontalVelocity",
@@ -361,8 +365,10 @@ class WaterConstituent(GridComponent, StencilFactory):
             "clipping": clipping,
             "positive": positive,
         }
-        self._stencil_diagnosing_density = self.compile("density")
-        self._stencil_diagnosing_mass_fraction = self.compile("mass_fraction")
+        self._stencil_diagnosing_density = self.compile_stencil("density")
+        self._stencil_diagnosing_mass_fraction = self.compile_stencil(
+            "mass_fraction"
+        )
 
     def get_density_of_water_constituent(
         self: "WaterConstituent",

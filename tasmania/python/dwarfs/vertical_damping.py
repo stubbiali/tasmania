@@ -123,7 +123,7 @@ class VerticalDamping(AbstractFactory, GridComponent, StencilFactory):
         # instantiate the underlying stencil
         dtype = self.storage_options.dtype
         self.backend_options.dtypes = {"dtype": dtype}
-        self._stencil_damp = self.compile("damping")
+        self._stencil_damp = self.compile_stencil("damping")
 
     @abc.abstractmethod
     def __call__(

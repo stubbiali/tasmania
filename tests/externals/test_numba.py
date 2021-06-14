@@ -144,7 +144,7 @@ def test_performance():
 
         dtype = sf.storage_options.dtype
         sf.backend_options.dtypes = {"dtype": dtype}
-        obj = sf.compile(stencil)
+        obj = sf.compile_stencil(stencil)
 
         Timer.start(label=backend + "-" + stencil)
         for _ in range(nt):
@@ -230,7 +230,7 @@ def test_gpu():
     phi = sf.zeros(shape=shape)
     lap = sf.zeros(shape=shape)
 
-    laplacian_numba_cpu = sf.compile("lap")
+    laplacian_numba_cpu = sf.compile_stencil("lap")
 
     # Timer.start(label="numba-cpu")
     # for _ in range(nt):
@@ -252,7 +252,9 @@ def test_gpu():
     Timer.start(label="numba-gpu")
     for _ in range(nt):
         laplacian_numba[blockspergrid, threadsperblock](
-            phi, lap, [1, 1, 0],
+            phi,
+            lap,
+            [1, 1, 0],
         )
     Timer.stop()
     Timer.print(label="numba-gpu")
@@ -268,7 +270,7 @@ def test_gpu():
     phi = sf.zeros(shape=shape)
     lap = sf.zeros(shape=shape)
 
-    laplacian_gt4py = sf.compile("lap")
+    laplacian_gt4py = sf.compile_stencil("lap")
 
     Timer.start(label="gt4py")
     for _ in range(nt):

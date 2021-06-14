@@ -227,8 +227,10 @@ class ForwardEulerSI(IsentropicPrognostic):
         externals.update(
             {
                 "extent": self._hflux.extent,
-                "flux_dry": self._hflux.stencil_subroutine("flux_dry"),
-                "flux_moist": self._hflux.stencil_subroutine("flux_moist"),
+                "flux_dry": self._hflux.get_subroutine_definition("flux_dry"),
+                "flux_moist": self._hflux.get_subroutine_definition(
+                    "flux_moist"
+                ),
                 "moist": self._moist,
                 "s_tnd_on": "air_isentropic_density" in tendencies,
                 "su_tnd_on": "x_momentum_isentropic" in tendencies,
@@ -241,8 +243,10 @@ class ForwardEulerSI(IsentropicPrognostic):
         self.backend_options.externals = externals
 
         # compile the stencils
-        self._stencil = self.compile("step_forward_euler")
-        self._stencil_momentum = self.compile("step_forward_euler_momentum")
+        self._stencil = self.compile_stencil("step_forward_euler")
+        self._stencil_momentum = self.compile_stencil(
+            "step_forward_euler_momentum"
+        )
 
         # allocate temporaries
         self._stencils_allocate_temporaries()

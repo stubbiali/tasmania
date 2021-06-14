@@ -107,9 +107,9 @@ class IsentropicConservativeCoriolis(TendencyComponent):
         dtype = self.storage_options.dtype
         self.backend_options.dtypes = {"dtype": dtype}
         self.backend_options.externals = {
-            "set_output": self.stencil_subroutine("set_output")
+            "set_output": self.get_subroutine_definition("set_output")
         }
-        self._stencil = self.compile("coriolis")
+        self._stencil = self.compile_stencil("coriolis")
 
     @property
     def input_properties(self) -> "PropertyDict":

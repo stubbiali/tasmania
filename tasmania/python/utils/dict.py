@@ -108,7 +108,7 @@ class DataArrayDictOperator(StencilFactory):
         if self._stencil_copy is None:
             dtype = self.storage_options.dtype
             self.backend_options.dtypes = {"dtype": dtype}
-            self._stencil_copy = self.compile("copy")
+            self._stencil_copy = self.compile_stencil("copy")
 
         for key in shared_keys:
             assert "units" in dst[key].attrs
@@ -177,7 +177,7 @@ class DataArrayDictOperator(StencilFactory):
         if self._stencil_add is None:
             dtype = self.storage_options.dtype
             self.backend_options.dtypes = {"dtype": dtype}
-            self._stencil_add = self.compile("add")
+            self._stencil_add = self.compile_stencil("add")
 
         for key in shared_keys:
             props = field_properties.get(key, {})
@@ -206,7 +206,7 @@ class DataArrayDictOperator(StencilFactory):
             if self._stencil_copy is None:
                 dtype = self.storage_options.dtype
                 self.backend_options.dtypes = {"dtype": dtype}
-                self._stencil_copy = self.compile("copy")
+                self._stencil_copy = self.compile_stencil("copy")
 
             for key in unshared_keys:
                 _dict = dict1 if key in dict1 else dict2
@@ -267,7 +267,7 @@ class DataArrayDictOperator(StencilFactory):
         if self._stencil_iadd is None:
             dtype = self.storage_options.dtype
             self.backend_options.dtypes = {"dtype": dtype}
-            self._stencil_iadd = self.compile("iadd")
+            self._stencil_iadd = self.compile_stencil("iadd")
 
         for key in shared_keys:
             props = field_properties.get(key, {})
@@ -343,7 +343,7 @@ class DataArrayDictOperator(StencilFactory):
         if self._stencil_sub is None:
             dtype = self.storage_options.dtype
             self.backend_options.dtypes = {"dtype": dtype}
-            self._stencil_sub = self.compile("sub")
+            self._stencil_sub = self.compile_stencil("sub")
 
         for key in shared_keys:
             props = field_properties.get(key, {})
@@ -372,11 +372,11 @@ class DataArrayDictOperator(StencilFactory):
             if self._stencil_copy is None:
                 dtype = self.storage_options.dtype
                 self.backend_options.dtypes = {"dtype": dtype}
-                self._stencil_copy = self.compile("copy")
+                self._stencil_copy = self.compile_stencil("copy")
             if self._stencil_copychange is None:
                 dtype = self.storage_options.dtype
                 self.backend_options.dtypes = {"dtype": dtype}
-                self._stencil_copychange = self.compile("copychange")
+                self._stencil_copychange = self.compile_stencil("copychange")
 
             for key in unshared_keys:
                 props = field_properties.get(key, {})
@@ -453,7 +453,7 @@ class DataArrayDictOperator(StencilFactory):
         if self._stencil_isub is None:
             dtype = self.storage_options.dtype
             self.backend_options.dtypes = {"dtype": dtype}
-            self._stencil_isub = self.compile("isub")
+            self._stencil_isub = self.compile_stencil("isub")
 
         for key in shared_keys:
             props = field_properties.get(key, {})
@@ -474,7 +474,7 @@ class DataArrayDictOperator(StencilFactory):
             if self._stencil_iscale is None:
                 dtype = self.storage_options.dtype
                 self.backend_options.dtypes = {"dtype": dtype}
-                self._stencil_iscale = self.compile("iscale")
+                self._stencil_iscale = self.compile_stencil("iscale")
 
             for key in unshared_keys:
                 props = field_properties.get(key, {})
@@ -512,7 +512,7 @@ class DataArrayDictOperator(StencilFactory):
         if self._stencil_scale is None:
             dtype = self.storage_options.dtype
             self.backend_options.dtypes = {"dtype": dtype}
-            self._stencil_scale = self.compile("scale")
+            self._stencil_scale = self.compile_stencil("scale")
 
         for key in dictionary:
             if key == "time":
@@ -554,7 +554,7 @@ class DataArrayDictOperator(StencilFactory):
         if self._stencil_iscale is None:
             dtype = self.storage_options.dtype
             self.backend_options.dtypes = {"dtype": dtype}
-            self._stencil_iscale = self.compile("iscale")
+            self._stencil_iscale = self.compile_stencil("iscale")
 
         for key in dictionary:
             if key != "time":
@@ -596,7 +596,7 @@ class DataArrayDictOperator(StencilFactory):
         if self._stencil_addsub is None:
             dtype = self.storage_options.dtype
             self.backend_options.dtypes = {"dtype": dtype}
-            self._stencil_addsub = self.compile("addsub")
+            self._stencil_addsub = self.compile_stencil("addsub")
 
         for key in shared_keys:
             props = field_properties.get(key, {})
@@ -644,7 +644,7 @@ class DataArrayDictOperator(StencilFactory):
         if self._stencil_iaddsub is None:
             dtype = self.storage_options.dtype
             self.backend_options.dtypes = {"dtype": dtype}
-            self._stencil_iaddsub = self.compile("iaddsub")
+            self._stencil_iaddsub = self.compile_stencil("iaddsub")
 
         for key in shared_keys:
             props = field_properties.get(key, {})
@@ -687,7 +687,7 @@ class DataArrayDictOperator(StencilFactory):
         if self._stencil_fma is None:
             dtype = self.storage_options.dtype
             self.backend_options.dtypes = {"dtype": dtype}
-            self._stencil_fma = self.compile("fma")
+            self._stencil_fma = self.compile_stencil("fma")
 
         for key in shared_keys:
             props = field_properties.get(key, {})
@@ -740,7 +740,7 @@ class DataArrayDictOperator(StencilFactory):
         if self._stencil_sts_rk2_0 is None:
             dtype = self.storage_options.dtype
             self.backend_options.dtypes = {"dtype": dtype}
-            self._stencil_sts_rk2_0 = self.compile("sts_rk2_0")
+            self._stencil_sts_rk2_0 = self.compile_stencil("sts_rk2_0")
 
         for key in shared_keys:
             props = field_properties.get(key, {})
@@ -795,7 +795,7 @@ class DataArrayDictOperator(StencilFactory):
         if self._stencil_sts_rk3ws_0 is None:
             dtype = self.storage_options.dtype
             self.backend_options.dtypes = {"dtype": dtype}
-            self._stencil_sts_rk3ws_0 = self.compile("sts_rk3ws_0")
+            self._stencil_sts_rk3ws_0 = self.compile_stencil("sts_rk3ws_0")
 
         for key in shared_keys:
             props = field_properties.get(key, {})
