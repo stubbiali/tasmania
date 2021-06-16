@@ -315,7 +315,7 @@ def set_figure_properties(fig: plt.Figure, **kwargs) -> None:
 
     if figlegend_on:
         axes = (
-            [fig.get_axes()[figlegend_ax]]
+            [fig.get_axes()[i] for i in figlegend_ax]
             if figlegend_ax is not None
             else fig.get_axes()
         )
@@ -327,7 +327,13 @@ def set_figure_properties(fig: plt.Figure, **kwargs) -> None:
         )
 
         extra = patches.Rectangle(
-            (0, 0), 1, 1, fc="w", fill=False, edgecolor="none", linewidth=0,
+            (0, 0),
+            1,
+            1,
+            fc="w",
+            fill=False,
+            edgecolor="none",
+            linewidth=0,
         )
 
         if figlegend_multiple:
@@ -515,7 +521,9 @@ def set_axes_properties(ax: plt.Axes, **kwargs) -> None:
     x_lim = kwargs.get("x_lim", None)
     invert_xaxis = kwargs.get("invert_xaxis", False)
     x_scale = kwargs.get("x_scale", "linear")
+    x_scale_kwargs = kwargs.get("x_scale_kwargs", {})
     x_ticks = kwargs.get("x_ticks", None)
+    x_tick_length = kwargs.get("x_tick_length", None)
     x_ticklabels = kwargs.get("x_ticklabels", None)
     x_ticklabels_color = kwargs.get("x_ticklabels_color", "black")
     x_ticklabels_rotation = kwargs.get("x_ticklabels_rotation", 0)
@@ -528,6 +536,7 @@ def set_axes_properties(ax: plt.Axes, **kwargs) -> None:
     y_lim = kwargs.get("y_lim", None)
     invert_yaxis = kwargs.get("invert_yaxis", False)
     y_scale = kwargs.get("y_scale", "linear")
+    y_scale_kwargs = kwargs.get("y_scale_kwargs", {})
     y_ticks = kwargs.get("y_ticks", None)
     y_ticklabels = kwargs.get("y_ticklabels", None)
     y_ticklabels_color = kwargs.get("y_ticklabels_color", "black")
@@ -562,9 +571,9 @@ def set_axes_properties(ax: plt.Axes, **kwargs) -> None:
     grid_on = kwargs.get("grid_on", False)
     grid_properties = kwargs.get("grid_properties", None)
     # ax2 title
-    ax2_title_center = kwargs.get("title_center", "")
-    ax2_title_left = kwargs.get("title_left", "")
-    ax2_title_right = kwargs.get("title_right", "")
+    ax2_title_center = kwargs.get("ax2_title_center", "")
+    ax2_title_left = kwargs.get("ax2_title_left", "")
+    ax2_title_right = kwargs.get("ax2_title_right", "")
     # x2-axis
     ax2_on = kwargs.get("ax2_on", False)
     x2_label = kwargs.get("x2_label", "")
@@ -680,9 +689,9 @@ def set_axes_properties(ax: plt.Axes, **kwargs) -> None:
 
     # axes scale
     if x_scale is not None:
-        ax.set_xscale(x_scale)
+        ax.set_xscale(x_scale, **x_scale_kwargs)
     if y_scale is not None:
-        ax.set_yscale(y_scale)
+        ax.set_yscale(y_scale, **y_scale_kwargs)
     try:
         if z_scale is not None:
             ax.set_zscale(z_scale)
@@ -713,6 +722,10 @@ def set_axes_properties(ax: plt.Axes, **kwargs) -> None:
         #     RuntimeWarning,
         # )
         pass
+
+    # tick length
+    if x_tick_length is not None:
+        ax.get_xaxis().set_tick_params("both", length=x_tick_length)
 
     # axes tick labels
     if x_ticklabels is not None:
@@ -1795,7 +1808,7 @@ def make_cdf(data: np.ndarray, ax: plt.Axes, **kwargs) -> None:
 
 
 def add_annotation(ax: plt.Axes, **kwargs) -> None:
-    """ Add a text annotation to a plot. """
+    """Add a text annotation to a plot."""
     # get keyword arguments
     fontsize = kwargs.get("fontsize", 16)
     text = kwargs.get("text", "")
