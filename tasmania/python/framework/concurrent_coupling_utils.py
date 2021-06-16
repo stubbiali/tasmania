@@ -43,10 +43,12 @@ from tasmania.python.framework.static_operators import merge_dims
 if TYPE_CHECKING:
     from sympl._core.typingx import (
         DataArrayDict,
+        NDArrayLike,
         NDArrayLikeDict,
         PropertyDict,
     )
 
+    from tasmania.python.domain.domain import Domain
     from tasmania.python.framework.concurrent_coupling import (
         ConcurrentCoupling,
     )
@@ -101,6 +103,15 @@ class StaticOperator:
                 tendencies.add(name)
             out.append(overwrite_tendencies)
         return out
+
+    @classmethod
+    def get_horizontal_boundary(
+        cls, coupler: "ConcurrentCoupling"
+    ) -> Optional["Domain"]:
+        for component in coupler.components:
+            if hasattr(component, "horizontal_boundary"):
+                return component.horizontal_boundary
+        return None
 
     @classmethod
     def _get_input_properties(
@@ -535,6 +546,16 @@ class DynamicOperator:
             "diagnostic_properties", coupler
         )
 
+    def allocate_tendency(self, name: str) -> "NDArrayLike":
+        for component in self.coupler.components:
+            tendency_properties = self.sco_tendencies.get_properties(component)
+            if name in tendency_properties:
+                allocate_tendency = self.sco_tendencies.get_allocator(
+                    component
+                )
+                if allocate_tendency is not None:
+                    return allocate_tendency(name)
+
     def allocate_tendencies(self, state: "DataArrayDict") -> "DataArrayDict":
         raw_tendencies = {}
 
@@ -555,6 +576,18 @@ class DynamicOperator:
         )
 
         return tendencies
+
+    def allocate_diagnostic(self, name: str) -> "NDArrayLike":
+        for component in self.coupler.components:
+            diagnostic_properties = self.sco_diagnostics.get_properties(
+                component
+            )
+            if name in diagnostic_properties:
+                allocate_diagnostic = self.sco_diagnostics.get_allocator(
+                    component
+                )
+                if allocate_diagnostic is not None:
+                    return allocate_diagnostic(name)
 
     def allocate_diagnostics(self, state: "DataArrayDict") -> "DataArrayDict":
         raw_diagnostics = {}

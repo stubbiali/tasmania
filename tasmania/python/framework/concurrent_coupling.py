@@ -22,13 +22,15 @@
 #
 from typing import Dict, Optional, TYPE_CHECKING, Tuple, Union
 
-from sympl import (
-    DiagnosticComponent,
+from sympl._core.composite import (
     DiagnosticComponentComposite as SymplDiagnosticComponentComposite,
-    TendencyComponent,
-    TendencyComponentComposite,
-    ImplicitTendencyComponent,
     ImplicitTendencyComponentComposite,
+    TendencyComponentComposite,
+)
+from sympl._core.core_components import (
+    DiagnosticComponent,
+    TendencyComponent,
+    ImplicitTendencyComponent,
 )
 from sympl._core.dynamic_checkers import (
     InflowComponentChecker,
@@ -54,7 +56,7 @@ from tasmania.python.utils import typingx
 from tasmania.python.utils.dict import DataArrayDictOperator
 
 if TYPE_CHECKING:
-    from sympl._core.typingx import DataArrayDict
+    from sympl._core.typingx import DataArrayDict, NDArrayLike
 
     from tasmania.python.framework.options import (
         BackendOptions,
@@ -215,6 +217,11 @@ class ConcurrentCoupling(BaseConcurrentCoupling):
                 StaticOperator.get_overwrite_tendencies(self)
             )
 
+            # retrieve the object handling the horizontal boundary
+            self.horizontal_boundary = StaticOperator.get_horizontal_boundary(
+                self
+            )
+
             # dynamic checkers
             if enable_checks:
                 self._input_checker = InflowComponentChecker.factory(
@@ -272,10 +279,20 @@ class ConcurrentCoupling(BaseConcurrentCoupling):
     def execution_policy(self) -> str:
         return self._policy
 
-    def allocate_tendencies(self, state: "DataArrayDict") -> "DataArrayDict":
+    def allocate_tendency(self, name: str) -> "NDArrayLike":
+        return self._cc_operator.allocate_tendency(name)
+
+    def allocate_tendency_dict(
+        self, state: "DataArrayDict"
+    ) -> "DataArrayDict":
         return self._cc_operator.allocate_tendencies(state)
 
-    def allocate_diagnostics(self, state: "DataArrayDict") -> "DataArrayDict":
+    def allocate_diagnostic(self, name: str) -> "NDArrayLike":
+        return self._cc_operator.allocate_diagnostic(name)
+
+    def allocate_diagnostic_dict(
+        self, state: "DataArrayDict"
+    ) -> "DataArrayDict":
         return self._cc_operator.allocate_diagnostics(state)
 
     def __call__(
