@@ -94,6 +94,7 @@ class TimeIntegrationOptions:
     scheme: str = None
     enforce_horizontal_boundary: bool = False
     substeps: int = 1
+    enable_checks: bool = True
     backend: str = "numpy"
     backend_options: BackendOptions = field(default_factory=BackendOptions)
     storage_options: StorageOptions = field(default_factory=StorageOptions)
