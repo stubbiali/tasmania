@@ -422,25 +422,25 @@ class DynamicalCore(DomainComponent, StencilFactory, abc.ABC):
         self, state: "DataArrayDict"
     ) -> None:
         self._fast_tendencies = (
-            self.fast_tendency_component.allocate_tendencies(state)
+            self.fast_tendency_component.allocate_tendency_dict(state)
             if self.fast_tendency_component is not None
             else {}
         )
         if self.fast_diagnostic_component is not None:
             self._fast_tendencies.update(
-                self.fast_diagnostic_component.allocate_tendencies(state)
+                self.fast_diagnostic_component.allocate_tendency_dict(state)
             )
 
         self._fast_tendency_component_diagnostics = []
         self._fast_diagnostic_component_diagnostics = []
         for _ in range(self.stages):
             self._fast_tendency_component_diagnostics.append(
-                self.fast_tendency_component.allocate_diagnostics(state)
+                self.fast_tendency_component.allocate_diagnostic_dict(state)
                 if self.fast_tendency_component is not None
                 else {}
             )
             self._fast_diagnostic_component_diagnostics.append(
-                self.fast_diagnostic_component.allocate_diagnostics(state)
+                self.fast_diagnostic_component.allocate_diagnostic_dict(state)
                 if self.fast_diagnostic_component is not None
                 else {}
             )
@@ -873,7 +873,7 @@ class DynamicalCore(DomainComponent, StencilFactory, abc.ABC):
         """
         pass
 
-    def update_topography(self, time: typingx.Datetime) -> None:
+    def update_topography(self, time: typingx.TimeDelta) -> None:
         """Update the underlying (time-dependent) topography.
 
         Parameters
