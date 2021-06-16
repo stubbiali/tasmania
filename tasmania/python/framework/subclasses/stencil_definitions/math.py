@@ -62,8 +62,11 @@ def clip_cupy(in_field, out_field, *, origin, domain):
 
 @stencil_definition.register(backend="numpy", stencil="fma")
 def fma_numpy(in_a, in_b, out_c, *, f, origin, domain):
-    idx = tuple(slice(o, o + d) for o, d in zip(origin, domain))
-    out_c[idx] = in_a[idx] + f * in_b[idx]
+    ib, jb, kb = origin
+    ie, je, ke = ib + domain[0], jb + domain[1], kb + domain[2]
+    out_c[ib:ie, jb:je, kb:ke] = (
+        in_a[ib:ie, jb:je, kb:ke] + f * in_b[ib:ie, jb:je, kb:ke]
+    )
 
 
 @stencil_definition.register(backend="numpy", stencil="iabs")
@@ -80,8 +83,11 @@ def iadd_numpy(inout_a, in_b, *, origin, domain):
 
 @stencil_definition.register(backend="numpy", stencil="iaddsub")
 def iaddsub_numpy(inout_a, in_b, in_c, *, origin, domain):
-    idx = tuple(slice(o, o + d) for o, d in zip(origin, domain))
-    inout_a[idx] += in_b[idx] - in_c[idx]
+    ib, jb, kb = origin
+    ie, je, ke = ib + domain[0], jb + domain[1], kb + domain[2]
+    inout_a[ib:ie, jb:je, kb:ke] += (
+        in_b[ib:ie, jb:je, kb:ke] - in_c[ib:ie, jb:je, kb:ke]
+    )
 
 
 @stencil_definition.register(backend="numpy", stencil="iclip")
