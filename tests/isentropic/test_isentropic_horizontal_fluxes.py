@@ -20,6 +20,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+from copy import deepcopy
 from hypothesis import (
     given,
     reproduce_failure,
@@ -91,16 +92,27 @@ class WrappingStencil(StencilFactory):
         dtype = self.storage_options.dtype
         self.backend_options.dtypes = {"dtype": dtype}
 
-        self.backend_options.externals = self.core.externals.copy()
-        self.backend_options.externals[
-            "get_flux_dry"
-        ] = self.core.stencil_subroutine("flux_dry")
-        self.backend_options.externals[
-            "get_flux_moist"
-        ] = self.core.stencil_subroutine("flux_moist")
-
-        self.stencil_dry = self.compile("stencil_dry")
-        self.stencil_moist = self.compile("stencil_moist")
+        bo = deepcopy(self.backend_options)
+        bo.externals = {
+            name: self.core.compile_subroutine(name)
+            for name in self.core.external_names
+        }
+        get_flux_dry = self.core.compile_subroutine(
+            "flux_dry", backend_options=bo
+        )
+        get_flux_moist = self.core.compile_subroutine(
+            "flux_moist", backend_options=bo
+        )
+        self.backend_options.externals = bo.externals.copy()
+        self.backend_options.externals["extent"] = self.core.extent
+        self.backend_options.externals.update(
+            {
+                "get_flux_dry": get_flux_dry,
+                "get_flux_moist": get_flux_moist,
+            }
+        )
+        self.stencil_dry = self.compile_stencil("stencil_dry")
+        self.stencil_moist = self.compile_stencil("stencil_moist")
 
     def call_dry(
         self,
@@ -225,9 +237,11 @@ class WrappingStencil(StencilFactory):
 
         return return_list
 
-    @stencil_definition(backend=("numpy", "cupy"), stencil="stencil_dry")
+    @staticmethod
+    @stencil_definition(
+        backend=("numpy", "cupy", "numba:cpu:numpy"), stencil="stencil_dry"
+    )
     def stencil_dry_numpy(
-        self,
         s,
         u,
         v,
@@ -250,10 +264,14 @@ class WrappingStencil(StencilFactory):
         origin,
         domain
     ):
-        ijk = tuple(slice(o, o + d) for o, d in zip(origin, domain))
-        ij_ext = tuple(
-            slice(o - self.core.extent, o + d + self.core.extent)
-            for o, d in zip(origin[:2], domain[:2])
+        ijk = (
+            slice(origin[0], origin[0] + domain[0]),
+            slice(origin[1], origin[1] + domain[1]),
+            slice(origin[2], origin[2] + domain[2]),
+        )
+        ij_ext = (
+            slice(origin[0] - extent, origin[0] + domain[0] + extent),
+            slice(origin[1] - extent, origin[1] + domain[1] + extent),
         )
         ijk_x = (ijk[0], ij_ext[1], ijk[2])
         ijk_y = (ij_ext[0], ijk[1], ijk[2])
@@ -275,15 +293,17 @@ class WrappingStencil(StencilFactory):
             v[ijk_ext],
             su[ijk_ext],
             sv[ijk_ext],
-            mtg[ijk_ext] if mtg else None,
-            s_tnd[ijk_ext] if s_tnd else None,
-            su_tnd[ijk_ext] if su_tnd else None,
-            sv_tnd[ijk_ext] if sv_tnd else None,
+            mtg[ijk_ext] if mtg is not None else None,
+            s_tnd[ijk_ext] if s_tnd is not None else None,
+            su_tnd[ijk_ext] if su_tnd is not None else None,
+            sv_tnd[ijk_ext] if sv_tnd is not None else None,
         )
 
-    @stencil_definition(backend=("numpy", "cupy"), stencil="stencil_moist")
+    @staticmethod
+    @stencil_definition(
+        backend=("numpy", "cupy", "numba:cpu:numpy"), stencil="stencil_moist"
+    )
     def stencil_moist_numpy(
-        self,
         s,
         u,
         v,
@@ -306,10 +326,14 @@ class WrappingStencil(StencilFactory):
         origin,
         domain
     ):
-        ijk = tuple(slice(o, o + d) for o, d in zip(origin, domain))
-        ij_ext = tuple(
-            slice(o - self.core.extent, o + d + self.core.extent)
-            for o, d in zip(origin[:2], domain[:2])
+        ijk = (
+            slice(origin[0], origin[0] + domain[0]),
+            slice(origin[1], origin[1] + domain[1]),
+            slice(origin[2], origin[2] + domain[2]),
+        )
+        ij_ext = (
+            slice(origin[0] - extent, origin[0] + domain[0] + extent),
+            slice(origin[1] - extent, origin[1] + domain[1] + extent),
         )
         ijk_x = (ijk[0], ij_ext[1], ijk[2])
         ijk_y = (ij_ext[0], ijk[1], ijk[2])
@@ -709,4 +733,5 @@ def test(data, flux_scheme, backend, dtype):
 
 
 if __name__ == "__main__":
-    pytest.main([__file__])
+    # pytest.main([__file__])
+    test("centered", "numba:cpu:numpy", float)

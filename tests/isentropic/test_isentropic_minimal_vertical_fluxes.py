@@ -90,13 +90,13 @@ class WrappingStencil(StencilFactory):
         self.backend_options.externals = self.core.externals.copy()
         self.backend_options.externals[
             "get_flux_dry"
-        ] = self.core.stencil_subroutine("flux_dry")
+        ] = self.core.get_subroutine_definition("flux_dry")
         self.backend_options.externals[
             "get_flux_moist"
-        ] = self.core.stencil_subroutine("flux_moist")
+        ] = self.core.get_subroutine_definition("flux_moist")
 
-        self.stencil_dry = self.compile("stencil_dry")
-        self.stencil_moist = self.compile("stencil_moist")
+        self.stencil_dry = self.compile_stencil("stencil_dry")
+        self.stencil_moist = self.compile_stencil("stencil_moist")
 
     def call_dry(self, dt, dz, w, s, su, sv):
         mi, mj, mk = s.shape
@@ -190,7 +190,7 @@ class WrappingStencil(StencilFactory):
             flux_s[ijk],
             flux_su[ijk],
             flux_sv[ijk],
-        ) = self.core.stencil_subroutine("flux_dry")(
+        ) = self.core.get_subroutine_definition("flux_dry")(
             dt,
             dz,
             w[ijk_ext],
@@ -229,7 +229,7 @@ class WrappingStencil(StencilFactory):
             flux_sqv[ijk],
             flux_sqc[ijk],
             flux_sqr[ijk],
-        ) = self.core.stencil_subroutine("flux_moist")(
+        ) = self.core.get_subroutine_definition("flux_moist")(
             dt,
             dz,
             w[ijk_ext],
@@ -286,7 +286,7 @@ def get_upwind_flux(w, phi):
     f = np.zeros_like(phi)
     for i in range(0, nx):
         for j in range(0, ny):
-            for k in range(1, nz - 1):
+            for k in range(1, w.shape[2] - 1):
                 f[i, j, k] = w[i, j, k] * (
                     phi[i, j, k] if w[i, j, k] > 0 else phi[i, j, k - 1]
                 )

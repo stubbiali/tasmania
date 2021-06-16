@@ -29,22 +29,16 @@ import numpy as np
 from property_cached import cached_property
 import pytest
 
-from tasmania.python.framework.generic_functions import to_numpy
-from tasmania.python.framework.options import BackendOptions, StorageOptions
 from tasmania.python.isentropic.physics.turbulence import IsentropicSmagorinsky
-from tasmania import get_dataarray_3d
 
 from tests import conf
-from tests.strategies import st_domain, st_one_of, st_isentropic_state_f
-from tests.suites import DomainSuite, TendencyComponentTestSuite
+from tests.strategies import st_isentropic_state_f
+from tests.suites.core_components import TendencyComponentTestSuite
+from tests.suites.domain import DomainSuite
 from tests.utilities import compare_arrays, hyp_settings
 
 
 class IsentropicSmagorinskyTestSuite(TendencyComponentTestSuite):
-    def __init__(self, hyp_data, domain_suite, *, storage_shape):
-        self.storage_shape = storage_shape
-        super().__init__(hyp_data, domain_suite)
-
     @cached_property
     def component(self):
         cs = self.hyp_data.draw(
@@ -55,7 +49,7 @@ class IsentropicSmagorinskyTestSuite(TendencyComponentTestSuite):
             smagorinsky_constant=cs,
             backend=self.ds.backend,
             backend_options=self.ds.bo,
-            storage_shape=self.storage_shape,
+            storage_shape=self.ds.storage_shape,
             storage_options=self.ds.so,
         )
 
@@ -65,13 +59,13 @@ class IsentropicSmagorinskyTestSuite(TendencyComponentTestSuite):
                 self.ds.grid,
                 moist=False,
                 backend=self.ds.backend,
-                storage_shape=self.storage_shape,
+                storage_shape=self.ds.storage_shape,
                 storage_options=self.ds.so,
             ),
             label="state",
         )
 
-    def get_tendencies_and_diagnostics(self, raw_state_np):
+    def get_validation_tendencies_and_diagnostics(self, raw_state_np, dt=None):
         cs = self.component._cs
         dx = self.ds.grid.dx.to_units("m").values.item()
         dy = self.ds.grid.dy.to_units("m").values.item()
@@ -136,8 +130,7 @@ def test_smagorinsky(data, backend, dtype):
     # random data generation
     # ========================================
     ds = DomainSuite(data, backend, dtype, grid_type="numerical", nb_min=2)
-    storage_shape = (ds.grid.nx + 1, ds.grid.ny + 1, ds.grid.nz + 1)
-    ts = IsentropicSmagorinskyTestSuite(data, ds, storage_shape=storage_shape)
+    ts = IsentropicSmagorinskyTestSuite(ds)
     ts.run()
 
 

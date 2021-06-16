@@ -50,7 +50,8 @@ from tests.dwarfs.horizontal_diffusers.test_second_order import (
     second_order_diffusion_yz,
 )
 from tests.strategies import st_burgers_state, st_floats
-from tests.suites import DomainSuite, TendencyComponentTestSuite
+from tests.suites.core_components import TendencyComponentTestSuite
+from tests.suites.domain import DomainSuite
 from tests.utilities import hyp_settings
 
 
@@ -97,7 +98,7 @@ class SecondOrder(TendencyComponentTestSuite):
             label="state",
         )
 
-    def get_tendencies_and_diagnostics(self, raw_state_np, dt=None):
+    def get_validation_tendencies_and_diagnostics(self, raw_state_np, dt=None):
         tendencies = {
             "x_velocity": self.get_validation_field(
                 raw_state_np, "x_velocity"

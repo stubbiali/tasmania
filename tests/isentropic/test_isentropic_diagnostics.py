@@ -30,7 +30,7 @@ import numpy as np
 from property_cached import cached_property
 import pytest
 
-import sympl
+from sympl._core.data_array import DataArray
 
 from tasmania.python.framework.allocators import zeros
 from tasmania.python.framework.generic_functions import to_numpy
@@ -51,7 +51,8 @@ from tests.strategies import (
     st_isentropic_state_f,
     st_raw_field,
 )
-from tests.suites import DiagnosticComponentTestSuite, DomainSuite
+from tests.suites.core_components import DiagnosticComponentTestSuite
+from tests.suites.domain import DomainSuite
 from tests.utilities import compare_arrays, hyp_settings
 
 
@@ -436,11 +437,10 @@ def test_density_and_temperature(data, backend, dtype):
 
 
 class IsentropicDiagnosticsTestSuite(DiagnosticComponentTestSuite):
-    def __init__(self, hyp_data, domain_suite, moist, pt, *, storage_shape):
+    def __init__(self, domain_suite, moist, pt):
         self.moist = moist
         self.pt = pt
-        self.storage_shape = storage_shape
-        super().__init__(hyp_data, domain_suite)
+        super().__init__(domain_suite)
 
     @cached_property
     def component(self):
@@ -451,14 +451,23 @@ class IsentropicDiagnosticsTestSuite(DiagnosticComponentTestSuite):
             pt=self.pt,
             backend=self.ds.backend,
             backend_options=self.ds.bo,
-            storage_shape=self.storage_shape,
+            storage_shape=self.ds.storage_shape,
             storage_options=self.ds.so,
         )
 
     def get_state(self):
-        raise NotImplementedError()
+        return self.ds.hyp_data.draw(
+            st_isentropic_state_f(
+                self.ds.grid,
+                moist=self.moist,
+                precipitation=False,
+                backend=self.ds.backend,
+                storage_shape=self.ds.storage_shape,
+                storage_options=self.ds.so,
+            )
+        )
 
-    def get_diagnostics(self, raw_state_np):
+    def get_validation_diagnostics(self, raw_state_np):
         s = raw_state_np["air_isentropic_density"]
 
         p = self.component.zeros(
@@ -498,7 +507,7 @@ class IsentropicDiagnosticsTestSuite(DiagnosticComponentTestSuite):
             self.ds.grid,
             backend="numpy",
             backend_options=self.ds.bo,
-            storage_shape=self.storage_shape,
+            storage_shape=self.ds.storage_shape,
             storage_options=self.ds.so,
         )
         did.get_diagnostic_variables(s, self.pt.data.item(), p, exn, mtg, h)
@@ -525,60 +534,48 @@ def test_isentropic_diagnostics(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    ds = DomainSuite(data, backend, dtype, grid_type="numerical")
-    nx, ny, nz = ds.grid.nx, ds.grid.ny, ds.grid.nz
-    storage_shape = (nx + 1, ny + 1, nz + 1)
-    state = data.draw(
-        st_isentropic_state_f(
-            ds.grid,
-            moist=True,
-            backend=backend,
-            storage_shape=storage_shape,
-            storage_options=ds.so,
-        ),
-        label="state",
+    ds = DomainSuite(data, backend, dtype)
+    pt = DataArray(
+        data.draw(st_floats(min_value=0, max_value=1e4)), attrs={"units": "Pa"}
     )
 
     # ========================================
     # test bed
     # ========================================
-    pt = sympl.DataArray(
-        state["air_pressure_on_interface_levels"].to_units("Pa").data[0, 0, 0],
-        attrs={"units": "Pa"},
-    )
-
     # dry
-    ts = IsentropicDiagnosticsTestSuite(
-        data, ds, moist=False, pt=pt, storage_shape=storage_shape
-    )
-    ts.run(state)
+    ts = IsentropicDiagnosticsTestSuite(ds, moist=False, pt=pt)
+    ts.run()
 
     # moist
-    ts = IsentropicDiagnosticsTestSuite(
-        data, ds, moist=True, pt=pt, storage_shape=storage_shape
-    )
-    ts.run(state)
+    ts = IsentropicDiagnosticsTestSuite(ds, moist=True, pt=pt)
+    ts.run()
 
 
 class HorizontalVelocityTestSuite(DiagnosticComponentTestSuite):
-    def __init__(self, hyp_data, domain_suite, *, storage_shape):
-        self.storage_shape = storage_shape
-        super().__init__(hyp_data, domain_suite)
-
     @cached_property
     def component(self):
         return IsentropicVelocityComponents(
             self.ds.domain,
             backend=self.ds.backend,
             backend_options=self.ds.bo,
-            storage_shape=self.storage_shape,
+            storage_shape=self.ds.storage_shape,
             storage_options=self.ds.so,
         )
 
     def get_state(self):
-        raise NotImplementedError()
+        return self.ds.hyp_data.draw(
+            st_isentropic_state_f(
+                self.ds.grid,
+                moist=False,
+                backend=self.ds.backend,
+                storage_shape=self.ds.storage_shape,
+                storage_options=self.ds.so,
+            )
+        )
 
-    def get_diagnostics(self, raw_state_np):
+    def get_validation_diagnostics(self, raw_state_np):
+        nx, ny, nz = self.ds.grid.nx, self.ds.grid.ny, self.ds.grid.nz
+
         s = raw_state_np["air_isentropic_density"]
         su = raw_state_np["x_momentum_isentropic"]
         sv = raw_state_np["y_momentum_isentropic"]
@@ -588,10 +585,12 @@ class HorizontalVelocityTestSuite(DiagnosticComponentTestSuite):
         u = self.component.zeros(
             backend="numpy",
             shape=self.component.get_field_storage_shape(
-                name="x_velocity_at_u_locations"
+                "x_velocity_at_u_locations", self.ds.storage_shape
             ),
         )
-        u[1:-1, :] = (su[:-2, :] + su[1:-1, :]) / (s[:-2, :] + s[1:-1, :])
+        u[1:nx, :ny, :nz] = (su[: nx - 1, :ny, :nz] + su[1:nx, :ny, :nz]) / (
+            s[: nx - 1, :ny, :nz] + s[1:nx, :ny, :nz]
+        )
         hb_np.set_outermost_layers_x(
             u,
             field_name="x_velocity_at_u_locations",
@@ -602,10 +601,12 @@ class HorizontalVelocityTestSuite(DiagnosticComponentTestSuite):
         v = self.component.zeros(
             backend="numpy",
             shape=self.component.get_field_storage_shape(
-                name="y_velocity_at_v_locations"
+                "y_velocity_at_v_locations", self.ds.storage_shape
             ),
         )
-        v[:, 1:-1] = (sv[:, :-2] + sv[:, 1:-1]) / (s[:, :-2] + s[:, 1:-1])
+        v[:nx, 1:ny, :nz] = (sv[:nx, : ny - 1, :nz] + sv[:nx, 1:ny, :nz]) / (
+            s[:nx, : ny - 1, :nz] + s[:nx, 1:ny, :nz]
+        )
         hb_np.set_outermost_layers_y(
             v,
             field_name="y_velocity_at_v_locations",
@@ -628,25 +629,14 @@ def test_horizontal_velocity(data, backend, dtype):
     # ========================================
     ds = DomainSuite(data, backend, dtype, grid_type="numerical")
     assume(ds.domain.horizontal_boundary.type != "identity")
-    nx, ny, nz = ds.grid.nx, ds.grid.ny, ds.grid.nz
-    storage_shape = (nx + 1, ny + 1, nz + 1)
-    state = data.draw(
-        st_isentropic_state_f(
-            ds.grid,
-            moist=True,
-            backend=backend,
-            storage_shape=storage_shape,
-            storage_options=ds.so,
-        ),
-        label="state",
-    )
-    ds.domain.horizontal_boundary.reference_state = state
 
     # ========================================
     # test bed
     # ========================================
-    ts = HorizontalVelocityTestSuite(data, ds, storage_shape=storage_shape)
-    ts.run(state)
+    ts = HorizontalVelocityTestSuite(ds)
+    state = ts.get_state()
+    ds.domain.horizontal_boundary.reference_state = state
+    ts.run()
 
 
 if __name__ == "__main__":

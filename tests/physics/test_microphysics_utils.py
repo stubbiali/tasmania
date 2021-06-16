@@ -54,11 +54,11 @@ from tests.strategies import (
     st_isentropic_state_f,
     st_raw_field,
 )
-from tests.suites import (
+from tests.suites.core_components import (
     DiagnosticComponentTestSuite,
-    DomainSuite,
     TendencyComponentTestSuite,
 )
+from tests.suites.domain import DomainSuite
 from tests.utilities import compare_arrays, hyp_settings
 
 
@@ -87,7 +87,7 @@ class ClippingTestSuite(DiagnosticComponentTestSuite):
             self.names,
             backend=self.ds.backend,
             backend_options=self.ds.bo,
-            storage_shape=self.storage_shape,
+            storage_shape=self.ds.storage_shape,
             storage_options=self.ds.so,
         )
 
@@ -98,13 +98,13 @@ class ClippingTestSuite(DiagnosticComponentTestSuite):
                 moist=True,
                 precipitation=False,
                 backend=self.ds.backend,
-                storage_shape=self.storage_shape,
+                storage_shape=self.ds.storage_shape,
                 storage_options=self.ds.so,
             ),
             label="state",
         )
 
-    def get_diagnostics(self, raw_state_np):
+    def get_validation_diagnostics(self, raw_state_np):
         return {
             name: np.where(raw_state_np[name] < 0.0, 0.0, raw_state_np[name])
             for name in self.names
@@ -129,7 +129,7 @@ class PrecipitationTestSuite(TendencyComponentTestSuite):
             self.ds.grid_type,
             backend=self.ds.backend,
             backend_options=self.ds.bo,
-            storage_shape=self.storage_shape,
+            storage_shape=self.ds.storage_shape,
             storage_options=self.ds.so,
         )
 
@@ -154,7 +154,7 @@ class PrecipitationTestSuite(TendencyComponentTestSuite):
                 moist=True,
                 precipitation=True,
                 backend=self.ds.backend,
-                storage_shape=self.storage_shape,
+                storage_shape=self.ds.storage_shape,
                 storage_options=self.ds.so,
             ),
             label="state",
@@ -164,13 +164,13 @@ class PrecipitationTestSuite(TendencyComponentTestSuite):
             self.ds.grid_type,
             backend=self.ds.backend,
             backend_options=self.ds.bo,
-            storage_shape=self.storage_shape,
+            storage_shape=self.ds.storage_shape,
             storage_options=self.ds.so,
         )
         state.update(rfv(state))
         return state
 
-    def get_tendencies_and_diagnostics(self, raw_state_np, dt):
+    def get_validation_tendencies_and_diagnostics(self, raw_state_np, dt):
         nz = self.ds.grid.nz
         rho = raw_state_np["air_density"][:, :, nz - 1 : nz]
         qr = raw_state_np[mfpw][:, :, nz - 1 : nz]
@@ -208,10 +208,12 @@ class WrappingStencil(StencilFactory):
         dtype = self.storage_options.dtype
         self.backend_options.dtypes = {"dtype": dtype}
         self.backend_options.externals = {
-            "func": core.stencil_subroutine("flux", backend=self.backend),
+            "func": core.get_subroutine_definition(
+                "flux", backend=self.backend
+            ),
             "nb": core.nb,
         }
-        self.stencil = self.compile("stencil")
+        self.stencil = self.compile_stencil("stencil")
 
     def __call__(self, rho, h, qr, vt, dfdz):
         nx, ny, mk = rho.shape

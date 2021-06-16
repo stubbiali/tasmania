@@ -39,7 +39,8 @@ from tests.strategies import (
     st_floats,
     st_isentropic_state_f,
 )
-from tests.suites import DiagnosticComponentTestSuite, DomainSuite
+from tests.suites.core_components import DiagnosticComponentTestSuite
+from tests.suites.domain import DomainSuite
 from tests.utilities import compare_arrays, hyp_settings
 
 
@@ -49,13 +50,11 @@ mfpw = "mass_fraction_of_precipitation_water_in_air"
 
 
 class IsentropicHorizontalSmoothingTestSuite(DiagnosticComponentTestSuite):
-    def __init__(
-        self, hyp_data, domain_suite, smooth_type, moist, *, storage_shape
-    ):
+    def __init__(self, domain_suite, smooth_type, moist):
         self.smooth_type = smooth_type
         self.moist = moist
-        self.storage_shape = storage_shape
 
+        hyp_data = domain_suite.hyp_data
         self.smooth_coeff = hyp_data.draw(st_floats(min_value=0, max_value=1))
         self.smooth_coeff_max = hyp_data.draw(
             st_floats(min_value=self.smooth_coeff, max_value=1)
@@ -73,7 +72,7 @@ class IsentropicHorizontalSmoothingTestSuite(DiagnosticComponentTestSuite):
             hyp_st.integers(min_value=0, max_value=domain_suite.grid.nz)
         )
 
-        super().__init__(hyp_data, domain_suite)
+        super().__init__(domain_suite)
 
     @cached_property
     def component(self):
@@ -87,7 +86,7 @@ class IsentropicHorizontalSmoothingTestSuite(DiagnosticComponentTestSuite):
                 moist=False,
                 backend=self.ds.backend,
                 backend_options=self.ds.bo,
-                storage_shape=self.storage_shape,
+                storage_shape=self.ds.storage_shape,
                 storage_options=self.ds.so,
             )
         else:
@@ -103,7 +102,7 @@ class IsentropicHorizontalSmoothingTestSuite(DiagnosticComponentTestSuite):
                 smooth_moist_damp_depth=self.smooth_moist_damp_depth,
                 backend=self.ds.backend,
                 backend_options=self.ds.bo,
-                storage_shape=self.storage_shape,
+                storage_shape=self.ds.storage_shape,
                 storage_options=self.ds.so,
             )
 
@@ -113,16 +112,17 @@ class IsentropicHorizontalSmoothingTestSuite(DiagnosticComponentTestSuite):
                 self.ds.grid,
                 moist=self.moist,
                 backend=self.ds.backend,
-                storage_shape=self.storage_shape,
+                storage_shape=self.ds.storage_shape,
                 storage_options=self.ds.so,
             ),
             label="state",
         )
 
-    def get_diagnostics(self, raw_state_np):
+    def get_validation_diagnostics(self, raw_state_np):
+        nx, ny, nz = self.ds.grid.nx, self.ds.grid.ny, self.ds.grid.nz
         hs = HorizontalSmoothing.factory(
             self.smooth_type,
-            self.storage_shape,
+            self.ds.storage_shape or (nx, ny, nz),
             self.smooth_coeff,
             self.smooth_coeff_max,
             self.smooth_damp_depth,
@@ -149,7 +149,7 @@ class IsentropicHorizontalSmoothingTestSuite(DiagnosticComponentTestSuite):
         if self.moist:
             hs_moist = HorizontalSmoothing.factory(
                 self.smooth_type,
-                self.storage_shape,
+                self.ds.storage_shape or (nx, ny, nz),
                 self.smooth_moist_coeff,
                 self.smooth_moist_coeff_max,
                 self.smooth_moist_damp_depth,
@@ -195,21 +195,16 @@ def test(data, smooth_type, backend, dtype, subtests):
     # random data generation
     # ========================================
     ds = DomainSuite(data, backend, dtype, grid_type="numerical", nb_min=3)
-    storage_shape = (ds.grid.nx + 1, ds.grid.ny + 1, ds.grid.nz + 1)
 
     # ========================================
     # test bed
     # ========================================
     # dry
-    ts = IsentropicHorizontalSmoothingTestSuite(
-        data, ds, smooth_type, False, storage_shape=storage_shape
-    )
+    ts = IsentropicHorizontalSmoothingTestSuite(ds, smooth_type, False)
     ts.run()
 
     # moist
-    ts = IsentropicHorizontalSmoothingTestSuite(
-        data, ds, smooth_type, True, storage_shape=storage_shape
-    )
+    ts = IsentropicHorizontalSmoothingTestSuite(ds, smooth_type, True)
     ts.run()
 
 

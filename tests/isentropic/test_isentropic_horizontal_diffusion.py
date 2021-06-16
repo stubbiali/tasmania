@@ -41,7 +41,8 @@ from tests.strategies import (
     st_floats,
     st_isentropic_state_f,
 )
-from tests.suites import DomainSuite, TendencyComponentTestSuite
+from tests.suites.core_components import TendencyComponentTestSuite
+from tests.suites.domain import DomainSuite
 from tests.utilities import compare_arrays, hyp_settings
 
 
@@ -51,13 +52,11 @@ mfpw = "mass_fraction_of_precipitation_water_in_air"
 
 
 class IsentropicHorizontalDiffusionTestSuite(TendencyComponentTestSuite):
-    def __init__(
-        self, hyp_data, domain_suite, diff_type, moist, *, storage_shape
-    ):
+    def __init__(self, domain_suite, diff_type, moist):
         self.diff_type = diff_type
         self.moist = moist
-        self.storage_shape = storage_shape
 
+        hyp_data = domain_suite.hyp_data
         self.diff_coeff = hyp_data.draw(st_floats(min_value=0, max_value=1))
         self.diff_coeff_max = hyp_data.draw(
             st_floats(min_value=self.diff_coeff, max_value=1)
@@ -75,7 +74,7 @@ class IsentropicHorizontalDiffusionTestSuite(TendencyComponentTestSuite):
             hyp_st.integers(min_value=0, max_value=domain_suite.grid.nz)
         )
 
-        super().__init__(hyp_data, domain_suite)
+        super().__init__(domain_suite)
 
     @cached_property
     def component(self):
@@ -92,7 +91,7 @@ class IsentropicHorizontalDiffusionTestSuite(TendencyComponentTestSuite):
                 diffusion_damp_depth=self.diff_damp_depth,
                 backend=self.ds.backend,
                 backend_options=self.ds.bo,
-                storage_shape=self.storage_shape,
+                storage_shape=self.ds.storage_shape,
                 storage_options=self.ds.so,
             )
         else:
@@ -116,7 +115,7 @@ class IsentropicHorizontalDiffusionTestSuite(TendencyComponentTestSuite):
                 diffusion_moist_damp_depth=self.diff_moist_damp_depth,
                 backend=self.ds.backend,
                 backend_options=self.ds.bo,
-                storage_shape=self.storage_shape,
+                storage_shape=self.ds.storage_shape,
                 storage_options=self.ds.so,
             )
 
@@ -125,20 +124,22 @@ class IsentropicHorizontalDiffusionTestSuite(TendencyComponentTestSuite):
             st_isentropic_state_f(
                 self.ds.grid,
                 moist=self.moist,
+                precipitation=False,
                 backend=self.ds.backend,
-                storage_shape=self.storage_shape,
+                storage_shape=self.ds.storage_shape,
                 storage_options=self.ds.so,
             ),
             label="state",
         )
 
-    def get_tendencies_and_diagnostics(self, raw_state_np):
+    def get_validation_tendencies_and_diagnostics(self, raw_state_np, dt=None):
+        nx, ny, nz = self.ds.grid.nx, self.ds.grid.ny, self.ds.grid.nz
         dx = self.ds.grid.dx.to_units("m").values.item()
         dy = self.ds.grid.dy.to_units("m").values.item()
 
         hd = HorizontalDiffusion.factory(
             self.diff_type,
-            self.storage_shape,
+            self.ds.storage_shape or (nx, ny, nz),
             dx,
             dy,
             self.diff_coeff,
@@ -167,7 +168,7 @@ class IsentropicHorizontalDiffusionTestSuite(TendencyComponentTestSuite):
         if self.moist:
             hd_moist = HorizontalDiffusion.factory(
                 self.diff_type,
-                self.storage_shape,
+                self.ds.storage_shape or (nx, ny, nz),
                 dx,
                 dy,
                 self.diff_moist_coeff,
@@ -213,21 +214,16 @@ def test(data, diff_type, backend, dtype, subtests):
     # random data generation
     # ========================================
     ds = DomainSuite(data, backend, dtype, grid_type="numerical", nb_min=2)
-    storage_shape = (ds.grid.nx + 1, ds.grid.ny + 1, ds.grid.nz + 1)
 
     # ========================================
     # test bed
     # ========================================
     # dry
-    ts = IsentropicHorizontalDiffusionTestSuite(
-        data, ds, diff_type, False, storage_shape=storage_shape
-    )
+    ts = IsentropicHorizontalDiffusionTestSuite(ds, diff_type, False)
     ts.run()
 
     # moist
-    ts = IsentropicHorizontalDiffusionTestSuite(
-        data, ds, diff_type, True, storage_shape=storage_shape
-    )
+    ts = IsentropicHorizontalDiffusionTestSuite(ds, diff_type, True)
     ts.run()
 
 

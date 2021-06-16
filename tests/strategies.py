@@ -1721,7 +1721,7 @@ def st_burgers_tendency(
 
 
 @hyp_st.composite
-def st_out(draw, component, properties_name):
+def st_out(draw, component, properties_name, *, min_value=-1e6, max_value=1e6):
     if draw(hyp_st.booleans(), label="return_none"):
         return None
 
@@ -1735,8 +1735,8 @@ def st_out(draw, component, properties_name):
             array = draw(
                 st_raw_field(
                     storage_shape,
-                    min_value=-1e6,
-                    max_value=1e6,
+                    min_value=min_value,
+                    max_value=max_value,
                     backend=component.backend,
                     storage_options=component.storage_options,
                 )
@@ -1768,7 +1768,14 @@ def st_out_tendencies(draw, component):
 
 @hyp_st.composite
 def st_out_diagnostics(draw, component):
-    return draw(st_out(component, "diagnostic_properties"))
+    return draw(
+        st_out(component, "diagnostic_properties", min_value=0, max_value=0)
+    )
+
+
+@hyp_st.composite
+def st_out_state(draw, component):
+    return draw(st_out(component, "output_properties"))
 
 
 @hyp_st.composite

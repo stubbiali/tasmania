@@ -20,7 +20,6 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from datetime import timedelta
 from hypothesis import (
     given,
     reproduce_failure,
@@ -33,7 +32,6 @@ import pytest
 from sympl import DataArray
 
 from tasmania.python.framework.generic_functions import to_numpy
-from tasmania.python.framework.options import BackendOptions, StorageOptions
 from tasmania.python.physics.microphysics.kessler import (
     KesslerFallVelocity,
     KesslerMicrophysics,
@@ -46,17 +44,13 @@ from tasmania.python.utils.meteo import tetens_formula
 
 from tests import conf
 from tests.physics.test_microphysics_utils import flux_properties
-from tests.strategies import (
-    st_one_of,
-    st_domain,
-    st_isentropic_state_f,
-)
-from tests.suites import (
+from tests.strategies import st_isentropic_state_f
+from tests.suites.core_components import (
     DiagnosticComponentTestSuite,
-    DomainSuite,
     TendencyComponentTestSuite,
 )
-from tests.utilities import compare_dataarrays, hyp_settings
+from tests.suites.domain import DomainSuite
+from tests.utilities import hyp_settings
 
 
 mfwv = "mass_fraction_of_water_vapor_in_air"
@@ -70,7 +64,7 @@ def get_state(test_suite):
             test_suite.ds.grid,
             moist=True,
             backend=test_suite.ds.backend,
-            storage_shape=test_suite.storage_shape,
+            storage_shape=test_suite.ds.storage_shape,
             storage_options=test_suite.ds.so,
         ),
         label="state",
@@ -78,7 +72,7 @@ def get_state(test_suite):
 
     if not test_suite.apoif:
         storage_shape = (
-            test_suite.storage_shape
+            test_suite.ds.storage_shape
             or test_suite.component.get_field_storage_shape("air_pressure")
         )
         nx, ny, nz = (
@@ -145,7 +139,6 @@ class KesslerMicrophysicsTestSuite(TendencyComponentTestSuite):
         self.k2 = domain_suite.hyp_data.draw(
             hyp_st.floats(min_value=0, max_value=10), label="k2"
         )
-
         super().__init__(domain_suite)
 
     @cached_property
@@ -163,14 +156,14 @@ class KesslerMicrophysicsTestSuite(TendencyComponentTestSuite):
             collection_rate=DataArray(self.k2, attrs={"units": "s^-1"}),
             backend=self.ds.backend,
             backend_options=self.ds.bo,
-            storage_shape=self.storage_shape,
+            storage_shape=self.ds.storage_shape,
             storage_options=self.ds.so,
         )
 
     def get_state(self):
         return get_state(self)
 
-    def get_tendencies_and_diagnostics(self, raw_state_np, dt=None):
+    def get_validation_tendencies_and_diagnostics(self, raw_state_np, dt=None):
         nx, ny, nz = self.ds.grid.nx, self.ds.grid.ny, self.ds.grid.nz
         i, j, k = slice(0, nx), slice(0, ny), slice(0, nz)
 
@@ -253,14 +246,14 @@ class KesslerSaturationAdjustmentDiagnosticTestSuite(
             air_pressure_on_interface_levels=self.apoif,
             backend=self.ds.backend,
             backend_options=self.ds.bo,
-            storage_shape=self.storage_shape,
+            storage_shape=self.ds.storage_shape,
             storage_options=self.ds.so,
         )
 
     def get_state(self):
         return get_state(self)
 
-    def get_tendencies_and_diagnostics(self, raw_state_np, dt):
+    def get_validation_tendencies_and_diagnostics(self, raw_state_np, dt):
         nx, ny, nz = self.ds.grid.nx, self.ds.grid.ny, self.ds.grid.nz
         i, j, k = slice(0, nx), slice(0, ny), slice(0, nz)
 
@@ -356,14 +349,14 @@ class KesslerSaturationAdjustmentPrognosticTestSuite(
             saturation_rate=DataArray(self.sr, attrs={"units": "s^-1"}),
             backend=self.ds.backend,
             backend_options=self.ds.bo,
-            storage_shape=self.storage_shape,
+            storage_shape=self.ds.storage_shape,
             storage_options=self.ds.so,
         )
 
     def get_state(self):
         return get_state(self)
 
-    def get_tendencies_and_diagnostics(self, raw_state_np, dt=None):
+    def get_validation_tendencies_and_diagnostics(self, raw_state_np, dt=None):
         nx, ny, nz = self.ds.grid.nx, self.ds.grid.ny, self.ds.grid.nz
         i, j, k = slice(0, nx), slice(0, ny), slice(0, nz)
 
@@ -422,7 +415,7 @@ class KesslerFallVelocityTestSuite(DiagnosticComponentTestSuite):
             self.ds.grid_type,
             backend=self.ds.backend,
             backend_options=self.ds.bo,
-            storage_shape=self.storage_shape,
+            storage_shape=self.ds.storage_shape,
             storage_options=self.ds.so,
         )
 
@@ -432,13 +425,13 @@ class KesslerFallVelocityTestSuite(DiagnosticComponentTestSuite):
                 self.ds.grid,
                 moist=True,
                 backend=self.ds.backend,
-                storage_shape=self.storage_shape,
+                storage_shape=self.ds.storage_shape,
                 storage_options=self.ds.so,
             ),
             label="state",
         )
 
-    def get_diagnostics(self, raw_state_np):
+    def get_validation_diagnostics(self, raw_state_np):
         nz = self.ds.grid.nz
         rho = raw_state_np["air_density"]
         qr = raw_state_np[mfpw]
@@ -476,7 +469,7 @@ class KesslerSedimentationTestSuite(TendencyComponentTestSuite):
             self.maxcfl,
             backend=self.ds.backend,
             backend_options=self.ds.bo,
-            storage_shape=self.storage_shape,
+            storage_shape=self.ds.storage_shape,
             storage_options=self.ds.so,
         )
 
@@ -487,7 +480,7 @@ class KesslerSedimentationTestSuite(TendencyComponentTestSuite):
                 moist=True,
                 precipitation=True,
                 backend=self.ds.backend,
-                storage_shape=self.storage_shape,
+                storage_shape=self.ds.storage_shape,
                 storage_options=self.ds.so,
             ),
             label="state",
@@ -497,13 +490,13 @@ class KesslerSedimentationTestSuite(TendencyComponentTestSuite):
             self.ds.grid_type,
             backend=self.ds.backend,
             backend_options=self.ds.bo,
-            storage_shape=self.storage_shape,
+            storage_shape=self.ds.storage_shape,
             storage_options=self.ds.so,
         )
         state.update(rfv(state))
         return state
 
-    def get_tendencies_and_diagnostics(self, raw_state_np, dt):
+    def get_validation_tendencies_and_diagnostics(self, raw_state_np, dt):
         nx, ny, nz = self.ds.grid.nx, self.ds.grid.ny, self.ds.grid.nz
         rho = raw_state_np["air_density"]
         h = raw_state_np["height_on_interface_levels"]

@@ -34,19 +34,12 @@ from tasmania.python.utils.storage import get_dataarray_3d
 
 from tests import conf
 from tests.strategies import st_raw_field
-from tests.suites import DomainSuite, TendencyComponentTestSuite
+from tests.suites.core_components import TendencyComponentTestSuite
+from tests.suites.domain import DomainSuite
 from tests.utilities import compare_arrays, hyp_settings
 
 
 class Smagorinsky2dTestSuite(TendencyComponentTestSuite):
-    def __init__(self, domain_suite):
-        super().__init__(domain_suite)
-        self.storage_shape = (
-            self.storage_shape
-            if self.storage_shape
-            else (self.ds.grid.nx, self.ds.grid.ny, self.ds.grid.nz)
-        )
-
     @cached_property
     def component(self):
         cs = self.hyp_data.draw(
@@ -57,15 +50,16 @@ class Smagorinsky2dTestSuite(TendencyComponentTestSuite):
             smagorinsky_constant=cs,
             backend=self.ds.backend,
             backend_options=self.ds.bo,
-            storage_shape=self.storage_shape,
+            storage_shape=self.ds.storage_shape,
             storage_options=self.ds.so,
         )
 
     def get_state(self):
         time = self.hyp_data.draw(hyp_st.datetimes(), label="time")
+        nx, ny, nz = self.ds.grid.nx, self.ds.grid.ny, self.ds.grid.nz
         u = self.hyp_data.draw(
             st_raw_field(
-                self.storage_shape,
+                self.ds.storage_shape or (nx, ny, nz),
                 -1e3,
                 1e3,
                 backend=self.ds.backend,
@@ -75,7 +69,7 @@ class Smagorinsky2dTestSuite(TendencyComponentTestSuite):
         )
         v = self.hyp_data.draw(
             st_raw_field(
-                self.storage_shape,
+                self.ds.storage_shape or (nx, ny, nz),
                 -1e3,
                 1e3,
                 backend=self.ds.backend,
@@ -83,29 +77,26 @@ class Smagorinsky2dTestSuite(TendencyComponentTestSuite):
             ),
             label="v",
         )
-
-        g = self.ds.grid
         state = {
             "time": time,
             "x_velocity": get_dataarray_3d(
                 u,
-                g,
+                self.ds.grid,
                 "m s^-1",
-                grid_shape=(g.nx, g.ny, g.nz),
+                grid_shape=(nx, ny, nz),
                 set_coordinates=False,
             ),
             "y_velocity": get_dataarray_3d(
                 v,
-                g,
+                self.ds.grid,
                 "m s^-1",
-                grid_shape=(g.nx, g.ny, g.nz),
+                grid_shape=(nx, ny, nz),
                 set_coordinates=False,
             ),
         }
-
         return state
 
-    def get_tendencies_and_diagnostics(self, raw_state_np, dt=None):
+    def get_validation_tendencies_and_diagnostics(self, raw_state_np, dt=None):
         cs = self.component._cs
         dx = self.ds.grid.dx.to_units("m").values.item()
         dy = self.ds.grid.dy.to_units("m").values.item()

@@ -40,15 +40,15 @@ from tests.strategies import (
     st_floats,
     st_isentropic_state_f,
 )
-from tests.suites import DomainSuite, TendencyComponentTestSuite
+from tests.suites.core_components import TendencyComponentTestSuite
+from tests.suites.domain import DomainSuite
 from tests.utilities import hyp_settings
 
 
 class IsentropicConservativeCoriolisTestSuite(TendencyComponentTestSuite):
-    def __init__(self, hyp_data, domain_suite, *, storage_shape):
-        self.f = hyp_data.draw(st_floats(), label="f")
-        self.storage_shape = storage_shape
-        super().__init__(hyp_data, domain_suite)
+    def __init__(self, domain_suite):
+        self.f = domain_suite.hyp_data.draw(st_floats(), label="f")
+        super().__init__(domain_suite)
 
     @cached_property
     def component(self):
@@ -59,7 +59,7 @@ class IsentropicConservativeCoriolisTestSuite(TendencyComponentTestSuite):
             f,
             backend=self.ds.backend,
             backend_options=self.ds.bo,
-            storage_shape=self.storage_shape,
+            storage_shape=self.ds.storage_shape,
             storage_options=self.ds.so,
         )
 
@@ -71,13 +71,13 @@ class IsentropicConservativeCoriolisTestSuite(TendencyComponentTestSuite):
                 time=time,
                 moist=False,
                 backend=self.ds.backend,
-                storage_shape=self.storage_shape,
+                storage_shape=self.ds.storage_shape,
                 storage_options=self.ds.so,
             ),
             label="state",
         )
 
-    def get_tendencies_and_diagnostics(self, raw_state_np):
+    def get_validation_tendencies_and_diagnostics(self, raw_state_np, dt=None):
         nx, ny, nz = self.ds.grid.nx, self.ds.grid.ny, self.ds.grid.nz
         nb = self.ds.nb if self.ds.grid_type == "numerical" else 0
         i, j, k = slice(nb, nx - nb), slice(nb, ny - nb), slice(0, nz)
@@ -101,10 +101,7 @@ class IsentropicConservativeCoriolisTestSuite(TendencyComponentTestSuite):
 @pytest.mark.parametrize("dtype", conf.dtype)
 def test_conservative(data, backend, dtype):
     ds = DomainSuite(data, backend, dtype)
-    storage_shape = (ds.grid.nx + 1, ds.grid.ny + 1, ds.grid.nz + 1)
-    ts = IsentropicConservativeCoriolisTestSuite(
-        data, ds, storage_shape=storage_shape
-    )
+    ts = IsentropicConservativeCoriolisTestSuite(ds)
     ts.run()
 
 

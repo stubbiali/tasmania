@@ -127,7 +127,7 @@ class FakeTendencyComponent1(TendencyComponent):
         )
         dtype = self.storage_options.dtype
         self.backend_options.dtypes = {"dtype": dtype}
-        self.stencil = self.compile("fake1")
+        self.stencil = self.compile_stencil("fake1")
 
     @property
     def input_properties(self):
@@ -255,7 +255,7 @@ class FakeTendencyComponent1(TendencyComponent):
                 tnd_s += 1e-3 * s
 
             if ow_tnd_su:
-                tnd_su = 300 * su if ow_tnd_su else tnd_su + 300 * su
+                tnd_su = 300 * su
             else:
                 tnd_su += 300 * su
 
@@ -311,7 +311,7 @@ class FakeTendencyComponent2(TendencyComponent):
         )
         dtype = self.storage_options.dtype
         self.backend_options.dtypes = {"dtype": dtype}
-        self.stencil = self.compile("fake2")
+        self.stencil = self.compile_stencil("fake2")
 
     @property
     def input_properties(self):

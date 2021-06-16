@@ -62,6 +62,7 @@ class DryStaticEnergy(DiagnosticComponent):
         height_on_interface_levels: bool = True,
         physical_constants: Optional[Mapping[str, DataArray]] = None,
         *,
+        enable_checks: bool = True,
         backend: str = "numpy",
         backend_options: Optional["BackendOptions"] = None,
         storage_shape: Optional[Sequence[int]] = None,
@@ -75,6 +76,7 @@ class DryStaticEnergy(DiagnosticComponent):
             domain,
             grid_type,
             physical_constants,
+            enable_checks=enable_checks,
             backend=backend,
             backend_options=backend_options,
             storage_shape=storage_shape,
@@ -223,9 +225,6 @@ class MoistStaticEnergy(DiagnosticComponent):
             storage_shape=storage_shape,
             storage_options=storage_options,
         )
-
-        # set physical parameters values
-        self._lhvw = self.rpc["latent_heat_of_vaporization_of_water"]
 
         # instantiate the underlying stencil object
         dtype = self.storage_options.dtype
