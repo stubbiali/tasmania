@@ -24,6 +24,8 @@ import numpy as np
 from sympl import DataArray
 from typing import Dict, Optional, Sequence, TYPE_CHECKING
 
+from sympl._core.time import Timer
+
 from gt4py import gtscript
 
 from tasmania.python.framework.core_components import TendencyComponent
@@ -289,6 +291,7 @@ class IsentropicVerticalAdvection(TendencyComponent):
             )
 
         # run the stencil
+        Timer.start(label="stencil")
         self._stencil(
             **stencil_args,
             origin=(0, 0, 0),
@@ -296,6 +299,7 @@ class IsentropicVerticalAdvection(TendencyComponent):
             exec_info=self.backend_options.exec_info,
             validate_args=self.backend_options.validate_args
         )
+        Timer.stop()
 
     @stencil_definition(backend=("numpy", "cupy"), stencil="stencil")
     def _stencil_numpy(

@@ -23,6 +23,8 @@
 import numpy as np
 from typing import Optional, Tuple, Union
 
+from sympl._core.time import Timer
+
 from gt4py import gtscript
 
 from tasmania.python.framework.register import register
@@ -256,12 +258,14 @@ class IsentropicVerticalAdvection(STSTendencyStepper, StencilFactory):
             )
 
         # run the stencil
+        Timer.start(label="stencil")
         self._stencil(
             **stencil_args,
             origin=(0, 0, 0),
             domain=(self._nx, self._ny, self._nz),
             validate_args=False
         )
+        Timer.stop()
 
         return {}, out_state
 

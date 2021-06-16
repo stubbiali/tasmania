@@ -20,6 +20,8 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+from sympl._core.time import Timer
+
 from gt4py import gtscript
 
 from tasmania.python.dwarfs.horizontal_hyperdiffusion import (
@@ -66,6 +68,7 @@ class FirstOrder(HorizontalHyperDiffusion):
         nx, ny, nz = self._shape
 
         # run the stencil
+        Timer.start(label="stencil")
         self._stencil(
             in_phi=phi,
             in_gamma=self._gamma,
@@ -76,6 +79,7 @@ class FirstOrder(HorizontalHyperDiffusion):
             domain=(nx - 2 * nb, ny - 2 * nb, nz),
             validate_args=self.backend_options.validate_args,
         )
+        Timer.stop()
 
     @staticmethod
     @stencil_definition(
@@ -146,6 +150,7 @@ class FirstOrder1DX(HorizontalHyperDiffusion):
         nx, ny, nz = self._shape
 
         # run the stencil
+        Timer.start(label="stencil")
         self._stencil(
             in_phi=phi,
             in_gamma=self._gamma,
@@ -156,6 +161,7 @@ class FirstOrder1DX(HorizontalHyperDiffusion):
             domain=(nx - 2 * nb, ny, nz),
             validate_args=self.backend_options.validate_args,
         )
+        Timer.stop()
 
     @staticmethod
     @stencil_definition(
@@ -226,6 +232,7 @@ class FirstOrder1DY(HorizontalHyperDiffusion):
         nx, ny, nz = self._shape
 
         # run the stencil
+        Timer.start(label="stencil")
         self._stencil(
             in_phi=phi,
             in_gamma=self._gamma,
@@ -236,6 +243,7 @@ class FirstOrder1DY(HorizontalHyperDiffusion):
             domain=(nx, ny - 2 * nb, nz),
             validate_args=self.backend_options.validate_args,
         )
+        Timer.stop()
 
     @staticmethod
     @stencil_definition(

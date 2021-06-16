@@ -23,6 +23,8 @@
 import numpy as np
 from typing import Dict, TYPE_CHECKING
 
+from sympl._core.time import Timer
+
 from gt4py import gtscript
 
 from tasmania.python.framework.tag import stencil_definition
@@ -85,6 +87,7 @@ class IsentropicSmagorinsky(Smagorinsky2d):
         nb = self._nb
         dx = self.grid.dx.to_units("m").values.item()
         dy = self.grid.dy.to_units("m").values.item()
+        Timer.start(label="stencil")
         self._stencil(
             in_s=state["air_isentropic_density"],
             in_su=state["x_momentum_isentropic"],
@@ -101,6 +104,7 @@ class IsentropicSmagorinsky(Smagorinsky2d):
             exec_info=self.backend_options.exec_info,
             validate_args=self.backend_options.validate_args,
         )
+        Timer.stop()
 
     @staticmethod
     @stencil_definition(backend=("numpy", "cupy"), stencil="smagorinsky")

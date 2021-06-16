@@ -24,8 +24,9 @@ import abc
 import numpy as np
 from typing import Dict, Mapping, Optional, Sequence, TYPE_CHECKING, Tuple
 
-from sympl import DataArray
+from sympl._core.data_array import DataArray
 from sympl._core.factory import AbstractFactory
+from sympl._core.time import Timer
 
 from gt4py import gtscript
 
@@ -132,6 +133,7 @@ class Clipping(DiagnosticComponent):
         for name in self._names:
             in_q = state[name]
             out_q = out[name]
+            Timer.start(label="stencil")
             self._stencil(
                 in_field=in_q,
                 out_field=out_q,
@@ -140,6 +142,7 @@ class Clipping(DiagnosticComponent):
                 exec_info=self.backend_options.exec_info,
                 validate_args=self.backend_options.validate_args,
             )
+            Timer.stop()
 
 
 class Precipitation(ImplicitTendencyComponent):
@@ -271,6 +274,7 @@ class Precipitation(ImplicitTendencyComponent):
     ) -> None:
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
         dt = timestep.total_seconds()
+        Timer.start(label="stencil")
         self._stencil(
             in_rho=state["air_density"][:, :, nz - 1 : nz],
             in_qr=state[mfpw][:, :, nz - 1 : nz],
@@ -284,6 +288,7 @@ class Precipitation(ImplicitTendencyComponent):
             exec_info=self.backend_options.exec_info,
             validate_args=self.backend_options.validate_args,
         )
+        Timer.stop()
 
     @staticmethod
     @stencil_definition(

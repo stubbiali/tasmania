@@ -20,6 +20,8 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+from sympl._core.time import Timer
+
 from gt4py import gtscript
 
 from tasmania.python.framework.tag import stencil_definition
@@ -61,6 +63,7 @@ class FirstOrder(HorizontalSmoothing):
         nx, ny, nz = self._shape
 
         # run the stencil
+        Timer.start(label="stencil")
         self._stencil_smooth(
             in_phi=phi,
             in_gamma=self._gamma,
@@ -105,6 +108,7 @@ class FirstOrder(HorizontalSmoothing):
             exec_info=self.backend_options.exec_info,
             validate_args=self.backend_options.validate_args,
         )
+        Timer.stop()
 
     @staticmethod
     @stencil_definition(
@@ -181,6 +185,7 @@ class FirstOrder1DX(HorizontalSmoothing):
         nx, ny, nz = self._shape
 
         # run the stencil
+        Timer.start(label="stencil")
         self._stencil_smooth(
             in_phi=phi,
             in_gamma=self._gamma,
@@ -209,6 +214,7 @@ class FirstOrder1DX(HorizontalSmoothing):
             exec_info=self.backend_options.exec_info,
             validate_args=self.backend_options.validate_args,
         )
+        Timer.stop()
 
     @staticmethod
     @stencil_definition(
@@ -273,6 +279,7 @@ class FirstOrder1DY(HorizontalSmoothing):
         nx, ny, nz = self._shape
 
         # run the stencil
+        Timer.start(label="stencil")
         self._stencil_smooth(
             in_phi=phi,
             in_gamma=self._gamma,
@@ -301,6 +308,7 @@ class FirstOrder1DY(HorizontalSmoothing):
             exec_info=self.backend_options.exec_info,
             validate_args=self.backend_options.validate_args,
         )
+        Timer.stop()
 
     @staticmethod
     @stencil_definition(

@@ -27,6 +27,8 @@ try:
 except (ImportError, ModuleNotFoundError):
     cp = np
 
+from sympl._core.time import Timer
+
 from tasmania.python.domain.horizontal_boundary import HorizontalBoundary
 from tasmania.python.domain.subclasses.horizontal_boundaries.utils import (
     change_dims,
@@ -165,6 +167,7 @@ class Relaxed(HorizontalBoundary):
         # ypos = np.repeat(field_ref[:, -1:], nr, axis=1)
 
         # apply the relaxation
+        Timer.start(label="stencil")
         self._stencil(
             in_gamma=g,
             in_phi_ref=field_ref,
@@ -174,6 +177,7 @@ class Relaxed(HorizontalBoundary):
             exec_info=self.backend_options.exec_info,
             validate_args=self.backend_options.validate_args,
         )
+        Timer.stop()
 
     def set_outermost_layers_x(
         self, field, field_name=None, field_units=None, time=None
@@ -420,6 +424,7 @@ class Relaxed1DX(HorizontalBoundary):
         # xpos = np.repeat(field_ref[-1:, nb:-nb], nr, axis=0)
 
         # apply relaxation
+        Timer.start(label="stencil")
         self._stencil(
             in_gamma=g,
             in_phi_ref=field_ref,
@@ -429,6 +434,7 @@ class Relaxed1DX(HorizontalBoundary):
             exec_info=self.backend_options.exec_info,
             validate_args=self.backend_options.validate_args,
         )
+        Timer.stop()
 
         # repeat the innermost column(s) along the y-direction
         field[:mi, :nb, k] = field[:mi, nb : nb + 1, k]
@@ -661,6 +667,7 @@ class Relaxed1DY(HorizontalBoundary):
         # ypos = np.repeat(field_ref[nb:-nb, -1:], nr, axis=1)
 
         # apply relaxation
+        Timer.start(label="stencil")
         self._stencil(
             in_gamma=g,
             in_phi_ref=field_ref,
@@ -670,6 +677,7 @@ class Relaxed1DY(HorizontalBoundary):
             exec_info=self.backend_options.exec_info,
             validate_args=self.backend_options.validate_args,
         )
+        Timer.stop()
 
         # repeat the innermost row(s) along the x-direction
         field[:nb, :mj, k] = field[nb : nb + 1, :mj, k]

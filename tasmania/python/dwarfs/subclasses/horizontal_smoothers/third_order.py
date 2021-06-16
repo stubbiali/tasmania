@@ -20,6 +20,8 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+from sympl._core.time import Timer
+
 from gt4py import gtscript
 
 from tasmania.python.dwarfs.horizontal_smoothing import HorizontalSmoothing
@@ -61,6 +63,7 @@ class ThirdOrder(HorizontalSmoothing):
         nx, ny, nz = self._shape
 
         # run the stencil
+        Timer.start(label="stencil")
         self._stencil_smooth(
             in_phi=phi,
             in_gamma=self._gamma,
@@ -105,6 +108,7 @@ class ThirdOrder(HorizontalSmoothing):
             exec_info=self.backend_options.exec_info,
             validate_args=self.backend_options.validate_args,
         )
+        Timer.stop()
 
     @staticmethod
     @stencil_definition(
@@ -205,6 +209,7 @@ class ThirdOrder1DX(HorizontalSmoothing):
         nx, ny, nz = self._shape
 
         # run the stencil
+        Timer.start(label="stencil")
         self._stencil_smooth(
             in_phi=phi,
             in_gamma=self._gamma,
@@ -233,6 +238,7 @@ class ThirdOrder1DX(HorizontalSmoothing):
             exec_info=self.backend_options.exec_info,
             validate_args=self.backend_options.validate_args,
         )
+        Timer.stop()
 
     @staticmethod
     @stencil_definition(
@@ -315,6 +321,7 @@ class ThirdOrder1DY(HorizontalSmoothing):
         nx, ny, nz = self._shape
 
         # run the stencil
+        Timer.start(label="stencil")
         self._stencil_smooth(
             in_phi=phi,
             in_gamma=self._gamma,
@@ -343,6 +350,7 @@ class ThirdOrder1DY(HorizontalSmoothing):
             exec_info=self.backend_options.exec_info,
             validate_args=self.backend_options.validate_args,
         )
+        Timer.stop()
 
     @staticmethod
     @stencil_definition(

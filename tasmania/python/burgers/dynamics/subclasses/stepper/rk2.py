@@ -20,6 +20,8 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+from sympl._core.time import Timer
+
 from tasmania.python.burgers.dynamics.stepper import BurgersStepper
 from tasmania.python.framework.register import register
 
@@ -71,6 +73,7 @@ class RK2(BurgersStepper):
         if "y_velocity" in tendencies:
             self._stencil_args["in_v_tnd"] = tendencies["y_velocity"]
 
+        Timer.start(label="stencil")
         self._forward_euler(
             **self._stencil_args,
             dt=dt,
@@ -81,5 +84,6 @@ class RK2(BurgersStepper):
             exec_info=self.backend_options.exec_info,
             validate_args=self.backend_options.validate_args
         )
+        Timer.stop()
 
         out_state["time"] = state["time"] + 0.5 * timestep

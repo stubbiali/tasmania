@@ -22,9 +22,9 @@
 #
 from typing import Optional, TYPE_CHECKING
 
-from sympl._core.time import FakeTimer as Timer
+# from sympl._core.time import FakeTimer as Timer
 
-# from sympl._core.time import Timer
+from sympl._core.time import Timer
 
 from tasmania.python.framework.stencil import StencilFactory
 from tasmania.python.utils import typingx
@@ -114,6 +114,7 @@ class DataArrayDictOperator(StencilFactory):
             assert "units" in dst[key].attrs
             src_field = src[key].to_units(dst[key].attrs["units"]).data
             dst_field = dst[key].data
+            Timer.start(label="stencil")
             self._stencil_copy(
                 src=src_field,
                 dst=dst_field,
@@ -122,6 +123,7 @@ class DataArrayDictOperator(StencilFactory):
                 exec_info=self.backend_options.exec_info,
                 validate_args=self.backend_options.validate_args,
             )
+            Timer.stop()
 
         if unshared_variables_in_output:
             for key in unshared_keys:
@@ -191,6 +193,7 @@ class DataArrayDictOperator(StencilFactory):
             field1 = dict1[key].to_units(units).data
             field2 = dict2[key].to_units(units).data
             out_da.attrs["units"] = units
+            Timer.start(label="stencil")
             self._stencil_add(
                 in_a=field1,
                 in_b=field2,
@@ -200,6 +203,7 @@ class DataArrayDictOperator(StencilFactory):
                 exec_info=self.backend_options.exec_info,
                 validate_args=self.backend_options.validate_args,
             )
+            Timer.stop()
             out[key] = out_da
 
         if unshared_variables_in_output and len(unshared_keys) > 0:
@@ -213,6 +217,7 @@ class DataArrayDictOperator(StencilFactory):
                 props = field_properties.get(key, {})
                 units = props.get("units", _dict[key].attrs["units"])
                 if key in out:
+                    Timer.start(label="stencil")
                     self._stencil_copy(
                         src=_dict[key].to_units(units).data,
                         dst=out[key].data,
@@ -221,6 +226,7 @@ class DataArrayDictOperator(StencilFactory):
                         exec_info=self.backend_options.exec_info,
                         validate_args=self.backend_options.validate_args,
                     )
+                    Timer.stop()
                     out[key].attrs["units"] = units
                 else:
                     out[key] = _dict[key].to_units(units)
@@ -275,6 +281,7 @@ class DataArrayDictOperator(StencilFactory):
             dict1[key] = dict1[key].to_units(units)
             field1 = dict1[key].data
             field2 = dict2[key].to_units(units).data
+            Timer.start(label="stencil")
             self._stencil_iadd(
                 inout_a=field1,
                 in_b=field2,
@@ -283,6 +290,7 @@ class DataArrayDictOperator(StencilFactory):
                 exec_info=self.backend_options.exec_info,
                 validate_args=self.backend_options.validate_args,
             )
+            Timer.stop()
 
         if unshared_variables_in_output and len(unshared_keys) > 0:
             for key in unshared_keys:
@@ -357,6 +365,7 @@ class DataArrayDictOperator(StencilFactory):
             field1 = dict1[key].to_units(units).data
             field2 = dict2[key].to_units(units).data
             out_da.attrs["units"] = units
+            Timer.start(label="stencil")
             self._stencil_sub(
                 in_a=field1,
                 in_b=field2,
@@ -366,6 +375,7 @@ class DataArrayDictOperator(StencilFactory):
                 exec_info=self.backend_options.exec_info,
                 validate_args=self.backend_options.validate_args,
             )
+            Timer.stop()
             out[key] = out_da
 
         if unshared_variables_in_output and len(unshared_keys) > 0:
@@ -385,6 +395,7 @@ class DataArrayDictOperator(StencilFactory):
                     units = props.get("units", dict1[key].attrs["units"])
 
                     if key in out:
+                        Timer.start(label="stencil")
                         self._stencil_copy(
                             src=dict1[key].to_units(units).data,
                             dst=out[key].data,
@@ -393,6 +404,7 @@ class DataArrayDictOperator(StencilFactory):
                             exec_info=self.backend_options.exec_info,
                             validate_args=self.backend_options.validate_args,
                         )
+                        Timer.stop()
                         out[key].attrs["units"] = units
                     else:
                         out[key] = dict1[key].to_units(units)
@@ -400,6 +412,7 @@ class DataArrayDictOperator(StencilFactory):
                     units = props.get("units", dict2[key].attrs["units"])
 
                     if key in out:
+                        Timer.start(label="stencil")
                         self._stencil_copychange(
                             src=dict2[key].to_units(units).data,
                             dst=out[key].data,
@@ -408,6 +421,7 @@ class DataArrayDictOperator(StencilFactory):
                             exec_info=self.backend_options.exec_info,
                             validate_args=self.backend_options.validate_args,
                         )
+                        Timer.stop()
                         out[key].attrs["units"] = units
                     else:
                         out[key] = dict2[key].to_units(units)
@@ -461,6 +475,7 @@ class DataArrayDictOperator(StencilFactory):
             dict1[key] = dict1[key].to_units(units)
             field1 = dict1[key].data
             field2 = dict2[key].to_units(units).data
+            Timer.start(label="stencil")
             self._stencil_isub(
                 inout_a=field1,
                 in_b=field2,
@@ -469,6 +484,7 @@ class DataArrayDictOperator(StencilFactory):
                 exec_info=self.backend_options.exec_info,
                 validate_args=self.backend_options.validate_args,
             )
+            Timer.stop()
 
         if unshared_variables_in_output and len(unshared_keys) > 0:
             if self._stencil_iscale is None:
@@ -485,6 +501,7 @@ class DataArrayDictOperator(StencilFactory):
                 else:
                     units = props.get("units", dict2[key].attrs["units"])
                     dict1[key] = deepcopy_dataarray(dict2[key].to_units(units))
+                    Timer.start(label="stencil")
                     self._stencil_iscale(
                         inout_a=dict1[key].data,
                         f=-1.0,
@@ -493,6 +510,7 @@ class DataArrayDictOperator(StencilFactory):
                         exec_info=self.backend_options.exec_info,
                         validate_args=self.backend_options.validate_args,
                     )
+                    Timer.stop()
 
     def scale(
         self,
@@ -529,6 +547,7 @@ class DataArrayDictOperator(StencilFactory):
                     out[key] = deepcopy_dataarray(field)
 
                 rout = out[key].data
+                Timer.start(label="stencil")
                 self._stencil_scale(
                     in_a=rfield,
                     out_a=rout,
@@ -538,6 +557,7 @@ class DataArrayDictOperator(StencilFactory):
                     exec_info=self.backend_options.exec_info,
                     validate_args=self.backend_options.validate_args,
                 )
+                Timer.stop()
 
         return out
 
@@ -562,6 +582,7 @@ class DataArrayDictOperator(StencilFactory):
                 units = props.get("units", dictionary[key].attrs["units"])
                 dictionary[key] = dictionary[key].to_units(units)
                 rfield = dictionary[key].data
+                Timer.start(label="stencil")
                 self._stencil_iscale(
                     inout_a=rfield,
                     f=factor,
@@ -570,6 +591,7 @@ class DataArrayDictOperator(StencilFactory):
                     exec_info=self.backend_options.exec_info,
                     validate_args=self.backend_options.validate_args,
                 )
+                Timer.stop()
 
     def addsub(
         self,
@@ -613,6 +635,7 @@ class DataArrayDictOperator(StencilFactory):
                 out[key] = deepcopy_dataarray(field1)
 
             rout = out[key].data
+            Timer.start(label="stencil")
             self._stencil_addsub(
                 in_a=rfield1,
                 in_b=rfield2,
@@ -623,6 +646,7 @@ class DataArrayDictOperator(StencilFactory):
                 exec_info=self.backend_options.exec_info,
                 validate_args=self.backend_options.validate_args,
             )
+            Timer.stop()
 
         return out
 
@@ -655,6 +679,7 @@ class DataArrayDictOperator(StencilFactory):
             rfield2 = dict2[key].to_units(units).data
             rfield3 = dict3[key].to_units(units).data
 
+            Timer.start(label="stencil")
             self._stencil_iaddsub(
                 inout_a=rfield1,
                 in_b=rfield2,
@@ -664,6 +689,7 @@ class DataArrayDictOperator(StencilFactory):
                 exec_info=self.backend_options.exec_info,
                 validate_args=self.backend_options.validate_args,
             )
+            Timer.stop()
 
     def fma(
         self,
@@ -703,6 +729,7 @@ class DataArrayDictOperator(StencilFactory):
                 out[key] = deepcopy_dataarray(field1)
 
             rout = out[key].data
+            Timer.start(label="stencil")
             self._stencil_fma(
                 in_a=rfield1,
                 in_b=rfield2,
@@ -713,6 +740,7 @@ class DataArrayDictOperator(StencilFactory):
                 exec_info=self.backend_options.exec_info,
                 validate_args=self.backend_options.validate_args,
             )
+            Timer.stop()
 
         return out
 
@@ -757,6 +785,7 @@ class DataArrayDictOperator(StencilFactory):
                 out[key] = deepcopy_dataarray(field)
 
             r_out = out[key].data
+            Timer.start(label="stencil")
             self._stencil_sts_rk2_0(
                 in_field=r_field,
                 in_field_prv=r_field_prv,
@@ -768,6 +797,7 @@ class DataArrayDictOperator(StencilFactory):
                 exec_info=self.backend_options.exec_info,
                 validate_args=self.backend_options.validate_args,
             )
+            Timer.stop()
 
         return out
 
@@ -812,6 +842,7 @@ class DataArrayDictOperator(StencilFactory):
                 out[key] = deepcopy_dataarray(field)
 
             r_out = out[key].data
+            Timer.start(label="stencil")
             self._stencil_sts_rk3ws_0(
                 in_field=r_field,
                 in_field_prv=r_field_prv,
@@ -823,6 +854,7 @@ class DataArrayDictOperator(StencilFactory):
                 exec_info=self.backend_options.exec_info,
                 validate_args=self.backend_options.validate_args,
             )
+            Timer.stop()
 
         return out
 

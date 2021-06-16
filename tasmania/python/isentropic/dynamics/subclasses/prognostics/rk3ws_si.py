@@ -20,9 +20,9 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from sympl._core.time import FakeTimer as Timer
+# from sympl._core.time import FakeTimer as Timer
 
-# from sympl._core.time import Timer
+from sympl._core.time import Timer
 
 from tasmania.python.isentropic.dynamics.diagnostics import (
     IsentropicDiagnostics,

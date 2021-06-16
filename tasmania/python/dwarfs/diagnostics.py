@@ -23,6 +23,8 @@
 import numpy as np
 from typing import Optional, TYPE_CHECKING
 
+from sympl._core.time import Timer
+
 from gt4py import gtscript
 
 from tasmania.python.framework.base_components import GridComponent
@@ -121,6 +123,7 @@ class HorizontalVelocity(GridComponent, StencilFactory):
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
 
         # run the stencil
+        Timer.start(label="stencil")
         self._stencil_diagnosing_momenta(
             in_d=d,
             in_u=u,
@@ -132,6 +135,7 @@ class HorizontalVelocity(GridComponent, StencilFactory):
             exec_info=self.backend_options.exec_info,
             validate_args=self.backend_options.validate_args,
         )
+        Timer.stop()
 
     def get_velocity_components(
         self: "HorizontalVelocity",
@@ -167,6 +171,7 @@ class HorizontalVelocity(GridComponent, StencilFactory):
         dn = int(self._staggering)
 
         # run the stencils
+        Timer.start(label="stencil")
         self._stencil_diagnosing_velocity_x(
             in_d=d,
             in_du=du,
@@ -185,6 +190,7 @@ class HorizontalVelocity(GridComponent, StencilFactory):
             exec_info=self.backend_options.exec_info,
             validate_args=self.backend_options.validate_args,
         )
+        Timer.stop()
 
     @staticmethod
     @stencil_definition(
@@ -393,6 +399,7 @@ class WaterConstituent(GridComponent, StencilFactory):
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
 
         # run the stencil
+        Timer.start(label="stencil")
         self._stencil_diagnosing_density(
             in_d=d,
             in_q=q,
@@ -402,6 +409,7 @@ class WaterConstituent(GridComponent, StencilFactory):
             exec_info=self.backend_options.exec_info,
             validate_args=self.backend_options.validate_args,
         )
+        Timer.stop()
 
     def get_mass_fraction_of_water_constituent_in_air(
         self: "WaterConstituent",
@@ -427,6 +435,7 @@ class WaterConstituent(GridComponent, StencilFactory):
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
 
         # run the stencil
+        Timer.start(label="stencil")
         self._stencil_diagnosing_mass_fraction(
             in_d=d,
             in_dq=dq,
@@ -436,6 +445,7 @@ class WaterConstituent(GridComponent, StencilFactory):
             exec_info=self.backend_options.exec_info,
             validate_args=self.backend_options.validate_args,
         )
+        Timer.stop()
 
     @staticmethod
     @stencil_definition(

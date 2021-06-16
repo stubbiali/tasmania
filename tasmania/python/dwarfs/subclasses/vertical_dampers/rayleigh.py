@@ -20,7 +20,8 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from sympl import DataArray
+from sympl._core.data_array import DataArray
+from sympl._core.time import Timer
 
 from gt4py import gtscript
 
@@ -65,6 +66,7 @@ class Rayleigh(VerticalDamping):
         dt_raw = dt_da.to_units(self._tunits).values.item()
 
         # run the stencil
+        Timer.start(label="stencil")
         self._stencil_damp(
             in_phi_now=field_now,
             in_phi_new=field_new,
@@ -77,6 +79,7 @@ class Rayleigh(VerticalDamping):
             exec_info=self.backend_options.exec_info,
             validate_args=self.backend_options.validate_args,
         )
+        Timer.stop()
 
         # dnk = self._damp_depth
         # if nk > dnk:

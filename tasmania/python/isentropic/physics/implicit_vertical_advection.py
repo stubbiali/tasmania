@@ -23,6 +23,8 @@
 import numpy as np
 from typing import Optional, Sequence, TYPE_CHECKING, Tuple
 
+from sympl._core.time import Timer
+
 from gt4py import gtscript
 
 from tasmania.python.framework.core_components import ImplicitTendencyComponent
@@ -237,6 +239,7 @@ class IsentropicImplicitVerticalAdvectionDiagnostic(ImplicitTendencyComponent):
             )
 
         # run the stencil
+        Timer.start(label="stencil")
         self._stencil(
             **stencil_args,
             origin=(0, 0, 0),
@@ -244,6 +247,7 @@ class IsentropicImplicitVerticalAdvectionDiagnostic(ImplicitTendencyComponent):
             exec_info=self.backend_options.exec_info,
             validate_args=self.backend_options.validate_args
         )
+        Timer.stop()
 
         # collect the output arrays in a dictionary
         diagnostics = {
@@ -869,6 +873,7 @@ class IsentropicImplicitVerticalAdvectionPrognostic(ImplicitTendencyComponent):
             )
 
         # run the stencil
+        Timer.start(label="stencil")
         self._stencil(
             **stencil_args,
             origin=(0, 0, 0),
@@ -876,6 +881,7 @@ class IsentropicImplicitVerticalAdvectionPrognostic(ImplicitTendencyComponent):
             exec_info=self.backend_options.exec_info,
             validate_args=self.backend_options.validate_args
         )
+        Timer.stop()
 
         # collect the output arrays in a dictionary
         tendencies = {

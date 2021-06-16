@@ -25,6 +25,8 @@ import numpy as np
 from sympl import DataArray
 from typing import Mapping, Optional, Sequence, TYPE_CHECKING
 
+from sympl._core.time import Timer
+
 from gt4py import gtscript
 
 from tasmania.python.framework.base_components import (
@@ -191,6 +193,7 @@ class IsentropicDiagnostics(
         )
 
         # retrieve all the diagnostic variables
+        Timer.start(label="stencil")
         self._stencil_diagnostic_variables(
             in_theta=self._theta,
             in_hs=self._topo,
@@ -206,6 +209,7 @@ class IsentropicDiagnostics(
             exec_info=self.backend_options.exec_info,
             validate_args=self.backend_options.validate_args,
         )
+        Timer.stop()
 
     def get_montgomery_potential(
         self, s: "NDArrayLike", pt: float, mtg: "NDArrayLike"
@@ -236,6 +240,7 @@ class IsentropicDiagnostics(
         )
 
         # run the stencil
+        Timer.start(label="stencil")
         self._stencil_montgomery(
             in_hs=self._topo,
             in_s=s,
@@ -248,6 +253,7 @@ class IsentropicDiagnostics(
             exec_info=self.backend_options.exec_info,
             validate_args=self.backend_options.validate_args,
         )
+        Timer.stop()
 
     def get_height(
         self, s: "NDArrayLike", pt: float, h: "NDArrayLike"
@@ -278,6 +284,7 @@ class IsentropicDiagnostics(
         )
 
         # run the stencil
+        Timer.start(label="stencil")
         self._stencil_height(
             in_theta=self._theta,
             in_hs=self._topo,
@@ -290,6 +297,7 @@ class IsentropicDiagnostics(
             exec_info=self.backend_options.exec_info,
             validate_args=self.backend_options.validate_args,
         )
+        Timer.stop()
 
     def get_density_and_temperature(
         self,
@@ -321,6 +329,7 @@ class IsentropicDiagnostics(
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
 
         # run the stencil
+        Timer.start(label="stencil")
         self._stencil_density_and_temperature(
             in_theta=self._theta,
             in_s=s,
@@ -333,6 +342,7 @@ class IsentropicDiagnostics(
             exec_info=self.backend_options.exec_info,
             validate_args=self.backend_options.validate_args,
         )
+        Timer.stop()
 
     @staticmethod
     @stencil_definition(

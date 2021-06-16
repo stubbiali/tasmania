@@ -23,7 +23,8 @@
 import numpy as np
 from typing import Dict, Optional, Sequence, TYPE_CHECKING
 
-from sympl import DataArray
+from sympl._core.data_array import DataArray
+from sympl._core.time import Timer
 
 from gt4py import gtscript
 
@@ -160,6 +161,7 @@ class IsentropicConservativeCoriolis(TendencyComponent):
     ) -> None:
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
         nb = self._nb
+        Timer.start(label="stencil")
         self._stencil(
             in_su=state["x_momentum_isentropic"],
             in_sv=state["y_momentum_isentropic"],
@@ -173,6 +175,7 @@ class IsentropicConservativeCoriolis(TendencyComponent):
             exec_info=self.backend_options.exec_info,
             validate_args=self.backend_options.validate_args,
         )
+        Timer.stop()
 
     @staticmethod
     @stencil_definition(backend=("numpy", "cupy"), stencil="coriolis")

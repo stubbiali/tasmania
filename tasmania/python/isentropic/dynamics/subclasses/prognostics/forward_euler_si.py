@@ -20,6 +20,8 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+from sympl._core.time import Timer
+
 from tasmania.python.isentropic.dynamics.diagnostics import (
     IsentropicDiagnostics,
 )
@@ -151,6 +153,7 @@ class ForwardEulerSI(IsentropicPrognostic):
             )
 
         # step the isentropic density and the water species
+        Timer.start(label="stencil")
         self._stencil(
             **stencil_args,
             dt=dt,
@@ -161,6 +164,7 @@ class ForwardEulerSI(IsentropicPrognostic):
             exec_info=self.backend_options.exec_info,
             validate_args=self.backend_options.validate_args
         )
+        Timer.stop()
 
         # apply the boundary conditions on the stepped isentropic density
         self.horizontal_boundary.enforce_field(
@@ -195,6 +199,7 @@ class ForwardEulerSI(IsentropicPrognostic):
         }
 
         # step the momenta
+        Timer.start(label="stencil")
         self._stencil_momentum(
             **stencil_args,
             dt=dt,
@@ -206,6 +211,7 @@ class ForwardEulerSI(IsentropicPrognostic):
             exec_info=self.backend_options.exec_info,
             validate_args=self.backend_options.validate_args
         )
+        Timer.stop()
 
         # set time
         out_state["time"] = state["time"] + timestep

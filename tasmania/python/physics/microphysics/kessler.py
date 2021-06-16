@@ -28,7 +28,8 @@ try:
 except ImportError:
     cp = np
 
-from sympl import DataArray
+from sympl._core.data_array import DataArray
+from sympl._core.time import Timer
 
 from gt4py import gtscript
 from gt4py.gtscript import IJ
@@ -321,6 +322,7 @@ class KesslerMicrophysics(TendencyComponent):
                 ]
 
         # run the stencil
+        Timer.start(label="stencil")
         self._stencil(
             **stencil_args,
             origin=(0, 0, 0),
@@ -328,6 +330,7 @@ class KesslerMicrophysics(TendencyComponent):
             exec_info=self.backend_options.exec_info,
             validate_args=self.backend_options.validate_args
         )
+        Timer.stop()
 
     @staticmethod
     @stencil_definition(
@@ -690,6 +693,7 @@ class KesslerSaturationAdjustmentDiagnostic(ImplicitTendencyComponent):
             in_exn = state["exner_function"]
 
         # run the stencil
+        Timer.start(label="stencil")
         self._stencil(
             in_p=in_p,
             in_t=in_t,
@@ -707,6 +711,7 @@ class KesslerSaturationAdjustmentDiagnostic(ImplicitTendencyComponent):
             exec_info=self.backend_options.exec_info,
             validate_args=self.backend_options.validate_args,
         )
+        Timer.stop()
 
     @staticmethod
     @stencil_definition(
@@ -1026,6 +1031,7 @@ class KesslerSaturationAdjustmentPrognostic(TendencyComponent):
             in_exn = state["exner_function"]
 
         # run the stencil
+        Timer.start(label="stencil")
         self._stencil(
             in_p=in_p,
             in_t=in_t,
@@ -1044,6 +1050,7 @@ class KesslerSaturationAdjustmentPrognostic(TendencyComponent):
             exec_info=self.backend_options.exec_info,
             validate_args=self.backend_options.validate_args,
         )
+        Timer.stop()
 
     @staticmethod
     @stencil_definition(
@@ -1248,6 +1255,7 @@ class KesslerFallVelocity(DiagnosticComponent):
         self._in_rho_s[:nx, :ny, :nz] = state["air_density"][
             :nx, :ny, nz - 1 : nz
         ]
+        Timer.start(label="stencil")
         self._stencil(
             in_rho=state["air_density"],
             in_rho_s=self._in_rho_s,
@@ -1258,6 +1266,7 @@ class KesslerFallVelocity(DiagnosticComponent):
             exec_info=self.backend_options.exec_info,
             validate_args=self.backend_options.validate_args,
         )
+        Timer.stop()
 
     @staticmethod
     @stencil_definition(
@@ -1408,6 +1417,7 @@ class KesslerSedimentation(ImplicitTendencyComponent):
     ) -> None:
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
         nbh = 0  # self.horizontal_boundary.nb if self.grid_type == "numerical" else 0
+        Timer.start(label="stencil")
         self._stencil(
             in_rho=state["air_density"],
             in_h=state["height_on_interface_levels"],
@@ -1420,6 +1430,7 @@ class KesslerSedimentation(ImplicitTendencyComponent):
             exec_info=self.backend_options.exec_info,
             validate_args=self.backend_options.validate_args,
         )
+        Timer.stop()
 
     @staticmethod
     @stencil_definition(

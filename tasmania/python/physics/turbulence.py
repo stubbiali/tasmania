@@ -148,6 +148,7 @@ class Smagorinsky2d(TendencyComponent):
         nb = self._nb
         dx = self.grid.dx.to_units("m").values.item()
         dy = self.grid.dy.to_units("m").values.item()
+        Timer.start(label="stencil")
         self._stencil(
             in_u=state["x_velocity"],
             in_v=state["y_velocity"],
@@ -163,6 +164,7 @@ class Smagorinsky2d(TendencyComponent):
             exec_info=self.backend_options.exec_info,
             validate_args=self.backend_options.validate_args,
         )
+        Timer.stop()
 
     @staticmethod
     @stencil_definition(

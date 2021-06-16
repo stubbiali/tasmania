@@ -21,8 +21,10 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 import numpy as np
-from sympl import DataArray
 from typing import Mapping, Optional, Sequence, TYPE_CHECKING
+
+from sympl._core.data_array import DataArray
+from sympl._core.time import Timer
 
 from gt4py import gtscript
 
@@ -136,6 +138,7 @@ class DryStaticEnergy(DiagnosticComponent):
         )
         out_dse = out["montgomery_potential"]
 
+        Timer.start(label="stencil")
         self._stencil(
             in_t=in_t,
             in_h=in_h,
@@ -145,6 +148,7 @@ class DryStaticEnergy(DiagnosticComponent):
             exec_info=self.backend_options.exec_info,
             validate_args=self.backend_options.validate_args,
         )
+        Timer.stop()
 
     @stencil_definition(
         backend=("numpy", "cupy", "numba:cpu:numpy"), stencil="static_energy"
@@ -266,6 +270,7 @@ class MoistStaticEnergy(DiagnosticComponent):
         in_qv = state["mass_fraction_of_water_vapor_in_air"]
         out_mse = out["moist_static_energy"]
 
+        Timer.start(label="stencil")
         self._stencil(
             in_dse=in_dse,
             in_qv=in_qv,
@@ -275,6 +280,7 @@ class MoistStaticEnergy(DiagnosticComponent):
             exec_info=self.backend_options.exec_info,
             validate_args=self.backend_options.validate_args,
         )
+        Timer.stop()
 
     @stencil_definition(
         backend=("numpy", "cupy", "numba:cpu:numpy"),
