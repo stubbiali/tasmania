@@ -21,6 +21,5 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 from .forward_euler import ForwardEuler
-from .implicit import Implicit
 from .rk2 import RK2
 from .rk3ws import RK3WS

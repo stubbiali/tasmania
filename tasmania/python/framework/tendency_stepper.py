@@ -20,20 +20,23 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-import abc
-from copy import deepcopy
-from sympl import (
-    TendencyComponent,
-    TendencyComponentComposite,
-    ImplicitTendencyComponent,
+from typing import Optional, TYPE_CHECKING
+
+from sympl._core.composite import (
     ImplicitTendencyComponentComposite,
+    TendencyComponentComposite,
+)
+from sympl._core.core_components import (
+    ImplicitTendencyComponent,
+    TendencyComponent,
 )
 from sympl._core.dynamic_checkers import (
     InflowComponentChecker,
     OutflowComponentChecker,
 )
+from sympl._core.factory import AbstractFactory
+from sympl._core.steppers import TendencyStepper as SymplTendencyStepper
 from sympl._core.units import clean_units
-from typing import Optional, TYPE_CHECKING, Tuple
 
 from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
 from tasmania.python.framework.register import factorize
@@ -50,13 +53,11 @@ if TYPE_CHECKING:
     )
 
 
-class TendencyStepper(abc.ABC):
+class TendencyStepper(AbstractFactory, SymplTendencyStepper):
     """
     Callable abstract base class which steps a model state based on the
     tendencies calculated by a set of wrapped prognostic components.
     """
-
-    registry = {}
 
     allowed_component_type = (
         TendencyComponent,
@@ -71,6 +72,7 @@ class TendencyStepper(abc.ABC):
         *args: ty.TendencyComponent,
         execution_policy: str = "serial",
         enforce_horizontal_boundary: bool = False,
+        enable_checks: bool = True,
         backend: str = "numpy",
         backend_options: Optional["BackendOptions"] = None,
         storage_options: Optional["StorageOptions"] = None
@@ -108,52 +110,37 @@ class TendencyStepper(abc.ABC):
         storage_options : `StorageOptions`, optional
             Storage-related options.
         """
-        assert_sequence(args, reftype=self.__class__.allowed_component_type)
-
-        self._prognostic_list = args
-        self._prognostic = (
-            args[0]
-            if (len(args) == 1 and isinstance(args[0], ConcurrentCoupling))
-            else ConcurrentCoupling(*args, execution_policy=execution_policy)
+        tendency_component = (
+            ConcurrentCoupling(
+                *args,
+                execution_policy=execution_policy,
+                enable_checks=enable_checks,
+                backend=backend,
+                backend_options=backend_options,
+                storage_options=storage_options
+            )
+            if len(args) > 1
+            else args[0]
         )
 
-        self.input_properties = self._get_input_properties()
-        self.diagnostic_properties = (
-            self._prognostic.diagnostic_properties.copy()
-        )
-        self.output_properties = self._get_output_properties()
-
-        self._input_checker = InflowComponentChecker.factory(
-            "input_properties", self
-        )
-        self._diagnostic_checker = OutflowComponentChecker.factory(
-            "diagnostic_properties", self
-        )
-        self._output_checker = OutflowComponentChecker.factory(
-            "output_properties", self
+        super(AbstractFactory, self).__init__(
+            tendency_component, enable_checks=enable_checks
         )
 
         enforce_hb = enforce_horizontal_boundary
         if enforce_hb:
             found = False
-            for prognostic in args:
+            for component in args:
                 if not found:
 
-                    try:  # composite component
-                        components = prognostic.component_list
-                    except AttributeError:  # base component
-                        components = (prognostic,)
+                    try:  # tasmania's component
+                        self._hb = component.horizontal_boundary
+                        self._enforce_hb = True
+                        found = True
 
-                    for component in components:
-                        try:  # tasmania's component
-                            self._hb = component.horizontal_boundary
-                            self._grid = component.grid
-                            self._enforce_hb = True
-                            found = True
-
-                            break
-                        except AttributeError:  # sympl's component
-                            pass
+                        break
+                    except AttributeError:  # sympl's component
+                        pass
 
             if not found:
                 self._enforce_hb = False
@@ -165,219 +152,3 @@ class TendencyStepper(abc.ABC):
             backend_options=backend_options,
             storage_options=storage_options,
         )
-
-        self._out_state = None
-
-    @property
-    def prognostic(self) -> ConcurrentCoupling:
-        """
-        Return
-        ------
-        tasmania.ConcurrentCoupling :
-            The object calculating the tendencies.
-        """
-        return self._prognostic
-
-    def _get_input_properties(self) -> ty.PropertiesDict:
-        """
-        Return
-        ------
-        dict[str, dict] :
-            Dictionary whose keys are strings denoting model variables
-            which should be present in the input state dictionary, and
-            whose values are dictionaries specifying fundamental properties
-            (dims, units) of those variables.
-        """
-        return_dict = {}
-        return_dict.update(self._prognostic.input_properties)
-
-        tendency_properties = self._prognostic.tendency_properties
-        for name in tendency_properties:
-            mod_tendency_property = deepcopy(tendency_properties[name])
-            mod_tendency_property["units"] = clean_units(
-                mod_tendency_property["units"] + " s"
-            )
-
-            if name in return_dict:
-                check_property_compatibility(
-                    property_name=name,
-                    property1=return_dict[name],
-                    origin1_name="self._prognostic.input_properties",
-                    property2=mod_tendency_property,
-                    origin2_name="self._prognostic.tendency_properties",
-                )
-            else:
-                return_dict[name] = {}
-                return_dict[name].update(mod_tendency_property)
-
-        return return_dict
-
-    def _get_output_properties(self) -> ty.PropertiesDict:
-        """
-        Return
-        ------
-        dict[str, dict] :
-            Dictionary whose keys are strings denoting model variables
-            present in the output state dictionary, and whose values are
-            dictionaries specifying fundamental properties (dims, units)
-            of those variables.
-        """
-        return_dict = {}
-
-        for key, val in self._prognostic.tendency_properties.items():
-            return_dict[key] = deepcopy(val)
-            if "units" in return_dict[key]:
-                return_dict[key]["units"] = clean_units(
-                    return_dict[key]["units"] + " s"
-                )
-
-        return return_dict
-
-    def __call__(
-        self, state: ty.DataArrayDict, timestep: ty.TimeDelta
-    ) -> Tuple[ty.DataArrayDict, ty.DataArrayDict]:
-        """
-        Step the model state.
-
-        Parameters
-        ----------
-        state : dict[str, sympl.DataArray]
-            Dictionary whose keys are strings denoting the input model
-            variables, and whose values are :class:`sympl.DataArray`\s
-            storing values for those variables.
-        timestep : datetime.timedelta
-            The time step.
-
-        Return
-        ------
-        diagnostics : dict[str, sympl.DataArray]
-            The diagnostics retrieved from the input state.
-        out_state : dict[str, sympl.DataArray]
-            The output (stepped) state.
-        """
-        self._input_checker.check(state)
-
-        diagnostics, out_state = self._call(state, timestep)
-
-        self._diagnostic_checker.check(
-            {
-                key: val.data
-                for key, val in diagnostics.items()
-                if key != "time"
-            },
-            state,
-        )
-        diagnostics["time"] = state["time"]
-
-        self._output_checker.check(
-            {key: val.data for key, val in out_state.items() if key != "time"},
-            state,
-        )
-        out_state["time"] = state["time"] + timestep
-
-        return diagnostics, out_state
-
-    @abc.abstractmethod
-    def _call(
-        self, state: ty.DataArrayDict, timestep: ty.TimeDelta
-    ) -> Tuple[ty.DataArrayDict, ty.DataArrayDict]:
-        """
-        Step the model state. As this method is marked as abstract,
-        its implementation is delegated to the derived classes.
-
-        Parameters
-        ----------
-        state : dict[str, sympl.DataArray]
-            Dictionary whose keys are strings denoting the input model
-            variables, and whose values are :class:`sympl.DataArray`\s
-            storing values for those variables.
-        timestep : datetime.timedelta
-            The time step.
-
-        Return
-        ------
-        diagnostics : dict[str, sympl.DataArray]
-            The diagnostics retrieved from the input state.
-        out_state : dict[str, sympl.DataArray]
-            The output (stepped) state.
-        """
-        pass
-
-    def _allocate_output_state(
-        self, state: ty.DataArrayDict
-    ) -> ty.DataArrayDict:
-        out_state = self._out_state or {}
-
-        if not out_state:
-            for name in self.output_properties:
-                units = self.output_properties[name]["units"]
-                out_state[name] = deepcopy_dataarray(
-                    state[name].to_units(units)
-                )
-                out_state[name].data[...] = 0.0
-
-        return out_state
-
-    @staticmethod
-    def factory(
-        scheme: str,
-        *args: ty.TendencyComponent,
-        execution_policy: str = "serial",
-        enforce_horizontal_boundary: bool = False,
-        backend: str = "numpy",
-        backend_options: Optional["BackendOptions"] = None,
-        storage_options: Optional["StorageOptions"] = None,
-        **kwargs
-    ) -> "TendencyStepper":
-        """Get an instance of the desired derived class.
-
-        Parameters
-        ----------
-        scheme : str
-            The time integration scheme to implement.
-        args :
-            Instances of
-
-                * :class:`sympl.TendencyComponent`,
-                * :class:`sympl.TendencyComponentComposite`,
-                * :class:`sympl.ImplicitTendencyComponent`,
-                * :class:`sympl.ImplicitTendencyComponentComposite`, or
-                * :class:`tasmania.ConcurrentCoupling`
-
-            providing tendencies for the prognostic variables.
-        execution_policy : `str`, optional
-            String specifying the runtime mode in which parameterizations
-            should be invoked. See :class:`tasmania.ConcurrentCoupling`.
-        enforce_horizontal_boundary : `bool`, optional
-            ``True`` if the class should enforce the lateral boundary
-            conditions after each stage of the time integrator,
-            ``False`` otherwise. Defaults to ``False``.
-            This argument is considered only if at least one of the wrapped
-            objects is an instance of
-
-                * :class:`tasmania.TendencyComponent`, or
-                * :class:`tasmania.ImplicitTendencyComponent`.
-
-        backend : `str`, optional
-            The backend.
-        backend_options : `BackendOptions`, optional
-            Backend-specific options.
-        storage_options : `StorageOptions`, optional
-            Storage-related options.
-        **kwargs :
-            Scheme-specific arguments.
-
-        Return
-        ------
-        obj :
-            Instance of the desired derived class.
-        """
-        child_kwargs = {
-            "execution_policy": execution_policy,
-            "enforce_horizontal_boundary": enforce_horizontal_boundary,
-            "backend": backend,
-            "backend_options": backend_options,
-            "storage_options": storage_options,
-        }
-        child_kwargs.update(kwargs)
-        return factorize(scheme, TendencyStepper, args, child_kwargs)

@@ -20,20 +20,20 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from tasmania.python.framework.register import register
 from tasmania.python.framework.tendency_stepper import TendencyStepper
-from tasmania.python.utils.framework import get_increment
 
 
-@register(name="forward_euler")
 class ForwardEuler(TendencyStepper):
     """The forward Euler scheme."""
+
+    name = "forward_euler"
 
     def __init__(
         self,
         *args,
         execution_policy="serial",
         enforce_horizontal_boundary=False,
+        enable_checks=True,
         backend="numpy",
         backend_options=None,
         storage_options=None,
@@ -43,25 +43,29 @@ class ForwardEuler(TendencyStepper):
             *args,
             execution_policy=execution_policy,
             enforce_horizontal_boundary=enforce_horizontal_boundary,
+            enable_checks=enable_checks,
             backend=backend,
             backend_options=backend_options,
             storage_options=storage_options
         )
+        self._increment = None
 
-    def _call(self, state, timestep):
-        # initialize the output state
-        self._out_state = self._out_state or self._allocate_output_state(state)
-        out_state = self._out_state
-
-        # calculate the tendencies and the diagnostics
-        tendencies, diagnostics = get_increment(
-            state, timestep, self.prognostic
+    def _call(self, state, timestep, out_diagnostics, out_state):
+        # calculate the increment and the diagnostics
+        (
+            self._increment,
+            out_diagnostics,
+        ) = self._stepper_operator.get_increment(
+            state,
+            timestep,
+            out_increment=self._increment,
+            out_diagnostics=out_diagnostics,
         )
 
         # step the solution
         self._dict_op.fma(
             state,
-            tendencies,
+            self._increment,
             timestep.total_seconds(),
             out=out_state,
             field_properties=self.output_properties,
@@ -71,10 +75,8 @@ class ForwardEuler(TendencyStepper):
         if self._enforce_hb:
             # enforce the boundary conditions on each prognostic variable
             self._hb.enforce(
-                out_state, field_names=self.output_properties.keys(),
+                out_state,
+                field_names=self.output_properties.keys(),
             )
 
-        # restore original units for the tendencies
-        # restore_tendency_units(tendencies)
-
-        return diagnostics, out_state
+        return out_diagnostics, out_state
