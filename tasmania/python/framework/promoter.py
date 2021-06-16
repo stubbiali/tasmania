@@ -32,6 +32,7 @@ from sympl._core.dynamic_operators import (
     OutflowComponentOperator,
 )
 from sympl._core.static_checkers import StaticComponentChecker
+from sympl._core.time import Timer
 
 from tasmania.python.framework._base import (
     BaseFromDiagnosticToTendency,
@@ -124,7 +125,7 @@ class FromDiagnosticToTendency(
         # instantiate stencil
         dtype = self.storage_options.dtype
         self.backend_options.dtypes = {"dtype": dtype}
-        self._stencil_copy = self.compile("copy")
+        self._stencil_copy = self.compile_stencil("copy")
 
     @property
     @abc.abstractmethod
@@ -195,6 +196,7 @@ class FromDiagnosticToTendency(
                 "tendency_name", name.replace("tendency_of_", "")
             )
             grid_shape = self.get_field_grid_shape(tendency_name)
+            Timer.start(label="stencil")
             self._stencil_copy(
                 src=diagnostics[name],
                 dst=out[tendency_name],
@@ -203,6 +205,7 @@ class FromDiagnosticToTendency(
                 exec_info=self.backend_options.exec_info,
                 validate_args=self.backend_options.validate_args,
             )
+            Timer.stop()
 
 
 class FromTendencyToDiagnostic(
@@ -270,7 +273,7 @@ class FromTendencyToDiagnostic(
         # instantiate stencil
         dtype = self.storage_options.dtype
         self.backend_options.dtypes = {"dtype": dtype}
-        self._stencil_copy = self.compile("copy")
+        self._stencil_copy = self.compile_stencil("copy")
 
     @property
     @abc.abstractmethod
@@ -343,6 +346,7 @@ class FromTendencyToDiagnostic(
                 "diagnostic_name", "tendency_of_" + name
             )
             grid_shape = self.get_field_grid_shape(diagnostic_name)
+            Timer.start(label="stencil")
             self._stencil_copy(
                 src=tendencies[name],
                 dst=out[diagnostic_name],
@@ -351,3 +355,4 @@ class FromTendencyToDiagnostic(
                 exec_info=self.backend_options.exec_info,
                 validate_args=self.backend_options.validate_args,
             )
+            Timer.stop()

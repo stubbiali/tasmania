@@ -23,20 +23,6 @@
 from typing import Sequence
 
 
-class ConcurrentCouplingStaticOperator:
-    @staticmethod
-    def get_overwrite_tendencies(parent):
-        components = getattr(parent, "component_list", [])
-        tendencies = set()
-        out = []
-        for component in components:
-            if hasattr(component, "tendency_properties"):
-                ot = {}
-                for name in component.input_tendency_properties:
-                    ot[name] = name not in tendencies
-                    tendencies.add(name)
-
-
 def merge_dims(dim1: Sequence[str], dim2: Sequence[str]) -> Sequence[str]:
     if "*" not in dim1 and "*" not in dim2:
         return dim1
