@@ -20,30 +20,35 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-import numpy as np
-from sympl import (
-    DiagnosticComponent,
-    DiagnosticComponentComposite as SymplDiagnosticComponentComposite,
-    TendencyComponent,
-    TendencyComponentComposite,
-    ImplicitTendencyComponent,
-    ImplicitTendencyComponentComposite,
-)
 from typing import TYPE_CHECKING
+
+from sympl._core.composite import (
+    DiagnosticComponentComposite as SymplDiagnosticComponentComposite,
+    ImplicitTendencyComponentComposite,
+    TendencyComponentComposite,
+)
+from sympl._core.core_components import (
+    DiagnosticComponent,
+    ImplicitTendencyComponent,
+    TendencyComponent,
+)
 
 from tasmania.python.framework.composite import (
     DiagnosticComponentComposite as TasmaniaDiagnosticComponentComposite,
 )
 from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
+from tasmania.python.framework.sequential_update_splitting_utils import (
+    StaticOperator,
+)
+from tasmania.python.framework.static_checkers import (
+    check_properties_are_compatible,
+)
 from tasmania.python.framework.tendency_stepper import TendencyStepper
 from tasmania.python.utils import typingx
-from tasmania.python.utils.framework import (
-    check_properties_compatibility,
-    get_input_properties,
-    get_output_properties,
-)
+from tasmania.python.utils.dict import DataArrayDictOperator
 
 if TYPE_CHECKING:
+    from sympl._core.typingx import DataArrayDict
     from tasmania.python.framework.options import TimeIntegrationOptions
 
 
@@ -114,6 +119,7 @@ class SequentialUpdateSplitting:
                         component,
                         execution_policy="serial",
                         enforce_horizontal_boundary=options.enforce_horizontal_boundary,
+                        enable_checks=options.enable_checks,
                         backend=options.backend,
                         backend_options=options.backend_options,
                         storage_options=options.storage_options,
@@ -123,46 +129,26 @@ class SequentialUpdateSplitting:
                 self._substeps.append(max(options.substeps, 1))
 
         # set properties
-        self.input_properties = self._init_input_properties()
-        self.output_properties = self._init_output_properties()
+        self.input_properties = StaticOperator.get_input_properties(self)
+        self.output_properties = StaticOperator.get_output_properties(self)
 
-        # ensure that dimensions and units of the variables present
-        # in both input_properties and output_properties are compatible
-        # across the two dictionaries
-        check_properties_compatibility(
-            self.input_properties,
-            self.output_properties,
-            properties1_name="input_properties",
-            properties2_name="output_properties",
+        # static checks
+        check_properties_are_compatible(
+            self, "input_properties", self, "output_properties"
         )
 
-    def _init_input_properties(self) -> typingx.PropertiesDict:
-        return get_input_properties(
-            tuple(
-                {
-                    "component": component,
-                    "attribute_name": "input_properties",
-                    "consider_diagnostics": True,
-                }
-                for component in self._component_list
-            )
-        )
+        self._dict_op = DataArrayDictOperator()
 
-    def _init_output_properties(self) -> typingx.PropertiesDict:
-        return get_output_properties(
-            tuple(
-                {
-                    "component": component,
-                    "attribute_name": "input_properties",
-                    "consider_diagnostics": True,
-                }
-                for component in self._component_list
-            )
-        )
+        self._out_diagnostics = [None] * len(self._component_list)
+        self._out_state = [None] * len(self._component_list)
+
+    @property
+    def components(self):
+        return tuple(self._component_list)
 
     def __call__(
         self,
-        state: typingx.mutable_dataarray_dict_t,
+        state: "DataArrayDict",
         timestep: typingx.TimeDelta,
     ) -> None:
         """
@@ -184,34 +170,33 @@ class SequentialUpdateSplitting:
         """
         current_time = state["time"]
 
-        for component, substeps in zip(self._component_list, self._substeps):
+        for idx, component in enumerate(self._component_list):
             if not isinstance(component, self.allowed_diagnostic_type):
-                diagnostics, state_tmp = component(state, timestep / substeps)
+                substeps = self._substeps[idx]
+
+                self._out_diagnostics[idx], self._out_state[idx] = component(
+                    state,
+                    timestep / substeps,
+                    out_diagnostics=self._out_diagnostics[idx],
+                    out_state=self._out_state[idx],
+                )
 
                 if substeps > 1:
-                    state_tmp.update(
-                        {
-                            key: value
-                            for key, value in state.items()
-                            if key not in state_tmp
-                        }
-                    )
+                    raise NotImplementedError()
 
-                    for _ in range(1, substeps):
-                        _, state_aux = component(
-                            state_tmp, timestep / substeps
-                        )
-                        state_tmp.update(state_aux)
-
-                state.update(state_tmp)
-                state.update(diagnostics)
+                self._dict_op.update_swap(state, self._out_diagnostics[idx])
+                self._dict_op.update_swap(state, self._out_state[idx])
             else:
                 try:
-                    diagnostics = component(state)
+                    self._out_diagnostics[idx] = component(
+                        state, out=self._out_diagnostics[idx]
+                    )
                 except TypeError:
-                    diagnostics = component(state, timestep)
+                    self._out_diagnostics[idx] = component(
+                        state, timestep, out=self._out_diagnostics[idx]
+                    )
 
-                state.update(diagnostics)
+                self._dict_op.update_swap(state, self._out_diagnostics[idx])
 
             # ensure state is still defined at current time level
             state["time"] = current_time
