@@ -20,30 +20,34 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from sympl import (
-    DiagnosticComponent,
-    DiagnosticComponentComposite as SymplDiagnosticComponentComposite,
-    TendencyComponent,
-    TendencyComponentComposite,
-    ImplicitTendencyComponent,
-    ImplicitTendencyComponentComposite,
-)
 from typing import Optional, TYPE_CHECKING, Tuple, Union
+
+from sympl._core.composite import (
+    DiagnosticComponentComposite as SymplDiagnosticComponentComposite,
+    ImplicitTendencyComponentComposite,
+    TendencyComponentComposite,
+)
+from sympl._core.core_components import (
+    DiagnosticComponent,
+    TendencyComponent,
+    ImplicitTendencyComponent,
+)
 
 from tasmania.python.framework.composite import (
     DiagnosticComponentComposite as TasmaniaDiagnosticComponentComposite,
 )
 from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
+from tasmania.python.framework.parallel_splitting_utils import StaticOperator
+from tasmania.python.framework.static_checkers import (
+    check_properties_are_compatible,
+)
 from tasmania.python.framework.tendency_stepper import TendencyStepper
 from tasmania.python.utils import typingx
 from tasmania.python.utils.dict import DataArrayDictOperator
-from tasmania.python.utils.framework import (
-    check_properties_compatibility,
-    get_input_properties,
-    get_output_properties,
-)
 
 if TYPE_CHECKING:
+    from sympl._core.typingx import DataArrayDict
+
     from tasmania.python.framework.options import (
         BackendOptions,
         StorageOptions,
@@ -163,6 +167,7 @@ class ParallelSplitting:
                         scheme,
                         component,
                         enforce_horizontal_boundary=options.enforce_horizontal_boundary,
+                        enable_checks=options.enable_checks,
                         backend=options.backend,
                         backend_options=options.backend_options,
                         storage_options=options.storage_options,
@@ -172,11 +177,6 @@ class ParallelSplitting:
                 self._substeps.append(max(options.substeps, 1))
 
         self._policy = execution_policy
-        self._call = (
-            self._call_serial
-            if execution_policy == "serial"
-            else self._call_asparallel
-        )
 
         if (
             execution_policy == "as_parallel"
@@ -194,34 +194,25 @@ class ParallelSplitting:
                 retrieve_diagnostics_from_provisional_state
             )
 
-        # Set properties
-        self.input_properties = self._init_input_properties()
+        # set properties
+        self.input_properties = StaticOperator.get_input_properties(self)
         self.provisional_input_properties = (
-            self._init_provisional_input_properties()
+            StaticOperator.get_provisional_input_properties(self)
         )
-        self.output_properties = self._init_output_properties()
+        self.output_properties = StaticOperator.get_output_properties(self)
         self.provisional_output_properties = (
-            self._init_provisional_output_properties()
+            StaticOperator.get_provisional_output_properties(self)
         )
 
-        # Ensure that dimensions and units of the variables present
-        # in both input_properties and output_properties are compatible
-        # across the two dictionaries
-        check_properties_compatibility(
-            self.input_properties,
-            self.output_properties,
-            properties1_name="input_properties",
-            properties2_name="output_properties",
+        # static checks
+        check_properties_are_compatible(
+            self, "input_properties", self, "output_properties"
         )
-
-        # Ensure that dimensions and units of the variables present
-        # in both provisional_input_properties and provisional_output_properties
-        # are compatible across the two dictionaries
-        check_properties_compatibility(
-            self.provisional_input_properties,
-            self.provisional_output_properties,
-            properties1_name="provisional_input_properties",
-            properties2_name="provisional_output_properties",
+        check_properties_are_compatible(
+            self,
+            "provisional_input_properties",
+            self,
+            "provisional_output_properties",
         )
 
         self._dict_op = DataArrayDictOperator(
@@ -230,120 +221,11 @@ class ParallelSplitting:
             storage_options=storage_options,
         )
 
-    def _init_input_properties(self) -> typingx.PropertiesDict:
-        if not self._diagnostics_from_provisional:
-            return get_input_properties(
-                tuple(
-                    {
-                        "component": component,
-                        "attribute_name": "input_properties",
-                        "consider_diagnostics": self._policy == "serial",
-                    }
-                    for component in self.component_list
-                )
-            )
-        else:
-            return get_input_properties(
-                tuple(
-                    {
-                        "component": component,
-                        "attribute_name": "input_properties",
-                        "consider_diagnostics": True,
-                    }
-                    for component in self.component_list
-                    if not isinstance(
-                        component, self.__class__.allowed_diagnostic_type
-                    )
-                )
-            )
-
-    def _init_provisional_input_properties(self) -> typingx.PropertiesDict:
-        # We require that all prognostic variables affected by the
-        # parameterizations are included in the provisional state
-        return_dict = get_input_properties(
-            tuple(
-                {
-                    "component": component,
-                    "attribute_name": "output_properties",
-                    "consider_diagnostics": False,
-                }
-                for component in self.component_list
-                if not isinstance(
-                    component, self.__class__.allowed_diagnostic_type
-                )
-            )
-        )
-
-        if self._diagnostics_from_provisional:
-            return_dict.update(
-                get_input_properties(
-                    tuple(
-                        {
-                            "component": component,
-                            "attribute_name": "input_properties",
-                            "consider_diagnostics": True,
-                        }
-                        for component in self.component_list
-                        if isinstance(
-                            component, self.__class__.allowed_diagnostic_type
-                        )
-                    )
-                )
-            )
-
-        return return_dict
-
-    def _init_output_properties(self) -> typingx.PropertiesDict:
-        if not self._diagnostics_from_provisional:
-            return get_output_properties(
-                tuple(
-                    {
-                        "component": component,
-                        "attribute_name": "input_properties",
-                        "consider_diagnostics": True,
-                    }
-                    for component in self.component_list
-                )
-            )
-        else:
-            return get_output_properties(
-                tuple(
-                    {
-                        "component": component,
-                        "attribute_name": "input_properties",
-                        "consider_diagnostics": True,
-                    }
-                    for component in self.component_list
-                    if not isinstance(
-                        component, self.__class__.allowed_diagnostic_type
-                    )
-                )
-            )
-
-    def _init_provisional_output_properties(self) -> typingx.PropertiesDict:
-        return_dict = self.provisional_input_properties
-
-        if self._diagnostics_from_provisional:
-            return_dict.update(
-                get_output_properties(
-                    tuple(
-                        {
-                            "component": component,
-                            "attribute_name": None,
-                            "consider_diagnostics": True,
-                        }
-                        for component in self.component_list
-                        if isinstance(
-                            component, self.__class__.allowed_diagnostic_type
-                        )
-                    )
-                )
-            )
-
-        return return_dict
+        self._out_diagnostics = [None] * len(self.components)
+        self._out_state = [None] * len(self.components)
 
     @property
-    def component_list(
+    def components(
         self,
     ) -> Tuple[Union[typingx.DiagnosticComponent, TendencyStepper], ...]:
         """
@@ -356,8 +238,8 @@ class ParallelSplitting:
 
     def __call__(
         self,
-        state: typingx.mutable_dataarray_dict_t,
-        state_prv: typingx.mutable_dataarray_dict_t,
+        state: "DataArrayDict",
+        state_prv: "DataArrayDict",
         timestep: typingx.TimeDelta,
     ) -> None:
         """
@@ -385,67 +267,67 @@ class ParallelSplitting:
         will represent the state at the next time level.
         """
         # step the solution
-        self._call(state, state_prv, timestep)
+        if self._policy == "serial":
+            self._call_serial(state, state_prv, timestep)
+        else:
+            self._call_asparallel(state, state_prv, timestep)
 
         # Ensure the provisional state is now defined at the next time level
         state_prv["time"] = state["time"] + timestep
 
     def _call_serial(
         self,
-        state: typingx.mutable_dataarray_dict_t,
-        state_prv: typingx.mutable_dataarray_dict_t,
+        state: "DataArrayDict",
+        state_prv: "DataArrayDict",
         timestep: typingx.TimeDelta,
     ) -> None:
         """Process the components in 'serial' runtime mode."""
-        for component, substeps in zip(self._component_list, self._substeps):
+        for idx, component in enumerate(self.components):
             if not isinstance(component, self.allowed_diagnostic_type):
-                diagnostics, state_tmp = component(state, timestep / substeps)
+                substeps = self._substeps[idx]
+                self._out_diagnostics[idx], self._out_state[idx] = component(
+                    state,
+                    timestep / substeps,
+                    out_diagnostics=self._out_diagnostics[idx],
+                    out_state=self._out_state[idx],
+                )
 
                 if substeps > 1:
-                    state_tmp.update(
-                        {
-                            key: value
-                            for key, value in state.items()
-                            if key not in state_tmp
-                        }
-                    )
-
-                    for _ in range(1, substeps):
-                        _, state_aux = component(
-                            state_tmp, timestep / substeps
-                        )
-                        state_tmp.update(state_aux)
+                    raise NotImplementedError()
 
                 self._dict_op.iaddsub(
                     state_prv,
-                    state_tmp,
+                    self._out_state[idx],
                     state,
                     field_properties=self.provisional_output_properties,
                 )
-
-                state.update(diagnostics)
+                self._dict_op.update_swap(state, self._out_diagnostics[idx])
             else:
                 arg = (
                     state_prv if self._diagnostics_from_provisional else state
                 )
 
                 try:
-                    diagnostics = component(arg)
+                    self._out_diagnostics[idx] = component(
+                        arg, out=self._out_diagnostics[idx]
+                    )
                 except TypeError:
-                    diagnostics = component(arg, timestep)
+                    self._out_diagnostics[idx] = component(
+                        arg, timestep, out=self._out_diagnostics[idx]
+                    )
 
-                arg.update(diagnostics)
+                self._dict_op.update_swap(arg, self._out_diagnostics[idx])
 
     def _call_asparallel(
         self,
-        state: typingx.mutable_dataarray_dict_t,
-        state_prv: typingx.mutable_dataarray_dict_t,
+        state: "DataArrayDict",
+        state_prv: "DataArrayDict",
         timestep: typingx.TimeDelta,
     ) -> None:
         """Process the components in 'as_parallel' runtime mode."""
         agg_diagnostics = {}
 
-        for component, substeps in zip(self.component_list, self._substeps):
+        for component, substeps in zip(self.components, self._substeps):
             if not isinstance(component, self.allowed_diagnostic_type):
                 diagnostics, state_tmp = component(state, timestep / substeps)
 
