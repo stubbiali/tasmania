@@ -240,7 +240,7 @@ if gt4py:
         inout_a: gtscript.Field["dtype"], in_b: gtscript.Field["dtype"]
     ) -> None:
         with computation(PARALLEL), interval(...):
-            inout_a = inout_a + in_b
+            inout_a += in_b
 
     @stencil_definition.register(backend="gt4py*", stencil="iaddsub")
     def iaddsub_gt4py(
@@ -249,7 +249,7 @@ if gt4py:
         in_c: gtscript.Field["dtype"],
     ) -> None:
         with computation(PARALLEL), interval(...):
-            inout_a = inout_a + in_b - in_c
+            inout_a += in_b - in_c
 
     @stencil_definition.register(backend="gt4py*", stencil="iclip")
     def iclip_gt4py(inout_field: gtscript.Field["dtype"]) -> None:
@@ -261,19 +261,19 @@ if gt4py:
         inout_a: gtscript.Field["dtype"], in_b: gtscript.Field["dtype"]
     ) -> None:
         with computation(PARALLEL), interval(...):
-            inout_a = inout_a * in_b
+            inout_a *= in_b
 
     @stencil_definition.register(backend="gt4py*", stencil="iscale")
     def iscale_gt4py(inout_a: gtscript.Field["dtype"], *, f: "dtype") -> None:
         with computation(PARALLEL), interval(...):
-            inout_a = f * inout_a
+            inout_a *= f
 
     @stencil_definition.register(backend="gt4py*", stencil="isub")
     def isub_gt4py(
         inout_a: gtscript.Field["dtype"], in_b: gtscript.Field["dtype"]
     ) -> None:
         with computation(PARALLEL), interval(...):
-            inout_a = inout_a - in_b
+            inout_a -= in_b
 
     @stencil_definition.register(backend="gt4py*", stencil="mul")
     def mul_gt4py(
