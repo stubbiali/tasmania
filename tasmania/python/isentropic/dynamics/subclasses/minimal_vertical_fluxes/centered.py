@@ -29,7 +29,7 @@ from tasmania.python.isentropic.dynamics.vertical_fluxes import (
 
 
 def get_centered_flux_numpy(w, phi):
-    flux = w[:, :, 1:-1] * 0.5 * (phi[:, :, 1:-1] + phi[:, :, :-2])
+    flux = w[:, :, 1:-1] * 0.5 * (phi[:, :, 1:] + phi[:, :, :-1])
     return flux
 
 

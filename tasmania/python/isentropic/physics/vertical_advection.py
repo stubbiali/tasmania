@@ -339,7 +339,12 @@ class IsentropicVerticalAdvection(TendencyComponent):
         if self._stgz:
             w = in_w
         else:
-            w = np.zeros_like(in_w)
+            w = np.zeros(
+                self.get_field_storage_shape(
+                    name="tendency_of_air_isentropic_density_on_interface_levels"
+                ),
+                dtype=self.storage_options.dtype,
+            )
             w[i, j, kstart + 1 : kstop] = 0.5 * (
                 in_w[i, j, kstart + 1 : kstop] + in_w[i, j, kstart : kstop - 1]
             )
@@ -363,27 +368,32 @@ class IsentropicVerticalAdvection(TendencyComponent):
 
         # compute the fluxes
         fs, fsu, fsv = self._vflux.get_subroutine_definition("flux_dry")(
-            dt=dt, dz=dz, w=w, s=in_s, su=in_su, sv=in_sv
+            dt=dt,
+            dz=dz,
+            w=w[i, j, kstart : kstop + 1],
+            s=in_s[i, j, kstart:kstop],
+            su=in_su[i, j, kstart:kstop],
+            sv=in_sv[i, j, kstart:kstop],
         )
 
         # calculate the tendency for the air isentropic density
         tmp_out_s = np.zeros_like(in_s)
         tmp_out_s[i, j, kstart + nb : kstop - nb] = (
-            fs[i, j, 1:] - fs[i, j, :-1]
+            fs[:, :, 1:] - fs[:, :, :-1]
         ) / dz
         set_output(out_s, tmp_out_s, ow_out_s)
 
         # calculate the tendency for the x-momentum
         tmp_out_su = np.zeros_like(in_s)
         tmp_out_su[i, j, kstart + nb : kstop - nb] = (
-            fsu[i, j, 1:] - fsu[i, j, :-1]
+            fsu[:, :, 1:] - fsu[:, :, :-1]
         ) / dz
         set_output(out_su, tmp_out_su, ow_out_su)
 
         # calculate the tendency for the y-momentum
         tmp_out_sv = np.zeros_like(in_s)
         tmp_out_sv[i, j, kstart + nb : kstop - nb] = (
-            fsv[i, j, 1:] - fsv[i, j, :-1]
+            fsv[:, :, 1:] - fsv[:, :, :-1]
         ) / dz
         set_output(out_sv, tmp_out_sv, ow_out_sv)
 
@@ -391,26 +401,33 @@ class IsentropicVerticalAdvection(TendencyComponent):
             # compute the fluxes
             fsqv, fsqc, fsqr = self._vflux.get_subroutine_definition(
                 "flux_moist"
-            )(dt=dt, dz=dz, w=w, sqv=sqv, sqc=sqc, sqr=sqr)
+            )(
+                dt=dt,
+                dz=dz,
+                w=w[i, j, kstart : kstop + 1],
+                sqv=sqv[i, j, kstart:kstop],
+                sqc=sqc[i, j, kstart:kstop],
+                sqr=sqr[i, j, kstart:kstop],
+            )
 
             # calculate the tendency for the water vapor
             tmp_out_qv = np.zeros_like(in_qv)
             tmp_out_qv[i, j, kstart + nb : kstop - nb] = (
-                fsqv[i, j, 1:] - fsqv[i, j, :-1]
+                fsqv[:, j, 1:] - fsqv[:, j, :-1]
             ) / (in_s[i, j, kstart + nb : kstop - nb] * dz)
             set_output(out_qv, tmp_out_qv, ow_out_qv)
 
             # calculate the tendency for the cloud liquid water
             tmp_out_qc = np.zeros_like(in_qc)
             tmp_out_qc[i, j, kstart + nb : kstop - nb] = (
-                fsqc[i, j, 1:] - fsqc[i, j, :-1]
+                fsqc[:, :, 1:] - fsqc[:, :, :-1]
             ) / (in_s[i, j, kstart + nb : kstop - nb] * dz)
             set_output(out_qc, tmp_out_qc, ow_out_qc)
 
             # calculate the tendency for the precipitation water
             tmp_out_qr = np.zeros_like(in_qr)
             tmp_out_qr[i, j, kstart + nb : kstop - nb] = (
-                fsqr[i, j, 1:] - fsqr[i, j, :-1]
+                fsqr[:, :, 1:] - fsqr[:, :, :-1]
             ) / (in_s[i, j, kstart + nb : kstop - nb] * dz)
             set_output(out_qr, tmp_out_qr, ow_out_qr)
 

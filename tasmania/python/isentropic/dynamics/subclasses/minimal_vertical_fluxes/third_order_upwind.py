@@ -32,11 +32,11 @@ from tasmania.python.isentropic.dynamics.vertical_fluxes import (
 
 def get_third_order_upwind_flux_numpy(w, phi):
     flux = w[:, :, 2:-2] / 12.0 * (
-        7.0 * (phi[:, :, 1:-3] + phi[:, :, 2:-2])
-        - (phi[:, :, :-4] + phi[:, :, 3:-1])
+        7.0 * (phi[:, :, 1:-2] + phi[:, :, 2:-1])
+        - (phi[:, :, :-3] + phi[:, :, 3:])
     ) - np.abs(w[:, :, 2:-2]) / 12.0 * (
-        3.0 * (phi[:, :, 1:-3] - phi[:, :, 2:-2])
-        - (phi[:, :, :-4] - phi[:, :, 3:-1])
+        3.0 * (phi[:, :, 1:-2] - phi[:, :, 2:-1])
+        - (phi[:, :, :-3] - phi[:, :, 3:])
     )
     return flux
 

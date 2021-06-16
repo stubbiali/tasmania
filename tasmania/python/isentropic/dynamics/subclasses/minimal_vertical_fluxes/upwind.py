@@ -32,7 +32,7 @@ from tasmania.python.isentropic.dynamics.vertical_fluxes import (
 
 def get_upwind_flux_numpy(w, phi):
     flux = w[:, :, 1:-1] * np.where(
-        w[:, :, 1:-1] > 0.0, phi[:, :, 1:-1], phi[:, :, :-2]
+        w[:, :, 1:-1] > 0.0, phi[:, :, 1:], phi[:, :, :-1]
     )
     return flux
 

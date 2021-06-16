@@ -117,18 +117,20 @@ class IsentropicDiagnostics(
             backend, backend_options, storage_options
         )
 
-        # get the proper storage shape
+        # get proper storage shape
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
-        storage_shape = self.get_storage_shape(storage_shape, (nx, ny, nz + 1))
+        shape = self.get_field_storage_shape(
+            "air_potential_temperature_on_interface_levels", storage_shape
+        )
 
         # allocate auxiliary fields
-        self._theta = self.zeros(shape=storage_shape)  # todo: mask
+        self._theta = self.zeros(shape=shape)  # todo: mask
         self._theta[:nx, :ny, : nz + 1] = self.as_storage(
             data=grid.z_on_interface_levels.to_units("K").values[
                 np.newaxis, np.newaxis, :
             ]
         )
-        self._topo = self.zeros(shape=storage_shape)
+        self._topo = self.zeros(shape=shape)
 
         # gather dtypes and external symbols
         dtype = self.storage_options.dtype

@@ -116,27 +116,34 @@ class GridComponent(abc.ABC):
         out_shape = in_shape or min_shape
 
         if max_shape is None:
-            error_msg = (
-                f"storage shape must be larger or equal than "
-                f"({', '.join(str(el) for el in min_shape)})."
-            )
-            assert all(
-                tuple(
-                    out_shape[i] >= min_shape[i] for i in range(len(min_shape))
-                )
-            ), error_msg
+            # error_msg = (
+            #     f"storage shape must be larger or equal than "
+            #     f"({', '.join(str(el) for el in min_shape)})."
+            # )
+            # assert all(
+            #     tuple(
+            #         out_shape[i] >= min_shape[i] for i in range(len(min_shape))
+            #     )
+            # ), error_msg
+            out_shape = [
+                a if a >= b else b for a, b in zip(out_shape, min_shape)
+            ]
         else:
-            error_msg = (
-                f"storage shape must be between "
-                f"({', '.join(str(el) for el in min_shape)}) and "
-                f"({', '.join(str(el) for el in max_shape)})."
-            )
-            assert all(
-                tuple(
-                    min_shape[i] <= out_shape[i] <= max_shape[i]
-                    for i in range(len(min_shape))
-                )
-            ), error_msg
+            # error_msg = (
+            #     f"storage shape must be between "
+            #     f"({', '.join(str(el) for el in min_shape)}) and "
+            #     f"({', '.join(str(el) for el in max_shape)})."
+            # )
+            # assert all(
+            #     tuple(
+            #         min_shape[i] <= out_shape[i] <= max_shape[i]
+            #         for i in range(len(min_shape))
+            #     )
+            # ), error_msg
+            out_shape = [
+                a if c >= a >= b else (b if a < b else c)
+                for a, b, c in zip(out_shape, min_shape, max_shape)
+            ]
 
         return out_shape
 
