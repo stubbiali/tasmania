@@ -24,9 +24,9 @@
 MODULES=( )
 # MODULES=( daint-gpu cray-python/3.6.5.7 cudatoolkit )
 PYTHON=python3.8
-PIP_UPGRADE=0
+PIP_UPGRADE=1
 DISABLE_CEXT=1
-GT4PY_EXTRAS=dawn,cuda101
+GT4PY_EXTRAS=
 VENV=venv
 FRESH_INSTALL=1
 

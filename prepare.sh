@@ -21,6 +21,5 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 
-export GT_CACHE_ROOT=/Users/subbiali/Desktop/phd/tasmania/drop-gt-powered/gt_cache
+export GT_CACHE_ROOT=/Users/subbiali/Desktop/phd/tasmania/oop/gt_cache
 export GT_CACHE_DIR_NAME=.gt_cache
-
