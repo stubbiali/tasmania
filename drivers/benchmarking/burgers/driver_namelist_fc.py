@@ -21,9 +21,12 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 import click
+from datetime import timedelta
 import numpy as np
-import tasmania.python.utils.time
-from sympl import DataArray
+
+from sympl._core.data_array import DataArray
+from sympl._core.time import Timer
+
 import tasmania as taz
 
 from drivers.benchmarking.burgers import namelist_fc
@@ -127,24 +130,16 @@ def main(backend=None, namelist="namelist_fc.py", no_log=False):
     dt = nl.timestep
     nt = nl.niter
 
-    # dict operator
-    dict_op = taz.DataArrayDictOperator(
-        backend=nl.backend, backend_options=nl.bo, storage_options=nl.so
-    )
+    # warm up caches
+    state_new = dycore(state, {}, timedelta(seconds=0.0))
+    state_new["time"] = nl.init_time
 
-    # start timing
-    tasmania.python.utils.time.Timer.start("compute_time")
+    # reset timers
+    Timer.reset()
 
-    # step the solution
-    state_new = dycore(state, {}, dt)
-    state_new["time"] = nl.init_time + dt
-
-    # stop timing
-    tasmania.python.utils.time.Timer.stop()
-
-    for i in range(1, nt):
+    for i in range(nt):
         # start timing
-        tasmania.python.utils.time.Timer.start("compute_time")
+        Timer.start("compute_time")
 
         # swap old and new states
         state, state_new = state_new, state
@@ -154,7 +149,7 @@ def main(backend=None, namelist="namelist_fc.py", no_log=False):
         state_new["time"] = nl.init_time + (i + 1) * dt
 
         # stop timing
-        tasmania.python.utils.time.Timer.stop()
+        Timer.stop()
 
     print("Simulation successfully completed. HOORAY!")
 
@@ -170,21 +165,19 @@ def main(backend=None, namelist="namelist_fc.py", no_log=False):
     print(f"Validation: max(u) = {u.max():.8f} m/s")
 
     # print logs
-    print(
-        f"Compute time: "
-        f"{tasmania.python.utils.time.Timer.get_time('compute_time', 's'):.3f}"
-        f" s."
-    )
+    print(f"Compute time: {Timer.get_time('compute_time', 's'):.3f} s.")
+    print(f"Stencil time: {Timer.get_time('stencil', 's'):.3f} s.")
 
     if not no_log:
         # save to file
         exec_info_to_csv(nl.exec_info_csv, nl.backend, nl.bo)
         run_info_to_csv(
-            nl.run_info_csv,
-            backend,
-            tasmania.python.utils.time.Timer.get_time("compute_time", "s"),
+            nl.run_info_csv, backend, Timer.get_time("compute_time", "s")
         )
-        tasmania.python.utils.time.Timer.log(nl.log_txt, "s")
+        run_info_to_csv(
+            nl.stencil_info_csv, backend, Timer.get_time("stencil", "s")
+        )
+        Timer.log(nl.log_txt, "s")
 
 
 if __name__ == "__main__":

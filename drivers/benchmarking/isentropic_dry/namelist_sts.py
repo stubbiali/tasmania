@@ -66,6 +66,7 @@ bo = taz.BackendOptions(
 so = taz.StorageOptions(
     dtype=np.float64, aligned_index=(nb, nb, 0), managed="gt4py"
 )
+enable_checks = False
 
 # topography
 topo_type = "gaussian"
@@ -135,4 +136,5 @@ else:
     prefix = "../timing/oop"
 exec_info_csv = os.path.join(prefix, f"isentropic_dry_exec_sts_{backend}.csv")
 run_info_csv = os.path.join(prefix, "isentropic_dry_run_sts.csv")
+stencil_info_csv = os.path.join(prefix, "burgers_stencil_sts.csv")
 log_txt = os.path.join(prefix, f"isentropic_dry_log_sts_{backend}.txt")

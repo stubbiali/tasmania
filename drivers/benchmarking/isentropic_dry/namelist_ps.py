@@ -24,7 +24,9 @@ from datetime import datetime, timedelta
 import numpy as np
 import os
 import socket
-from sympl import DataArray
+
+from sympl._core.data_array import DataArray
+
 import tasmania as taz
 
 
@@ -32,11 +34,11 @@ import tasmania as taz
 domain_x = DataArray([-176, 176], dims="x", attrs={"units": "km"}).to_units(
     "m"
 )
-nx = 161
+nx = 41
 domain_y = DataArray([-176, 176], dims="y", attrs={"units": "km"}).to_units(
     "m"
 )
-ny = 161
+ny = 41
 domain_z = DataArray(
     [400, 280], dims="potential_temperature", attrs={"units": "K"}
 )
@@ -66,6 +68,7 @@ bo = taz.BackendOptions(
 so = taz.StorageOptions(
     dtype=np.float64, aligned_index=(nb, nb, 0), managed="gt4py"
 )
+enable_checks = True
 
 # topography
 topo_type = "gaussian"
@@ -99,7 +102,7 @@ horizontal_flux_scheme = "fifth_order_upwind"
 damp = True
 damp_type = "rayleigh"
 damp_depth = 15
-damp_max = 0.0002
+damp_max = 0.0005
 damp_at_every_stage = False
 
 # horizontal smoothing
@@ -117,7 +120,7 @@ smagorinsky_constant = 0.18
 coriolis_parameter = None
 
 # simulation length
-timestep = timedelta(seconds=10)
+timestep = timedelta(seconds=40)
 niter = 100
 
 # output

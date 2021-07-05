@@ -21,8 +21,9 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 import click
+from datetime import timedelta
 
-import sympl
+from sympl._core.data_array import DataArray
 from sympl._core.time import Timer
 
 import tasmania as taz
@@ -225,7 +226,7 @@ def main(backend=None, namelist="namelist_fc.py", no_log=False):
     # The fast diagnostics
     # ============================================================
     # component retrieving the diagnostic variables
-    pt = sympl.DataArray(
+    pt = DataArray(
         state["air_pressure_on_interface_levels"].data[0, 0, 0],
         attrs={"units": "Pa"},
     )
@@ -341,28 +342,21 @@ def main(backend=None, namelist="namelist_fc.py", no_log=False):
         backend=nl.backend, backend_options=nl.bo, storage_options=nl.so
     )
 
-    # start timing
-    Timer.start(label="compute_time")
-
-    # update the (time-dependent) topography
-    dycore.update_topography(dt)
-
-    # calculate the dynamics
-    state_new = dycore(state, {}, dt)
+    # warm up caches
+    dycore.update_topography(timedelta(seconds=0.0))
+    state_new = dycore(state, {}, timedelta(seconds=0.0))
     state_new["accumulated_precipitation"] = taz.deepcopy_dataarray(
         state["accumulated_precipitation"],
         backend=nl.backend,
         storage_options=nl.so,
     )
-
-    # calculate the slow physics
-    _, diagnostics = slow_diags(state_new, dt)
+    _, diagnostics = slow_diags(state_new, timedelta(seconds=0.0))
     dict_op.update_swap(state_new, diagnostics)
 
-    # stop timing
-    Timer.stop(label="compute_time")
+    # reset timers
+    Timer.reset()
 
-    for i in range(1, nt):
+    for i in range(nt):
         # start timing
         Timer.start(label="compute_time")
 
@@ -373,12 +367,6 @@ def main(backend=None, namelist="namelist_fc.py", no_log=False):
         dycore.update_topography((i + 1) * dt)
 
         # calculate the dynamics
-        # state_new = dycore(state, {}, dt)
-        # state_new["accumulated_precipitation"] = taz.deepcopy_dataarray(
-        #     state["accumulated_precipitation"],
-        #     backend=nl.backend,
-        #     storage_options=nl.so,
-        # )
         dycore(state, {}, dt, out_state=state_new)
 
         # calculate the slow physics
@@ -402,12 +390,16 @@ def main(backend=None, namelist="namelist_fc.py", no_log=False):
 
     # print logs
     print(f"Compute time: {Timer.get_time('compute_time', 's'):.3f} s.")
+    print(f"Stencil time: {Timer.get_time('stencil', 's'):.3f} s.")
 
     if not no_log:
         # save to file
         exec_info_to_csv(nl.exec_info_csv, nl.backend, nl.bo)
         run_info_to_csv(
             nl.run_info_csv, backend, Timer.get_time("compute_time", "s")
+        )
+        run_info_to_csv(
+            nl.stencil_info_csv, backend, Timer.get_time("stencil", "s")
         )
         Timer.log(nl.log_txt, "s")
 

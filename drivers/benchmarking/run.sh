@@ -20,41 +20,37 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-
-DRIVER_DIR=isentropic_moist
-DRIVER_NAME=driver_namelist_fc.py
-BACKENDS=(
-#  numpy
-#  cupy
-  gt4py:gtx86
-  gt4py:gtmc
-#  gt4py:gtc:gt:cpu_ifirst
-#  gt4py:gtc:gt:cpu_kfirst
-  gt4py:gtcuda
-#  gt4py:gtc:cuda
-#  gt4py:gtc:gt:gpu
+DRIVER_DIR=burgers
+DRIVER_NAMES=(
+  driver_namelist_sus.py
+  driver_namelist_ssus.py
 )
-NRUNS=5
+BACKENDS=(
+  numpy
+)
+NRUNS=3
 
 CDIR=$PWD
 
 function singlerun_nolog()
 {
-  echo $1
-  cd $DRIVER_DIR && python $DRIVER_NAME -b $BACKEND --no-log && cd $CDIR || return
+  echo "$1" "$2"
+  cd $DRIVER_DIR && python "$1" -b "$2" --no-log && cd "$CDIR" || return
   echo ""
 }
 
 function singlerun()
 {
-  echo $1 $2
-  cd $DRIVER_DIR && python $DRIVER_NAME -b $BACKEND --no-log && cd $CDIR || return
+  echo "$1" "$2" "$3"
+  cd $DRIVER_DIR && python "$1" -b "$2" && cd "$CDIR" || return
   echo ""
 }
 
-for BACKEND in "${BACKENDS[@]}"; do
-  singlerun_nolog $BACKEND || return
-  for i in $(seq 1 $NRUNS); do
-    singlerun $BACKEND $i || return
+for DRIVER_NAME in "${DRIVER_NAMES[@]}"; do
+  for BACKEND in "${BACKENDS[@]}"; do
+#    singlerun_nolog "$DRIVER_NAME" "$BACKEND" || return
+    for i in $(seq 1 $NRUNS); do
+      singlerun "$DRIVER_NAME" "$BACKEND" "$i" || return
+    done
   done
 done

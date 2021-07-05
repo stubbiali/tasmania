@@ -1,0 +1,13 @@
+copy: 0.000 s
+stencil: 0.000 s
+boundary: 0.000 s
+|- stencil: 0.000 s
+montgomery: 0.000 s
+|- stencil: 0.000 s
+compute_time: 34.973 s
+|- copy: 0.004 s
+|- stencil: 29.084 s
+|- boundary: 0.225 s
+|  |- stencil: 0.189 s
+|- montgomery: 2.138 s
+   |- stencil: 1.881 s

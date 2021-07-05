@@ -32,11 +32,11 @@ import tasmania as taz
 domain_x = DataArray([-176, 176], dims="x", attrs={"units": "km"}).to_units(
     "m"
 )
-nx = 161
+nx = 41
 domain_y = DataArray([-176, 176], dims="y", attrs={"units": "km"}).to_units(
     "m"
 )
-ny = 161
+ny = 41
 domain_z = DataArray(
     [400, 280], dims="potential_temperature", attrs={"units": "K"}
 )
@@ -137,22 +137,23 @@ saturation_rate = DataArray(0.025, attrs={"units": "s^-1"})
 update_frequency = 0
 
 # simulation length
-timestep = timedelta(seconds=10)
+timestep = timedelta(seconds=40)
 niter = 100
 
 # output
 hostname = socket.gethostname()
 if "nid" in hostname:
     if os.path.exists("/scratch/snx3000"):
-        prefix = "/scratch/snx3000/subbiali/timing/oop/20210430"
+        prefix = "/scratch/snx3000/subbiali/timing/oop/20210607"
     else:
-        prefix = "/scratch/snx3000tds/subbiali/timing/oop/20210430"
+        prefix = "/scratch/snx3000tds/subbiali/timing/oop/20210607"
 elif "daint" in hostname:
-    prefix = "/scratch/snx3000/subbiali/timing/oop/20210430"
+    prefix = "/scratch/snx3000/subbiali/timing/oop/20210607"
 elif "dom" in hostname:
-    prefix = "/scratch/snx3000tds/subbiali/timing/oop/20210430"
+    prefix = "/scratch/snx3000tds/subbiali/timing/oop/20210607"
 else:
-    prefix = "../timing/oop/mbp"
+    prefix = "../timing/oop/mbp/20210607"
 exec_info_csv = os.path.join(prefix, f"isentropic_moist_exec_fc_{backend}.csv")
 run_info_csv = os.path.join(prefix, "isentropic_moist_run_fc.csv")
+stencil_info_csv = os.path.join(prefix, "isentropic_moist_stencil_fc.csv")
 log_txt = os.path.join(prefix, f"isentropic_moist_log_fc_{backend}.txt")

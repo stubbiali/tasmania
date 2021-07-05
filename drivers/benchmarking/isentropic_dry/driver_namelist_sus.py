@@ -75,14 +75,14 @@ def main(backend=None, namelist="namelist_sus.py", no_log=False):
         storage_options=nl.so,
     )
     pgrid = domain.physical_grid
-    cgrid = domain.numerical_grid
-    storage_shape = (cgrid.nx + 1, cgrid.ny + 1, cgrid.nz + 1)
+    ngrid = domain.numerical_grid
+    storage_shape = (ngrid.nx + 1, ngrid.ny + 1, ngrid.nz + 1)
 
     # ============================================================
     # The initial state
     # ============================================================
     state = taz.get_isentropic_state_from_brunt_vaisala_frequency(
-        cgrid,
+        ngrid,
         nl.init_time,
         nl.x_velocity,
         nl.y_velocity,

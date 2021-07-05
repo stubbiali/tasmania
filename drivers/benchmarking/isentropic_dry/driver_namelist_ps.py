@@ -21,8 +21,12 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 import click
+from datetime import timedelta
+
+from sympl._core.data_array import DataArray
+from sympl._core.time import Timer
+
 import tasmania as taz
-import tasmania.python.utils.time
 
 from drivers.benchmarking.isentropic_dry import namelist_ps
 from drivers.benchmarking.utils import (
@@ -72,14 +76,14 @@ def main(backend=None, namelist="namelist_ps.py", no_log=False):
         storage_options=nl.so,
     )
     pgrid = domain.physical_grid
-    cgrid = domain.numerical_grid
-    storage_shape = (cgrid.nx + 1, cgrid.ny + 1, cgrid.nz + 1)
+    ngrid = domain.numerical_grid
+    storage_shape = (ngrid.nx + 1, ngrid.ny + 1, ngrid.nz + 1)
 
     # ============================================================
     # The initial state
     # ============================================================
     state = taz.get_isentropic_state_from_brunt_vaisala_frequency(
-        cgrid,
+        ngrid,
         nl.init_time,
         nl.x_velocity,
         nl.y_velocity,
@@ -94,7 +98,10 @@ def main(backend=None, namelist="namelist_ps.py", no_log=False):
     # ============================================================
     # The dynamics
     # ============================================================
-    pt = state["air_pressure_on_interface_levels"][0, 0, 0]
+    pt = DataArray(
+        state["air_pressure_on_interface_levels"].data[0, 0, 0],
+        attrs={"units": "Pa"},
+    )
     dycore = taz.IsentropicDynamicalCore(
         domain,
         moist=False,
@@ -124,6 +131,7 @@ def main(backend=None, namelist="namelist_ps.py", no_log=False):
         smooth=False,
         smooth_moist=False,
         # backend settings
+        enable_checks=nl.enable_checks,
         backend=nl.backend,
         backend_options=nl.bo,
         storage_shape=storage_shape,
@@ -142,6 +150,7 @@ def main(backend=None, namelist="namelist_ps.py", no_log=False):
         grid_type="numerical",
         moist=False,
         pt=pt,
+        enable_checks=nl.enable_checks,
         backend=nl.backend,
         backend_options=nl.bo,
         storage_shape=storage_shape,
@@ -154,6 +163,7 @@ def main(backend=None, namelist="namelist_ps.py", no_log=False):
         domain,
         grid_type="numerical",
         coriolis_parameter=nl.coriolis_parameter,
+        enable_checks=nl.enable_checks,
         backend=nl.backend,
         backend_options=nl.bo,
         storage_shape=storage_shape,
@@ -164,6 +174,7 @@ def main(backend=None, namelist="namelist_ps.py", no_log=False):
             component=cf,
             scheme=ptis,
             substeps=1,
+            enable_checks=nl.enable_checks,
             backend=nl.backend,
             backend_options=nl.bo,
             storage_options=nl.so,
@@ -178,6 +189,7 @@ def main(backend=None, namelist="namelist_ps.py", no_log=False):
         nl.smooth_coeff_max,
         nl.smooth_damp_depth,
         moist=False,
+        enable_checks=nl.enable_checks,
         backend=nl.backend,
         backend_options=nl.bo,
         storage_shape=storage_shape,
@@ -189,6 +201,7 @@ def main(backend=None, namelist="namelist_ps.py", no_log=False):
     turb = taz.IsentropicSmagorinsky(
         domain,
         nl.smagorinsky_constant,
+        enable_checks=nl.enable_checks,
         backend=nl.backend,
         backend_options=nl.bo,
         storage_shape=storage_shape,
@@ -199,6 +212,7 @@ def main(backend=None, namelist="namelist_ps.py", no_log=False):
             component=turb,
             scheme=ptis,
             substeps=1,
+            enable_checks=nl.enable_checks,
             backend=nl.backend,
             backend_options=nl.bo,
             storage_options=nl.so,
@@ -208,6 +222,7 @@ def main(backend=None, namelist="namelist_ps.py", no_log=False):
     # component retrieving the velocity components
     ivc = taz.IsentropicVelocityComponents(
         domain,
+        enable_checks=nl.enable_checks,
         backend=nl.backend,
         backend_options=nl.bo,
         storage_shape=storage_shape,
@@ -236,30 +251,37 @@ def main(backend=None, namelist="namelist_ps.py", no_log=False):
         backend=nl.backend, backend_options=nl.bo, storage_options=nl.so
     )
 
+    # warm up caches
+    dycore.update_topography(timedelta(seconds=0.0))
+    state_new = dycore(state, {}, timedelta(seconds=0.0))
+    missing_keys = [key for key in state if key not in state_new]
+    state_new.update({key: state[key] for key in missing_keys})
+    physics(state, state_new, timedelta(seconds=0.0))
+
+    # reset timers
+    Timer.reset()
+
     for i in range(nt):
         # start timing
-        tasmania.python.utils.time.Timer.start(label="compute_time")
+        Timer.start(label="compute_time")
+
+        # swap old and new state
+        state, state_new = state_new, state
 
         # update the (time-dependent) topography
         dycore.update_topography((i + 1) * dt)
 
         # calculate the dynamics
-        tasmania.python.utils.time.Timer.start(label="dynamics")
-        state_prv = dycore(state, {}, dt)
-        extension = {key: state[key] for key in state if key not in state_prv}
-        state_prv.update(extension)
-        tasmania.python.utils.time.Timer.stop(label="dynamics")
+        dycore(state, {}, dt, out_state=state_new)
+        dict_op.update_swap(
+            state_new, {key: state[key] for key in missing_keys}
+        )
 
         # calculate the physics
-        tasmania.python.utils.time.Timer.start(label="physics")
-        physics(state, state_prv, dt)
-        tasmania.python.utils.time.Timer.stop(label="physics")
-
-        # update the state
-        dict_op.copy(state, state_prv)
+        physics(state, state_new, dt)
 
         # stop timing
-        tasmania.python.utils.time.Timer.stop(label="compute_time")
+        Timer.stop(label="compute_time")
 
     print("Simulation successfully completed. HOORAY!")
 
@@ -274,21 +296,19 @@ def main(backend=None, namelist="namelist_ps.py", no_log=False):
     print(f"Validation: umax = {umax:.5f}, vmax = {vmax:.5f}")
 
     # print logs
-    print(
-        f"Compute time: "
-        f"{tasmania.python.utils.time.Timer.get_time('compute_time', 's'):.3f}"
-        f" s."
-    )
+    print(f"Compute time: {Timer.get_time('compute_time', 's'):.3f} s.")
+    print(f"Stencil time: {Timer.get_time('stencil', 's'):.3f} s.")
 
     if not no_log:
         # save to file
         exec_info_to_csv(nl.exec_info_csv, nl.backend, nl.bo)
         run_info_to_csv(
-            nl.run_info_csv,
-            backend,
-            tasmania.python.utils.time.Timer.get_time("compute_time", "s"),
+            nl.run_info_csv, backend, Timer.get_time("compute_time", "s")
         )
-        tasmania.python.utils.time.Timer.log(nl.log_txt, "s")
+        run_info_to_csv(
+            nl.stencil_info_csv, backend, Timer.get_time("stencil", "s")
+        )
+        Timer.log(nl.log_txt, "s")
 
 
 if __name__ == "__main__":

@@ -66,6 +66,7 @@ bo = taz.BackendOptions(
 so = taz.StorageOptions(
     dtype=np.float64, aligned_index=(nb, nb, 0), managed="gt4py"
 )
+enable_checks = False
 
 # topography
 topo_type = "gaussian"

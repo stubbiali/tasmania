@@ -1,0 +1,2 @@
+compute_time: 7.343 s
+|- copy: 0.011 s

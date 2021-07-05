@@ -21,6 +21,10 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 import click
+from datetime import timedelta
+
+from sympl._core.time import Timer
+
 import tasmania as taz
 
 from drivers.benchmarking.isentropic_moist import namelist_ssus
@@ -131,6 +135,7 @@ def main(backend=None, namelist="namelist_ssus.py", no_log=False):
         smooth=False,
         smooth_moist=False,
         # backend settings
+        enable_checks=nl.enable_checks,
         backend=nl.backend,
         backend_options=nl.bo,
         storage_shape=storage_shape,
@@ -150,6 +155,7 @@ def main(backend=None, namelist="namelist_ssus.py", no_log=False):
         grid_type="numerical",
         moist=True,
         pt=pt,
+        enable_checks=nl.enable_checks,
         backend=nl.backend,
         backend_options=nl.bo,
         storage_shape=storage_shape,
@@ -162,6 +168,7 @@ def main(backend=None, namelist="namelist_ssus.py", no_log=False):
         domain,
         grid_type="numerical",
         coriolis_parameter=nl.coriolis_parameter,
+        enable_checks=nl.enable_checks,
         backend=nl.backend,
         backend_options=nl.bo,
         storage_shape=storage_shape,
@@ -172,6 +179,7 @@ def main(backend=None, namelist="namelist_ssus.py", no_log=False):
             component=cf,
             scheme=ptis,
             substeps=1,
+            enable_checks=nl.enable_checks,
             backend=nl.backend,
             backend_options=nl.bo,
             storage_options=nl.so,
@@ -182,6 +190,7 @@ def main(backend=None, namelist="namelist_ssus.py", no_log=False):
             component=cf,
             scheme=ptis,
             substeps=1,
+            enable_checks=nl.enable_checks,
             backend=nl.backend,
             backend_options=nl.bo,
             storage_options=nl.so,
@@ -199,6 +208,7 @@ def main(backend=None, namelist="namelist_ssus.py", no_log=False):
         smooth_moist_coeff=nl.smooth_moist_coeff,
         smooth_moist_coeff_max=nl.smooth_moist_coeff_max,
         smooth_moist_damp_depth=nl.smooth_moist_damp_depth,
+        enable_checks=nl.enable_checks,
         backend=nl.backend,
         backend_options=nl.bo,
         storage_shape=storage_shape,
@@ -210,6 +220,7 @@ def main(backend=None, namelist="namelist_ssus.py", no_log=False):
     turb = taz.IsentropicSmagorinsky(
         domain,
         nl.smagorinsky_constant,
+        enable_checks=nl.enable_checks,
         backend=nl.backend,
         backend_options=nl.bo,
         storage_shape=storage_shape,
@@ -220,6 +231,7 @@ def main(backend=None, namelist="namelist_ssus.py", no_log=False):
             component=turb,
             scheme=ptis,
             substeps=1,
+            enable_checks=nl.enable_checks,
             backend=nl.backend,
             backend_options=nl.bo,
             storage_options=nl.so,
@@ -230,6 +242,7 @@ def main(backend=None, namelist="namelist_ssus.py", no_log=False):
             component=turb,
             scheme=ptis,
             substeps=1,
+            enable_checks=nl.enable_checks,
             backend=nl.backend,
             backend_options=nl.bo,
             storage_options=nl.so,
@@ -237,10 +250,26 @@ def main(backend=None, namelist="namelist_ssus.py", no_log=False):
     )
 
     # component downgrading tendency_of_air_potential_temperature to tendency variable
-    d2t = taz.AirPotentialTemperature2Tendency(domain, "numerical")
+    d2t = taz.AirPotentialTemperatureToTendency(
+        domain,
+        "numerical",
+        enable_checks=nl.enable_checks,
+        backend=nl.backend,
+        backend_options=nl.bo,
+        storage_shape=storage_shape,
+        storage_options=nl.so,
+    )
 
     # component promoting air_potential_temperature to state variable
-    t2d = taz.AirPotentialTemperature2Diagnostic(domain, "numerical")
+    t2d = taz.AirPotentialTemperatureToDiagnostic(
+        domain,
+        "numerical",
+        enable_checks=nl.enable_checks,
+        backend=nl.backend,
+        backend_options=nl.bo,
+        storage_shape=storage_shape,
+        storage_options=nl.so,
+    )
 
     # component calculating the microphysics
     ke = taz.KesslerMicrophysics(
@@ -252,6 +281,7 @@ def main(backend=None, namelist="namelist_ssus.py", no_log=False):
         autoconversion_threshold=nl.autoconversion_threshold,
         autoconversion_rate=nl.autoconversion_rate,
         collection_rate=nl.collection_rate,
+        enable_checks=nl.enable_checks,
         backend=nl.backend,
         backend_options=nl.bo,
         storage_shape=storage_shape,
@@ -265,12 +295,14 @@ def main(backend=None, namelist="namelist_ssus.py", no_log=False):
                 ke,
                 t2d,
                 execution_policy="serial",
+                enable_checks=nl.enable_checks,
                 backend=nl.backend,
                 backend_options=nl.bo,
                 storage_options=nl.so,
             ),
             scheme=ptis,
             substeps=1,
+            enable_checks=nl.enable_checks,
             backend=nl.backend,
             backend_options=nl.bo,
             storage_options=nl.so,
@@ -282,12 +314,14 @@ def main(backend=None, namelist="namelist_ssus.py", no_log=False):
                 ke,
                 t2d,
                 execution_policy="serial",
+                enable_checks=nl.enable_checks,
                 backend=nl.backend,
                 backend_options=nl.bo,
                 storage_options=nl.so,
             ),
             scheme=ptis,
             substeps=1,
+            enable_checks=nl.enable_checks,
             backend=nl.backend,
             backend_options=nl.bo,
             storage_options=nl.so,
@@ -300,6 +334,7 @@ def main(backend=None, namelist="namelist_ssus.py", no_log=False):
         grid_type="numerical",
         air_pressure_on_interface_levels=True,
         saturation_rate=nl.saturation_rate,
+        enable_checks=nl.enable_checks,
         backend=nl.backend,
         backend_options=nl.bo,
         storage_shape=storage_shape,
@@ -311,12 +346,14 @@ def main(backend=None, namelist="namelist_ssus.py", no_log=False):
                 sa,
                 t2d,
                 execution_policy="serial",
+                enable_checks=nl.enable_checks,
                 backend=nl.backend,
                 backend_options=nl.bo,
                 storage_options=nl.so,
             ),
             scheme=ptis,
             substeps=1,
+            enable_checks=nl.enable_checks,
             backend=nl.backend,
             backend_options=nl.bo,
             storage_options=nl.so,
@@ -329,12 +366,14 @@ def main(backend=None, namelist="namelist_ssus.py", no_log=False):
                 sa,
                 t2d,
                 execution_policy="serial",
+                enable_checks=nl.enable_checks,
                 backend=nl.backend,
                 backend_options=nl.bo,
                 storage_options=nl.so,
             ),
             scheme=ptis,
             substeps=1,
+            enable_checks=nl.enable_checks,
             backend=nl.backend,
             backend_options=nl.bo,
             storage_options=nl.so,
@@ -348,6 +387,7 @@ def main(backend=None, namelist="namelist_ssus.py", no_log=False):
                 domain,
                 moist=True,
                 tendency_of_air_potential_temperature_on_interface_levels=False,
+                enable_checks=nl.enable_checks,
                 backend=nl.backend,
                 backend_options=nl.bo,
                 storage_shape=storage_shape,
@@ -362,12 +402,14 @@ def main(backend=None, namelist="namelist_ssus.py", no_log=False):
                         sa,
                         t2d,
                         execution_policy="serial",
+                        enable_checks=nl.enable_checks,
                         backend=nl.backend,
                         backend_options=nl.bo,
                         storage_options=nl.so,
                     ),
                     scheme=ptis,
                     substeps=1,
+                    enable_checks=nl.enable_checks,
                     backend=nl.backend,
                     backend_options=nl.bo,
                     storage_options=nl.so,
@@ -383,6 +425,7 @@ def main(backend=None, namelist="namelist_ssus.py", no_log=False):
                 flux_scheme=nl.vertical_flux_scheme,
                 moist=True,
                 tendency_of_air_potential_temperature_on_interface_levels=False,
+                enable_checks=nl.enable_checks,
                 backend=nl.backend,
                 backend_options=nl.bo,
                 storage_shape=storage_shape,
@@ -393,6 +436,7 @@ def main(backend=None, namelist="namelist_ssus.py", no_log=False):
                     component=vf,
                     scheme="rk3ws",
                     substeps=1,
+                    enable_checks=nl.enable_checks,
                     backend=nl.backend,
                     backend_options=nl.bo,
                     storage_options=nl.so,
@@ -403,6 +447,7 @@ def main(backend=None, namelist="namelist_ssus.py", no_log=False):
                     component=vf,
                     scheme="rk3ws",
                     substeps=1,
+                    enable_checks=nl.enable_checks,
                     backend=nl.backend,
                     backend_options=nl.bo,
                     storage_options=nl.so,
@@ -413,6 +458,7 @@ def main(backend=None, namelist="namelist_ssus.py", no_log=False):
     rfv = taz.KesslerFallVelocity(
         domain,
         "numerical",
+        enable_checks=nl.enable_checks,
         backend=nl.backend,
         backend_options=nl.bo,
         storage_shape=storage_shape,
@@ -424,6 +470,7 @@ def main(backend=None, namelist="namelist_ssus.py", no_log=False):
         domain,
         "numerical",
         sedimentation_flux_scheme=nl.sedimentation_flux_scheme,
+        enable_checks=nl.enable_checks,
         backend=nl.backend,
         backend_options=nl.bo,
         storage_shape=storage_shape,
@@ -435,12 +482,14 @@ def main(backend=None, namelist="namelist_ssus.py", no_log=False):
                 rfv,
                 sd,
                 execution_policy="serial",
+                enable_checks=nl.enable_checks,
                 backend=nl.backend,
                 backend_options=nl.bo,
                 storage_options=nl.so,
             ),
             scheme="rk3ws",
             substeps=1,
+            enable_checks=nl.enable_checks,
             backend=nl.backend,
             backend_options=nl.bo,
             storage_options=nl.so,
@@ -452,12 +501,14 @@ def main(backend=None, namelist="namelist_ssus.py", no_log=False):
                 rfv,
                 sd,
                 execution_policy="serial",
+                enable_checks=nl.enable_checks,
                 backend=nl.backend,
                 backend_options=nl.bo,
                 storage_options=nl.so,
             ),
             scheme="rk3ws",
             substeps=1,
+            enable_checks=nl.enable_checks,
             backend=nl.backend,
             backend_options=nl.bo,
             storage_options=nl.so,
@@ -468,6 +519,7 @@ def main(backend=None, namelist="namelist_ssus.py", no_log=False):
     ap = taz.Precipitation(
         domain,
         "numerical",
+        enable_checks=nl.enable_checks,
         backend=nl.backend,
         backend_options=nl.bo,
         storage_shape=storage_shape,
@@ -476,8 +528,14 @@ def main(backend=None, namelist="namelist_ssus.py", no_log=False):
     args_before_dynamics.append(taz.TimeIntegrationOptions(component=ap))
     args_after_dynamics.append(
         taz.TimeIntegrationOptions(
-            component=taz.DiagnosticComponentComposite(
-                rfv, ap, execution_policy="serial"
+            component=taz.ConcurrentCoupling(
+                rfv,
+                ap,
+                execution_policy="serial",
+                enable_checks=nl.enable_checks,
+                backend=nl.backend,
+                backend_options=nl.bo,
+                storage_options=nl.so,
             )
         )
     )
@@ -496,6 +554,7 @@ def main(backend=None, namelist="namelist_ssus.py", no_log=False):
     # component retrieving the velocity components
     ivc = taz.IsentropicVelocityComponents(
         domain,
+        enable_checks=nl.enable_checks,
         backend=nl.backend,
         backend_options=nl.bo,
         storage_shape=storage_shape,
@@ -522,39 +581,43 @@ def main(backend=None, namelist="namelist_ssus.py", no_log=False):
         backend=nl.backend, backend_options=nl.bo, storage_options=nl.so
     )
 
-    for i in range(nt):
-        taz.Timer.start(label="compute_time")
+    # warm up caches
+    dycore.update_topography(timedelta(seconds=0.0))
+    physics_before_dynamics(state, timedelta(seconds=0.0))
+    state_new = dycore(state, {}, timedelta(seconds=0.0))
+    missing_keys = {key for key in state if key not in state_new}
+    state_new.update({key: state[key] for key in missing_keys})
+    physics_after_dynamics(state_new, timedelta(seconds=0.0))
 
-        # auxiliary state
-        state_aux = {}
-        state_aux.update(state)
+    # reset timers
+    Timer.reset()
+
+    for i in range(nt):
+        # start timing
+        Timer.start(label="compute_time")
+
+        # swap old and new state
+        state, state_new = state_new, state
 
         # update the (time-dependent) topography
         dycore.update_topography((i + 1) * dt)
 
         # compute the physics before the dynamics
-        taz.Timer.start(label="physics")
-        physics_before_dynamics(state_aux, 0.5 * dt)
-        dict_op.copy(state, state_aux)
-        taz.Timer.stop(label="physics")
+        physics_before_dynamics(state, 0.5 * dt)
+        state["time"] = nl.init_time + i * dt
 
         # compute the dynamics
-        taz.Timer.start(label="dynamics")
-        state["time"] = nl.init_time + i * dt
-        state_prv = dycore(state, {}, dt)
-        extension = {key: state[key] for key in state if key not in state_prv}
-        state_prv.update(extension)
-        state_prv["time"] = nl.init_time + (i + 0.5) * dt
-        taz.Timer.stop(label="dynamics")
+        dycore(state, {}, dt, out_state=state_new)
+        dict_op.update_swap(
+            state_new, {key: state[key] for key in missing_keys}
+        )
+        state_new["time"] = nl.init_time + (i + 0.5) * dt
 
         # compute the physics
-        taz.Timer.start(label="physics")
-        physics_after_dynamics(state_prv, 0.5 * dt)
-        dict_op.copy(state, state_prv)
-        taz.Timer.stop(label="physics")
+        physics_after_dynamics(state_new, 0.5 * dt)
 
         # stop timing
-        taz.Timer.stop(label="compute_time")
+        Timer.stop(label="compute_time")
 
     print("Simulation successfully completed. HOORAY!")
 
@@ -569,19 +632,19 @@ def main(backend=None, namelist="namelist_ssus.py", no_log=False):
     print(f"Validation: umax = {umax:.5f}, vmax = {vmax:.5f}")
 
     # print logs
-    print(
-        f"Compute time: "
-        f"{taz.python.utils.time.Timer.get_time('compute_time', 's'):.3f}"
-        f" s."
-    )
+    print(f"Compute time: {Timer.get_time('compute_time', 's'):.3f} s.")
+    print(f"Stencil time: {Timer.get_time('stencil', 's'):.3f} s.")
 
     if not no_log:
         # save to file
         exec_info_to_csv(nl.exec_info_csv, nl.backend, nl.bo)
         run_info_to_csv(
-            nl.run_info_csv, backend, taz.Timer.get_time("compute_time", "s")
+            nl.run_info_csv, backend, Timer.get_time("compute_time", "s")
         )
-        taz.Timer.log(nl.log_txt, "s")
+        run_info_to_csv(
+            nl.stencil_info_csv, backend, Timer.get_time("stencil", "s")
+        )
+        Timer.log(nl.log_txt, "s")
 
 
 if __name__ == "__main__":

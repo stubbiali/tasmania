@@ -47,7 +47,6 @@ ny = 10 * (2 ** factor) + 1
 hb_type = "dirichlet"
 nb = 3
 hb_kwargs = {"core": zsof}
-# hb_kwargs = {"nr": 8}
 
 # backend settings and low-level details
 backend = "gt4py:gtx86"
@@ -83,15 +82,16 @@ niter = 100
 hostname = socket.gethostname()
 if "nid" in hostname:
     if os.path.exists("/scratch/snx3000"):
-        prefix = "/scratch/snx3000/subbiali/timing/oop"
+        prefix = "/scratch/snx3000/subbiali/timing/oop/20210607"
     else:
-        prefix = "/scratch/snx3000tds/subbiali/timing/oop"
+        prefix = "/scratch/snx3000tds/subbiali/timing/oop/20210607"
 elif "daint" in hostname:
-    prefix = "/scratch/snx3000/subbiali/timing/oop"
+    prefix = "/scratch/snx3000/subbiali/timing/oop/20210607"
 elif "dom" in hostname:
-    prefix = "/scratch/snx3000tds/subbiali/timing/oop"
+    prefix = "/scratch/snx3000tds/subbiali/timing/oop/20210607"
 else:
-    prefix = "../timing"
+    prefix = "../timing/oop/mbp/20210607"
 exec_info_csv = os.path.join(prefix, f"burgers_exec_fc_{backend}.csv")
 run_info_csv = os.path.join(prefix, "burgers_run_fc.csv")
+stencil_info_csv = os.path.join(prefix, "burgers_stencil_fc.csv")
 log_txt = os.path.join(prefix, f"burgers_log_fc_{backend}.txt")

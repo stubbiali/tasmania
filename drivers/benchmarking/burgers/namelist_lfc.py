@@ -48,8 +48,8 @@ hb_type = "dirichlet"
 nb = 3
 hb_kwargs = {"core": zsof}
 
-# backend settings
-backend = "gt4py:gtmc"
+# backend settings and low-level details
+backend = "gt4py:gtx86"
 bo = taz.BackendOptions(
     # gt4py
     build_info={},
@@ -67,6 +67,7 @@ bo = taz.BackendOptions(
 so = taz.StorageOptions(
     dtype=np.float64, aligned_index=(nb, nb, 0), managed="gt4py"
 )
+enable_checks = False
 
 # numerical scheme
 time_integration_scheme = "rk3ws"
@@ -81,15 +82,16 @@ niter = 100
 hostname = socket.gethostname()
 if "nid" in hostname:
     if os.path.exists("/scratch/snx3000"):
-        prefix = "/scratch/snx3000/subbiali/timing/oop"
+        prefix = "/scratch/snx3000/subbiali/timing/oop/20210607"
     else:
-        prefix = "/scratch/snx3000tds/subbiali/timing/oop"
+        prefix = "/scratch/snx3000tds/subbiali/timing/oop/20210607"
 elif "daint" in hostname:
-    prefix = "/scratch/snx3000/subbiali/timing/oop"
+    prefix = "/scratch/snx3000/subbiali/timing/oop/20210607"
 elif "dom" in hostname:
-    prefix = "/scratch/snx3000tds/subbiali/timing/oop"
+    prefix = "/scratch/snx3000tds/subbiali/timing/oop/20210607"
 else:
-    prefix = "../timing"
+    prefix = "../timing/oop/mbp/20210607"
 exec_info_csv = os.path.join(prefix, f"burgers_exec_lfc_{backend}.csv")
 run_info_csv = os.path.join(prefix, "burgers_run_lfc.csv")
+stencil_info_csv = os.path.join(prefix, "burgers_stencil_lfc.csv")
 log_txt = os.path.join(prefix, f"burgers_log_lfc_{backend}.txt")

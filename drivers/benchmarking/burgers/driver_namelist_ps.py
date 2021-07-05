@@ -21,10 +21,12 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 import click
-import gt4py as gt
+from datetime import timedelta
 import numpy as np
-import tasmania.python.utils.time
-from sympl import DataArray
+
+from sympl._core.data_array import DataArray
+from sympl._core.time import Timer
+
 import tasmania as taz
 
 from drivers.benchmarking.burgers import namelist_ps
@@ -101,6 +103,7 @@ def main(backend=None, namelist="namelist_ps.py", no_log=False):
         fast_tendency_component=None,
         time_integration_scheme=nl.time_integration_scheme,
         flux_scheme=nl.flux_scheme,
+        enable_checks=nl.enable_checks,
         backend=nl.backend,
         backend_options=nl.bo,
         storage_options=nl.so,
@@ -115,6 +118,7 @@ def main(backend=None, namelist="namelist_ps.py", no_log=False):
         "numerical",
         nl.diffusion_type,
         nl.diffusion_coeff,
+        enable_checks=nl.enable_checks,
         backend=nl.backend,
         backend_options=nl.bo,
         storage_options=nl.so,
@@ -142,33 +146,29 @@ def main(backend=None, namelist="namelist_ps.py", no_log=False):
     dt = nl.timestep
     nt = nl.niter
 
-    # dict operator
-    dict_op = taz.DataArrayDictOperator(
-        backend=nl.backend, backend_options=nl.bo, storage_options=nl.so
-    )
+    # warm up caches
+    state_new = dycore(state, {}, timedelta(seconds=0.0))
+    physics(state, state_new, timedelta(seconds=0.0))
+
+    # reset timers
+    Timer.reset()
 
     for i in range(nt):
         # start timing
-        tasmania.python.utils.time.Timer.start("compute_time")
+        Timer.start("compute_time")
+
+        # swap old and new states
+        state, state_new = state_new, state
 
         # calculate the dynamics
-        tasmania.python.utils.time.Timer.start("dynamics")
-        state_prv = dycore(state, {}, dt)
-        tasmania.python.utils.time.Timer.stop("dynamics")
+        dycore(state, {}, dt, out_state=state_new)
 
         # calculate the physics
-        tasmania.python.utils.time.Timer.start("physics")
-        physics(state, state_prv, dt)
-        tasmania.python.utils.time.Timer.stop("physics")
-
-        # update the state
-        tasmania.python.utils.time.Timer.start("state_update")
-        dict_op.copy(state, state_prv)
-        state["time"] = nl.init_time + (i + 1) * dt
-        tasmania.python.utils.time.Timer.stop("state_update")
+        physics(state, state_new, dt)
+        state_new["time"] = nl.init_time + (i + 1) * dt
 
         # stop timing
-        tasmania.python.utils.time.Timer.stop("compute_time")
+        Timer.stop("compute_time")
 
     print("Simulation successfully completed. HOORAY!")
 
@@ -176,28 +176,27 @@ def main(backend=None, namelist="namelist_ps.py", no_log=False):
     # Post-processing
     # ============================================================
     # compute the error
-    u = taz.to_numpy(state["x_velocity"].data)
-    uex = zsof(
-        state["time"], ngrid, field_name="x_velocity", field_units="m s^-1"
-    )
-    print(f"RMSE(u) = {np.linalg.norm(u - uex) / np.sqrt(u.size):.5E} m/s")
+    u = taz.to_numpy(state_new["x_velocity"].data)
+    # uex = zsof(
+    #     state["time"], ngrid, field_name="x_velocity", field_units="m s^-1"
+    # )
+    # print(f"RMSE(u) = {np.linalg.norm(u - uex) / np.sqrt(u.size):.5E} m/s")
+    print(f"Validation: max(u) = {u.max():.8f} m/s")
 
     # print logs
-    print(
-        f"Compute time: "
-        f"{tasmania.python.utils.time.Timer.get_time('compute_time', 's'):.3f}"
-        f" s."
-    )
+    print(f"Compute time: {Timer.get_time('compute_time', 's'):.3f} s.")
+    print(f"Stencil time: {Timer.get_time('stencil', 's'):.3f} s.")
 
     if not no_log:
         # save to file
         exec_info_to_csv(nl.exec_info_csv, nl.backend, nl.bo)
         run_info_to_csv(
-            nl.run_info_csv,
-            backend,
-            tasmania.python.utils.time.Timer.get_time("compute_time", "s"),
+            nl.run_info_csv, backend, Timer.get_time("compute_time", "s")
         )
-        tasmania.python.utils.time.Timer.log(nl.log_txt, "s")
+        run_info_to_csv(
+            nl.stencil_info_csv, backend, Timer.get_time("stencil", "s")
+        )
+        Timer.log(nl.log_txt, "s")
 
 
 if __name__ == "__main__":
