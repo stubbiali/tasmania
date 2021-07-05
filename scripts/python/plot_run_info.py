@@ -31,11 +31,11 @@ from tasmania.python.utils.backend import is_gt
 
 
 backend_alias = {
-    # "numpy": "NumPy",
-    "gt4py:gtx86": "GT4Py CPU",
-    "gt4py:gtmc": "GT4Py CPU",
-    # "cupy": "CuPy",
-    "gt4py:gtcuda": "GT4Py GPU",
+    "numpy": "NumPy (CPU)",
+    # "gt4py:gtx86": "GT4Py CPU",
+    "gt4py:gtmc": "GT4Py:gtmc (CPU)",
+    "cupy": "CuPy (GPU)",
+    "gt4py:gtcuda": "GT4Py:gtcuda (GPU)",
 }
 
 figure_properties = {
@@ -62,10 +62,10 @@ axes_properties = {
     # y-axis
     "y_label": "Run time [s]",
     "y_labelcolor": "black",
-    "y_lim": [0, 320],
+    "y_lim": [0, 700],
     "invert_yaxis": False,
     "y_scale": None,
-    "y_ticks": range(0, 301, 50),
+    "y_ticks": range(0, 601, 100),
     "y_ticklabels": None,
     "y_ticklabels_color": "black",
     "yaxis_minor_ticks_visible": False,
@@ -97,7 +97,7 @@ axes_properties = {
 
 
 def get_run_info(root: str, model: str, method: str) -> Dict[str, List[float]]:
-    filename = os.path.join(root, model + "_run_" + method + "_1.csv")
+    filename = os.path.join(root, model + "_run_" + method + ".csv")
     df = pd.read_csv(filename, sep=",")
     data = {backend: df[backend].dropna().tolist() for backend in df.columns}
     return data
@@ -105,7 +105,7 @@ def get_run_info(root: str, model: str, method: str) -> Dict[str, List[float]]:
 
 def get_cpp_time(root: str, model: str, method: str, backend: str) -> float:
     filename = os.path.join(
-        root, model + "_exec_" + method + "_" + backend + "_1.csv"
+        root, model + "_exec_" + method + "_" + backend + ".csv"
     )
     df = pd.read_csv(filename, sep=",")
     return df["total_run_cpp_time"].sum()
@@ -115,7 +115,7 @@ def get_gt4py_run_time(
     root: str, model: str, method: str, backend: str
 ) -> float:
     filename = os.path.join(
-        root, model + "_exec_" + method + "_" + backend + "_1.csv"
+        root, model + "_exec_" + method + "_" + backend + ".csv"
     )
     df = pd.read_csv(filename, sep=",")
     return df["total_run_time"].sum()
@@ -123,7 +123,7 @@ def get_gt4py_run_time(
 
 def get_call_time(root: str, model: str, method: str, backend: str) -> float:
     filename = os.path.join(
-        root, model + "_exec_" + method + "_" + backend + "_1.csv"
+        root, model + "_exec_" + method + "_" + backend + ".csv"
     )
     df = pd.read_csv(filename, sep=",")
     return df["total_call_time"].sum()
@@ -162,7 +162,8 @@ def plot_data(root: str, model: str, method: str):
     )
 
     width = 0.6
-    colors = ["red", "orange", "blue", "green"]
+    # colors = ["red", "orange", "blue", "green"]
+    colors = ["white"] * 4
 
     x = range(len(backends))
     for i in x:
@@ -244,7 +245,8 @@ def plot_data_strip(root: str, model: str, method: str):
     )
 
     width = 0.6
-    colors = ["red", "orange", "blue", "green"]
+    # colors = ["red", "orange", "blue", "green"]
+    colors = ["grey"] * 4
 
     x = axes_properties["x_ticks"]
     for i in range(len(x)):
@@ -271,6 +273,8 @@ def plot_data_strip(root: str, model: str, method: str):
 
 
 if __name__ == "__main__":
-    project_root = "/Users/subbiali/Desktop/phd/tasmania/protocol"
-    data_dir = "drivers/benchmarking/timing/dom"
-    plot_data(os.path.join(project_root, data_dir), "isentropic_dry", "fc")
+    project_root = "/Users/subbiali/Desktop/phd/tasmania/oop"
+    data_dir = "drivers/benchmarking/timing/oop/dom/20210607"
+    plot_data_strip(
+        os.path.join(project_root, data_dir), "isentropic_moist", "fc"
+    )

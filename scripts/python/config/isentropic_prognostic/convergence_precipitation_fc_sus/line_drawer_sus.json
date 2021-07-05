@@ -10,12 +10,12 @@
 		"fontsize": 16,
 		"linestyle": "-",
 		"linewidth": 1.5,
-		"linecolor": "blue",
-		"marker": ">",
+		"linecolor": "cyan",
+		"marker": "o",
 		"markersize": 8,
 		"markeredgewidth": 1.5,
-		"markerfacecolor": "blue",
-		"markeredgecolor": "blue",
-		"legend_label": "SSUS (no SA)"
+		"markerfacecolor": "cyan",
+		"markeredgecolor": "cyan",
+		"legend_label": "Sequential-update splitting"
 	}
 }

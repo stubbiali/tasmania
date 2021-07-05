@@ -10,12 +10,12 @@
 		"fontsize": 16,
 		"linestyle": "-",
 		"linewidth": 1.5,
-		"linecolor": "blue",
-		"marker": ">",
+		"linecolor": "red",
+		"marker": "s",
 		"markersize": 8,
 		"markeredgewidth": 1.5,
-		"markerfacecolor": "blue",
-		"markeredgecolor": "blue",
-		"legend_label": "SSUS (no SA)"
+		"markerfacecolor": "red",
+		"markeredgecolor": "red",
+		"legend_label": "Full-coupling"
 	}
 }

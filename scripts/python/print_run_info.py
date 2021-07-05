@@ -115,5 +115,5 @@ def main(project_root, data_dir, model, method):
 
 if __name__ == "__main__":
     project_root = "/Users/subbiali/Desktop/phd/tasmania/oop"
-    data_dir = "drivers/benchmarking/timing/oop"
+    data_dir = "drivers/benchmarking/timing/oop/20210524"
     main(project_root, data_dir, "isentropic_moist", "fc")

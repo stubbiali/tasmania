@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -20,6 +20,8 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-
+rm -rf apps bin boot core* cray_home cvmfs dev etc home init lib lib64 \
+  mnt opt proc project root run sbin scratch selinux srv store sys \
+  tmp users usr var
 rm -rf error/*
 rm -rf output/*
