@@ -29,6 +29,7 @@ result_images/
 
 # gt4py
 .gt_cache/
+.dace.conf
 
 # mypy
 .mypy_cache
