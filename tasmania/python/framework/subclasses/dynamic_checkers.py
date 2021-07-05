@@ -26,11 +26,6 @@ from sympl._core.dynamic_checkers import (
 )
 
 
-class ProvisionalInputComponentChecker(InflowComponentChecker):
-    name = "provisional_input_properties"
-    properties_name = "provisional_input_properties"
-
-
 class StageInputComponentChecker(InflowComponentChecker):
     name = "stage_input_properties"
     properties_name = "stage_input_properties"

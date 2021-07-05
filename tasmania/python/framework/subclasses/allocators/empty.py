@@ -58,19 +58,19 @@ if gt:
         defaults = get_gt_backend(backend)
         so = storage_options or StorageOptions()
         # >>> old storage
-        # return gt.storage.empty(
-        #     defaults,
-        #     so.aligned_index,
-        #     shape,
-        #     dtype=so.dtype,
-        # )
-        # <<< new storage
         return gt.storage.empty(
+            defaults,
+            so.aligned_index,
             shape,
             dtype=so.dtype,
-            aligned_index=so.aligned_index,
-            defaults=defaults,
-            halo=so.halo,
-            managed=so.managed,
         )
+        # <<< new storage
+        # return gt.storage.empty(
+        #     shape,
+        #     dtype=so.dtype,
+        #     aligned_index=so.aligned_index,
+        #     defaults=defaults,
+        #     halo=so.halo,
+        #     managed=so.managed,
+        # )
         # <<<

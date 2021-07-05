@@ -41,7 +41,7 @@ from tasmania.python.framework.parallel_splitting_utils import StaticOperator
 from tasmania.python.framework.static_checkers import (
     check_properties_are_compatible,
 )
-from tasmania.python.framework.tendency_stepper import TendencyStepper
+from tasmania.python.framework.steppers import TendencyStepper
 from tasmania.python.utils import typingx
 from tasmania.python.utils.dict import DataArrayDictOperator
 

@@ -29,7 +29,7 @@ from gt4py import gtscript
 
 from tasmania.python.framework.register import register
 from tasmania.python.framework.stencil import StencilFactory
-from tasmania.python.framework.sts_tendency_stepper import STSTendencyStepper
+from tasmania.python.framework.steppers import SequentialTendencyStepper
 from tasmania.python.framework.subclasses.stencil_definitions.cla import (
     thomas_numpy,
 )
@@ -98,7 +98,7 @@ def setup_tridiagonal_system_bc(
 
 
 @register(name="isentropic_vertical_advection")
-class IsentropicVerticalAdvection(STSTendencyStepper, StencilFactory):
+class IsentropicVerticalAdvection(SequentialTendencyStepper, StencilFactory):
     """Couple the Crank-Nicholson integrator with centered finite differences
     in space to discretize the vertical advection in the isentropic model."""
 
@@ -131,7 +131,7 @@ class IsentropicVerticalAdvection(STSTendencyStepper, StencilFactory):
             backend_options=backend_options,
             storage_options=storage_options,
         )
-        super(STSTendencyStepper, self).__init__(
+        super(SequentialTendencyStepper, self).__init__(
             backend, backend_options, storage_options
         )
 
@@ -171,7 +171,7 @@ class IsentropicVerticalAdvection(STSTendencyStepper, StencilFactory):
         }
         self._stencil = self.compile_stencil("stencil")
 
-    def _call(self, state, prv_state, timestep):
+    def _call(self, state, prv_state, timestep, out_diagnostics, out_state):
         # initialize the output state
         self._out_state = self._out_state or self._allocate_output_state(state)
         out_state = self._out_state

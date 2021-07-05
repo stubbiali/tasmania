@@ -20,30 +20,33 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-import numpy as np
-from sympl import (
-    DiagnosticComponent,
-    DiagnosticComponentComposite as SymplDiagnosticComponentComposite,
-    TendencyComponent,
-    TendencyComponentComposite,
-    ImplicitTendencyComponent,
-    ImplicitTendencyComponentComposite,
-)
 from typing import TYPE_CHECKING
+
+from sympl._core.composite import (
+    DiagnosticComponentComposite as SymplDiagnosticComponentComposite,
+    ImplicitTendencyComponentComposite,
+    TendencyComponentComposite,
+)
+from sympl._core.core_components import (
+    DiagnosticComponent,
+    ImplicitTendencyComponent,
+    TendencyComponent,
+)
 
 from tasmania.python.framework.composite import (
     DiagnosticComponentComposite as TasmaniaDiagnosticComponentComposite,
 )
 from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
-from tasmania.python.framework.sts_tendency_stepper import STSTendencyStepper
-from tasmania.python.utils import typingx
-from tasmania.python.utils.framework import (
-    check_property_compatibility,
-    get_input_properties,
-    get_output_properties,
+from tasmania.python.framework.sequential_tendency_splitting_utils import (
+    StaticOperator,
 )
+from tasmania.python.framework.steppers import SequentialTendencyStepper
+from tasmania.python.utils import typingx
+from tasmania.python.utils.dict import DataArrayDictOperator
 
 if TYPE_CHECKING:
+    from sympl._core.typingx import DataArrayDict
+
     from tasmania.python.framework.options import TimeIntegrationOptions
 
 
@@ -121,11 +124,12 @@ class SequentialTendencySplitting:
             else:
                 scheme = options.scheme or "forward_euler"
                 self._component_list.append(
-                    STSTendencyStepper.factory(
+                    SequentialTendencyStepper.factory(
                         scheme,
                         component,
                         execution_policy="serial",
                         enforce_horizontal_boundary=options.enforce_horizontal_boundary,
+                        enable_checks=options.enable_checks,
                         backend=options.backend,
                         backend_options=options.backend_options,
                         storage_options=options.storage_options,
@@ -135,94 +139,28 @@ class SequentialTendencySplitting:
                 self._substeps.append(max(options.substeps, 1))
 
         # set properties
-        self.input_properties = self._get_input_properties()
+        self.input_properties = StaticOperator.get_input_properties(self)
         self.provisional_input_properties = (
-            self._get_provisional_input_properties()
+            StaticOperator.get_provisional_input_properties(self)
         )
-        self.output_properties = self._get_output_properties()
+        self.output_properties = StaticOperator.get_output_properties(self)
         self.provisional_output_properties = (
-            self._get_provisional_output_properties()
+            StaticOperator.get_provisional_output_properties(self)
         )
 
-    def _get_input_properties(self) -> typingx.PropertiesDict:
-        return get_input_properties(
-            tuple(
-                {
-                    "component": component,
-                    "attribute_name": "input_properties",
-                    "consider_diagnostics": True,
-                }
-                for component in self._component_list
-                if isinstance(component, STSTendencyStepper)
-            )
-        )
+        self._dict_op = DataArrayDictOperator()
 
-    def _get_provisional_input_properties(self) -> typingx.PropertiesDict:
-        at_disposal = {}
-        return_dict = {}
+        self._out_diagnostics = [None] * len(self._component_list)
+        self._out_state = [None] * len(self._component_list)
 
-        for component in self._component_list:
-            if isinstance(component, self.__class__.allowed_diagnostic_type):
-                required = component.input_properties
-                given = component.diagnostic_properties
-            else:
-                required = component.provisional_input_properties
-                given = component.output_properties
-
-            for key in required:
-                if key in at_disposal:
-                    check_property_compatibility(
-                        at_disposal[key], required[key]
-                    )
-                else:
-                    at_disposal[key] = required[key]
-                    return_dict[key] = required[key]
-
-            for key in given:
-                if key in at_disposal:
-                    check_property_compatibility(at_disposal[key], given[key])
-                else:
-                    at_disposal[key] = given[key]
-
-        return return_dict
-
-    def _get_output_properties(self) -> typingx.PropertiesDict:
-        return_dict = self._get_input_properties()
-        get_output_properties(
-            tuple(
-                {
-                    "component": component,
-                    "attribute_name": "diagnostic_properties",
-                    "consider_diagnostics": False,
-                }
-                for component in self._component_list
-                if isinstance(component, STSTendencyStepper)
-            ),
-            return_dict=return_dict,
-        )
-        return return_dict
-
-    def _get_provisional_output_properties(self) -> typingx.PropertiesDict:
-        return_dict = self._get_provisional_input_properties()
-
-        for component in self._component_list:
-            if isinstance(component, self.__class__.allowed_diagnostic_type):
-                given = component.diagnostic_properties
-            else:
-                given = component.output_properties
-
-            for key in given:
-                if key in return_dict:
-                    check_property_compatibility(return_dict[key], given[key])
-                else:
-                    return_dict[key] = given[key]
-
-        return return_dict
+    @property
+    def components(self):
+        return tuple(self._component_list)
 
     def __call__(
         self,
-        state: typingx.DataArrayDict,
-        state_prv: typingx.mutable_dataarray_dict_t,
+        state: "DataArrayDict",
+        state_prv: "DataArrayDict",
         timestep: typingx.TimeDelta,
     ) -> None:
         """
@@ -244,36 +182,36 @@ class SequentialTendencySplitting:
         """
         current_time = state["time"]
 
-        for component, substeps in zip(self._component_list, self._substeps):
+        for idx, component in enumerate(self._component_list):
             if not isinstance(component, self.allowed_diagnostic_type):
-                diagnostics, state_tmp = component(
-                    state, state_prv, timestep / substeps
+                substeps = self._substeps[idx]
+
+                self._out_diagnostics[idx], self._out_state[idx] = component(
+                    state,
+                    state_prv,
+                    timestep / substeps,
+                    out_diagnostics=self._out_diagnostics[idx],
+                    out_state=self._out_state[idx],
                 )
 
                 if substeps > 1:
-                    state_tmp.update(
-                        {
-                            key: value
-                            for key, value in state.items()
-                            if key not in state_tmp
-                        }
-                    )
+                    raise NotImplementedError()
 
-                    for _ in range(1, substeps):
-                        _, state_aux = component(
-                            state_tmp, state_prv, timestep / substeps
-                        )
-                        state_tmp.update(state_aux)
-
-                state_prv.update(state_tmp)
-                state.update(diagnostics)
+                self._dict_op.update_swap(state, self._out_diagnostics[idx])
+                self._dict_op.update_swap(state_prv, self._out_state[idx])
             else:
                 try:
-                    diagnostics = component(state_prv)
+                    self._out_diagnostics[idx] = component(
+                        state_prv, out=self._out_diagnostics[idx]
+                    )
                 except TypeError:
-                    diagnostics = component(state_prv, timestep)
+                    self._out_diagnostics[idx] = component(
+                        state_prv, timestep, out=self._out_diagnostics[idx]
+                    )
 
-                state_prv.update(diagnostics)
+                self._dict_op.update_swap(
+                    state_prv, self._out_diagnostics[idx]
+                )
 
             # ensure state is still defined at current time level
             state["time"] = current_time

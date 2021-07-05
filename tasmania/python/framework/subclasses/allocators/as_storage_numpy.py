@@ -71,7 +71,7 @@ if gt:
     ) -> np.ndarray:
         data.synchronize()
         # >>> old storage
-        # return data
+        return data
         # <<< new storage
-        return data.to_numpy()
+        # return data.to_numpy()
         # <<<

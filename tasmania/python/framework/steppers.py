@@ -30,21 +30,15 @@ from sympl._core.core_components import (
     ImplicitTendencyComponent,
     TendencyComponent,
 )
-from sympl._core.dynamic_checkers import (
-    InflowComponentChecker,
-    OutflowComponentChecker,
-)
 from sympl._core.factory import AbstractFactory
-from sympl._core.steppers import TendencyStepper as SymplTendencyStepper
-from sympl._core.units import clean_units
+from sympl._core.steppers import (
+    SequentialTendencyStepper as SymplSequentialTendencyStepper,
+    TendencyStepper as SymplTendencyStepper,
+)
 
 from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
-from tasmania.python.framework.register import factorize
 from tasmania.python.utils import typingx as ty
 from tasmania.python.utils.dict import DataArrayDictOperator
-from tasmania.python.utils.framework import check_property_compatibility
-from tasmania.python.utils.storage import deepcopy_dataarray
-from tasmania.python.utils.utils import assert_sequence
 
 if TYPE_CHECKING:
     from tasmania.python.framework.options import (
@@ -54,6 +48,109 @@ if TYPE_CHECKING:
 
 
 class TendencyStepper(AbstractFactory, SymplTendencyStepper):
+    """
+    Callable abstract base class which steps a model state based on the
+    tendencies calculated by a set of wrapped prognostic components.
+    """
+
+    allowed_component_type = (
+        TendencyComponent,
+        TendencyComponentComposite,
+        ImplicitTendencyComponent,
+        ImplicitTendencyComponentComposite,
+        ConcurrentCoupling,
+    )
+
+    def __init__(
+        self,
+        *args: ty.TendencyComponent,
+        execution_policy: str = "serial",
+        enforce_horizontal_boundary: bool = False,
+        enable_checks: bool = True,
+        backend: str = "numpy",
+        backend_options: Optional["BackendOptions"] = None,
+        storage_options: Optional["StorageOptions"] = None
+    ) -> None:
+        """
+        Parameters
+        ----------
+        args :
+            Instances of
+
+                * :class:`sympl.TendencyComponent`,
+                * :class:`sympl.TendencyComponentComposite`,
+                * :class:`sympl.ImplicitTendencyComponent`,
+                * :class:`sympl.ImplicitTendencyComponentComposite`, or
+                * :class:`tasmania.ConcurrentCoupling`
+
+            providing tendencies for the prognostic variables.
+        execution_policy : `str`, optional
+            String specifying the runtime mode in which parameterizations
+            should be invoked. See :class:`tasmania.ConcurrentCoupling`.
+        enforce_horizontal_boundary : `bool`, optional
+            ``True`` if the class should enforce the lateral boundary
+            conditions after each stage of the time integrator,
+            ``False`` otherwise. Defaults to ``False``.
+            This argument is considered only if at least one of the wrapped
+            objects is an instance of
+
+                * :class:`tasmania.TendencyComponent`, or
+                * :class:`tasmania.ImplicitTendencyComponent`.
+
+        backend : `str`, optional
+            The backend.
+        backend_options : `BackendOptions`, optional
+            Backend-specific options.
+        storage_options : `StorageOptions`, optional
+            Storage-related options.
+        """
+        tendency_component = (
+            ConcurrentCoupling(
+                *args,
+                execution_policy=execution_policy,
+                enable_checks=enable_checks,
+                backend=backend,
+                backend_options=backend_options,
+                storage_options=storage_options
+            )
+            if len(args) > 1
+            else args[0]
+        )
+
+        super(AbstractFactory, self).__init__(
+            tendency_component, enable_checks=enable_checks
+        )
+
+        enforce_hb = enforce_horizontal_boundary
+        if enforce_hb:
+            found = False
+            for component in args:
+                if not found:
+
+                    try:  # tasmania's component
+                        self._hb = component.horizontal_boundary
+                        self._enforce_hb = True
+                        found = True
+
+                        break
+                    except AttributeError:  # sympl's component
+                        pass
+
+            if not found:
+                self._enforce_hb = False
+        else:
+            self._enforce_hb = False
+
+        self._dict_op = DataArrayDictOperator(
+            backend=backend,
+            backend_options=backend_options,
+            storage_options=storage_options,
+        )
+
+
+class SequentialTendencyStepper(
+    AbstractFactory, SymplSequentialTendencyStepper
+):
     """
     Callable abstract base class which steps a model state based on the
     tendencies calculated by a set of wrapped prognostic components.

@@ -64,7 +64,7 @@ if TYPE_CHECKING:
     from tasmania.python.framework.sts_tendency_stepper import (
         STSTendencyStepper,
     )
-    from tasmania.python.framework.tendency_stepper import TendencyStepper
+    from tasmania.python.framework.steppers import TendencyStepper
 
 Datatype = TypeVar("Datatype")
 Datetime = Union[dt.datetime, pd.Timestamp]

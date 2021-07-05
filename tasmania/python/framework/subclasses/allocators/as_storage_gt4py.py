@@ -38,7 +38,7 @@ if gt:
 
     # >>> old storage
     # <<< new storage
-    from gt4py.storage.definitions import SyncState
+    # from gt4py.storage.definitions import SyncState
 
     # <<<
 
@@ -57,19 +57,19 @@ if gt:
         defaults = get_gt_backend(backend)
         so = storage_options or StorageOptions
         # >>> old storage
-        # return gt.storage.from_array(data, defaults, so.aligned_index)
+        return gt.storage.from_array(data, defaults, so.aligned_index)
         # <<< new storage
-        sync_state = SyncState()
-        sync_state.state = 1
-        return gt.storage.as_storage(
-            data=data,
-            dtype=so.dtype,
-            aligned_index=so.aligned_index,
-            defaults=defaults,
-            halo=so.halo,
-            managed=so.managed,
-            sync_state=sync_state,
-        )
+        # sync_state = SyncState()
+        # sync_state.state = 1
+        # return gt.storage.as_storage(
+        #     data=data,
+        #     dtype=so.dtype,
+        #     aligned_index=so.aligned_index,
+        #     defaults=defaults,
+        #     halo=so.halo,
+        #     managed=so.managed,
+        #     sync_state=sync_state,
+        # )
         # <<<
 
     @as_storage_gt4py.register
@@ -82,16 +82,16 @@ if gt:
         defaults = get_gt_backend(backend)
         so = storage_options or StorageOptions
         # >>> old storage
-        # return gt.storage.from_array(data, defaults, so.aligned_index)
+        return gt.storage.from_array(data, defaults, so.aligned_index)
         # <<< new storage
-        return gt.storage.as_storage(
-            data=data,
-            dtype=so.dtype,
-            aligned_index=so.aligned_index,
-            defaults=defaults,
-            halo=so.halo,
-            managed=so.managed,
-        )
+        # return gt.storage.as_storage(
+        #     data=data,
+        #     dtype=so.dtype,
+        #     aligned_index=so.aligned_index,
+        #     defaults=defaults,
+        #     halo=so.halo,
+        #     managed=so.managed,
+        # )
         # <<<
 
     if cp:
@@ -106,17 +106,17 @@ if gt:
             defaults = get_gt_backend(backend)
             so = storage_options or StorageOptions
             # >>> old storage
-            # return gt.storage.from_array(data, defaults, so.aligned_index)
+            return gt.storage.from_array(data, defaults, so.aligned_index)
             # <<< new storage
-            sync_state = SyncState()
-            sync_state.state = 2
-            return gt.storage.as_storage(
-                device_data=data,
-                dtype=so.dtype,
-                aligned_index=so.aligned_index,
-                defaults=defaults,
-                halo=so.halo,
-                managed=so.managed,
-                sync_state=sync_state,
-            )
+            # sync_state = SyncState()
+            # sync_state.state = 2
+            # return gt.storage.as_storage(
+            #     device_data=data,
+            #     dtype=so.dtype,
+            #     aligned_index=so.aligned_index,
+            #     defaults=defaults,
+            #     halo=so.halo,
+            #     managed=so.managed,
+            #     sync_state=sync_state,
+            # )
             # <<<

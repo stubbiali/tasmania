@@ -20,13 +20,10 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from tasmania.python.framework.register import register
-from tasmania.python.framework.sts_tendency_stepper import STSTendencyStepper
-from tasmania.python.utils.framework import get_increment
+from tasmania.python.framework.steppers import SequentialTendencyStepper
 
 
-@register(name="rk3ws")
-class RK3WS(STSTendencyStepper):
+class RK3WS(SequentialTendencyStepper):
     """The Wicker-Skamarock three-stages Runge-Kutta scheme.
 
     References
@@ -36,11 +33,14 @@ class RK3WS(STSTendencyStepper):
         Deutscher Wetterdienst, Germany.
     """
 
+    name = "rk3ws"
+
     def __init__(
         self,
         *args,
         execution_policy="serial",
         enforce_horizontal_boundary=False,
+        enable_checks=True,
         backend="numpy",
         backend_options=None,
         storage_options=None,
@@ -50,23 +50,30 @@ class RK3WS(STSTendencyStepper):
             *args,
             execution_policy=execution_policy,
             enforce_horizontal_boundary=enforce_horizontal_boundary,
+            enable_checks=enable_checks,
             backend=backend,
             backend_options=backend_options,
             storage_options=storage_options
         )
+        self._increment = None
+        self._diagnostics = None
 
-    def _call(self, state, prv_state, timestep):
-        # initialize the output state
-        self._out_state = self._out_state or self._allocate_output_state(state)
-        out_state = self._out_state
-
+    def _call(self, state, prv_state, timestep, out_diagnostics, out_state):
         # first stage
-        k0, diagnostics = get_increment(state, timestep, self.prognostic)
+        (
+            self._increment,
+            out_diagnostics,
+        ) = self._stepper_operator.get_increment(
+            state,
+            timestep,
+            out_increment=self._increment,
+            out_diagnostics=out_diagnostics,
+        )
         self._dict_op.sts_rk3ws_0(
             timestep.total_seconds(),
             state,
             prv_state,
-            k0,
+            self._increment,
             out=out_state,
             field_properties=self.output_properties,
         )
@@ -83,11 +90,16 @@ class RK3WS(STSTendencyStepper):
             if name != "time" and name not in out_state:
                 out_state[name] = state[name]
 
-        # restore original units of the tendencies
-        # restore_tendency_units(k0)
-
         # second stage
-        k1, _ = get_increment(out_state, timestep, self.prognostic)
+        (
+            self._increment,
+            self._diagnostics,
+        ) = self._stepper_operator.get_increment(
+            out_state,
+            timestep,
+            out_increment=self._increment,
+            out_diagnostics=self._diagnostics,
+        )
 
         # remove undesired variables
         for name in state:
@@ -99,7 +111,7 @@ class RK3WS(STSTendencyStepper):
             timestep.total_seconds(),
             state,
             prv_state,
-            k1,
+            self._increment,
             out=out_state,
             field_properties=self.output_properties,
         )
@@ -116,11 +128,16 @@ class RK3WS(STSTendencyStepper):
             if name != "time" and name not in out_state:
                 out_state[name] = state[name]
 
-        # restore original units of the tendencies
-        # restore_tendency_units(k1)
-
         # third stage
-        k2, _ = get_increment(out_state, timestep, self.prognostic)
+        (
+            self._increment,
+            self._diagnostics,
+        ) = self._stepper_operator.get_increment(
+            out_state,
+            timestep,
+            out_increment=self._increment,
+            out_diagnostics=self._diagnostics,
+        )
 
         # remove undesired variables
         for name in state:
@@ -130,7 +147,7 @@ class RK3WS(STSTendencyStepper):
         # step the solution
         self._dict_op.fma(
             prv_state,
-            k2,
+            self._increment,
             timestep.total_seconds(),
             out=out_state,
             field_properties=self.output_properties,
@@ -143,7 +160,4 @@ class RK3WS(STSTendencyStepper):
                 out_state, field_names=self.output_properties.keys()
             )
 
-        # restore original units of the tendencies
-        # restore_tendency_units(k2)
-
-        return diagnostics, out_state
+        return out_diagnostics, out_state

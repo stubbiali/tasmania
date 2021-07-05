@@ -69,22 +69,6 @@ class StaticOperator:
                     available.add(name)
                     out[name] = props
 
-            output_properties = cls.output_operator.get_properties_with_dims(
-                component
-            )
-            for name, props in output_properties.items():
-                if name in out:
-                    check_units_are_compatible(
-                        out[name]["units"], props["units"]
-                    )
-                    check_dims_are_compatible(out[name]["dims"], props["dims"])
-                    out[name]["dims"] = merge_dims(
-                        out[name]["dims"], props["dims"]
-                    )
-                elif name not in available:
-                    available.add(name)
-                    out[name] = props
-
             diagnostic_properties = cls.diagnostic_operator.get_properties(
                 component
             )

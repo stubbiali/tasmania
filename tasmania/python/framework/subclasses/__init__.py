@@ -22,9 +22,9 @@
 #
 from tasmania.python.framework.subclasses import (
     allocators,
+    sequential_tendency_steppers,
     stencil_definitions,
     subroutine_definitions,
-    sts_tendency_steppers,
     tendency_steppers,
 )
 from tasmania.python.framework.subclasses.dynamic_checkers import *

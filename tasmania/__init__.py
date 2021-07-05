@@ -100,8 +100,10 @@ from tasmania.python.framework.stencil import (
     StencilFactory,
     SubroutineDefinition,
 )
-from tasmania.python.framework.sts_tendency_stepper import STSTendencyStepper
-from tasmania.python.framework.tendency_stepper import TendencyStepper
+from tasmania.python.framework.steppers import (
+    SequentialTendencyStepper,
+    TendencyStepper,
+)
 
 # isentropic
 from tasmania.python.isentropic.dynamics.dycore import IsentropicDynamicalCore
@@ -203,8 +205,8 @@ __license__ = "GPLv3"
 
 
 # >>> old storage
-# from gt4py.storage import prepare_numpy
-#
-# prepare_numpy()
+from gt4py.storage import prepare_numpy
+
+prepare_numpy()
 # <<< new storage
 # <<<

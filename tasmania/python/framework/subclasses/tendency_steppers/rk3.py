@@ -23,7 +23,7 @@
 import numpy as np
 
 from tasmania.python.framework.register import register
-from tasmania.python.framework.tendency_stepper import TendencyStepper
+from tasmania.python.framework.steppers import TendencyStepper
 from tasmania.python.utils.framework import get_increment
 
 # @register(name="rk3")
