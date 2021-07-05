@@ -34,12 +34,13 @@ if gt4py:
     gtc_cpu_backend = {"gt4py:gtc:gt:cpu_ifirst", "gt4py:gtc:gt:cpu_kfirst"}
 
     if dawn4py:
-        dawn_cpu_backend = {
-            "gt4py:dawn:naive",
-            "gt4py:dawn:cxxopt",
-            "gt4py:dawn:gtx86",
-            "gt4py:dawn:gtmc",
-        }
+        # dawn_cpu_backend = {
+        #     "gt4py:dawn:naive",
+        #     "gt4py:dawn:cxxopt",
+        #     "gt4py:dawn:gtx86",
+        #     "gt4py:dawn:gtmc",
+        # }
+        dawn_cpu_backend = set()
     else:
         dawn_cpu_backend = set()
 else:

@@ -34,7 +34,7 @@ from tasmania.python.framework.options import BackendOptions, StorageOptions
 from tasmania.python.isentropic.physics.implicit_vertical_advection import (
     IsentropicImplicitVerticalAdvectionDiagnostic,
 )
-from tasmania.python.isentropic.physics.sts_tendency_stepper import (
+from tasmania.python.isentropic.physics.sequential_tendency_stepper import (
     IsentropicVerticalAdvection,
 )
 from tasmania.python.utils.storage import get_dataarray_3d

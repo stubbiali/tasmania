@@ -31,7 +31,7 @@ import pytest
 from tasmania.python.framework.fakes import FakeTendencyComponent
 from tasmania.python.framework.options import BackendOptions, StorageOptions
 from tasmania.python.framework.sts_tendency_stepper import STSTendencyStepper
-from tasmania.python.framework.tendency_stepper import TendencyStepper
+from tasmania.python.framework.steppers import TendencyStepper
 
 from tests import conf
 from tests.strategies import (

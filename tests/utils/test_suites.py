@@ -24,7 +24,7 @@ from hypothesis import given, strategies as hyp_st
 import pytest
 
 from tests import conf
-from tests.suites import DomainSuite
+from tests.suites.domain import DomainSuite
 
 
 @given(data=hyp_st.data())

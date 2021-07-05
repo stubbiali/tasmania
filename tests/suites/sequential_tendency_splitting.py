@@ -20,18 +20,18 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from typing import Optional, TYPE_CHECKING, Union
+from typing import Optional, TYPE_CHECKING, Tuple, Union
 
 from sympl._core.units import units_are_same
 
 from tasmania.python.framework.generic_functions import to_numpy
 from tasmania.python.framework.options import TimeIntegrationOptions
-from tasmania.python.framework.sequential_update_splitting import (
-    SequentialUpdateSplitting,
+from tasmania.python.framework.sequential_tendency_splitting import (
+    SequentialTendencySplitting,
 )
 
 from tests.suites.core_components import DiagnosticComponentTestSuite
-from tests.suites.steppers import TendencyStepperTestSuite
+from tests.suites.steppers import SequentialTendencyStepperTestSuite
 
 if TYPE_CHECKING:
     from sympl._core.typingx import DataArrayDict, NDArrayLikeDict
@@ -39,17 +39,19 @@ if TYPE_CHECKING:
     from tasmania.python.utils.typingx import TimeDelta
 
 
-class SequentialUpdateSplittingTestSuite:
+class SequentialTendencySplittingTestSuite:
     def __init__(
         self,
-        *args: Union[DiagnosticComponentTestSuite, TendencyStepperTestSuite]
+        *args: Union[
+            DiagnosticComponentTestSuite, SequentialTendencyStepperTestSuite
+        ]
     ):
         self.args = args
 
-        sus_args = []
+        sts_args = []
         for arg in args:
-            if isinstance(arg, TendencyStepperTestSuite):
-                sus_args.append(
+            if isinstance(arg, SequentialTendencyStepperTestSuite):
+                sts_args.append(
                     TimeIntegrationOptions(
                         arg.cc_suite.component,
                         scheme=arg.name,
@@ -60,12 +62,18 @@ class SequentialUpdateSplittingTestSuite:
                     )
                 )
             else:
-                sus_args.append(TimeIntegrationOptions(arg.component))
+                sts_args.append(TimeIntegrationOptions(arg.component))
 
-        self.splitter = SequentialUpdateSplitting(*sus_args)
+        self.splitter = SequentialTendencySplitting(*sts_args)
 
         self.input_properties = self.splitter.input_properties
+        self.provisional_input_properties = (
+            self.splitter.provisional_input_properties
+        )
         self.output_properties = self.splitter.output_properties
+        self.provisional_output_properties = (
+            self.splitter.provisional_output_properties
+        )
 
     def get_state(self) -> "DataArrayDict":
         return self.args[0].get_state()
@@ -74,33 +82,39 @@ class SequentialUpdateSplittingTestSuite:
         return self.args[0].get_timestep()
 
     def get_validation_state(
-        self, raw_state_np: "NDArrayLikeDict", dt: float
-    ) -> "NDArrayLikeDict":
+        self,
+        raw_state_np: "NDArrayLikeDict",
+        raw_prv_state_np: "NDArrayLikeDict",
+        dt: float,
+    ) -> Tuple["NDArrayLikeDict", "NDArrayLikeDict"]:
         out = raw_state_np.copy()
+        prv_out = raw_prv_state_np.copy()
 
         for arg in self.args:
-            if isinstance(arg, TendencyStepperTestSuite):
+            if isinstance(arg, SequentialTendencyStepperTestSuite):
                 (
                     _,
                     diags,
                 ) = arg.cc_suite.get_validation_tendencies_and_diagnostics(
                     out, dt
                 )
-                new_state = arg.get_validation_out_state(out, dt)
+                new_state = arg.get_validation_out_state(out, prv_out, dt)
                 out.update(diags)
-                out.update(new_state)
+                prv_out.update(new_state)
             else:
-                diags = arg.get_validation_diagnostics(out)
-                out.update(diags)
+                diags = arg.get_validation_diagnostics(prv_out)
+                prv_out.update(diags)
 
-        return out
+        return out, prv_out
 
     def run(
         self,
         state: Optional["DataArrayDict"] = None,
+        prv_state: Optional["DataArrayDict"] = None,
         timestep: Optional["TimeDelta"] = None,
     ) -> None:
         state = state or self.get_state()
+        prv_state = prv_state or self.get_state()
         timestep = timestep or self.get_timestep()
 
         raw_state_np = {
@@ -112,11 +126,22 @@ class SequentialUpdateSplittingTestSuite:
             for name in self.splitter.input_properties
         }
         raw_state_np["time"] = state["time"]
-        raw_state_val = self.get_validation_state(
-            raw_state_np, timestep.total_seconds()
+        raw_prv_state_np = {
+            name: to_numpy(
+                prv_state[name]
+                .to_units(
+                    self.splitter.provisional_input_properties[name]["units"]
+                )
+                .data
+            )
+            for name in self.splitter.provisional_input_properties
+        }
+        raw_prv_state_np["time"] = prv_state["time"]
+        raw_state_val, raw_prv_state_val = self.get_validation_state(
+            raw_state_np, raw_prv_state_np, timestep.total_seconds()
         )
 
-        self.splitter(state, timestep)
+        self.splitter(state, prv_state, timestep)
 
         for name in self.splitter.output_properties:
             assert name in state
@@ -126,4 +151,13 @@ class SequentialUpdateSplittingTestSuite:
             )
             self.args[0].assert_allclose(
                 name, state[name].data, raw_state_val[name]
+            )
+        for name in self.splitter.provisional_output_properties:
+            assert name in state
+            assert units_are_same(
+                prv_state[name].attrs["units"],
+                self.splitter.provisional_output_properties[name]["units"],
+            )
+            self.args[0].assert_allclose(
+                name, prv_state[name].data, raw_prv_state_val[name]
             )

@@ -20,4 +20,4 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from tests.suites import tendency_steppers
+from tests.suites import sequential_tendency_steppers, tendency_steppers

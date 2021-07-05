@@ -28,7 +28,10 @@ from sympl._core.factory import Factory
 from sympl._core.units import units_are_same
 
 from tasmania.python.framework.generic_functions import to_numpy
-from tasmania.python.framework.tendency_stepper import TendencyStepper
+from tasmania.python.framework.steppers import (
+    SequentialTendencyStepper,
+    TendencyStepper,
+)
 from tasmania.python.utils.storage import deepcopy_dataarray_dict
 
 from tests.suites.concurrent_coupling import ConcurrentCouplingTestSuite
@@ -45,7 +48,10 @@ if TYPE_CHECKING:
     from tasmania.python.utils.typingx import TimeDelta
 
 
-class TendencyStepperTestSuite(Factory):
+class StepperTestSuite:
+
+    stepper_cls = None
+
     def __init__(
         self,
         concurrent_coupling_suite: Union[
@@ -60,7 +66,7 @@ class TendencyStepperTestSuite(Factory):
         self.ds = concurrent_coupling_suite.ds
         self.enforce_hb = enforce_horizontal_boundary
 
-        self.stepper = TendencyStepper.factory(
+        self.stepper = self.stepper_cls.factory(
             scheme,
             concurrent_coupling_suite.component,
             execution_policy=execution_policy,
@@ -113,6 +119,10 @@ class TendencyStepperTestSuite(Factory):
     ) -> None:
         self.cc_suite.assert_allclose(name, field_a, field_b)
 
+
+class TendencyStepperTestSuite(StepperTestSuite, Factory):
+    stepper_cls = TendencyStepper
+
     def run(
         self,
         state: Optional["DataArrayDict"] = None,
@@ -156,7 +166,7 @@ class TendencyStepperTestSuite(Factory):
                 diagnostics[name].attrs["units"],
                 self.diagnostic_properties[name]["units"],
             )
-            self.cc_suite.args[0].assert_allclose(
+            self.assert_allclose(
                 name, diagnostics[name].data, raw_diagnostics_np[name]
             )
 
@@ -170,12 +180,118 @@ class TendencyStepperTestSuite(Factory):
                 self.output_properties[name]["units"],
             )
 
-            self.cc_suite.args[0].assert_allclose(
+            self.assert_allclose(
                 name, out_state[name].data, raw_out_state_np[name]
             )
 
     @abc.abstractmethod
     def get_validation_out_state(
         self, raw_state_np: "NDArrayLikeDict", dt: float
+    ) -> "NDArrayLikeDict":
+        pass
+
+
+class SequentialTendencyStepperTestSuite(StepperTestSuite, Factory):
+    stepper_cls = SequentialTendencyStepper
+
+    def __init__(
+        self,
+        concurrent_coupling_suite: Union[
+            ConcurrentCouplingTestSuite, TendencyComponentTestSuite
+        ],
+        scheme: str,
+        execution_policy: str = "serial",
+        enforce_horizontal_boundary: bool = False,
+        **kwargs: Any
+    ) -> None:
+        super().__init__(
+            concurrent_coupling_suite,
+            scheme,
+            execution_policy,
+            enforce_horizontal_boundary,
+            **kwargs
+        )
+        self.provisional_input_properties = (
+            self.stepper.provisional_input_properties
+        )
+
+    def run(
+        self,
+        state: Optional["DataArrayDict"] = None,
+        prv_state: Optional["DataArrayDict"] = None,
+        timestep: Optional["TimeDelta"] = None,
+    ):
+        state = state or self.get_state()
+        prv_state = prv_state or self.get_state()
+        timestep = timestep or self.get_timestep()
+
+        if self.enforce_hb:
+            self.ds.domain.horizontal_boundary.reference_state = state
+            self.hb_np = self.ds.domain.copy(
+                backend="numpy"
+            ).horizontal_boundary
+
+        diagnostics, out_state = self.stepper(
+            state,
+            prv_state,
+            timestep,
+            out_diagnostics=self.out_diagnostics,
+            out_state=self.out_state,
+        )
+
+        raw_state_np = {
+            name: to_numpy(
+                state[name].to_units(self.input_properties[name]["units"]).data
+            )
+            for name in self.input_properties
+        }
+        raw_state_np["time"] = state["time"]
+        raw_prv_state_np = {
+            name: to_numpy(
+                prv_state[name]
+                .to_units(self.provisional_input_properties[name]["units"])
+                .data
+            )
+            for name in self.provisional_input_properties
+        }
+
+        self.cc_suite.overwrite_tendencies = {}
+        self.cc_suite.overwrite_tendencies_dc = {}
+        (
+            _,
+            raw_diagnostics_np,
+        ) = self.cc_suite.get_validation_tendencies_and_diagnostics(
+            raw_state_np, timestep.total_seconds()
+        )
+        for name in self.diagnostic_properties:
+            assert name in diagnostics
+            assert units_are_same(
+                diagnostics[name].attrs["units"],
+                self.diagnostic_properties[name]["units"],
+            )
+            self.assert_allclose(
+                name, diagnostics[name].data, raw_diagnostics_np[name]
+            )
+
+        raw_out_state_np = self.get_validation_out_state(
+            raw_state_np, raw_prv_state_np, timestep.total_seconds()
+        )
+        for name in self.output_properties:
+            assert name in out_state
+            assert units_are_same(
+                out_state[name].attrs["units"],
+                self.output_properties[name]["units"],
+            )
+
+            self.assert_allclose(
+                name, out_state[name].data, raw_out_state_np[name]
+            )
+
+    @abc.abstractmethod
+    def get_validation_out_state(
+        self,
+        raw_state_np: "NDArrayLikeDict",
+        raw_prv_state_np: "NDArrayLikeDict",
+        dt: float,
     ) -> "NDArrayLikeDict":
         pass

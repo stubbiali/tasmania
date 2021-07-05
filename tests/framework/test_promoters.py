@@ -29,7 +29,7 @@ import pytest
 from sympl._core.units import units_are_same
 
 from tasmania.python.framework.promoter import (
-    Tendency2Diagnostic,
+    FromTendencyToDiagnostic,
     FromDiagnosticToTendency,
 )
 from tasmania.python.utils.storage import get_dataarray_3d
@@ -39,7 +39,7 @@ from tests.strategies import st_domain, st_one_of, st_raw_field
 from tests.utilities import hyp_settings
 
 
-class FakeTendency2Diagnostic(Tendency2Diagnostic):
+class FakeTendency2Diagnostic(FromTendencyToDiagnostic):
     @property
     def input_properties(self):
         g = self._grid

@@ -227,7 +227,7 @@ class FakeTendencyComponent1TestSuite(TendencyComponentTestSuite):
             self.ds.grid_type,
             backend=self.ds.backend,
             backend_options=self.ds.bo,
-            storage_shape=self.storage_shape,
+            storage_shape=self.ds.storage_shape,
             storage_options=self.ds.storage_options,
         )
 
@@ -237,7 +237,7 @@ class FakeTendencyComponent1TestSuite(TendencyComponentTestSuite):
                 self.ds.grid,
                 moist=False,
                 backend=self.ds.backend,
-                storage_shape=self.storage_shape,
+                storage_shape=self.ds.storage_shape,
                 storage_options=self.ds.so,
             )
         )
@@ -276,7 +276,7 @@ class FakeTendencyComponent2TestSuite(TendencyComponentTestSuite):
             self.ds.grid_type,
             backend=self.ds.backend,
             backend_options=self.ds.bo,
-            storage_shape=self.storage_shape,
+            storage_shape=self.ds.storage_shape,
             storage_options=self.ds.storage_options,
         )
 
@@ -286,14 +286,14 @@ class FakeTendencyComponent2TestSuite(TendencyComponentTestSuite):
                 self.ds.grid,
                 moist=False,
                 backend=self.ds.backend,
-                storage_shape=self.storage_shape,
+                storage_shape=self.ds.storage_shape,
                 storage_options=self.ds.so,
             )
         )
         out["fake_variable"] = get_dataarray_3d(
             self.hyp_data.draw(
                 st_raw_field(
-                    self.storage_shape
+                    self.ds.storage_shape
                     or (self.ds.grid.nx, self.ds.grid.ny, self.ds.grid.nz),
                     min_value=-1e4,
                     max_value=1e4,

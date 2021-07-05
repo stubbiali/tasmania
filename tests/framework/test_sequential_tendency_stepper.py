@@ -27,42 +27,37 @@ from hypothesis import (
 import pytest
 
 from tasmania.python.framework.fakes import FakeTendencyComponent
-from tasmania.python.framework.sts_tendency_stepper import STSTendencyStepper
-from tasmania.python.framework.subclasses.sts_tendency_steppers import (
+from tasmania.python.framework.steppers import SequentialTendencyStepper
+from tasmania.python.framework.subclasses.sequential_tendency_steppers import (
     ForwardEuler,
-)
-from tasmania.python.framework.subclasses.sts_tendency_steppers.rk2 import RK2
-from tasmania.python.framework.subclasses.sts_tendency_steppers import RK3WS
-from tasmania.python.isentropic.physics.implicit_vertical_advection import (
-    IsentropicImplicitVerticalAdvectionDiagnostic,
-)
-from tasmania.python.isentropic.physics.sts_tendency_stepper import (
-    IsentropicVerticalAdvection,
+    RK2,
+    RK3WS,
 )
 
+from tests import conf
 from tests.strategies import st_domain, st_one_of
+from tests.suites.core_components import FakeTendencyComponent1TestSuite
+from tests.suites.domain import DomainSuite
+from tests.suites.steppers import SequentialTendencyStepperTestSuite
 from tests.utilities import hyp_settings
 
 
 def test_registry():
+    registry = SequentialTendencyStepper.registry[
+        "tasmania.python.framework.steppers.SequentialTendencyStepper"
+    ]
+
     # forward euler
-    assert "forward_euler" in STSTendencyStepper.registry
-    assert STSTendencyStepper.registry["forward_euler"] == ForwardEuler
+    assert "forward_euler" in registry
+    assert registry["forward_euler"] == ForwardEuler
 
     # rk2
-    assert "rk2" in STSTendencyStepper.registry
-    assert STSTendencyStepper.registry["rk2"] == RK2
+    assert "rk2" in registry
+    assert registry["rk2"] == RK2
 
     # rk3ws
-    assert "rk3ws" in STSTendencyStepper.registry
-    assert STSTendencyStepper.registry["rk3ws"] == RK3WS
-
-    # isentropic prognostic vertical advection
-    assert "isentropic_vertical_advection" in STSTendencyStepper.registry
-    assert (
-        STSTendencyStepper.registry["isentropic_vertical_advection"]
-        == IsentropicVerticalAdvection
-    )
+    assert "rk3ws" in registry
+    assert registry["rk3ws"] == RK3WS
 
 
 @hyp_settings
@@ -82,21 +77,31 @@ def test_factory(data):
     ftc = FakeTendencyComponent(domain, grid_type)
 
     # forward euler
-    obj = STSTendencyStepper.factory("forward_euler", ftc)
+    obj = SequentialTendencyStepper.factory("forward_euler", ftc)
     assert isinstance(obj, ForwardEuler)
 
     # rk2
-    obj = STSTendencyStepper.factory("rk2", ftc)
+    obj = SequentialTendencyStepper.factory("rk2", ftc)
     assert isinstance(obj, RK2)
 
     # rk3ws
-    obj = STSTendencyStepper.factory("rk3ws", ftc)
+    obj = SequentialTendencyStepper.factory("rk3ws", ftc)
     assert isinstance(obj, RK3WS)
 
-    # isentropic_prognostic vertical advection
-    arg = IsentropicImplicitVerticalAdvectionDiagnostic(domain)
-    obj = STSTendencyStepper.factory("isentropic_vertical_advection", arg)
-    assert isinstance(obj, IsentropicVerticalAdvection)
+
+@hyp_settings
+@given(data=hyp_st.data())
+@pytest.mark.parametrize("scheme", ("forward_euler", "rk2", "rk3ws"))
+@pytest.mark.parametrize("enforce_hb", (False, True))
+@pytest.mark.parametrize("backend", conf.backend)
+@pytest.mark.parametrize("dtype", conf.dtype)
+def test_numerics(data, scheme, enforce_hb, backend, dtype):
+    ds = DomainSuite(data, backend, dtype, grid_type="numerical")
+    tcts = FakeTendencyComponent1TestSuite(ds)
+    tsts = SequentialTendencyStepperTestSuite.factory(
+        scheme, tcts, enforce_horizontal_boundary=enforce_hb
+    )
+    tsts.run()
 
 
 if __name__ == "__main__":

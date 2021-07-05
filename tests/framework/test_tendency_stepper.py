@@ -27,7 +27,7 @@ from hypothesis import (
 import pytest
 
 from tasmania.python.framework.fakes import FakeTendencyComponent
-from tasmania.python.framework.tendency_stepper import TendencyStepper
+from tasmania.python.framework.steppers import TendencyStepper
 from tasmania.python.framework.subclasses.tendency_steppers import (
     ForwardEuler,
 )
