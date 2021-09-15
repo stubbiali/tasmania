@@ -314,6 +314,9 @@ def set_figure_properties(fig: plt.Figure, **kwargs) -> None:
     fig.subplots_adjust(right=right, wspace=wspace, hspace=hspace)
 
     if figlegend_on:
+        figlegend_ax = (
+            [figlegend_ax] if isinstance(figlegend_ax, int) else figlegend_ax
+        )
         axes = (
             [fig.get_axes()[i] for i in figlegend_ax]
             if figlegend_ax is not None
@@ -608,12 +611,25 @@ def set_axes_properties(ax: plt.Axes, **kwargs) -> None:
     # plot titles
     if ax.get_title(loc="center") == "":
         ax.set_title(
-            title_center, loc="center", fontsize=rcParams["font.size"]
+            title_center,
+            loc="center",
+            fontsize=rcParams["font.size"],
+            pad=15 if ax2_on else 6,
         )
     if ax.get_title(loc="left") == "":
-        ax.set_title(title_left, loc="left", fontsize=rcParams["font.size"])
+        ax.set_title(
+            title_left,
+            loc="left",
+            fontsize=rcParams["font.size"],
+            pad=15 if ax2_on else 6,
+        )
     if ax.get_title(loc="right") == "":
-        ax.set_title(title_right, loc="right", fontsize=rcParams["font.size"])
+        ax.set_title(
+            title_right,
+            loc="right",
+            fontsize=rcParams["font.size"],
+            pad=15 if ax2_on else 6,
+        )
 
     # axes labels
     if ax.get_xlabel() == "" and x_label is not None and x_label != "":
@@ -844,7 +860,7 @@ def set_axes_properties(ax: plt.Axes, **kwargs) -> None:
 
         # x2-axis
         if x2_label != "":
-            ax2.set_xlabel(x2_label, labelpad=10)
+            ax2.set_xlabel(x2_label, labelpad=8)
         if ax2.get_xlabel() != "" and x2_labelcolor != "":
             ax2.xaxis.label.set_color(x2_labelcolor)
         ax2.set_xlim(x2_lim if x2_lim is not None else ax.get_xlim())
@@ -892,7 +908,7 @@ def set_axes_properties(ax: plt.Axes, **kwargs) -> None:
             ax2.set_title(
                 ax2_title_center,
                 loc="center",
-                fontsize=rcParams["font.size"] - 1,
+                fontsize=rcParams["font.size"],
             )
         if ax2.get_title(loc="left") == "":
             ax2.set_title(
@@ -962,7 +978,10 @@ def set_colorbar(
     cbar_y_label: str = "",
     cbar_orientation: str = "vertical",
     cbar_ax: Optional[Sequence[int]] = None,
-    cbar_format: Optional[str] = None
+    cbar_format: Optional[str] = None,
+    cbar_extend: str = "neither",
+    cbar_extendfrac: Optional[str] = None,
+    cbar_extendrect: bool = False
 ) -> None:
     """
     Ease the configuration of the colorbar in Matplotlib plots.
@@ -996,10 +1015,21 @@ def set_colorbar(
         only the current axes are resized.
     cbar_format : str
         Format for colorbar tick labels.
+    cbar_extend : str
+        TODO
+    cbar_extendfrac : str
+        TODO
+    cbar_extendrect : bool
+        TODO
     """
     if cbar_ax is None:
         cb = fig.colorbar(
-            mappable, orientation=cbar_orientation, format=cbar_format
+            mappable,
+            orientation=cbar_orientation,
+            format=cbar_format,
+            extend=cbar_extend,
+            extendfrac=cbar_extendfrac,
+            extendrect=cbar_extendrect,
         )
     else:
         try:
@@ -1008,19 +1038,34 @@ def set_colorbar(
                 mappable,
                 orientation=cbar_orientation,
                 format=cbar_format,
-                ax=axes[cbar_ax]
-                if isinstance(cbar_ax, int)
-                else [axes[i] for i in cbar_ax],
+                extend=cbar_extend,
+                extendfrac=cbar_extendfrac,
+                extendrect=cbar_extendrect,
+                ax=(
+                    axes[cbar_ax]
+                    if isinstance(cbar_ax, int)
+                    else [axes[i] for i in cbar_ax]
+                ),
             )
         except TypeError:
             # cbar_ax is not iterable
             cb = fig.colorbar(
-                mappable, orientation=cbar_orientation, format=cbar_format
+                mappable,
+                orientation=cbar_orientation,
+                format=cbar_format,
+                extend=cbar_extend,
+                extendfrac=cbar_extendfrac,
+                extendrect=cbar_extendrect,
             )
         except IndexError:
             # cbar_ax contains an index which exceeds the number of axes in the figure
             cb = fig.colorbar(
-                mappable, orientation=cbar_orientation, format=cbar_format
+                mappable,
+                orientation=cbar_orientation,
+                format=cbar_format,
+                extend=cbar_extend,
+                extendfrac=cbar_extendfrac,
+                extendrect=cbar_extendrect,
             )
 
     cb.ax.set_title(cbar_title)
@@ -1294,6 +1339,12 @@ def make_contourf(
         Format for colorbar tick labels.
     cbar_extend : bool
         :obj:``False`` to set to white all values outside the range of the colorbar,
+    cbar_extend : str
+        TODO
+    cbar_extendfrac : str
+        TODO
+    cbar_extendrect : bool
+        TODO
         :obj:``True`` to more nicely extends the colorbar. Defaults to :obj:``True``.
     draw_vertical_levels : bool
         :obj:``True`` to draw the underlying vertical levels, :obj:``False`` otherwise.
@@ -1319,6 +1370,9 @@ def make_contourf(
     cbar_ax = kwargs.get("cbar_ax", None)
     cbar_format = kwargs.get("cbar_format", None)
     cbar_extend = kwargs.get("cbar_extend", True)
+    cbar_extend = kwargs.get("cbar_extend", "both")
+    cbar_extendfrac = kwargs.get("cbar_extendfrac", None)
+    cbar_extendrect = kwargs.get("cbar_extendrect", False)
     draw_vlevels = kwargs.get("draw_vertical_levels", False)
 
     # global settings
@@ -1356,6 +1410,9 @@ def make_contourf(
         cm = reverse_colormap(plt.get_cmap("CMRmap"), "CMRmap_r")
     elif cmap_name == "Spectral_r":
         cm = reverse_colormap(plt.get_cmap("Spectral"), "Spectral_r")
+    elif cmap_name == "viridis_white":
+        cm = plt.get_cmap()
+        cm.set_over("white")
     else:
         cm = plt.get_cmap(cmap_name)
 
@@ -1365,10 +1422,7 @@ def make_contourf(
             ax.plot(x[:, k], y[:, k], color="gray", linewidth=1, alpha=0.5)
 
     # plot the field
-    if cbar_extend:
-        surf = ax.contourf(x, y, field, color_levels, cmap=cm, extend="both")
-    else:
-        surf = ax.contourf(x, y, field, color_levels, cmap=cm)
+    surf = ax.contourf(x, y, field, color_levels, cmap=cm, extend=cbar_extend)
 
     # set the colorbar
     if cbar_on:
@@ -1384,6 +1438,9 @@ def make_contourf(
             cbar_orientation=cbar_orientation,
             cbar_ax=cbar_ax,
             cbar_format=cbar_format,
+            cbar_extend=cbar_extend,
+            cbar_extendfrac=cbar_extendfrac,
+            cbar_extendrect=cbar_extendrect,
         )
 
     # bring axes and field back to original units
@@ -1812,7 +1869,7 @@ def add_annotation(ax: plt.Axes, **kwargs) -> None:
     # get keyword arguments
     fontsize = kwargs.get("fontsize", 16)
     text = kwargs.get("text", "")
-    text_color = kwargs.get("text_color", "blue")
+    text_color = kwargs.get("text_color", "black")
     location = kwargs.get("location", (0, 0))
     horizontal_alignment = kwargs.get("horizontal_alignment", "left")
     vertical_alignment = kwargs.get("vertical_alignment", "center")
