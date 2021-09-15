@@ -556,11 +556,13 @@ def deepcopy_dataarray(
     backend: Optional[str] = None,
     storage_options: Optional["StorageOptions"] = None
 ) -> DataArray:
-    raw_array = (
-        as_storage(backend, data=src.data, storage_options=storage_options)
-        if backend is not None
-        else deepcopy(src.data)
-    )
+    if backend is not None:
+        raw_array = as_storage(
+            backend, data=src.data, storage_options=storage_options
+        )
+        raw_array = deepcopy(raw_array)
+    else:
+        raw_array = deepcopy(src.data)
     return DataArray(
         raw_array,
         coords=src.coords,
