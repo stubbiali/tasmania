@@ -24,8 +24,7 @@ from datetime import datetime, timedelta
 import numpy as np
 from sympl import DataArray
 
-from tasmania.python.framework.options import BackendOptions, StorageOptions
-from tasmania.python.utils.backend import get_gt_backend
+import tasmania as taz
 
 
 # computational domain
@@ -47,11 +46,13 @@ hb_type = "relaxed"
 nb = 3
 hb_kwargs = {"nr": 6}
 
-# backend settings
-backend = "gt4py:gtx86"
-bo = BackendOptions(
+# backend and low-level settings
+backend = "gt4py:gtmc"
+bo = taz.BackendOptions(
     # gt4py
+    backend_opts={},
     build_info={},
+    device_sync=True,
     exec_info={"__aggregate_data": True},
     rebuild=False,
     validate_args=False,
@@ -63,9 +64,10 @@ bo = BackendOptions(
     nopython=True,
     parallel=True,
 )
-so = StorageOptions(
+so = taz.StorageOptions(
     dtype=np.float64, aligned_index=(nb, nb, 0), managed="gt4py"
 )
+enable_checks = False
 
 # topography
 topo_type = "gaussian"
@@ -147,60 +149,59 @@ rain_evaporation = False
 autoconversion_threshold = DataArray(0.1, attrs={"units": "g kg^-1"})
 autoconversion_rate = DataArray(0.001, attrs={"units": "s^-1"})
 collection_rate = DataArray(2.2, attrs={"units": "s^-1"})
-saturation_vapor_pressure_formula = "tetens"
+saturation_rate = DataArray(0.025, attrs={"units": "s^-1"})
 update_frequency = 0
 
 # simulation length
 timestep = timedelta(seconds=40)
-niter = int(1 * 60 * 60 / timestep.total_seconds())
+niter = int(5 * 60 * 60 / timestep.total_seconds())
 
 # output
 save = False
 save_frequency = 5
-filename = (
-    "../../data/isentropic_prognostic-validation/isentropic_moist_{}_{}{}_{}_"
-    "nx{}_ny{}_nz{}_dt{}_nt{}_"
-    "{}_L{}_H{}_u{}_rh{}{}{}{}{}{}{}_ssus_{}.nc".format(
-        time_integration_scheme,
-        horizontal_flux_scheme,
-        "_{}".format(vertical_flux_scheme) if vertical_advection else "",
-        physics_time_integration_scheme,
-        nx,
-        ny,
-        nz,
-        int(timestep.total_seconds()),
-        niter,
-        topo_type,
-        int(topo_kwargs["width_x"].to_units("m").values.item()),
-        int(topo_kwargs["max_height"].to_units("m").values.item()),
-        int(x_velocity.to_units("m s^-1").values.item()),
-        int(relative_humidity * 100),
-        "_diff" if diff else "",
-        "_smooth" if smooth else "",
-        "_turb" if turbulence else "",
-        "_f" if coriolis else "",
-        "_sed" if sedimentation else "",
-        "_evap" if rain_evaporation else "",
-        get_gt_backend(backend),
-    )
+save_iterations = list(range(0, 90, save_frequency)) + list(
+    range(90, niter + 1, 90)
+)
+filename = "/scratch/snx3000tds/subbiali/data/pdc_paper/isentropic_diagnostic/isentropic_moist_{}_{}_nx{}_ny{}_nz{}_dt{}_nt{}_{}_L{}_H{}_u{}_rh{}{}{}{}{}{}{}{}_fc_{}_oop.nc".format(
+    time_integration_scheme,
+    horizontal_flux_scheme,
+    nx,
+    ny,
+    nz,
+    int(timestep.total_seconds()),
+    niter,
+    topo_type,
+    int(topo_kwargs["width_x"].to_units("m").values.item()),
+    int(topo_kwargs["max_height"].to_units("m").values.item()),
+    int(x_velocity.to_units("m s^-1").values.item()),
+    int(relative_humidity * 100),
+    "_lh" if vertical_advection else "",
+    "_diff" if diff else "",
+    "_smooth" if smooth else "",
+    "_turb" if turbulence else "",
+    "_f" if coriolis else "",
+    "_sed" if sedimentation else "",
+    "_evap" if rain_evaporation else "",
+    backend,
 )
 store_names = (
     "accumulated_precipitation",
-    "air_density",
+    # "air_density",
     "air_isentropic_density",
-    "air_pressure_on_interface_levels",
-    "air_temperature",
-    "exner_function_on_interface_levels",
+    # "air_pressure_on_interface_levels",
+    # "air_temperature",
+    # "exner_function_on_interface_levels",
     "height_on_interface_levels",
     "mass_fraction_of_water_vapor_in_air",
     "mass_fraction_of_cloud_liquid_water_in_air",
     "mass_fraction_of_precipitation_water_in_air",
-    "montgomery_potential",
+    # "montgomery_potential",
     "precipitation",
     "x_momentum_isentropic",
-    "x_velocity_at_u_locations",
-    "y_momentum_isentropic",
-    "y_velocity_at_v_locations",
+    # "x_velocity_at_u_locations",
+    # "y_momentum_isentropic",
+    # "y_velocity_at_v_locations",
 )
 print_dry_frequency = -1
-print_moist_frequency = 1
+print_moist_frequency = 5
+logfile = None

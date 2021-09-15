@@ -93,7 +93,7 @@ domain.horizontal_boundary.reference_state = state
 # ============================================================
 dycore = taz.BurgersDynamicalCore(
     domain,
-    intermediate_tendency_component=None,
+    fast_tendency_component=None,
     time_integration_scheme=nl.time_integration_scheme,
     flux_scheme=nl.flux_scheme,
     **nl.backend_settings
@@ -161,7 +161,11 @@ for i in range(nt):
 
     compute_time += time.time() - compute_time_start
 
-    if (nl.print_frequency > 0) and ((i + 1) % nl.print_frequency == 0) or i + 1 == nt:
+    if (
+        (nl.print_frequency > 0)
+        and ((i + 1) % nl.print_frequency == 0)
+        or i + 1 == nt
+    ):
         dx = pgrid.dx.to_units("m").values.item()
         dy = pgrid.dy.to_units("m").values.item()
 
@@ -182,7 +186,10 @@ for i in range(nt):
     to_save = (
         nl.save
         and nl.filename is not None
-        and ((nl.save_frequency > 0 and (i + 1) % nl.save_frequency == 0) or i + 1 == nt)
+        and (
+            (nl.save_frequency > 0 and (i + 1) % nl.save_frequency == 0)
+            or i + 1 == nt
+        )
     )
 
     if to_save:

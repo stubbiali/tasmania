@@ -333,11 +333,11 @@ def main(backend=None, namelist="namelist_lfc.py", no_log=False):
         domain,
         moist=True,
         # parameterizations
-        intermediate_tendency_component=None,
-        intermediate_diagnostic_component=None,
-        substeps=nl.substeps,
         fast_tendency_component=None,
         fast_diagnostic_component=None,
+        substeps=nl.substeps,
+        superfast_tendency_component=None,
+        superfast_diagnostic_component=None,
         # numerical scheme
         time_integration_scheme=nl.time_integration_scheme,
         horizontal_flux_scheme=nl.horizontal_flux_scheme,
@@ -389,7 +389,9 @@ def main(backend=None, namelist="namelist_lfc.py", no_log=False):
 
     # dict operator
     dict_op = taz.DataArrayDictOperator(
-        backend=nl.backend, backend_options=nl.bo, storage_options=nl.so,
+        backend=nl.backend,
+        backend_options=nl.bo,
+        storage_options=nl.so,
     )
 
     for i in range(nt):

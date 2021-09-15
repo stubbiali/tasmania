@@ -27,7 +27,7 @@ from sympl import DataArray
 import tasmania as taz
 
 
-factor = 8
+factor = 3
 
 # initial conditions
 init_time = datetime(year=1992, month=2, day=20, hour=0)
@@ -46,19 +46,27 @@ hb_type = "dirichlet"
 nb = 3
 hb_kwargs = {"core": zsof}
 
-# gt4py settings
-backend_settings = {
-    "backend": "gt4py:dawn:gtx86",
-    "build_info": None,
-    "dtype": np.float64,
-    "exec_info": None,
-    "default_origin": (nb, nb, 0),
-    "rebuild": False,
-    "managed_memory": False,
-}
-backend_settings["backend_opts"] = (
-    {"verbose": True} if backend_settings["backend"] != "gt4py:numpy" else None
+# backend settings and low-level details
+backend = "gt4py:gtx86"
+bo = taz.BackendOptions(
+    # gt4py
+    build_info={},
+    device_sync=True,
+    exec_info={"__aggregate_data": True},
+    rebuild=False,
+    validate_args=False,
+    # numba
+    cache=True,
+    check_rebuild=False,
+    fastmath=False,
+    inline="always",
+    nopython=True,
+    parallel=True,
 )
+so = taz.StorageOptions(
+    dtype=np.float64, aligned_index=(nb, nb, 0), managed="gt4py"
+)
+enable_checks = False
 
 # numerical scheme
 time_integration_scheme = "rk3ws"
@@ -66,11 +74,14 @@ flux_scheme = "fifth_order"
 
 # simulation time
 cfl = 1.0
-timestep = pd.Timedelta(cfl / (nx - 1) ** 2, unit="s")
-niter = 100  # 4 ** factor * 100
+# timestep = pd.Timedelta(cfl / (nx - 1) ** 2, unit="s")
+# timestep = pd.Timedelta(0.00768, unit="s")
+# timestep = pd.Timedelta(0.00048, unit="s")
+timestep = pd.Timedelta(0.00012, unit="s")
+niter = 4 ** factor * 100
 
 # output
 save = False
 save_frequency = -1
-filename = "../../data/burgers_fc_{}.nc".format(backend_settings["backend"])
+filename = "../../data/test/burgers_fc_{}.nc".format(backend)
 print_frequency = -1

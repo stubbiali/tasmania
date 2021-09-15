@@ -104,7 +104,7 @@ diff = taz.BurgersHorizontalDiffusion(
 # ============================================================
 dycore = taz.BurgersDynamicalCore(
     domain,
-    intermediate_tendency_component=None,
+    fast_tendency_component=None,
     time_integration_scheme=nl.time_integration_scheme,
     flux_scheme=nl.flux_scheme,
     **nl.backend_settings

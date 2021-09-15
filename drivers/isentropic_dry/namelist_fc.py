@@ -22,41 +22,59 @@
 #
 from datetime import datetime, timedelta
 import numpy as np
-from sympl import DataArray
+
+from sympl._core.data_array import DataArray
+
+import tasmania as taz
 
 
 # computational domain
-domain_x = DataArray([-176, 176], dims="x", attrs={"units": "km"}).to_units("m")
+domain_x = DataArray([-176, 176], dims="x", attrs={"units": "km"}).to_units(
+    "m"
+)
 nx = 41
-domain_y = DataArray([-176, 176], dims="y", attrs={"units": "km"}).to_units("m")
-ny = 41
-domain_z = DataArray([340, 280], dims="potential_temperature", attrs={"units": "K"})
-nz = 60
+domain_y = DataArray([-176, 176], dims="y", attrs={"units": "km"}).to_units(
+    "m"
+)
+ny = 1
+domain_z = DataArray(
+    [460, 280], dims="potential_temperature", attrs={"units": "K"}
+)
+nz = 90
 
 # horizontal boundary
 hb_type = "relaxed"
 nb = 3
 hb_kwargs = {"nr": 6}
 
-# backend settings
-backend_kwargs = {
-    "backend": "gt4py:gtmc",
-    "build_info": None,
-    "dtype": np.float64,
-    "exec_info": None,
-    "default_origin": (nb, nb, 0),
-    "rebuild": False,
-    "managed_memory": False,
-}
-backend_kwargs["backend_opts"] = (
-    {"verbose": True} if backend_kwargs["backend"] in ("gt4py:gtx86", "gt4py:gtmc", "gt4py:gtcuda") else None
+# backend and low-level settings
+backend = "gt4py:gtx86"
+bo = taz.BackendOptions(
+    # gt4py
+    backend_opts={},
+    build_info={},
+    device_sync=True,
+    exec_info={"__aggregate_data": True},
+    rebuild=False,
+    validate_args=False,
+    # numba
+    cache=True,
+    check_rebuild=False,
+    fastmath=False,
+    inline="always",
+    nopython=True,
+    parallel=True,
 )
+so = taz.StorageOptions(
+    dtype=np.float64, aligned_index=(nb, nb, 0), managed="gt4py"
+)
+enable_checks = False
 
 # topography
 topo_type = "gaussian"
 topo_kwargs = {
     "time": timedelta(seconds=1800),
-    "max_height": DataArray(1.0, attrs={"units": "m"}),
+    "max_height": DataArray(0.5, attrs={"units": "km"}),
     "width_x": DataArray(50.0, attrs={"units": "km"}),
     "width_y": DataArray(50.0, attrs={"units": "km"}),
     "smooth": False,
@@ -64,10 +82,10 @@ topo_kwargs = {
 
 # initial conditions
 init_time = datetime(year=1992, month=2, day=20, hour=0)
-x_velocity = DataArray(15.0, attrs={"units": "m s^-1"})
+x_velocity = DataArray(22.5, attrs={"units": "m s^-1"})
 y_velocity = DataArray(0.0, attrs={"units": "m s^-1"})
 isothermal = False
-brunt_vaisala = DataArray(0.01, attrs={"units": "s^-1"})
+brunt_vaisala = DataArray(0.015, attrs={"units": "s^-1"})
 temperature = DataArray(250.0, attrs={"units": "K"})
 
 # time stepping
@@ -82,10 +100,10 @@ c = 0.25
 horizontal_flux_scheme = "fifth_order_upwind"
 
 # damping
-damp = False
+damp = True
 damp_type = "rayleigh"
-damp_depth = 15
-damp_max = 0.0002
+damp_depth = 45
+damp_max = 0.0005
 damp_at_every_stage = False
 
 # horizontal diffusion
@@ -97,7 +115,7 @@ diff_damp_depth = 30
 
 # horizontal smoothing
 smooth = True
-smooth_type = "second_order"
+smooth_type = "second_order_1dx"
 smooth_coeff = 1.0
 smooth_coeff_max = 1.0
 smooth_damp_depth = 0
@@ -108,36 +126,33 @@ turbulence = True
 smagorinsky_constant = 0.18
 
 # coriolis
-coriolis = True
+coriolis = False
 coriolis_parameter = None
 
 # simulation length
 timestep = timedelta(seconds=40)
-niter = int(1 * 60 * 60 / timestep.total_seconds())
+niter = int(12 * 60 * 60 / timestep.total_seconds())
 
 # output
-save = False
-save_frequency = -1
-filename = (
-    "/scratch/snx3000tds/subbiali/data/isentropic_dry_{}_{}_nx{}_ny{}_nz{}_dt{}_nt{}_"
-    "{}_L{}_H{}_u{}_{}{}{}{}_fc_{}.nc".format(
-        time_integration_scheme,
-        horizontal_flux_scheme,
-        nx,
-        ny,
-        nz,
-        int(timestep.total_seconds()),
-        niter,
-        topo_type,
-        int(topo_kwargs["width_x"].to_units("m").values.item()),
-        int(topo_kwargs["max_height"].to_units("m").values.item()),
-        int(x_velocity.to_units("m s^-1").values.item()),
-        "T" if isothermal else "bv",
-        "_diff" if diff else "",
-        "_smooth" if smooth else "",
-        "_turb" if turbulence else "",
-        backend_kwargs["backend"],
-    )
+save = True
+save_frequency = 90
+filename = "/scratch/snx3000tds/subbiali/data/pdc_paper/isentropic_dry/isentropic_dry_{}_{}_nx{}_ny{}_nz{}_dt{}_nt{}_{}_L{}_H{}_u{}_{}{}{}{}_fc_{}_oop.nc".format(
+    time_integration_scheme,
+    horizontal_flux_scheme,
+    nx,
+    ny,
+    nz,
+    int(timestep.total_seconds()),
+    niter,
+    topo_type,
+    int(topo_kwargs["width_x"].to_units("m").values.item()),
+    int(topo_kwargs["max_height"].to_units("m").values.item()),
+    int(x_velocity.to_units("m s^-1").values.item()),
+    "T" if isothermal else "bv",
+    "_diff" if diff else "",
+    "_smooth" if smooth else "",
+    "_turb" if turbulence else "",
+    backend,
 )
 store_names = (
     "air_isentropic_density",
@@ -147,4 +162,5 @@ store_names = (
     "y_momentum_isentropic",
     "y_velocity_at_v_locations",
 )
-print_frequency = 1
+print_frequency = 5
+logfile = None

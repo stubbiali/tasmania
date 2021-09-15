@@ -21,8 +21,11 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 import click
+from datetime import timedelta
 import os
-import sympl
+
+from sympl._core.data_array import DataArray
+from sympl._core.time import Timer
 
 import tasmania as taz
 
@@ -103,7 +106,7 @@ def main(backend=None, namelist="namelist_fc.py", no_log=False):
     )
 
     # ============================================================
-    # The intermediate tendencies
+    # The fast tendencies
     # ============================================================
     args = []
 
@@ -113,6 +116,7 @@ def main(backend=None, namelist="namelist_fc.py", no_log=False):
             domain,
             grid_type="numerical",
             coriolis_parameter=nl.coriolis_parameter,
+            enable_checks=nl.enable_checks,
             backend=nl.backend,
             backend_options=nl.bo,
             storage_shape=storage_shape,
@@ -129,6 +133,7 @@ def main(backend=None, namelist="namelist_fc.py", no_log=False):
             nl.diff_coeff_max,
             nl.diff_damp_depth,
             moist=False,
+            enable_checks=nl.enable_checks,
             backend=nl.backend,
             backend_options=nl.bo,
             storage_shape=storage_shape,
@@ -141,6 +146,7 @@ def main(backend=None, namelist="namelist_fc.py", no_log=False):
         turb = taz.IsentropicSmagorinsky(
             domain,
             nl.smagorinsky_constant,
+            enable_checks=nl.enable_checks,
             backend=nl.backend,
             backend_options=nl.bo,
             storage_shape=storage_shape,
@@ -149,8 +155,16 @@ def main(backend=None, namelist="namelist_fc.py", no_log=False):
         args.append(turb)
 
     # component downgrading air_potential_temperature to tendency
-    d2t = taz.AirPotentialTemperature2Tendency(domain, "numerical")
-    args.append(d2t)
+    d2t = taz.AirPotentialTemperatureToTendency(
+        domain,
+        "numerical",
+        enable_checks=nl.enable_checks,
+        backend=nl.backend,
+        backend_options=nl.bo,
+        storage_shape=storage_shape,
+        storage_options=nl.so,
+    )
+    # args.append(d2t)
 
     # component calculating the microphysics
     ke = taz.KesslerMicrophysics(
@@ -162,6 +176,7 @@ def main(backend=None, namelist="namelist_fc.py", no_log=False):
         autoconversion_threshold=nl.autoconversion_threshold,
         autoconversion_rate=nl.autoconversion_rate,
         collection_rate=nl.collection_rate,
+        enable_checks=nl.enable_checks,
         backend=nl.backend,
         backend_options=nl.bo,
         storage_shape=storage_shape,
@@ -177,8 +192,16 @@ def main(backend=None, namelist="namelist_fc.py", no_log=False):
         args.append(ke)
 
     # component promoting air_potential_temperature to state variable
-    t2d = taz.AirPotentialTemperature2Diagnostic(domain, "numerical")
-    args.append(t2d)
+    t2d = taz.AirPotentialTemperatureToDiagnostic(
+        domain,
+        "numerical",
+        enable_checks=nl.enable_checks,
+        backend=nl.backend,
+        backend_options=nl.bo,
+        storage_shape=storage_shape,
+        storage_options=nl.so,
+    )
+    # args.append(t2d)
 
     if nl.vertical_advection:
         if nl.implicit_vertical_advection:
@@ -187,6 +210,7 @@ def main(backend=None, namelist="namelist_fc.py", no_log=False):
                 domain,
                 moist=True,
                 tendency_of_air_potential_temperature_on_interface_levels=False,
+                enable_checks=nl.enable_checks,
                 backend=nl.backend,
                 backend_options=nl.bo,
                 storage_shape=storage_shape,
@@ -200,6 +224,7 @@ def main(backend=None, namelist="namelist_fc.py", no_log=False):
                 flux_scheme=nl.vertical_flux_scheme,
                 moist=True,
                 tendency_of_air_potential_temperature_on_interface_levels=False,
+                enable_checks=nl.enable_checks,
                 backend=nl.backend,
                 backend_options=nl.bo,
                 storage_shape=storage_shape,
@@ -212,6 +237,7 @@ def main(backend=None, namelist="namelist_fc.py", no_log=False):
         rfv = taz.KesslerFallVelocity(
             domain,
             "numerical",
+            enable_checks=nl.enable_checks,
             backend=nl.backend,
             backend_options=nl.bo,
             storage_shape=storage_shape,
@@ -224,6 +250,7 @@ def main(backend=None, namelist="namelist_fc.py", no_log=False):
             domain,
             "numerical",
             sedimentation_flux_scheme=nl.sedimentation_flux_scheme,
+            enable_checks=nl.enable_checks,
             backend=nl.backend,
             backend_options=nl.bo,
             storage_shape=storage_shape,
@@ -232,21 +259,22 @@ def main(backend=None, namelist="namelist_fc.py", no_log=False):
         args.append(sd)
 
     # wrap the components in a ConcurrentCoupling object
-    inter_tends = taz.ConcurrentCoupling(
+    fast_tends = taz.ConcurrentCoupling(
         *args,
         execution_policy="serial",
+        enable_checks=nl.enable_checks,
         backend=nl.backend,
         backend_options=nl.bo,
         storage_options=nl.so
     )
 
     # ============================================================
-    # The intermediate diagnostics
+    # The fast diagnostics
     # ============================================================
     args = []
 
     # component retrieving the diagnostic variables
-    pt = sympl.DataArray(
+    pt = DataArray(
         state["air_pressure_on_interface_levels"].data[0, 0, 0],
         attrs={"units": "Pa"},
     )
@@ -255,6 +283,7 @@ def main(backend=None, namelist="namelist_fc.py", no_log=False):
         grid_type="numerical",
         moist=True,
         pt=pt,
+        enable_checks=nl.enable_checks,
         backend=nl.backend,
         backend_options=nl.bo,
         storage_shape=storage_shape,
@@ -267,6 +296,7 @@ def main(backend=None, namelist="namelist_fc.py", no_log=False):
         domain,
         grid_type="numerical",
         air_pressure_on_interface_levels=True,
+        enable_checks=nl.enable_checks,
         backend=nl.backend,
         backend_options=nl.bo,
         storage_shape=storage_shape,
@@ -275,17 +305,24 @@ def main(backend=None, namelist="namelist_fc.py", no_log=False):
     args.append(
         taz.ConcurrentCoupling(
             sa,
-            t2d,
+            # t2d,
             execution_policy="serial",
+            enable_checks=nl.enable_checks,
             backend=nl.backend,
             backend_options=nl.bo,
             storage_options=nl.so,
         )
     )
+    # args.append(sa)
 
     # wrap the components in a DiagnosticComponentComposite object
-    inter_diags = taz.DiagnosticComponentComposite(
-        *args, execution_policy="serial"
+    fast_diags = taz.ConcurrentCoupling(
+        *args,
+        execution_policy="serial",
+        enable_checks=nl.enable_checks,
+        backend=nl.backend,
+        backend_options=nl.bo,
+        storage_options=nl.so
     )
 
     # ============================================================
@@ -300,6 +337,7 @@ def main(backend=None, namelist="namelist_fc.py", no_log=False):
         ap = taz.Precipitation(
             domain,
             "numerical",
+            enable_checks=nl.enable_checks,
             backend=nl.backend,
             backend_options=nl.bo,
             storage_shape=storage_shape,
@@ -315,6 +353,7 @@ def main(backend=None, namelist="namelist_fc.py", no_log=False):
             nl.smooth_coeff,
             nl.smooth_coeff_max,
             nl.smooth_damp_depth,
+            enable_checks=nl.enable_checks,
             backend=nl.backend,
             backend_options=nl.bo,
             storage_shape=storage_shape,
@@ -325,6 +364,7 @@ def main(backend=None, namelist="namelist_fc.py", no_log=False):
         # component calculating the velocity components
         vc = taz.IsentropicVelocityComponents(
             domain,
+            enable_checks=nl.enable_checks,
             backend=nl.backend,
             backend_options=nl.bo,
             storage_shape=storage_shape,
@@ -334,8 +374,13 @@ def main(backend=None, namelist="namelist_fc.py", no_log=False):
 
     if len(args) > 0:
         # wrap the components in a ConcurrentCoupling object
-        slow_diags = taz.DiagnosticComponentComposite(
-            *args, execution_policy="serial"
+        slow_diags = taz.ConcurrentCoupling(
+            *args,
+            execution_policy="serial",
+            enable_checks=nl.enable_checks,
+            backend=nl.backend,
+            backend_options=nl.bo,
+            storage_options=nl.so
         )
     else:
         slow_diags = None
@@ -347,11 +392,11 @@ def main(backend=None, namelist="namelist_fc.py", no_log=False):
         domain,
         moist=True,
         # parameterizations
-        intermediate_tendency_component=inter_tends,
-        intermediate_diagnostic_component=inter_diags,
+        fast_tendency_component=fast_tends,
+        fast_diagnostic_component=fast_diags,
         substeps=nl.substeps,
-        fast_tendency_component=None,
-        fast_diagnostic_component=None,
+        superfast_tendency_component=None,
+        superfast_diagnostic_component=None,
         # numerical scheme
         time_integration_scheme=nl.time_integration_scheme,
         horizontal_flux_scheme=nl.horizontal_flux_scheme,
@@ -372,6 +417,7 @@ def main(backend=None, namelist="namelist_fc.py", no_log=False):
         smooth=False,
         smooth_moist=False,
         # backend settings
+        enable_checks=nl.enable_checks,
         backend=nl.backend,
         backend_options=nl.bo,
         storage_shape=storage_shape,
@@ -379,7 +425,7 @@ def main(backend=None, namelist="namelist_fc.py", no_log=False):
     )
 
     # ============================================================
-    # A NetCDF monitor
+    # NetCDF monitor
     # ============================================================
     if nl.save and nl.filename is not None:
         if os.path.exists(nl.filename):
@@ -406,30 +452,42 @@ def main(backend=None, namelist="namelist_fc.py", no_log=False):
         backend=nl.backend, backend_options=nl.bo, storage_options=nl.so
     )
 
+    # warm up caches
+    dycore.update_topography(timedelta(seconds=0.0))
+    state_new = dycore(state, {}, timedelta(seconds=0.0))
+    state_new["accumulated_precipitation"] = taz.deepcopy_dataarray(
+        state["accumulated_precipitation"],
+        backend=nl.backend,
+        storage_options=nl.so,
+    )
+    _, diagnostics = slow_diags(state_new, timedelta(seconds=0.0))
+    dict_op.update_swap(state_new, diagnostics)
+
+    # reset timers
+    Timer.reset()
+
     for i in range(nt):
         # start timing
-        taz.Timer.start(label="compute_time")
+        Timer.start(label="compute_time")
+
+        # swap old and new state
+        state, state_new = state_new, state
 
         # update the (time-dependent) topography
         dycore.update_topography((i + 1) * dt)
 
         # calculate the dynamics
-        state_new = dycore(state, {}, dt)
-
-        # update the state
-        dict_op.copy(state, state_new)
+        dycore(state, {}, dt, out_state=state_new)
 
         # calculate the slow physics
-        if slow_diags is not None:
-            diagnostics = slow_diags(state, dt)
-            # state.update(diagnostics)
-            dict_op.copy(state, diagnostics, unshared_variables_in_output=True)
+        slow_diags(state_new, dt, out_diagnostics=diagnostics)
+        dict_op.update_swap(state_new, diagnostics)
 
         # stop timing
-        taz.Timer.stop(label="compute_time")
+        Timer.stop(label="compute_time")
 
         # print useful info
-        print_info(dt, i, nl, pgrid, state)
+        print_info(dt, i, nl, pgrid, state_new)
 
         # shortcuts
         to_save = (
@@ -444,7 +502,7 @@ def main(backend=None, namelist="namelist_fc.py", no_log=False):
 
         if to_save:
             # save the solution
-            netcdf_monitor.store(state)
+            netcdf_monitor.store(state_new)
 
     print("Simulation successfully completed. HOORAY!")
 
@@ -456,7 +514,9 @@ def main(backend=None, namelist="namelist_fc.py", no_log=False):
         netcdf_monitor.write()
 
     # print logs
-    print(f"Compute time: {taz.Timer.get_time('compute_time', 's'):.3f} s.")
+    print(f"Compute time: {Timer.get_time('compute_time', 's'):.3f} s.")
+    if nl.logfile is not None:
+        taz.Timer.log(logfile=nl.logfile, units="s")
 
 
 if __name__ == "__main__":

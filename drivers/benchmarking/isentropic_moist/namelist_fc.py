@@ -32,11 +32,11 @@ import tasmania as taz
 domain_x = DataArray([-176, 176], dims="x", attrs={"units": "km"}).to_units(
     "m"
 )
-nx = 41
+nx = 161
 domain_y = DataArray([-176, 176], dims="y", attrs={"units": "km"}).to_units(
     "m"
 )
-ny = 41
+ny = 161
 domain_z = DataArray(
     [400, 280], dims="potential_temperature", attrs={"units": "K"}
 )
@@ -51,7 +51,9 @@ hb_kwargs = {"nr": 6}
 backend = "gt4py:gtmc"
 bo = taz.BackendOptions(
     # gt4py
+    backend_opts={},
     build_info={},
+    device_sync=True,
     exec_info={"__aggregate_data": True},
     rebuild=False,
     validate_args=False,
@@ -137,7 +139,7 @@ saturation_rate = DataArray(0.025, attrs={"units": "s^-1"})
 update_frequency = 0
 
 # simulation length
-timestep = timedelta(seconds=40)
+timestep = timedelta(seconds=10)
 niter = 100
 
 # output

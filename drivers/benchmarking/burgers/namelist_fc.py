@@ -29,7 +29,7 @@ from sympl import DataArray
 import tasmania as taz
 
 
-factor = 8
+factor = 0
 
 # initial conditions
 init_time = datetime(year=1992, month=2, day=20, hour=0)
@@ -76,6 +76,7 @@ flux_scheme = "fifth_order"
 # simulation time
 cfl = 1.0
 timestep = pd.Timedelta(cfl / (nx - 1) ** 2, unit="s")
+# timestep = pd.Timedelta(0.00768, unit="s")
 niter = 100
 
 # output
