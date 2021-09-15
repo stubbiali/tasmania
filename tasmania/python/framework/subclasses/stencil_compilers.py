@@ -110,6 +110,13 @@ if gt:
         backend_opts = bo.backend_opts or {}
         if gt_backend not in ("debug", "numpy"):
             backend_opts.setdefault("verbose", bo.verbose)
+        # >>> old storage
+        if gt.backend.REGISTRY[gt_backend].storage_info["device"] == "gpu":
+            backend_opts.setdefault("device_sync", bo.device_sync)
+        # <<< new storage
+        # if gt.backend.REGISTRY[gt_backend].compute_device == "gpu":
+        #     backend_opts.setdefault("device_sync", bo.device_sync)
+        # <<<
         return gt.gtscript.stencil(
             gt_backend,
             definition,

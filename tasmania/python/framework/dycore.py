@@ -91,6 +91,7 @@ class DynamicalCore(DomainComponent, StencilFactory, abc.ABC):
         DiagnosticComponent,
         SymplDiagnosticComponentComposite,
         TasmaniaDiagnosticComponentComposite,
+        ConcurrentCoupling,
     )
 
     def __init__(

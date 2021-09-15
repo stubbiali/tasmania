@@ -32,7 +32,6 @@ from sympl._core.data_array import DataArray
 from sympl._core.time import Timer
 
 from gt4py import gtscript
-from gt4py.gtscript import IJ
 
 from tasmania.python.framework.core_components import (
     DiagnosticComponent,

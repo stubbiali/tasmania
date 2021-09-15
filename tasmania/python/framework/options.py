@@ -46,6 +46,7 @@ class BackendOptions:
     # gt4py
     backend_opts: Mapping[str, Any] = None
     build_info: Mapping[str, Any] = None
+    device_sync: bool = True
     dtypes: Mapping[str, Type] = field(default_factory=dict)
     exec_info: Mapping[str, Any] = None
     externals: Mapping[str, Any] = field(default_factory=dict)
@@ -72,7 +73,7 @@ class StorageOptions:
     dtype: Type = np.float64
 
     # gt4py
-    aligned_index: Sequence[int] = None
+    aligned_index: Sequence[int] = (0, 0, 0)
     halo: Sequence[int] = None
     managed: Union[bool, str] = "gt4py"
 
