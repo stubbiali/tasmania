@@ -21,7 +21,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 import numpy as np
-from typing import Optional, Sequence, TYPE_CHECKING, Tuple
+from typing import Dict, Optional, Sequence, TYPE_CHECKING, Tuple
 
 from sympl._core.time import Timer
 
@@ -32,6 +32,8 @@ from tasmania.python.framework.tag import stencil_definition
 from tasmania.python.utils import typingx as ty
 
 if TYPE_CHECKING:
+    from sympl._core.typingx import NDArrayLikeDict, PropertyDict
+
     from tasmania.python.domain.domain import Domain
     from tasmania.python.framework.options import (
         BackendOptions,
@@ -56,6 +58,7 @@ class IsentropicImplicitVerticalAdvectionDiagnostic(ImplicitTendencyComponent):
         moist: bool = False,
         tendency_of_air_potential_temperature_on_interface_levels: bool = False,
         *,
+        enable_checks: bool = True,
         backend: str = "numpy",
         backend_options: Optional["BackendOptions"] = None,
         storage_shape: Optional[Sequence[int]] = None,
@@ -74,6 +77,8 @@ class IsentropicImplicitVerticalAdvectionDiagnostic(ImplicitTendencyComponent):
             ``True`` if the input tendency of air potential temperature
             is defined at the interface levels, ``False`` otherwise.
             Defaults to ``False``.
+        enable_checks : `bool`, optional
+            TODO
         backend : `str`, optional
             The backend.
         backend_options : `BackendOptions`, optional
@@ -94,40 +99,27 @@ class IsentropicImplicitVerticalAdvectionDiagnostic(ImplicitTendencyComponent):
         super().__init__(
             domain,
             "numerical",
+            enable_checks=enable_checks,
             backend=backend,
             backend_options=backend_options,
+            storage_shape=storage_shape,
             storage_options=storage_options,
             **kwargs
         )
-
-        # set the storage shape
-        nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
-        storage_shape = self.get_field_storage_shape(
-            storage_shape, (nx, ny, nz + 1)
-        )
-
-        # allocate the gstorages collecting the stencil outputs
-        self._out_s = self.zeros(shape=storage_shape)
-        self._out_su = self.zeros(shape=storage_shape)
-        self._out_sv = self.zeros(shape=storage_shape)
-        if moist:
-            self._out_qv = self.zeros(shape=storage_shape)
-            self._out_qc = self.zeros(shape=storage_shape)
-            self._out_qr = self.zeros(shape=storage_shape)
 
         # instantiate the underlying stencil object
         dtype = self.storage_options.dtype
         self.backend_options.dtypes = {"dtype": dtype}
         self.backend_options.externals = {
             "moist": moist,
-            "vstaggering": self._stgz,
+            "staggering": self._stgz,
             "setup": self.get_subroutine_definition("setup_thomas"),
             "setup_bc": self.get_subroutine_definition("setup_thomas_bc"),
         }
-        self._stencil = self.compile_stencil("stencil")
+        self._stencil = self.compile_stencil("implicit_vertical_advection")
 
     @property
-    def input_properties(self) -> ty.PropertiesDict:
+    def input_properties(self) -> "PropertyDict":
         grid = self.grid
         dims = (grid.x.dims[0], grid.y.dims[0], grid.z.dims[0])
 
@@ -169,11 +161,11 @@ class IsentropicImplicitVerticalAdvectionDiagnostic(ImplicitTendencyComponent):
         return return_dict
 
     @property
-    def tendency_properties(self) -> ty.PropertiesDict:
+    def tendency_properties(self) -> "PropertyDict":
         return {}
 
     @property
-    def diagnostic_properties(self) -> ty.PropertiesDict:
+    def diagnostic_properties(self) -> "PropertyDict":
         grid = self.grid
         dims = (grid.x.dims[0], grid.y.dims[0], grid.z.dims[0])
 
@@ -196,45 +188,40 @@ class IsentropicImplicitVerticalAdvectionDiagnostic(ImplicitTendencyComponent):
         return return_dict
 
     def array_call(
-        self, state: ty.StorageDict, timestep: ty.TimeDelta
-    ) -> Tuple[ty.StorageDict, ty.StorageDict]:
+        self,
+        state: "NDArrayLikeDict",
+        timestep: ty.TimeDelta,
+        out_tendencies: "NDArrayLikeDict",
+        out_diagnostics: "NDArrayLikeDict",
+        overwrite_tendencies: Dict[str, bool],
+    ) -> None:
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
         dz = self.grid.dz.to_units("K").values.item()
-
-        # grab the required model variables
-        in_w = (
-            state["tendency_of_air_potential_temperature_on_interface_levels"]
-            if self._stgz
-            else state["tendency_of_air_potential_temperature"]
-        )
-        in_s = state["air_isentropic_density"]
-        in_su = state["x_momentum_isentropic"]
-        in_sv = state["y_momentum_isentropic"]
-        if self._moist:
-            in_qv = state[mfwv]
-            in_qc = state[mfcw]
-            in_qr = state[mfpw]
 
         # set the stencil's arguments
         stencil_args = {
             "gamma": timestep.total_seconds() / (4.0 * dz),
-            "in_w": in_w,
-            "in_s": in_s,
-            "out_s": self._out_s,
-            "in_su": in_su,
-            "out_su": self._out_su,
-            "in_sv": in_sv,
-            "out_sv": self._out_sv,
+            "in_w": state[
+                "tendency_of_air_potential_temperature_on_interface_levels"
+            ]
+            if self._stgz
+            else state["tendency_of_air_potential_temperature"],
+            "in_s": state["air_isentropic_density"],
+            "out_s": out_diagnostics["air_isentropic_density"],
+            "in_su": state["x_momentum_isentropic"],
+            "out_su": out_diagnostics["x_momentum_isentropic"],
+            "in_sv": state["y_momentum_isentropic"],
+            "out_sv": out_diagnostics["y_momentum_isentropic"],
         }
         if self._moist:
             stencil_args.update(
                 {
-                    "in_qv": in_qv,
-                    "out_qv": self._out_qv,
-                    "in_qc": in_qc,
-                    "out_qc": self._out_qc,
-                    "in_qr": in_qr,
-                    "out_qr": self._out_qr,
+                    "in_qv": state[mfwv],
+                    "out_qv": out_diagnostics[mfwv],
+                    "in_qc": state[mfcw],
+                    "out_qc": out_diagnostics[mfcw],
+                    "in_qr": state[mfpw],
+                    "out_qr": out_diagnostics[mfpw],
                 }
             )
 
@@ -249,20 +236,9 @@ class IsentropicImplicitVerticalAdvectionDiagnostic(ImplicitTendencyComponent):
         )
         Timer.stop()
 
-        # collect the output arrays in a dictionary
-        diagnostics = {
-            "air_isentropic_density": self._out_s,
-            "x_momentum_isentropic": self._out_su,
-            "y_momentum_isentropic": self._out_sv,
-        }
-        if self._moist:
-            diagnostics[mfwv] = self._out_qv
-            diagnostics[mfcw] = self._out_qc
-            diagnostics[mfpw] = self._out_qr
-
-        return {}, diagnostics
-
-    @stencil_definition(backend=("numpy", "cupy"), stencil="stencil")
+    @stencil_definition(
+        backend=("numpy", "cupy"), stencil="implicit_vertical_advection"
+    )
     def _stencil_numpy(
         self,
         in_w: np.ndarray,
@@ -288,7 +264,7 @@ class IsentropicImplicitVerticalAdvectionDiagnostic(ImplicitTendencyComponent):
         kstart, kstop = origin[2], origin[2] + domain[2]
 
         # interpolate the velocity on the main levels
-        if vstaggering:
+        if staggering:
             w = np.zeros_like(in_w)
             w[i, j, kstart:kstop] = 0.5 * (
                 in_w[i, j, kstart:kstop] + in_w[i, j, kstart + 1 : kstop + 1]
@@ -391,7 +367,9 @@ class IsentropicImplicitVerticalAdvectionDiagnostic(ImplicitTendencyComponent):
             )
 
     @staticmethod
-    @stencil_definition(backend="gt4py*", stencil="stencil")
+    @stencil_definition(
+        backend="gt4py*", stencil="implicit_vertical_advection"
+    )
     def _stencil_gt4py(
         in_w: gtscript.Field["dtype"],
         in_s: gtscript.Field["dtype"],
@@ -409,11 +387,11 @@ class IsentropicImplicitVerticalAdvectionDiagnostic(ImplicitTendencyComponent):
         *,
         gamma: float
     ) -> None:
-        from __externals__ import moist, setup, setup_bc, vstaggering
+        from __externals__ import moist, setup, setup_bc, staggering
 
         # interpolate the velocity on the main levels
         with computation(PARALLEL), interval(0, None):
-            if __INLINED(vstaggering):  # compile-time if
+            if __INLINED(staggering):  # compile-time if
                 w = 0.5 * (in_w[0, 0, 0] + in_w[0, 0, 1])
             else:
                 w = in_w
