@@ -22,7 +22,10 @@
 #
 import json
 import numpy as np
-from tasmania import Grid, get_dataarray_3d, taz_types
+
+from tasmania.python.domain.grid import Grid
+from tasmania.python.utils import typingx as ty
+from tasmania.python.utils.storage import get_dataarray_3d
 
 from scripts.python.data_loaders.base import BaseLoader
 from scripts.python.data_loaders.mounter import DatasetMounter
@@ -40,15 +43,21 @@ class DomainCumulativeLoader(BaseLoader):
 
             start, stop, step = data["xslice"]
             self.xslice = (
-                None if start == stop == step is None else slice(start, stop, step)
+                None
+                if start == stop == step is None
+                else slice(start, stop, step)
             )
             start, stop, step = data["yslice"]
             self.yslice = (
-                None if start == stop == step is None else slice(start, stop, step)
+                None
+                if start == stop == step is None
+                else slice(start, stop, step)
             )
             start, stop, step = data["zslice"]
             self.zslice = (
-                None if start == stop == step is None else slice(start, stop, step)
+                None
+                if start == stop == step is None
+                else slice(start, stop, step)
             )
 
     def get_grid(self) -> Grid:
@@ -57,10 +66,10 @@ class DomainCumulativeLoader(BaseLoader):
     def get_nt(self) -> int:
         return self.dsmounter.get_nt()
 
-    def get_initial_time(self) -> taz_types.datetime_t:
+    def get_initial_time(self) -> ty.Datetime:
         return self.dsmounter.get_state(0)["time"]
 
-    def get_state(self, tlevel: int) -> taz_types.dataarray_dict_t:
+    def get_state(self, tlevel: int) -> ty.DataArrayDict:
         g = self.dsmounter.get_grid()
         nx, ny = g.nx, g.ny
         x, y, z = self.xslice, self.yslice, self.zslice
@@ -68,7 +77,8 @@ class DomainCumulativeLoader(BaseLoader):
         state = self.dsmounter.get_state(tlevel)
         field = state[self.fname].to_units(self.funits).values[x, y, z]
         state["domain_cumulative_" + self.fname] = get_dataarray_3d(
-            np.sum(np.sum(np.sum(field, axis=2), axis=1), axis=0) * np.ones((nx, ny, 1)),
+            np.sum(np.sum(np.sum(field, axis=2), axis=1), axis=0)
+            * np.ones((nx, ny, 1)),
             g,
             self.funits,
         )
@@ -88,15 +98,21 @@ class ColumnCumulativeLoader(BaseLoader):
 
             start, stop, step = data["xslice"]
             self.xslice = (
-                None if start == stop == step is None else slice(start, stop, step)
+                None
+                if start == stop == step is None
+                else slice(start, stop, step)
             )
             start, stop, step = data["yslice"]
             self.yslice = (
-                None if start == stop == step is None else slice(start, stop, step)
+                None
+                if start == stop == step is None
+                else slice(start, stop, step)
             )
             start, stop, step = data["zslice"]
             self.zslice = (
-                None if start == stop == step is None else slice(start, stop, step)
+                None
+                if start == stop == step is None
+                else slice(start, stop, step)
             )
 
     def get_grid(self) -> Grid:
@@ -105,10 +121,10 @@ class ColumnCumulativeLoader(BaseLoader):
     def get_nt(self) -> int:
         return self.dsmounter.get_nt()
 
-    def get_initial_time(self) -> taz_types.datetime_t:
+    def get_initial_time(self) -> ty.Datetime:
         return self.dsmounter.get_state(0)["time"]
 
-    def get_state(self, tlevel: int) -> taz_types.dataarray_dict_t:
+    def get_state(self, tlevel: int) -> ty.DataArrayDict:
         g = self.dsmounter.get_grid()
         x, y, z = self.xslice, self.yslice, self.zslice
 
@@ -130,15 +146,21 @@ class TotalPrecipitationLoader(BaseLoader):
 
             start, stop, step = data["xslice"]
             self.xslice = (
-                None if start == stop == step is None else slice(start, stop, step)
+                None
+                if start == stop == step is None
+                else slice(start, stop, step)
             )
             start, stop, step = data["yslice"]
             self.yslice = (
-                None if start == stop == step is None else slice(start, stop, step)
+                None
+                if start == stop == step is None
+                else slice(start, stop, step)
             )
             start, stop, step = data["zslice"]
             self.zslice = (
-                None if start == stop == step is None else slice(start, stop, step)
+                None
+                if start == stop == step is None
+                else slice(start, stop, step)
             )
 
     def get_grid(self) -> Grid:
@@ -147,10 +169,10 @@ class TotalPrecipitationLoader(BaseLoader):
     def get_nt(self) -> int:
         return self.dsmounter.get_nt()
 
-    def get_initial_time(self) -> taz_types.datetime_t:
+    def get_initial_time(self) -> ty.Datetime:
         return self.dsmounter.get_state(0)["time"]
 
-    def get_state(self, tlevel: int) -> taz_types.dataarray_dict_t:
+    def get_state(self, tlevel: int) -> ty.DataArrayDict:
         g = self.dsmounter.get_grid()
         nx, ny = g.nx, g.ny
         x, y, z = self.xslice, self.yslice, self.zslice
@@ -181,11 +203,15 @@ class TotalAccumulatedPrecipitationLoader(BaseLoader):
 
             start, stop, step = data["xslice"]
             self.xslice = (
-                None if start == stop == step is None else slice(start, stop, step)
+                None
+                if start == stop == step is None
+                else slice(start, stop, step)
             )
             start, stop, step = data["yslice"]
             self.yslice = (
-                None if start == stop == step is None else slice(start, stop, step)
+                None
+                if start == stop == step is None
+                else slice(start, stop, step)
             )
 
     def get_grid(self) -> Grid:
@@ -194,19 +220,27 @@ class TotalAccumulatedPrecipitationLoader(BaseLoader):
     def get_nt(self) -> int:
         return self.dsmounter.get_nt()
 
-    def get_initial_time(self) -> taz_types.datetime_t:
+    def get_initial_time(self) -> ty.Datetime:
         return self.dsmounter.get_state(0)["time"]
 
-    def get_state(self, tlevel: int) -> taz_types.dataarray_dict_t:
+    def get_state(self, tlevel: int) -> ty.DataArrayDict:
         g = self.dsmounter.get_grid()
-        dx, dy = g.dx.to_units("m").values.item(), g.dy.to_units("m").values.item()
+        dx, dy = (
+            g.dx.to_units("m").values.item(),
+            g.dy.to_units("m").values.item(),
+        )
         nx, ny = g.nx, g.ny
         x, y = self.xslice, self.yslice
 
         state = self.dsmounter.get_state(tlevel)
-        accprec = state["accumulated_precipitation"].to_units("mm").values[x, y, 0]
+        accprec = (
+            state["accumulated_precipitation"].to_units("mm").values[x, y, 0]
+        )
         state["total_accumulated_precipitation"] = get_dataarray_3d(
-            dx * dy * np.sum(np.sum(accprec, axis=1), axis=0) * np.ones((nx, ny, 1)),
+            dx
+            * dy
+            * np.sum(np.sum(accprec, axis=1), axis=0)
+            * np.ones((nx, ny, 1)),
             g,
             "kg",
         )

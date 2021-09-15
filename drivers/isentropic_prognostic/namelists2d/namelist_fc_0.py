@@ -24,13 +24,21 @@ from datetime import datetime, timedelta
 import numpy as np
 from sympl import DataArray
 
+import tasmania as taz
+
 
 # computational domain
-domain_x = DataArray([-176, 176], dims="x", attrs={"units": "km"}).to_units("m")
+domain_x = DataArray([-176, 176], dims="x", attrs={"units": "km"}).to_units(
+    "m"
+)
 nx = 41
-domain_y = DataArray([-176, 176], dims="y", attrs={"units": "km"}).to_units("m")
+domain_y = DataArray([-176, 176], dims="y", attrs={"units": "km"}).to_units(
+    "m"
+)
 ny = 1
-domain_z = DataArray([400, 280], dims="potential_temperature", attrs={"units": "K"})
+domain_z = DataArray(
+    [400, 280], dims="potential_temperature", attrs={"units": "K"}
+)
 nz = 60
 
 # horizontal boundary
@@ -38,20 +46,28 @@ hb_type = "relaxed"
 nb = 3
 hb_kwargs = {"nr": 6}
 
-# gt4py settings
-gt_powered = True
-gt_kwargs = {
-    "backend": "gtx86",
-    "build_info": None,
-    "dtype": np.float64,
-    "exec_info": None,
-    "default_origin": (nb, nb, 0),
-    "rebuild": False,
-    "managed_memory": False,
-}
-gt_kwargs["backend_opts"] = (
-    {"verbose": True} if gt_kwargs["backend"] in ("gtx86", "gtmc", "gtcuda") else None
+# backend and low-level settings
+backend = "gt4py:gtx86"
+bo = taz.BackendOptions(
+    # gt4py
+    backend_opts={},
+    build_info={},
+    device_sync=True,
+    exec_info={"__aggregate_data": True},
+    rebuild=False,
+    validate_args=False,
+    # numba
+    cache=True,
+    check_rebuild=False,
+    fastmath=False,
+    inline="always",
+    nopython=True,
+    parallel=True,
 )
+so = taz.StorageOptions(
+    dtype=np.float64, aligned_index=(nb, nb, 0), managed="gt4py"
+)
+enable_checks = False
 
 # topography
 topo_type = "gaussian"
@@ -105,13 +121,13 @@ diff_moist_damp_depth = 0
 
 # horizontal smoothing
 smooth = True
-smooth_type = "second_order"
+smooth_type = "second_order_1dx"
 smooth_coeff = 1.0
 smooth_coeff_max = 1.0
 smooth_damp_depth = 0
 smooth_at_every_stage = False
 smooth_moist = True
-smooth_moist_type = "second_order"
+smooth_moist_type = "second_order_1dx"
 smooth_moist_coeff = 1.0
 smooth_moist_coeff_max = 1.0
 smooth_moist_damp_depth = 0
@@ -132,7 +148,6 @@ rain_evaporation = False
 autoconversion_threshold = DataArray(0.1, attrs={"units": "g kg^-1"})
 autoconversion_rate = DataArray(0.001, attrs={"units": "s^-1"})
 collection_rate = DataArray(2.2, attrs={"units": "s^-1"})
-saturation_vapor_pressure_formula = "tetens"
 saturation_rate = DataArray(0.025, attrs={"units": "s^-1"})
 update_frequency = 0
 
@@ -141,33 +156,32 @@ timestep = timedelta(seconds=40)
 niter = int(5 * 60 * 60 / timestep.total_seconds())
 
 # output
-save = True
+save = False
 save_frequency = 5
-save_iterations = list(range(0, 90, save_frequency)) + list(range(90, niter + 1, 90))
-filename = (
-    "/scratch/snx3000tds/subbiali/data/pdc_paper/isentropic_prognostic/isentropic_moist_{}_{}_nx{}_ny{}_nz{}_dt{}_nt{}_"
-    "{}_L{}_H{}_u{}_rh{}{}{}{}{}{}{}{}_fc_{}.nc".format(
-        time_integration_scheme,
-        horizontal_flux_scheme,
-        nx,
-        ny,
-        nz,
-        int(timestep.total_seconds()),
-        niter,
-        topo_type,
-        int(topo_kwargs["width_x"].to_units("m").values.item()),
-        int(topo_kwargs["max_height"].to_units("m").values.item()),
-        int(x_velocity.to_units("m s^-1").values.item()),
-        int(relative_humidity * 100),
-        "_lh" if vertical_advection else "",
-        "_diff" if diff else "",
-        "_smooth" if smooth else "",
-        "_turb" if turbulence else "",
-        "_f" if coriolis else "",
-        "_sed" if sedimentation else "",
-        "_evap" if rain_evaporation else "",
-        gt_kwargs["backend"],
-    )
+save_iterations = list(range(0, 90, save_frequency)) + list(
+    range(90, niter + 1, 90)
+)
+filename = "/scratch/snx3000tds/subbiali/data/pdc_paper/isentropic_prognostic/isentropic_moist_{}_{}_nx{}_ny{}_nz{}_dt{}_nt{}_{}_L{}_H{}_u{}_rh{}{}{}{}{}{}{}{}_fc_{}_oop.nc".format(
+    time_integration_scheme,
+    horizontal_flux_scheme,
+    nx,
+    ny,
+    nz,
+    int(timestep.total_seconds()),
+    niter,
+    topo_type,
+    int(topo_kwargs["width_x"].to_units("m").values.item()),
+    int(topo_kwargs["max_height"].to_units("m").values.item()),
+    int(x_velocity.to_units("m s^-1").values.item()),
+    int(relative_humidity * 100),
+    "_lh" if vertical_advection else "",
+    "_diff" if diff else "",
+    "_smooth" if smooth else "",
+    "_turb" if turbulence else "",
+    "_f" if coriolis else "",
+    "_sed" if sedimentation else "",
+    "_evap" if rain_evaporation else "",
+    backend,
 )
 store_names = (
     "accumulated_precipitation",
@@ -188,4 +202,5 @@ store_names = (
     # "y_velocity_at_v_locations",
 )
 print_dry_frequency = -1
-print_moist_frequency = 5
+print_moist_frequency = -1
+logfile = None

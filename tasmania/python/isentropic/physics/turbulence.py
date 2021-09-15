@@ -21,15 +21,17 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 import numpy as np
-from typing import Optional, TYPE_CHECKING, Tuple
+from typing import Dict, TYPE_CHECKING
 
-from tasmania.python.dwarfs.diagnostics import HorizontalVelocity
+from sympl._core.time import Timer
+
+from gt4py import gtscript
+
+from tasmania.python.framework.tag import stencil_definition
 from tasmania.python.physics.turbulence import Smagorinsky2d
-from tasmania.python.utils import taz_types
-from tasmania.python.utils.storage_utils import zeros
 
 if TYPE_CHECKING:
-    from tasmania.python.domain.domain import Domain
+    from sympl._core.typingx import NDArrayLikeDict, PropertyDict
 
 
 class IsentropicSmagorinsky(Smagorinsky2d):
@@ -41,174 +43,120 @@ class IsentropicSmagorinsky(Smagorinsky2d):
     underlying domain.
     """
 
-    def __init__(
-        self,
-        domain: "Domain",
-        smagorinsky_constant: float = 0.18,
-        gt_powered: bool = True,
-        *,
-        backend: str = "numpy",
-        backend_opts: Optional[taz_types.options_dict_t] = None,
-        build_info: Optional[taz_types.options_dict_t] = None,
-        dtype: taz_types.dtype_t = np.float64,
-        exec_info: Optional[taz_types.mutable_options_dict_t] = None,
-        default_origin: Optional[taz_types.triplet_int_t] = None,
-        rebuild: bool = False,
-        storage_shape: Optional[taz_types.triplet_int_t] = None,
-        managed_memory: bool = False,
-        **kwargs
-    ) -> None:
-        """
-        Parameters
-        ----------
-        domain : tasmania.Domain
-            The :class:`~tasmania.Domain` holding the grid underneath.
-        grid_type : `str`, optional
-            The type of grid over which instantiating the class.
-            Either "physical" or "numerical" (default).
-        smagorinsky_constant : `float`, optional
-            The Smagorinsky constant. Defaults to 0.18.
-        gt_powered : `bool`, optional
-            TODO
-        backend : `str`, optional
-            The GT4Py backend.
-        backend_opts : `dict`, optional
-            Dictionary of backend-specific options.
-        build_info : `dict`, optional
-            Dictionary of building options.
-        dtype : `data-type`, optional
-            Data type of the storages.
-        exec_info : `dict`, optional
-            Dictionary which will store statistics and diagnostics gathered at run time.
-        default_origin : `tuple[int]`, optional
-            Storage default origin.
-        rebuild : `bool`, optional
-            ``True`` to trigger the stencils compilation at any class instantiation,
-            ``False`` to rely on the caching mechanism implemented by GT4Py.
-        storage_shape : `tuple[int]`, optional
-            Shape of the storages.
-        managed_memory : `bool`, optional
-            ``True`` to allocate the storages as managed memory, ``False`` otherwise.
-        **kwargs :
-            Keyword arguments to be directly forwarded to the parent's constructor.
-        """
-        super().__init__(
-            domain,
-            smagorinsky_constant,
-            gt_powered=gt_powered,
-            backend=backend,
-            backend_opts=backend_opts,
-            build_info=build_info,
-            dtype=dtype,
-            exec_info=exec_info,
-            default_origin=default_origin,
-            rebuild=rebuild,
-            storage_shape=storage_shape,
-            managed_memory=managed_memory,
-            **kwargs
-        )
-
-        self._hv = HorizontalVelocity(
-            self.grid,
-            staggering=False,
-            gt_powered=gt_powered,
-            backend=backend,
-            backend_opts=backend_opts,
-            build_info=build_info,
-            dtype=dtype,
-            exec_info=exec_info,
-            rebuild=rebuild,
-        )
-
-        self._in_u = zeros(
-            self._storage_shape,
-            gt_powered=gt_powered,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-            managed_memory=managed_memory,
-        )
-        self._in_v = zeros(
-            self._storage_shape,
-            gt_powered=gt_powered,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-            managed_memory=managed_memory,
-        )
-        self._out_su_tnd = zeros(
-            self._storage_shape,
-            gt_powered=gt_powered,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-            managed_memory=managed_memory,
-        )
-        self._out_sv_tnd = zeros(
-            self._storage_shape,
-            gt_powered=gt_powered,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-            managed_memory=managed_memory,
-        )
-
     @property
-    def input_properties(self) -> taz_types.properties_dict_t:
+    def input_properties(self) -> "PropertyDict":
         dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])
         return {
             "air_isentropic_density": {"dims": dims, "units": "kg m^-2 K^-1"},
-            "x_momentum_isentropic": {"dims": dims, "units": "kg m^-1 K^-1 s^-1"},
-            "y_momentum_isentropic": {"dims": dims, "units": "kg m^-1 K^-1 s^-1"},
+            "x_momentum_isentropic": {
+                "dims": dims,
+                "units": "kg m^-1 K^-1 s^-1",
+            },
+            "y_momentum_isentropic": {
+                "dims": dims,
+                "units": "kg m^-1 K^-1 s^-1",
+            },
         }
 
     @property
-    def tendency_properties(self) -> taz_types.properties_dict_t:
+    def tendency_properties(self) -> "PropertyDict":
         dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])
         return {
-            "x_momentum_isentropic": {"dims": dims, "units": "kg m^-1 K^-1 s^-2"},
-            "y_momentum_isentropic": {"dims": dims, "units": "kg m^-1 K^-1 s^-2"},
+            "x_momentum_isentropic": {
+                "dims": dims,
+                "units": "kg m^-1 K^-1 s^-2",
+            },
+            "y_momentum_isentropic": {
+                "dims": dims,
+                "units": "kg m^-1 K^-1 s^-2",
+            },
         }
 
     @property
-    def diagnostic_properties(self) -> taz_types.properties_dict_t:
+    def diagnostic_properties(self) -> "PropertyDict":
         return {}
 
     def array_call(
-        self, state: taz_types.array_dict_t
-    ) -> Tuple[taz_types.array_dict_t, taz_types.array_dict_t]:
+        self,
+        state: "NDArrayLikeDict",
+        out_tendencies: "NDArrayLikeDict",
+        out_diagnostics: "NDArrayLikeDict",
+        overwrite_tendencies: Dict[str, bool],
+    ) -> None:
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
         nb = self._nb
         dx = self.grid.dx.to_units("m").values.item()
         dy = self.grid.dy.to_units("m").values.item()
-
-        in_s = state["air_isentropic_density"]
-        in_su = state["x_momentum_isentropic"]
-        in_sv = state["y_momentum_isentropic"]
-
-        self._hv.get_velocity_components(in_s, in_su, in_sv, self._in_u, self._in_v)
-
+        Timer.start(label="stencil")
         self._stencil(
-            in_u=self._in_u,
-            in_v=self._in_v,
-            out_u_tnd=self._out_u_tnd,
-            out_v_tnd=self._out_v_tnd,
+            in_s=state["air_isentropic_density"],
+            in_su=state["x_momentum_isentropic"],
+            in_sv=state["y_momentum_isentropic"],
+            out_su_tnd=out_tendencies["x_momentum_isentropic"],
+            out_sv_tnd=out_tendencies["y_momentum_isentropic"],
             dx=dx,
             dy=dy,
             cs=self._cs,
+            ow_out_su_tnd=overwrite_tendencies["x_momentum_isentropic"],
+            ow_out_sv_tnd=overwrite_tendencies["y_momentum_isentropic"],
             origin=(nb, nb, 0),
             domain=(nx - 2 * nb, ny - 2 * nb, nz),
-            exec_info=self._exec_info,
+            exec_info=self.backend_options.exec_info,
+            validate_args=self.backend_options.validate_args,
         )
+        Timer.stop()
 
-        self._hv.get_momenta(
-            in_s, self._out_u_tnd, self._out_v_tnd, self._out_su_tnd, self._out_sv_tnd
-        )
+    @staticmethod
+    @stencil_definition(backend=("numpy", "cupy"), stencil="smagorinsky")
+    def _stencil_numpy(
+        in_s: np.ndarray,
+        in_su: np.ndarray,
+        in_sv: np.ndarray,
+        out_su_tnd: np.ndarray,
+        out_sv_tnd: np.ndarray,
+        *,
+        dx: float,
+        dy: float,
+        cs: float,
+        ow_out_su_tnd: bool,
+        ow_out_sv_tnd: bool,
+        origin: "TripletInt",
+        domain: "TripletInt"
+    ) -> None:
+        ib, ie = origin[0], origin[0] + domain[0]
+        jb, je = origin[1], origin[1] + domain[1]
+        k = slice(origin[2], origin[2] + domain[2])
 
-        tendencies = {
-            "x_momentum_isentropic": self._out_su_tnd,
-            "y_momentum_isentropic": self._out_sv_tnd,
-        }
-        diagnostics = {}
+        u = in_su / in_s
+        v = in_sv / in_s
+        u_tnd, v_tnd = core(u, v, dx, dy, cs, ib, ie, jb, je, k)
+        tmp_out_su_tnd = in_s[ib:ie, jb:je, k] * u_tnd
+        tmp_out_sv_tnd = in_s[ib:ie, jb:je, k] * v_tnd
+        set_output(out_su_tnd[ib:ie, jb:je, k], tmp_out_su_tnd, ow_out_su_tnd)
+        set_output(out_sv_tnd[ib:ie, jb:je, k], tmp_out_sv_tnd, ow_out_sv_tnd)
 
-        return tendencies, diagnostics
+    @staticmethod
+    @stencil_definition(backend="gt4py*", stencil="smagorinsky")
+    def _stencil_gt4py(
+        in_s: gtscript.Field["dtype"],
+        in_su: gtscript.Field["dtype"],
+        in_sv: gtscript.Field["dtype"],
+        out_su_tnd: gtscript.Field["dtype"],
+        out_sv_tnd: gtscript.Field["dtype"],
+        *,
+        dx: float,
+        dy: float,
+        cs: float,
+        ow_out_su_tnd: bool,
+        ow_out_sv_tnd: bool
+    ) -> None:
+        from __externals__ import core, set_output
+
+        with computation(PARALLEL), interval(...):
+            u = in_su / in_s
+            v = in_sv / in_s
+            u_tnd, v_tnd = core(u, v, dx, dy, cs)
+            tmp_out_su_tnd = in_s * u_tnd
+            tmp_out_sv_tnd = in_s * v_tnd
+            out_su_tnd = set_output(out_su_tnd, tmp_out_su_tnd, ow_out_su_tnd)
+            out_sv_tnd = set_output(out_sv_tnd, tmp_out_sv_tnd, ow_out_sv_tnd)

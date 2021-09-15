@@ -20,176 +20,138 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from copy import deepcopy
 from hypothesis import (
     given,
-    HealthCheck,
     reproduce_failure,
-    settings,
     strategies as hyp_st,
 )
+import numpy as np
+from property_cached import cached_property
 import pytest
 
-import gt4py as gt
-
 from tasmania.python.physics.turbulence import Smagorinsky2d
-from tasmania import get_dataarray_3d
+from tasmania.python.utils.storage import get_dataarray_3d
 
-from tests.conf import (
-    backend as conf_backend,
-    datatype as conf_dtype,
-    default_origin as conf_dorigin,
-    nb as conf_nb,
-)
-from tests.strategies import st_domain, st_one_of, st_raw_field
-from tests.utilities import compare_dataarrays
+from tests import conf
+from tests.strategies import st_raw_field
+from tests.suites.core_components import TendencyComponentTestSuite
+from tests.suites.domain import DomainSuite
+from tests.utilities import compare_arrays, hyp_settings
 
 
-def smagorinsky2d_validation(dx, dy, cs, u, v):
-    u_tnd = deepcopy(u)
-    v_tnd = deepcopy(v)
+class Smagorinsky2dTestSuite(TendencyComponentTestSuite):
+    @cached_property
+    def component(self):
+        cs = self.hyp_data.draw(
+            hyp_st.floats(min_value=0, max_value=10), label="cs"
+        )
+        return Smagorinsky2d(
+            self.ds.domain,
+            smagorinsky_constant=cs,
+            backend=self.ds.backend,
+            backend_options=self.ds.bo,
+            storage_shape=self.ds.storage_shape,
+            storage_options=self.ds.so,
+        )
 
-    s00 = (u[2:, 1:-1] - u[:-2, 1:-1]) / (2.0 * dx)
-    s01 = 0.5 * (
-        (u[1:-1, 2:] - u[1:-1, :-2]) / (2.0 * dy)
-        + (v[2:, 1:-1] - v[:-2, 1:-1]) / (2.0 * dx)
-    )
-    s11 = (v[1:-1, 2:] - v[1:-1, :-2]) / (2.0 * dy)
-    nu = (
-        (cs ** 2) * (dx * dy) * (2.0 * s00 ** 2 + 4.0 * s01 ** 2 + 2.0 * s11 ** 2) ** 0.5
-    )
-    u_tnd[2:-2, 2:-2] = 2.0 * (
-        (nu[2:, 1:-1] * s00[2:, 1:-1] - nu[:-2, 1:-1] * s00[:-2, 1:-1]) / (2.0 * dx)
-        + (nu[1:-1, 2:] * s01[1:-1, 2:] - nu[1:-1, :-2] * s01[1:-1, :-2]) / (2.0 * dy)
-    )
-    v_tnd[2:-2, 2:-2] = 2.0 * (
-        (nu[2:, 1:-1] * s01[2:, 1:-1] - nu[:-2, 1:-1] * s01[:-2, 1:-1]) / (2.0 * dx)
-        + (nu[1:-1, 2:] * s11[1:-1, 2:] - nu[1:-1, :-2] * s11[1:-1, :-2]) / (2.0 * dy)
-    )
+    def get_state(self):
+        time = self.hyp_data.draw(hyp_st.datetimes(), label="time")
+        nx, ny, nz = self.ds.grid.nx, self.ds.grid.ny, self.ds.grid.nz
+        u = self.hyp_data.draw(
+            st_raw_field(
+                self.ds.storage_shape or (nx, ny, nz),
+                -1e3,
+                1e3,
+                backend=self.ds.backend,
+                storage_options=self.ds.so,
+            ),
+            label="u",
+        )
+        v = self.hyp_data.draw(
+            st_raw_field(
+                self.ds.storage_shape or (nx, ny, nz),
+                -1e3,
+                1e3,
+                backend=self.ds.backend,
+                storage_options=self.ds.so,
+            ),
+            label="v",
+        )
+        state = {
+            "time": time,
+            "x_velocity": get_dataarray_3d(
+                u,
+                self.ds.grid,
+                "m s^-1",
+                grid_shape=(nx, ny, nz),
+                set_coordinates=False,
+            ),
+            "y_velocity": get_dataarray_3d(
+                v,
+                self.ds.grid,
+                "m s^-1",
+                grid_shape=(nx, ny, nz),
+                set_coordinates=False,
+            ),
+        }
+        return state
 
-    return u_tnd, v_tnd
+    def get_validation_tendencies_and_diagnostics(self, raw_state_np, dt=None):
+        cs = self.component._cs
+        dx = self.ds.grid.dx.to_units("m").values.item()
+        dy = self.ds.grid.dy.to_units("m").values.item()
+        u = raw_state_np["x_velocity"]
+        v = raw_state_np["y_velocity"]
+
+        u_tnd = np.zeros_like(u)
+        v_tnd = np.zeros_like(v)
+
+        s00 = (u[2:, 1:-1] - u[:-2, 1:-1]) / (2.0 * dx)
+        s01 = 0.5 * (
+            (u[1:-1, 2:] - u[1:-1, :-2]) / (2.0 * dy)
+            + (v[2:, 1:-1] - v[:-2, 1:-1]) / (2.0 * dx)
+        )
+        s11 = (v[1:-1, 2:] - v[1:-1, :-2]) / (2.0 * dy)
+        nu = (
+            (cs ** 2)
+            * (dx * dy)
+            * (2.0 * s00 ** 2 + 4.0 * s01 ** 2 + 2.0 * s11 ** 2) ** 0.5
+        )
+        u_tnd[2:-2, 2:-2] = 2.0 * (
+            (nu[2:, 1:-1] * s00[2:, 1:-1] - nu[:-2, 1:-1] * s00[:-2, 1:-1])
+            / (2.0 * dx)
+            + (nu[1:-1, 2:] * s01[1:-1, 2:] - nu[1:-1, :-2] * s01[1:-1, :-2])
+            / (2.0 * dy)
+        )
+        v_tnd[2:-2, 2:-2] = 2.0 * (
+            (nu[2:, 1:-1] * s01[2:, 1:-1] - nu[:-2, 1:-1] * s01[:-2, 1:-1])
+            / (2.0 * dx)
+            + (nu[1:-1, 2:] * s11[1:-1, 2:] - nu[1:-1, :-2] * s11[1:-1, :-2])
+            / (2.0 * dy)
+        )
+
+        tendencies = {"x_velocity": u_tnd, "y_velocity": v_tnd}
+
+        return tendencies, {}
+
+    def assert_allclose(self, name, field_a, field_b):
+        nx, ny, nz = self.ds.grid.nx, self.ds.grid.ny, self.ds.grid.nz
+        nb = self.ds.nb
+        slc = (slice(nb, nx - nb), slice(nb, ny - nb), slice(0, nz))
+        try:
+            compare_arrays(field_a, field_b, slice=slc)
+        except AssertionError:
+            raise RuntimeError(f"assert_allclose failed on {name}")
 
 
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
-@given(hyp_st.data())
-def test_smagorinsky2d(data):
-    # ========================================
-    # random data generation
-    # ========================================
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-
-    if gt_powered:
-        gt.storage.prepare_numpy()
-
-    nb = data.draw(hyp_st.integers(min_value=2, max_value=max(2, conf_nb)), label="nb")
-    domain = data.draw(
-        st_domain(
-            xaxis_length=(1, 30),
-            yaxis_length=(1, 30),
-            zaxis_length=(1, 20),
-            nb=nb,
-            gt_powered=gt_powered,
-            backend=backend,
-            dtype=dtype,
-        ),
-        label="domain",
-    )
-    grid = domain.numerical_grid
-
-    nx, ny, nz = grid.nx, grid.ny, grid.nz
-    dnx = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dnx")
-    dny = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dny")
-    dnz = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dnz")
-    storage_shape = (nx + dnx, ny + dny, nz + dnz)
-
-    u = data.draw(
-        st_raw_field(
-            storage_shape,
-            -1e3,
-            1e3,
-            gt_powered=gt_powered,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-        ),
-        label="u",
-    )
-    v = data.draw(
-        st_raw_field(
-            storage_shape,
-            -1e3,
-            1e3,
-            gt_powered=gt_powered,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-        ),
-        label="v",
-    )
-
-    cs = data.draw(hyp_st.floats(min_value=0, max_value=10), label="cs")
-
-    time = data.draw(hyp_st.datetimes(), label="time")
-
-    # ========================================
-    # test bed
-    # ========================================
-    dx = grid.dx.to_units("m").values.item()
-    dy = grid.dy.to_units("m").values.item()
-
-    state = {
-        "time": time,
-        "x_velocity": get_dataarray_3d(
-            u, grid, "m s^-1", grid_shape=(nx, ny, nz), set_coordinates=False
-        ),
-        "y_velocity": get_dataarray_3d(
-            v, grid, "m s^-1", grid_shape=(nx, ny, nz), set_coordinates=False
-        ),
-    }
-
-    u_tnd, v_tnd = smagorinsky2d_validation(dx, dy, cs, u, v)
-
-    smag = Smagorinsky2d(
-        domain,
-        smagorinsky_constant=cs,
-        gt_powered=gt_powered,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-        storage_shape=storage_shape,
-    )
-
-    tendencies, diagnostics = smag(state)
-
-    assert "x_velocity" in tendencies
-    compare_dataarrays(
-        tendencies["x_velocity"][nb : nx - nb, nb : ny - nb, :nz],
-        get_dataarray_3d(
-            u_tnd, grid, "m s^-2", grid_shape=(nx, ny, nz), set_coordinates=False
-        )[nb : nx - nb, nb : ny - nb, :nz],
-        compare_coordinate_values=False,
-    )
-    assert "y_velocity" in tendencies
-    compare_dataarrays(
-        tendencies["y_velocity"][nb : nx - nb, nb : ny - nb, :nz],
-        get_dataarray_3d(
-            v_tnd, grid, "m s^-2", grid_shape=(nx, ny, nz), set_coordinates=False
-        )[nb : nx - nb, nb : ny - nb, :nz],
-        compare_coordinate_values=False,
-    )
-    assert len(tendencies) == 2
-
-    assert len(diagnostics) == 0
+@hyp_settings
+@given(data=hyp_st.data())
+@pytest.mark.parametrize("backend", conf.backend)
+@pytest.mark.parametrize("dtype", conf.dtype)
+def test_smagorinsky2d(data, backend, dtype):
+    ds = DomainSuite(data, backend, dtype, grid_type="numerical", nb_min=2)
+    ts = Smagorinsky2dTestSuite(ds)
+    ts.run()
 
 
 if __name__ == "__main__":

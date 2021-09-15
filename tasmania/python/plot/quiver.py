@@ -28,7 +28,7 @@ from tasmania.python.plot.drawer import Drawer
 from tasmania.python.plot.plot_utils import make_quiver
 from tasmania.python.plot.retrievers import DataRetriever
 from tasmania.python.plot.utils import to_units
-from tasmania.python.utils import taz_types
+from tasmania.python.utils import typingx
 
 if TYPE_CHECKING:
     from tasmania.python.domain.grid import Grid
@@ -66,7 +66,7 @@ class Quiver(Drawer):
         zaxis_units: Optional[str] = None,
         zaxis_x: Optional[int] = None,
         zaxis_y: Optional[int] = None,
-        properties: Optional[taz_types.options_dict_t] = None,
+        properties: Optional[typingx.options_dict_t] = None,
     ) -> None:
         """
         Parameters
@@ -181,9 +181,15 @@ class Quiver(Drawer):
                 )
             )
 
-        slice_x = slice(x, x + 1 if x != -1 else None, None) if flag_x else None
-        slice_y = slice(y, y + 1 if y != -1 else None, None) if flag_y else None
-        slice_z = slice(z, z + 1 if z != -1 else None, None) if flag_z else None
+        slice_x = (
+            slice(x, x + 1 if x != -1 else None, None) if flag_x else None
+        )
+        slice_y = (
+            slice(y, y + 1 if y != -1 else None, None) if flag_y else None
+        )
+        slice_z = (
+            slice(z, z + 1 if z != -1 else None, None) if flag_z else None
+        )
 
         if not flag_x:
             assert xcomp_name is not None, "Please specify the x-component."
@@ -302,9 +308,9 @@ class Quiver(Drawer):
                     )
 
     def __call__(
-        self, state: taz_types.dataarray_dict_t, fig: plt.Figure, ax: plt.Axes
+        self, state: typingx.DataArrayDict, fig: plt.Figure, ax: plt.Axes
     ) -> None:
-        """ Call operator generating the quiver plot. """
+        """Call operator generating the quiver plot."""
         self._slave(state, fig, ax)
 
 
@@ -315,7 +321,7 @@ def make_quiver_xy(
     xcomp_retriever: DataRetriever,
     ycomp_retriever: DataRetriever,
     scalar_retriever: DataRetriever,
-    state: taz_types.dataarray_dict_t,
+    state: typingx.DataArrayDict,
     fig: plt.Figure,
     ax: plt.Axes,
     **kwargs
@@ -324,11 +330,19 @@ def make_quiver_xy(
     vy = np.squeeze(ycomp_retriever(state))
 
     if scalar_retriever is None:
-        vx = 0.5 * (vx[:-1, :] + vx[1:, :]) if vx.shape[0] > vy.shape[0] else vx
-        vy = 0.5 * (vy[:-1, :] + vy[1:, :]) if vy.shape[0] > vx.shape[0] else vy
+        vx = (
+            0.5 * (vx[:-1, :] + vx[1:, :]) if vx.shape[0] > vy.shape[0] else vx
+        )
+        vy = (
+            0.5 * (vy[:-1, :] + vy[1:, :]) if vy.shape[0] > vx.shape[0] else vy
+        )
 
-        vx = 0.5 * (vx[:, :-1] + vx[:, 1:]) if vx.shape[1] > vy.shape[1] else vx
-        vy = 0.5 * (vy[:, :-1] + vy[:, 1:]) if vy.shape[1] > vx.shape[1] else vy
+        vx = (
+            0.5 * (vx[:, :-1] + vx[:, 1:]) if vx.shape[1] > vy.shape[1] else vx
+        )
+        vy = (
+            0.5 * (vy[:, :-1] + vy[:, 1:]) if vy.shape[1] > vx.shape[1] else vy
+        )
 
         sc = np.sqrt(vx ** 2 + vy ** 2)
     else:
@@ -389,7 +403,7 @@ def make_quiver_xz(
     xcomp_retriever: DataRetriever,
     zcomp_retriever: DataRetriever,
     scalar_retriever: DataRetriever,
-    state: taz_types.dataarray_dict_t,
+    state: typingx.DataArrayDict,
     fig: plt.Figure,
     ax: plt.Axes,
     **kwargs
@@ -398,11 +412,19 @@ def make_quiver_xz(
     vy = np.squeeze(zcomp_retriever(state))
 
     if scalar_retriever is None:
-        vx = 0.5 * (vx[:-1, :] + vx[1:, :]) if vx.shape[0] > vy.shape[0] else vx
-        vy = 0.5 * (vy[:-1, :] + vy[1:, :]) if vy.shape[0] > vx.shape[0] else vy
+        vx = (
+            0.5 * (vx[:-1, :] + vx[1:, :]) if vx.shape[0] > vy.shape[0] else vx
+        )
+        vy = (
+            0.5 * (vy[:-1, :] + vy[1:, :]) if vy.shape[0] > vx.shape[0] else vy
+        )
 
-        vx = 0.5 * (vx[:, :-1] + vx[:, 1:]) if vx.shape[1] > vy.shape[1] else vx
-        vy = 0.5 * (vy[:, :-1] + vy[:, 1:]) if vy.shape[1] > vx.shape[1] else vy
+        vx = (
+            0.5 * (vx[:, :-1] + vx[:, 1:]) if vx.shape[1] > vy.shape[1] else vx
+        )
+        vy = (
+            0.5 * (vy[:, :-1] + vy[:, 1:]) if vy.shape[1] > vx.shape[1] else vy
+        )
 
         sc = np.sqrt(vx ** 2 + vy ** 2)
     else:
@@ -463,7 +485,7 @@ def make_quiver_xh(
     xcomp_retriever: DataRetriever,
     zcomp_retriever: DataRetriever,
     scalar_retriever: DataRetriever,
-    state: taz_types.dataarray_dict_t,
+    state: typingx.DataArrayDict,
     fig: plt.Figure,
     ax: plt.Axes,
     **kwargs
@@ -478,7 +500,7 @@ def make_quiver_yz(
     ycomp_retriever: DataRetriever,
     zcomp_retriever: DataRetriever,
     scalar_retriever: DataRetriever,
-    state: taz_types.dataarray_dict_t,
+    state: typingx.DataArrayDict,
     fig: plt.Figure,
     ax: plt.Axes,
     **kwargs
@@ -487,11 +509,19 @@ def make_quiver_yz(
     vy = np.squeeze(zcomp_retriever(state))
 
     if scalar_retriever is None:
-        vx = 0.5 * (vx[:-1, :] + vx[1:, :]) if vx.shape[0] > vy.shape[0] else vx
-        vy = 0.5 * (vy[:-1, :] + vy[1:, :]) if vy.shape[0] > vx.shape[0] else vy
+        vx = (
+            0.5 * (vx[:-1, :] + vx[1:, :]) if vx.shape[0] > vy.shape[0] else vx
+        )
+        vy = (
+            0.5 * (vy[:-1, :] + vy[1:, :]) if vy.shape[0] > vx.shape[0] else vy
+        )
 
-        vx = 0.5 * (vx[:, :-1] + vx[:, 1:]) if vx.shape[1] > vy.shape[1] else vx
-        vy = 0.5 * (vy[:, :-1] + vy[:, 1:]) if vy.shape[1] > vx.shape[1] else vy
+        vx = (
+            0.5 * (vx[:, :-1] + vx[:, 1:]) if vx.shape[1] > vy.shape[1] else vx
+        )
+        vy = (
+            0.5 * (vy[:, :-1] + vy[:, 1:]) if vy.shape[1] > vx.shape[1] else vy
+        )
 
         sc = np.sqrt(vx ** 2 + vy ** 2)
     else:
@@ -552,7 +582,7 @@ def make_quiver_yh(
     ycomp_retriever: DataRetriever,
     zcomp_retriever: DataRetriever,
     scalar_retriever: DataRetriever,
-    state: taz_types.dataarray_dict_t,
+    state: typingx.DataArrayDict,
     fig: plt.Figure,
     ax: plt.Axes,
     **kwargs

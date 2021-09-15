@@ -23,28 +23,22 @@
 from datetime import datetime, timedelta
 from hypothesis import (
     given,
-    HealthCheck,
     reproduce_failure,
-    settings,
     strategies as hyp_st,
 )
 import pytest
 
-import gt4py as gt
-from tasmania.python.burgers.dynamics.stepper import (
-    BurgersStepper,
+from tasmania.python.burgers.dynamics.stepper import BurgersStepper
+from tasmania.python.burgers.dynamics.subclasses.stepper.forward_euler import (
     ForwardEuler,
-    RK2,
-    RK3WS,
 )
-from tasmania.python.utils.storage_utils import deepcopy_array_dict
+from tasmania.python.burgers.dynamics.subclasses.stepper.rk2 import RK2
+from tasmania.python.burgers.dynamics.subclasses.stepper.rk3ws import RK3WS
+from tasmania.python.framework.generic_functions import to_numpy
+from tasmania.python.framework.options import BackendOptions, StorageOptions
+from tasmania.python.utils.storage import deepcopy_array_dict
 
-from tests.conf import (
-    backend as conf_backend,
-    datatype as conf_dtype,
-    default_origin as conf_dorigin,
-    nb as conf_nb,
-)
+from tests import conf
 from tests.burgers.test_burgers_advection import (
     first_order_advection,
     third_order_advection,
@@ -57,36 +51,35 @@ from tests.strategies import (
     st_one_of,
     st_timedeltas,
 )
-from tests.utilities import compare_arrays, compare_datetimes
+from tests.utilities import compare_arrays, compare_datetimes, hyp_settings
 
 
-@settings(
-    suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
-    deadline=None,
-)
-@given(hyp_st.data())
-def test_forward_euler(data):
+@hyp_settings
+@given(data=hyp_st.data())
+@pytest.mark.parametrize("backend", conf.backend)
+@pytest.mark.parametrize("dtype", conf.dtype)
+def test_forward_euler(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+    aligned_index = data.draw(
+        st_one_of(conf.aligned_index), label="aligned_index"
+    )
+    bo = BackendOptions(rebuild=False, check_rebuild=True)
+    so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
 
-    if gt_powered:
-        gt.storage.prepare_numpy()
-
-    nb = data.draw(hyp_st.integers(min_value=1, max_value=max(1, conf_nb)), label="nb")
+    nb = data.draw(
+        hyp_st.integers(min_value=1, max_value=max(1, conf.nb)), label="nb"
+    )
     domain = data.draw(
         st_domain(
             xaxis_length=(1, 40),
             yaxis_length=(1, 40),
             zaxis_length=(1, 1),
             nb=nb,
-            gt_powered=gt_powered,
             backend=backend,
-            dtype=dtype,
+            backend_options=bo,
+            storage_options=so,
         ),
         label="domain",
     )
@@ -96,9 +89,8 @@ def test_forward_euler(data):
         st_burgers_state(
             grid,
             time=datetime(year=1992, month=2, day=20),
-            gt_powered=gt_powered,
             backend=backend,
-            default_origin=default_origin,
+            storage_options=so,
         ),
         label="state",
     )
@@ -109,18 +101,16 @@ def test_forward_euler(data):
         if not if_tendency
         else data.draw(
             st_burgers_tendency(
-                grid,
-                time=state["time"],
-                gt_powered=gt_powered,
-                backend=backend,
-                default_origin=default_origin,
+                grid, time=state["time"], backend=backend, storage_options=so
             ),
             label="tendency",
         )
     )
 
     timestep = data.draw(
-        st_timedeltas(min_value=timedelta(seconds=0), max_value=timedelta(seconds=120)),
+        st_timedeltas(
+            min_value=timedelta(seconds=0), max_value=timedelta(seconds=120)
+        ),
         label="timestep",
     )
 
@@ -132,81 +122,83 @@ def test_forward_euler(data):
         grid.grid_xy,
         nb,
         "first_order",
-        gt_powered=gt_powered,
         backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-        rebuild=False,
+        backend_options=bo,
+        storage_options=so,
     )
 
     assert isinstance(bs, ForwardEuler)
 
     raw_state = {
         "time": state["time"],
-        "x_velocity": state["x_velocity"].to_units("m s^-1").values,
-        "y_velocity": state["y_velocity"].to_units("m s^-1").values,
+        "x_velocity": state["x_velocity"].to_units("m s^-1").data,
+        "y_velocity": state["y_velocity"].to_units("m s^-1").data,
     }
     if if_tendency:
         raw_tendency = {
             "time": state["time"],
-            "x_velocity": tendency["x_velocity"].to_units("m s^-2").values,
-            "y_velocity": tendency["y_velocity"].to_units("m s^-2").values,
+            "x_velocity": tendency["x_velocity"].to_units("m s^-2").data,
+            "y_velocity": tendency["y_velocity"].to_units("m s^-2").data,
         }
     else:
         raw_tendency = {}
+    out_state = {
+        "x_velocity": bs.zeros(shape=(grid.nx, grid.ny, 1)),
+        "y_velocity": bs.zeros(shape=(grid.nx, grid.ny, 1)),
+    }
 
-    out_state = bs(0, raw_state, raw_tendency, timestep)
+    bs(0, raw_state, raw_tendency, timestep, out_state)
 
     dx = grid.grid_xy.dx.to_units("m").values.item()
     dy = grid.grid_xy.dy.to_units("m").values.item()
-    u, v = raw_state["x_velocity"], raw_state["y_velocity"]
+    u = to_numpy(raw_state["x_velocity"])
+    v = to_numpy(raw_state["y_velocity"])
     if if_tendency:
-        tnd_u, tnd_v = raw_tendency["x_velocity"], raw_tendency["y_velocity"]
-
+        tnd_u = to_numpy(raw_tendency["x_velocity"])
+        tnd_v = to_numpy(raw_tendency["y_velocity"])
     adv_u_x, adv_u_y = first_order_advection(dx, dy, u, v, u)
     adv_v_x, adv_v_y = first_order_advection(dx, dy, u, v, v)
-    out_u = u[nb:-nb, nb:-nb, :] - timestep.total_seconds() * (
-        adv_u_x[nb:-nb, nb:-nb, :] + adv_u_y[nb:-nb, nb:-nb, :]
-    )
-    out_v = v[nb:-nb, nb:-nb, :] - timestep.total_seconds() * (
-        adv_v_x[nb:-nb, nb:-nb, :] + adv_v_y[nb:-nb, nb:-nb, :]
-    )
+    out_u = u - timestep.total_seconds() * (adv_u_x + adv_u_y)
+    out_v = v - timestep.total_seconds() * (adv_v_x + adv_v_y)
     if if_tendency:
-        out_u += timestep.total_seconds() * tnd_u[nb:-nb, nb:-nb, :]
-        out_v += timestep.total_seconds() * tnd_v[nb:-nb, nb:-nb, :]
+        out_u += timestep.total_seconds() * tnd_u
+        out_v += timestep.total_seconds() * tnd_v
 
     compare_datetimes(out_state["time"], state["time"] + timestep)
-    compare_arrays(out_u, out_state["x_velocity"][nb:-nb, nb:-nb, :])
-    compare_arrays(out_v, out_state["y_velocity"][nb:-nb, nb:-nb, :])
+    compare_arrays(
+        out_u[nb:-nb, nb:-nb], out_state["x_velocity"][nb:-nb, nb:-nb]
+    )
+    compare_arrays(
+        out_v[nb:-nb, nb:-nb], out_state["y_velocity"][nb:-nb, nb:-nb]
+    )
 
 
-@settings(
-    suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
-    deadline=None,
-)
-@given(hyp_st.data())
-def test_rk2(data):
+@hyp_settings
+@given(data=hyp_st.data())
+@pytest.mark.parametrize("backend", conf.backend)
+@pytest.mark.parametrize("dtype", conf.dtype)
+def test_rk2(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+    aligned_index = data.draw(
+        st_one_of(conf.aligned_index), label="aligned_index"
+    )
+    bo = BackendOptions(rebuild=False, check_rebuild=True)
+    so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
 
-    if gt_powered:
-        gt.storage.prepare_numpy()
-
-    nb = data.draw(hyp_st.integers(min_value=2, max_value=max(2, conf_nb)), label="nb")
+    nb = data.draw(
+        hyp_st.integers(min_value=2, max_value=max(2, conf.nb)), label="nb"
+    )
     domain = data.draw(
         st_domain(
             xaxis_length=(1, 40),
             yaxis_length=(1, 40),
             zaxis_length=(1, 1),
             nb=nb,
-            gt_powered=gt_powered,
             backend=backend,
-            dtype=dtype,
+            backend_options=bo,
+            storage_options=so,
         ),
         label="domain",
     )
@@ -216,9 +208,8 @@ def test_rk2(data):
         st_burgers_state(
             grid,
             time=datetime(year=1992, month=2, day=20),
-            gt_powered=gt_powered,
             backend=backend,
-            default_origin=default_origin,
+            storage_options=so,
         ),
         label="state",
     )
@@ -229,18 +220,16 @@ def test_rk2(data):
         if not if_tendency
         else data.draw(
             st_burgers_tendency(
-                grid,
-                time=state["time"],
-                gt_powered=gt_powered,
-                backend=backend,
-                default_origin=default_origin,
+                grid, time=state["time"], backend=backend, storage_options=so
             ),
             label="tendency",
         )
     )
 
     timestep = data.draw(
-        st_timedeltas(min_value=timedelta(seconds=0), max_value=timedelta(seconds=120)),
+        st_timedeltas(
+            min_value=timedelta(seconds=0), max_value=timedelta(seconds=120)
+        ),
         label="timestep",
     )
 
@@ -252,25 +241,23 @@ def test_rk2(data):
         grid.grid_xy,
         nb,
         "third_order",
-        gt_powered=gt_powered,
         backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-        rebuild=False,
+        backend_options=bo,
+        storage_options=so,
     )
 
     assert isinstance(bs, RK2)
 
     raw_state_0 = {
         "time": state["time"],
-        "x_velocity": state["x_velocity"].to_units("m s^-1").values,
-        "y_velocity": state["y_velocity"].to_units("m s^-1").values,
+        "x_velocity": state["x_velocity"].to_units("m s^-1").data,
+        "y_velocity": state["y_velocity"].to_units("m s^-1").data,
     }
     if if_tendency:
         raw_tendency = {
             "time": state["time"],
-            "x_velocity": tendency["x_velocity"].to_units("m s^-2").values,
-            "y_velocity": tendency["y_velocity"].to_units("m s^-2").values,
+            "x_velocity": tendency["x_velocity"].to_units("m s^-2").data,
+            "y_velocity": tendency["y_velocity"].to_units("m s^-2").data,
         }
     else:
         raw_tendency = {}
@@ -278,82 +265,90 @@ def test_rk2(data):
     # ========================================
     # stage 0
     # ========================================
-    raw_state_1 = bs(0, raw_state_0, raw_tendency, timestep)
+    raw_state_1 = {
+        "x_velocity": bs.zeros(shape=(grid.nx, grid.ny, 1)),
+        "y_velocity": bs.zeros(shape=(grid.nx, grid.ny, 1)),
+    }
+    bs(0, raw_state_0, raw_tendency, timestep, raw_state_1)
 
     dx = grid.grid_xy.dx.to_units("m").values.item()
     dy = grid.grid_xy.dy.to_units("m").values.item()
-    u0, v0 = raw_state_0["x_velocity"], raw_state_0["y_velocity"]
+    u0 = to_numpy(raw_state_0["x_velocity"])
+    v0 = to_numpy(raw_state_0["y_velocity"])
     if if_tendency:
-        tnd_u, tnd_v = raw_tendency["x_velocity"], raw_tendency["y_velocity"]
-
+        tnd_u = to_numpy(raw_tendency["x_velocity"])
+        tnd_v = to_numpy(raw_tendency["y_velocity"])
     adv_u_x, adv_u_y = third_order_advection(dx, dy, u0, v0, u0)
     adv_v_x, adv_v_y = third_order_advection(dx, dy, u0, v0, v0)
-    u1 = u0[nb:-nb, nb:-nb, :] - 0.5 * timestep.total_seconds() * (
-        adv_u_x[nb:-nb, nb:-nb, :] + adv_u_y[nb:-nb, nb:-nb, :]
-    )
-    v1 = v0[nb:-nb, nb:-nb, :] - 0.5 * timestep.total_seconds() * (
-        adv_v_x[nb:-nb, nb:-nb, :] + adv_v_y[nb:-nb, nb:-nb, :]
-    )
+    u1 = u0 - 0.5 * timestep.total_seconds() * (adv_u_x + adv_u_y)
+    v1 = v0 - 0.5 * timestep.total_seconds() * (adv_v_x + adv_v_y)
     if if_tendency:
-        u1 += 0.5 * timestep.total_seconds() * tnd_u[nb:-nb, nb:-nb, :]
-        v1 += 0.5 * timestep.total_seconds() * tnd_v[nb:-nb, nb:-nb, :]
+        u1 += 0.5 * timestep.total_seconds() * tnd_u
+        v1 += 0.5 * timestep.total_seconds() * tnd_v
 
     compare_datetimes(raw_state_1["time"], state["time"] + 0.5 * timestep)
-    compare_arrays(u1, raw_state_1["x_velocity"][nb:-nb, nb:-nb, :])
-    compare_arrays(v1, raw_state_1["y_velocity"][nb:-nb, nb:-nb, :])
+    compare_arrays(
+        u1[nb:-nb, nb:-nb], raw_state_1["x_velocity"][nb:-nb, nb:-nb]
+    )
+    compare_arrays(
+        v1[nb:-nb, nb:-nb], raw_state_1["y_velocity"][nb:-nb, nb:-nb]
+    )
 
     # ========================================
     # stage 1
     # ========================================
-    raw_state_1 = deepcopy_array_dict(raw_state_1)
-    raw_state_2 = bs(1, raw_state_1, raw_tendency, timestep)
+    raw_state_1_dc = deepcopy_array_dict(raw_state_1)
+    raw_state_2 = {
+        "x_velocity": bs.zeros(shape=(grid.nx, grid.ny, 1)),
+        "y_velocity": bs.zeros(shape=(grid.nx, grid.ny, 1)),
+    }
+    bs(1, raw_state_1, raw_tendency, timestep, raw_state_2)
 
-    u1, v1 = raw_state_1["x_velocity"], raw_state_1["y_velocity"]
-
+    u1 = to_numpy(raw_state_1_dc["x_velocity"])
+    v1 = to_numpy(raw_state_1_dc["y_velocity"])
     adv_u_x, adv_u_y = third_order_advection(dx, dy, u1, v1, u1)
     adv_v_x, adv_v_y = third_order_advection(dx, dy, u1, v1, v1)
-    u2 = u0[nb:-nb, nb:-nb, :] - timestep.total_seconds() * (
-        adv_u_x[nb:-nb, nb:-nb, :] + adv_u_y[nb:-nb, nb:-nb, :]
-    )
-    v2 = v0[nb:-nb, nb:-nb, :] - timestep.total_seconds() * (
-        adv_v_x[nb:-nb, nb:-nb, :] + adv_v_y[nb:-nb, nb:-nb, :]
-    )
+    u2 = u0 - timestep.total_seconds() * (adv_u_x + adv_u_y)
+    v2 = v0 - timestep.total_seconds() * (adv_v_x + adv_v_y)
     if if_tendency:
-        u2 += timestep.total_seconds() * tnd_u[nb:-nb, nb:-nb, :]
-        v2 += timestep.total_seconds() * tnd_v[nb:-nb, nb:-nb, :]
+        u2 += timestep.total_seconds() * tnd_u
+        v2 += timestep.total_seconds() * tnd_v
 
     compare_datetimes(raw_state_2["time"], state["time"] + timestep)
-    compare_arrays(u2, raw_state_2["x_velocity"][nb:-nb, nb:-nb, :])
-    compare_arrays(v2, raw_state_2["y_velocity"][nb:-nb, nb:-nb, :])
+    compare_arrays(
+        u2[nb:-nb, nb:-nb], raw_state_2["x_velocity"][nb:-nb, nb:-nb]
+    )
+    compare_arrays(
+        v2[nb:-nb, nb:-nb], raw_state_2["y_velocity"][nb:-nb, nb:-nb]
+    )
 
 
-@settings(
-    suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
-    deadline=None,
-)
-@given(hyp_st.data())
-def test_rk3ws(data):
+@hyp_settings
+@given(data=hyp_st.data())
+@pytest.mark.parametrize("backend", conf.backend)
+@pytest.mark.parametrize("dtype", conf.dtype)
+def test_rk3ws(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+    aligned_index = data.draw(
+        st_one_of(conf.aligned_index), label="aligned_index"
+    )
+    bo = BackendOptions(rebuild=False, check_rebuild=True)
+    so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
 
-    if gt_powered:
-        gt.storage.prepare_numpy()
-
-    nb = data.draw(hyp_st.integers(min_value=3, max_value=max(3, conf_nb)), label="nb")
+    nb = data.draw(
+        hyp_st.integers(min_value=3, max_value=max(3, conf.nb)), label="nb"
+    )
     domain = data.draw(
         st_domain(
             xaxis_length=(1, 40),
             yaxis_length=(1, 40),
             zaxis_length=(1, 1),
             nb=nb,
-            gt_powered=gt_powered,
             backend=backend,
-            dtype=dtype,
+            backend_options=bo,
+            storage_options=so,
         ),
         label="domain",
     )
@@ -363,9 +358,8 @@ def test_rk3ws(data):
         st_burgers_state(
             grid,
             time=datetime(year=1992, month=2, day=20),
-            gt_powered=gt_powered,
             backend=backend,
-            default_origin=default_origin,
+            storage_options=so,
         ),
         label="state",
     )
@@ -376,18 +370,16 @@ def test_rk3ws(data):
         if not if_tendency
         else data.draw(
             st_burgers_tendency(
-                grid,
-                time=state["time"],
-                gt_powered=gt_powered,
-                backend=backend,
-                default_origin=default_origin,
+                grid, time=state["time"], backend=backend, storage_options=so
             ),
             label="tendency",
         )
     )
 
     timestep = data.draw(
-        st_timedeltas(min_value=timedelta(seconds=0), max_value=timedelta(seconds=120)),
+        st_timedeltas(
+            min_value=timedelta(seconds=0), max_value=timedelta(seconds=120)
+        ),
         label="timestep",
     )
 
@@ -399,11 +391,9 @@ def test_rk3ws(data):
         grid.grid_xy,
         nb,
         "fifth_order",
-        gt_powered=gt_powered,
         backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-        rebuild=False,
+        backend_options=bo,
+        storage_options=so,
     )
 
     assert isinstance(bs, RK2)
@@ -411,14 +401,14 @@ def test_rk3ws(data):
 
     raw_state_0 = {
         "time": state["time"],
-        "x_velocity": state["x_velocity"].to_units("m s^-1").values,
-        "y_velocity": state["y_velocity"].to_units("m s^-1").values,
+        "x_velocity": state["x_velocity"].to_units("m s^-1").data,
+        "y_velocity": state["y_velocity"].to_units("m s^-1").data,
     }
     if if_tendency:
         raw_tendency = {
             "time": state["time"],
-            "x_velocity": tendency["x_velocity"].to_units("m s^-2").values,
-            "y_velocity": tendency["y_velocity"].to_units("m s^-2").values,
+            "x_velocity": tendency["x_velocity"].to_units("m s^-2").data,
+            "y_velocity": tendency["y_velocity"].to_units("m s^-2").data,
         }
     else:
         raw_tendency = {}
@@ -426,77 +416,92 @@ def test_rk3ws(data):
     # ========================================
     # stage 0
     # ========================================
-    raw_state_1 = bs(0, raw_state_0, raw_tendency, timestep)
+    raw_state_1 = {
+        "x_velocity": bs.zeros(shape=(grid.nx, grid.ny, 1)),
+        "y_velocity": bs.zeros(shape=(grid.nx, grid.ny, 1)),
+    }
+    bs(0, raw_state_0, raw_tendency, timestep, raw_state_1)
 
     dx = grid.grid_xy.dx.to_units("m").values.item()
     dy = grid.grid_xy.dy.to_units("m").values.item()
-    u0, v0 = raw_state_0["x_velocity"], raw_state_0["y_velocity"]
+    u0 = to_numpy(raw_state_0["x_velocity"])
+    v0 = to_numpy(raw_state_0["y_velocity"])
     if if_tendency:
-        tnd_u, tnd_v = raw_tendency["x_velocity"], raw_tendency["y_velocity"]
-
+        tnd_u = to_numpy(raw_tendency["x_velocity"])
+        tnd_v = to_numpy(raw_tendency["y_velocity"])
     adv_u_x, adv_u_y = fifth_order_advection(dx, dy, u0, v0, u0)
     adv_v_x, adv_v_y = fifth_order_advection(dx, dy, u0, v0, v0)
-    u1 = u0[nb:-nb, nb:-nb, :] - 1.0 / 3.0 * timestep.total_seconds() * (
-        adv_u_x[nb:-nb, nb:-nb, :] + adv_u_y[nb:-nb, nb:-nb, :]
-    )
-    v1 = v0[nb:-nb, nb:-nb, :] - 1.0 / 3.0 * timestep.total_seconds() * (
-        adv_v_x[nb:-nb, nb:-nb, :] + adv_v_y[nb:-nb, nb:-nb, :]
-    )
+    u1 = u0 - 1.0 / 3.0 * timestep.total_seconds() * (adv_u_x + adv_u_y)
+    v1 = v0 - 1.0 / 3.0 * timestep.total_seconds() * (adv_v_x + adv_v_y)
     if if_tendency:
-        u1 += 1.0 / 3.0 * timestep.total_seconds() * tnd_u[nb:-nb, nb:-nb, :]
-        v1 += 1.0 / 3.0 * timestep.total_seconds() * tnd_v[nb:-nb, nb:-nb, :]
+        u1 += 1.0 / 3.0 * timestep.total_seconds() * tnd_u
+        v1 += 1.0 / 3.0 * timestep.total_seconds() * tnd_v
 
-    compare_datetimes(raw_state_1["time"], state["time"] + 1.0 / 3.0 * timestep)
-    compare_arrays(u1, raw_state_1["x_velocity"][nb:-nb, nb:-nb, :])
-    compare_arrays(v1, raw_state_1["y_velocity"][nb:-nb, nb:-nb, :])
+    compare_datetimes(
+        raw_state_1["time"], state["time"] + 1.0 / 3.0 * timestep
+    )
+    compare_arrays(
+        u1[nb:-nb, nb:-nb], raw_state_1["x_velocity"][nb:-nb, nb:-nb]
+    )
+    compare_arrays(
+        v1[nb:-nb, nb:-nb], raw_state_1["y_velocity"][nb:-nb, nb:-nb]
+    )
 
     # ========================================
     # stage 1
     # ========================================
-    raw_state_1 = deepcopy_array_dict(raw_state_1)
-    raw_state_2 = bs(1, raw_state_1, raw_tendency, timestep)
+    raw_state_1_dc = deepcopy_array_dict(raw_state_1)
+    raw_state_2 = {
+        "x_velocity": bs.zeros(shape=(grid.nx, grid.ny, 1)),
+        "y_velocity": bs.zeros(shape=(grid.nx, grid.ny, 1)),
+    }
+    bs(1, raw_state_1, raw_tendency, timestep, raw_state_2)
 
-    u1, v1 = raw_state_1["x_velocity"], raw_state_1["y_velocity"]
-
+    u1 = to_numpy(raw_state_1["x_velocity"])
+    v1 = to_numpy(raw_state_1["y_velocity"])
     adv_u_x, adv_u_y = fifth_order_advection(dx, dy, u1, v1, u1)
     adv_v_x, adv_v_y = fifth_order_advection(dx, dy, u1, v1, v1)
-    u2 = u0[nb:-nb, nb:-nb, :] - 0.5 * timestep.total_seconds() * (
-        adv_u_x[nb:-nb, nb:-nb, :] + adv_u_y[nb:-nb, nb:-nb, :]
-    )
-    v2 = v0[nb:-nb, nb:-nb, :] - 0.5 * timestep.total_seconds() * (
-        adv_v_x[nb:-nb, nb:-nb, :] + adv_v_y[nb:-nb, nb:-nb, :]
-    )
+    u2 = u0 - 0.5 * timestep.total_seconds() * (adv_u_x + adv_u_y)
+    v2 = v0 - 0.5 * timestep.total_seconds() * (adv_v_x + adv_v_y)
     if if_tendency:
-        u2 += 0.5 * timestep.total_seconds() * tnd_u[nb:-nb, nb:-nb, :]
-        v2 += 0.5 * timestep.total_seconds() * tnd_v[nb:-nb, nb:-nb, :]
+        u2 += 0.5 * timestep.total_seconds() * tnd_u
+        v2 += 0.5 * timestep.total_seconds() * tnd_v
 
     compare_datetimes(raw_state_2["time"], state["time"] + 0.5 * timestep)
-    compare_arrays(u2, raw_state_2["x_velocity"][nb:-nb, nb:-nb, :])
-    compare_arrays(v2, raw_state_2["y_velocity"][nb:-nb, nb:-nb, :])
+    compare_arrays(
+        u2[nb:-nb, nb:-nb], raw_state_2["x_velocity"][nb:-nb, nb:-nb]
+    )
+    compare_arrays(
+        v2[nb:-nb, nb:-nb], raw_state_2["y_velocity"][nb:-nb, nb:-nb]
+    )
 
     # ========================================
     # stage 2
     # ========================================
-    raw_state_2 = deepcopy_array_dict(raw_state_2)
-    raw_state_3 = bs(2, raw_state_2, raw_tendency, timestep)
+    raw_state_2_dc = deepcopy_array_dict(raw_state_2)
+    raw_state_3 = {
+        "x_velocity": bs.zeros(shape=(grid.nx, grid.ny, 1)),
+        "y_velocity": bs.zeros(shape=(grid.nx, grid.ny, 1)),
+    }
+    bs(2, raw_state_2, raw_tendency, timestep, raw_state_3)
 
-    u2, v2 = raw_state_2["x_velocity"], raw_state_2["y_velocity"]
-
+    u2 = to_numpy(raw_state_2_dc["x_velocity"])
+    v2 = to_numpy(raw_state_2_dc["y_velocity"])
     adv_u_x, adv_u_y = fifth_order_advection(dx, dy, u2, v2, u2)
     adv_v_x, adv_v_y = fifth_order_advection(dx, dy, u2, v2, v2)
-    u3 = u0[nb:-nb, nb:-nb, :] - timestep.total_seconds() * (
-        adv_u_x[nb:-nb, nb:-nb, :] + adv_u_y[nb:-nb, nb:-nb, :]
-    )
-    v3 = v0[nb:-nb, nb:-nb, :] - timestep.total_seconds() * (
-        adv_v_x[nb:-nb, nb:-nb, :] + adv_v_y[nb:-nb, nb:-nb, :]
-    )
+    u3 = u0 - timestep.total_seconds() * (adv_u_x + adv_u_y)
+    v3 = v0 - timestep.total_seconds() * (adv_v_x + adv_v_y)
     if if_tendency:
-        u3 += timestep.total_seconds() * tnd_u[nb:-nb, nb:-nb, :]
-        v3 += timestep.total_seconds() * tnd_v[nb:-nb, nb:-nb, :]
+        u3 += timestep.total_seconds() * tnd_u
+        v3 += timestep.total_seconds() * tnd_v
 
     compare_datetimes(raw_state_3["time"], state["time"] + timestep)
-    compare_arrays(u3, raw_state_3["x_velocity"][nb:-nb, nb:-nb, :])
-    compare_arrays(v3, raw_state_3["y_velocity"][nb:-nb, nb:-nb, :])
+    compare_arrays(
+        u3[nb:-nb, nb:-nb], raw_state_3["x_velocity"][nb:-nb, nb:-nb]
+    )
+    compare_arrays(
+        v3[nb:-nb, nb:-nb], raw_state_3["y_velocity"][nb:-nb, nb:-nb]
+    )
 
 
 if __name__ == "__main__":

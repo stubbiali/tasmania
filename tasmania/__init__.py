@@ -20,45 +20,17 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+# third-party
+from tasmania import third_party
+
 # burgers
 from tasmania.python.burgers.dynamics.advection import BurgersAdvection
 from tasmania.python.burgers.dynamics.dycore import BurgersDynamicalCore
 from tasmania.python.burgers.dynamics.stepper import BurgersStepper
-from tasmania.python.burgers.physics.diffusion import BurgersHorizontalDiffusion
+from tasmania.python.burgers.physics.diffusion import (
+    BurgersHorizontalDiffusion,
+)
 from tasmania.python.burgers.state import ZhaoSolutionFactory, ZhaoStateFactory
-
-# dwarfs
-from tasmania.python.dwarfs.diagnostics import HorizontalVelocity, WaterConstituent
-from tasmania.python.dwarfs.horizontal_diffusion import HorizontalDiffusion
-from tasmania.python.dwarfs.horizontal_hyperdiffusion import HorizontalHyperDiffusion
-from tasmania.python.dwarfs.horizontal_smoothing import HorizontalSmoothing
-from tasmania.python.dwarfs.vertical_damping import VerticalDamping
-
-# framework
-from tasmania.python.framework.base_components import (
-    DiagnosticComponent,
-    ImplicitTendencyComponent,
-    Stepper,
-    TendencyComponent,
-)
-from tasmania.python.framework.composite import DiagnosticComponentComposite
-from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
-from tasmania.python.framework.dycore import DynamicalCore
-from tasmania.python.framework.offline_diagnostics import (
-    OfflineDiagnosticComponent,
-    RMSD,
-    RRMSD,
-)
-from tasmania.python.framework.parallel_splitting import ParallelSplitting
-from tasmania.python.framework.promoters import Diagnostic2Tendency, Tendency2Diagnostic
-from tasmania.python.framework.sequential_tendency_splitting import (
-    SequentialTendencySplitting,
-)
-from tasmania.python.framework.sequential_update_splitting import (
-    SequentialUpdateSplitting,
-)
-from tasmania.python.framework.sts_tendency_stepper import STSTendencyStepper
-from tasmania.python.framework.tendency_stepper import TendencyStepper
 
 # domain
 from tasmania.python.domain.domain import Domain
@@ -75,9 +47,69 @@ from tasmania.python.domain.topography import (
     NumericalTopography,
 )
 
+# dwarfs
+from tasmania.python.dwarfs.diagnostics import (
+    HorizontalVelocity,
+    WaterConstituent,
+)
+from tasmania.python.dwarfs.horizontal_diffusion import HorizontalDiffusion
+from tasmania.python.dwarfs.horizontal_hyperdiffusion import (
+    HorizontalHyperDiffusion,
+)
+from tasmania.python.dwarfs.horizontal_smoothing import HorizontalSmoothing
+from tasmania.python.dwarfs.vertical_damping import VerticalDamping
+
+# framework
+from tasmania.python.framework import tag
+from tasmania.python.framework.allocators import as_storage, empty, ones, zeros
+from tasmania.python.framework.core_components import (
+    DiagnosticComponent,
+    ImplicitTendencyComponent,
+    Stepper,
+    TendencyComponent,
+)
+from tasmania.python.framework.composite import DiagnosticComponentComposite
+from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
+from tasmania.python.framework.dycore import DynamicalCore
+from tasmania.python.framework.generic_functions import to_numpy
+from tasmania.python.framework.offline_diagnostics import (
+    OfflineDiagnosticComponent,
+    RMSD,
+    RRMSD,
+)
+from tasmania.python.framework.options import (
+    BackendOptions,
+    StorageOptions,
+    TimeIntegrationOptions,
+)
+from tasmania.python.framework.parallel_splitting import ParallelSplitting
+from tasmania.python.framework.promoter import (
+    FromDiagnosticToTendency,
+    FromTendencyToDiagnostic,
+)
+from tasmania.python.framework.register import factorize, register
+from tasmania.python.framework.sequential_tendency_splitting import (
+    SequentialTendencySplitting,
+)
+from tasmania.python.framework.sequential_update_splitting import (
+    SequentialUpdateSplitting,
+)
+from tasmania.python.framework.stencil import (
+    StencilCompiler,
+    StencilDefinition,
+    StencilFactory,
+    SubroutineDefinition,
+)
+from tasmania.python.framework.steppers import (
+    SequentialTendencyStepper,
+    TendencyStepper,
+)
+
 # isentropic
 from tasmania.python.isentropic.dynamics.dycore import IsentropicDynamicalCore
-from tasmania.python.isentropic.physics.coriolis import IsentropicConservativeCoriolis
+from tasmania.python.isentropic.physics.coriolis import (
+    IsentropicConservativeCoriolis,
+)
 from tasmania.python.isentropic.physics.diagnostics import (
     IsentropicDiagnostics,
     IsentropicVelocityComponents,
@@ -102,8 +134,8 @@ from tasmania.python.isentropic.state import (
     get_isentropic_state_from_temperature,
 )
 from tasmania.python.isentropic.utils import (
-    AirPotentialTemperature2Diagnostic,
-    AirPotentialTemperature2Tendency,
+    AirPotentialTemperatureToDiagnostic,
+    AirPotentialTemperatureToTendency,
 )
 
 # physics
@@ -135,17 +167,17 @@ from tasmania.python.plot.spectrals import CDF
 from tasmania.python.plot.trackers import TimeSeries, HovmollerDiagram
 
 # utilities
-from tasmania.python.utils import taz_types
-from tasmania.python.utils.dict_utils import DataArrayDictOperator
+from tasmania.python.utils import typingx
+from tasmania.python.utils.dict import DataArrayDictOperator
 from tasmania.python.utils.exceptions import (
     ConstantNotFoundError,
     TimeInconsistencyError,
 )
-from tasmania.python.utils.io_utils import load_netcdf_dataset, NetCDFMonitor
-from tasmania.python.utils.meteo_utils import (
+from tasmania.python.utils.io import load_netcdf_dataset, NetCDFMonitor
+from tasmania.python.utils.meteo import (
     get_isothermal_isentropic_analytical_solution,
 )
-from tasmania.python.utils.storage_utils import (
+from tasmania.python.utils.storage import (
     deepcopy_array_dict,
     deepcopy_dataarray,
     deepcopy_dataarray_dict,
@@ -153,115 +185,11 @@ from tasmania.python.utils.storage_utils import (
     get_dataarray_dict,
     get_array_dict,
     get_dataarray_2d,
-    zeros,
 )
-from tasmania.python.utils.utils import feed_module, get_time_string
-
-
-__all__ = (
-    RMSD,
-    RRMSD,
-    STSTendencyStepper,
-    AirPotentialTemperature2Diagnostic,
-    AirPotentialTemperature2Tendency,
-    Animation,
-    Annotation,
-    BurgersAdvection,
-    BurgersDynamicalCore,
-    BurgersHorizontalDiffusion,
-    BurgersStepper,
-    CDF,
-    Circle,
-    Clipping,
-    ConcurrentCoupling,
-    ConstantNotFoundError,
-    Contour,
-    Contourf,
-    DataArrayDictOperator,
-    Diagnostic2Tendency,
-    DiagnosticComponent,
-    DiagnosticComponentComposite,
-    Domain,
-    DynamicalCore,
-    Grid,
-    HorizontalBoundary,
-    HorizontalDiffusion,
-    HorizontalGrid,
-    HorizontalHyperDiffusion,
-    HorizontalSmoothing,
-    HorizontalVelocity,
-    HovmollerDiagram,
-    ImplicitTendencyComponent,
-    IsentropicConservativeCoriolis,
-    IsentropicDiagnostics,
-    IsentropicDynamicalCore,
-    IsentropicHorizontalDiffusion,
-    IsentropicHorizontalSmoothing,
-    IsentropicImplicitVerticalAdvectionDiagnostic,
-    IsentropicImplicitVerticalAdvectionPrognostic,
-    IsentropicSmagorinsky,
-    IsentropicVelocityComponents,
-    IsentropicVerticalAdvection,
-    KesslerFallVelocity,
-    KesslerMicrophysics,
-    KesslerSaturationAdjustmentDiagnostic,
-    KesslerSaturationAdjustmentPrognostic,
-    KesslerSedimentation,
-    Line,
-    LineProfile,
-    NetCDFMonitor,
-    NumericalGrid,
-    NumericalHorizontalGrid,
-    NumericalTopography,
-    OfflineDiagnosticComponent,
-    ParallelSplitting,
-    PhysicalGrid,
-    PhysicalHorizontalGrid,
-    PhysicalTopography,
-    Plot,
-    PlotComposite,
-    Precipitation,
-    PrescribedSurfaceHeating,
-    Quiver,
-    Rectangle,
-    Segment,
-    SequentialTendencySplitting,
-    SequentialUpdateSplitting,
-    Smagorinsky2d,
-    Stepper,
-    Tendency2Diagnostic,
-    TendencyComponent,
-    TendencyStepper,
-    TimeInconsistencyError,
-    TimeSeries,
-    Topography,
-    VerticalDamping,
-    WaterConstituent,
-    ZhaoSolutionFactory,
-    ZhaoStateFactory,
-    deepcopy_array_dict,
-    deepcopy_dataarray,
-    deepcopy_dataarray_dict,
-    feed_module,
-    get_array_dict,
-    get_dataarray_2d,
-    get_dataarray_3d,
-    get_dataarray_dict,
-    get_figure_and_axes,
-    get_isentropic_state_from_brunt_vaisala_frequency,
-    get_isentropic_state_from_temperature,
-    get_isothermal_isentropic_analytical_solution,
-    get_time_string,
-    load_netcdf_dataset,
-    set_axes_properties,
-    set_figure_properties,
-    taz_types,
-    zeros,
-)
-
+from tasmania.python.utils.time import Timer, get_time_string
+from tasmania.python.utils.utils import feed_module
 
 from pkg_resources import get_distribution, DistributionNotFound
-
 
 try:
     __version__ = get_distribution(__name__).version
@@ -274,3 +202,11 @@ finally:
 __author__ = "ETH Zurich"
 __copyright__ = "ETH Zurich"
 __license__ = "GPLv3"
+
+
+# >>> old storage
+from gt4py.storage import prepare_numpy
+
+prepare_numpy()
+# <<< new storage
+# <<<

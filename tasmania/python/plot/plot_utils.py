@@ -26,6 +26,7 @@ from matplotlib.offsetbox import AnchoredText
 import matplotlib.patches as patches
 import matplotlib.pyplot as plt
 from matplotlib.ticker import FormatStrFormatter
+import numbers
 import numpy as np
 from typing import Optional, Sequence, Tuple
 
@@ -174,7 +175,9 @@ def get_figure_and_axes(
     elif (fig is not None) and (ax is None):
         try:
             out_fig = fig
-            out_ax = out_fig.add_subplot(nrows, ncols, index, projection=projection)
+            out_ax = out_fig.add_subplot(
+                nrows, ncols, index, projection=projection
+            )
         except AttributeError:
             import warnings
 
@@ -185,17 +188,23 @@ def get_figure_and_axes(
             )
 
             out_fig = plt.figure(figsize=figsize)
-            out_ax = out_fig.add_subplot(nrows, ncols, index, projection=projection)
+            out_ax = out_fig.add_subplot(
+                nrows, ncols, index, projection=projection
+            )
     elif (fig is None) and (ax is not None):
         out_fig, out_ax = ax.get_figure(), ax
     else:  # (fig is None) and (ax is None)
         if default_fig is None:
             out_fig = plt.figure(figsize=figsize)
-            out_ax = out_fig.add_subplot(nrows, ncols, index, projection=projection)
+            out_ax = out_fig.add_subplot(
+                nrows, ncols, index, projection=projection
+            )
         else:
             try:
                 out_fig = default_fig
-                out_ax = out_fig.add_subplot(nrows, ncols, index, projection=projection)
+                out_ax = out_fig.add_subplot(
+                    nrows, ncols, index, projection=projection
+                )
             except AttributeError:
                 import warnings
 
@@ -207,7 +216,9 @@ def get_figure_and_axes(
                 )
 
                 out_fig = plt.figure(figsize=figsize)
-                out_ax = out_fig.add_subplot(nrows, ncols, index, projection=projection)
+                out_ax = out_fig.add_subplot(
+                    nrows, ncols, index, projection=projection
+                )
 
     return out_fig, out_ax
 
@@ -257,16 +268,21 @@ def set_figure_properties(fig: plt.Figure, **kwargs) -> None:
     fontsize = kwargs.get("fontsize", 12)
     tight_layout = kwargs.get("tight_layout", True)
     tight_layout_rect = kwargs.get("tight_layout_rect", (0, 0, 1, 1))
+    tight_layout_wpad = kwargs.get("tight_layout_wpad", None)
+    tight_layout_hpad = kwargs.get("tight_layout_hpad", None)
     suptitle = kwargs.get("suptitle", "")
     x_label = kwargs.get("x_label", "")
     x_labelpad = kwargs.get("x_labelpad", 20)
     y_label = kwargs.get("y_label", "")
     y_labelpad = kwargs.get("y_labelpad", 20)
     figlegend_on = kwargs.get("figlegend_on", False)
-    figlegend_ax = kwargs.get("figlegend_ax", 0)
-    figlegend_loc = kwargs.get("figlegend_loc", "lower center")
+    figlegend_multiple = kwargs.get("figlegend_multiple", False)
+    figlegend_ax = kwargs.get("figlegend_ax", None)
     figlegend_framealpha = kwargs.get("figlegend_framealpha", 1.0)
+    figlegend_loc = kwargs.get("figlegend_loc", "lower center")
     figlegend_ncol = kwargs.get("figlegend_ncol", 1)
+    figlegend_title = kwargs.get("figlegend_title", None)
+    right = kwargs.get("subplots_adjust_right", None)
     wspace = kwargs.get("subplots_adjust_wspace", None)
     hspace = kwargs.get("subplots_adjust_hspace", None)
 
@@ -289,20 +305,90 @@ def set_figure_properties(fig: plt.Figure, **kwargs) -> None:
             ax.set_ylabel(y_label, labelpad=y_labelpad)
 
     if tight_layout:
-        fig.tight_layout(rect=tight_layout_rect)
-
-    if figlegend_on:
-        handles, labels = fig.get_axes()[figlegend_ax].get_legend_handles_labels()
-        fig.legend(
-            handles,
-            labels,
-            loc=figlegend_loc,
-            framealpha=figlegend_framealpha,
-            ncol=figlegend_ncol,
+        fig.tight_layout(
+            rect=tight_layout_rect,
+            w_pad=tight_layout_wpad,
+            h_pad=tight_layout_hpad,
         )
 
-    # fig.subplots_adjust(wspace=wspace, hspace=hspace)
-    # fig.subplots_adjust(wspace=0.1)
+    fig.subplots_adjust(right=right, wspace=wspace, hspace=hspace)
+
+    if figlegend_on:
+        figlegend_ax = (
+            [figlegend_ax] if isinstance(figlegend_ax, int) else figlegend_ax
+        )
+        axes = (
+            [fig.get_axes()[i] for i in figlegend_ax]
+            if figlegend_ax is not None
+            else fig.get_axes()
+        )
+
+        title = (
+            [figlegend_title] * len(axes)
+            if figlegend_title is None or isinstance(figlegend_title, str)
+            else figlegend_title
+        )
+
+        extra = patches.Rectangle(
+            (0, 0),
+            1,
+            1,
+            fc="w",
+            fill=False,
+            edgecolor="none",
+            linewidth=0,
+        )
+
+        if figlegend_multiple:
+            framealpha = (
+                [figlegend_framealpha] * len(axes)
+                if isinstance(figlegend_framealpha, numbers.Number)
+                else figlegend_framealpha
+            )
+            loc = (
+                [figlegend_loc] * len(axes)
+                if isinstance(figlegend_loc, str)
+                else figlegend_loc
+            )
+            ncol = (
+                [int(figlegend_ncol)] * len(axes)
+                if isinstance(figlegend_ncol, numbers.Number)
+                else figlegend_ncol
+            )
+
+            for i in range(len(axes)):
+                handles, labels = axes[i].get_legend_handles_labels()
+                fig.legend(
+                    [extra, *handles] if title[i] is not None else handles,
+                    [title[i], *labels] if title[i] is not None else labels,
+                    framealpha=framealpha[i],
+                    loc=loc[i],
+                    ncol=ncol[i],
+                )
+        else:
+            handles = []
+            labels = []
+
+            for i in range(len(axes)):
+                _handles, _labels = axes[i].get_legend_handles_labels()
+
+                if title[i] is not None:
+                    handles = handles + [extra] + _handles
+                    labels = labels + [title[i]] + _labels
+                    if i < len(axes) - 1:
+                        handles.append(extra)
+                        labels.append("")
+                else:
+                    handles = handles + _handles
+                    labels = labels + _labels
+
+            fig.legend(
+                handles,
+                labels,
+                framealpha=figlegend_framealpha,
+                loc=figlegend_loc,
+                ncol=figlegend_ncol,
+            )
 
 
 def set_axes_properties(ax: plt.Axes, **kwargs) -> None:
@@ -438,7 +524,9 @@ def set_axes_properties(ax: plt.Axes, **kwargs) -> None:
     x_lim = kwargs.get("x_lim", None)
     invert_xaxis = kwargs.get("invert_xaxis", False)
     x_scale = kwargs.get("x_scale", "linear")
+    x_scale_kwargs = kwargs.get("x_scale_kwargs", {})
     x_ticks = kwargs.get("x_ticks", None)
+    x_tick_length = kwargs.get("x_tick_length", None)
     x_ticklabels = kwargs.get("x_ticklabels", None)
     x_ticklabels_color = kwargs.get("x_ticklabels_color", "black")
     x_ticklabels_rotation = kwargs.get("x_ticklabels_rotation", 0)
@@ -451,6 +539,7 @@ def set_axes_properties(ax: plt.Axes, **kwargs) -> None:
     y_lim = kwargs.get("y_lim", None)
     invert_yaxis = kwargs.get("invert_yaxis", False)
     y_scale = kwargs.get("y_scale", "linear")
+    y_scale_kwargs = kwargs.get("y_scale_kwargs", {})
     y_ticks = kwargs.get("y_ticks", None)
     y_ticklabels = kwargs.get("y_ticklabels", None)
     y_ticklabels_color = kwargs.get("y_ticklabels_color", "black")
@@ -485,9 +574,9 @@ def set_axes_properties(ax: plt.Axes, **kwargs) -> None:
     grid_on = kwargs.get("grid_on", False)
     grid_properties = kwargs.get("grid_properties", None)
     # ax2 title
-    ax2_title_center = kwargs.get("title_center", "")
-    ax2_title_left = kwargs.get("title_left", "")
-    ax2_title_right = kwargs.get("title_right", "")
+    ax2_title_center = kwargs.get("ax2_title_center", "")
+    ax2_title_left = kwargs.get("ax2_title_left", "")
+    ax2_title_right = kwargs.get("ax2_title_right", "")
     # x2-axis
     ax2_on = kwargs.get("ax2_on", False)
     x2_label = kwargs.get("x2_label", "")
@@ -498,7 +587,9 @@ def set_axes_properties(ax: plt.Axes, **kwargs) -> None:
     x2_ticks = kwargs.get("x2_ticks", None)
     x2_ticklabels = kwargs.get("x2_ticklabels", None)
     x2_ticklabelcolor = kwargs.get("x2_ticklabelcolor", "black")
-    x2axis_minor_ticks_visible = kwargs.get("x2axis_minor_ticks_visible", False)
+    x2axis_minor_ticks_visible = kwargs.get(
+        "x2axis_minor_ticks_visible", False
+    )
     x2axis_visible = kwargs.get("x2axis_visible", True)
     # y2-axis
     y2_label = kwargs.get("y2_label", "")
@@ -509,7 +600,9 @@ def set_axes_properties(ax: plt.Axes, **kwargs) -> None:
     y2_ticks = kwargs.get("y2_ticks", None)
     y2_ticklabels = kwargs.get("y2_ticklabels", None)
     y2_ticklabelcolor = kwargs.get("y2_ticklabelcolor", "black")
-    y2axis_minor_ticks_visible = kwargs.get("y2axis_minor_ticks_visible", False)
+    y2axis_minor_ticks_visible = kwargs.get(
+        "y2axis_minor_ticks_visible", False
+    )
     y2axis_visible = kwargs.get("y2axis_visible", True)
 
     rcParams["font.size"] = fontsize
@@ -517,16 +610,31 @@ def set_axes_properties(ax: plt.Axes, **kwargs) -> None:
 
     # plot titles
     if ax.get_title(loc="center") == "":
-        ax.set_title(title_center, loc="center", fontsize=rcParams["font.size"] - 1)
+        ax.set_title(
+            title_center,
+            loc="center",
+            fontsize=rcParams["font.size"],
+            pad=15 if ax2_on else 6,
+        )
     if ax.get_title(loc="left") == "":
-        ax.set_title(title_left, loc="left", fontsize=rcParams["font.size"] - 1)
+        ax.set_title(
+            title_left,
+            loc="left",
+            fontsize=rcParams["font.size"],
+            pad=15 if ax2_on else 6,
+        )
     if ax.get_title(loc="right") == "":
-        ax.set_title(title_right, loc="right", fontsize=rcParams["font.size"] - 1)
+        ax.set_title(
+            title_right,
+            loc="right",
+            fontsize=rcParams["font.size"],
+            pad=15 if ax2_on else 6,
+        )
 
     # axes labels
-    if ax.get_xlabel() == "":
+    if ax.get_xlabel() == "" and x_label is not None and x_label != "":
         ax.set(xlabel=x_label)
-    if ax.get_ylabel() == "":
+    if ax.get_ylabel() == "" and y_label is not None and y_label != "":
         ax.set(ylabel=y_label)
     try:
         if ax.get_zlabel() == "":
@@ -597,9 +705,9 @@ def set_axes_properties(ax: plt.Axes, **kwargs) -> None:
 
     # axes scale
     if x_scale is not None:
-        ax.set_xscale(x_scale)
+        ax.set_xscale(x_scale, **x_scale_kwargs)
     if y_scale is not None:
-        ax.set_yscale(y_scale)
+        ax.set_yscale(y_scale, **y_scale_kwargs)
     try:
         if z_scale is not None:
             ax.set_zscale(z_scale)
@@ -630,6 +738,10 @@ def set_axes_properties(ax: plt.Axes, **kwargs) -> None:
         #     RuntimeWarning,
         # )
         pass
+
+    # tick length
+    if x_tick_length is not None:
+        ax.get_xaxis().set_tick_params("both", length=x_tick_length)
 
     # axes tick labels
     if x_ticklabels is not None:
@@ -748,7 +860,7 @@ def set_axes_properties(ax: plt.Axes, **kwargs) -> None:
 
         # x2-axis
         if x2_label != "":
-            ax2.set_xlabel(x2_label)
+            ax2.set_xlabel(x2_label, labelpad=8)
         if ax2.get_xlabel() != "" and x2_labelcolor != "":
             ax2.xaxis.label.set_color(x2_labelcolor)
         ax2.set_xlim(x2_lim if x2_lim is not None else ax.get_xlim())
@@ -794,13 +906,19 @@ def set_axes_properties(ax: plt.Axes, **kwargs) -> None:
         # plot titles
         if ax2.get_title(loc="center") == "":
             ax2.set_title(
-                ax2_title_center, loc="center", fontsize=rcParams["font.size"] - 1
+                ax2_title_center,
+                loc="center",
+                fontsize=rcParams["font.size"],
             )
         if ax2.get_title(loc="left") == "":
-            ax2.set_title(ax2_title_left, loc="left", fontsize=rcParams["font.size"] - 1)
+            ax2.set_title(
+                ax2_title_left, loc="left", fontsize=rcParams["font.size"] - 1
+            )
         if ax2.get_title(loc="right") == "":
             ax2.set_title(
-                ax2_title_right, loc="right", fontsize=rcParams["font.size"] - 1
+                ax2_title_right,
+                loc="right",
+                fontsize=rcParams["font.size"] - 1,
             )
 
 
@@ -860,7 +978,10 @@ def set_colorbar(
     cbar_y_label: str = "",
     cbar_orientation: str = "vertical",
     cbar_ax: Optional[Sequence[int]] = None,
-    cbar_format: Optional[str] = None
+    cbar_format: Optional[str] = None,
+    cbar_extend: str = "neither",
+    cbar_extendfrac: Optional[str] = None,
+    cbar_extendrect: bool = False
 ) -> None:
     """
     Ease the configuration of the colorbar in Matplotlib plots.
@@ -894,9 +1015,22 @@ def set_colorbar(
         only the current axes are resized.
     cbar_format : str
         Format for colorbar tick labels.
+    cbar_extend : str
+        TODO
+    cbar_extendfrac : str
+        TODO
+    cbar_extendrect : bool
+        TODO
     """
     if cbar_ax is None:
-        cb = fig.colorbar(mappable, orientation=cbar_orientation, format=cbar_format)
+        cb = fig.colorbar(
+            mappable,
+            orientation=cbar_orientation,
+            format=cbar_format,
+            extend=cbar_extend,
+            extendfrac=cbar_extendfrac,
+            extendrect=cbar_extendrect,
+        )
     else:
         try:
             axes = fig.get_axes()
@@ -904,29 +1038,52 @@ def set_colorbar(
                 mappable,
                 orientation=cbar_orientation,
                 format=cbar_format,
-                ax=axes[cbar_ax]
-                if isinstance(cbar_ax, int)
-                else [axes[i] for i in cbar_ax],
+                extend=cbar_extend,
+                extendfrac=cbar_extendfrac,
+                extendrect=cbar_extendrect,
+                ax=(
+                    axes[cbar_ax]
+                    if isinstance(cbar_ax, int)
+                    else [axes[i] for i in cbar_ax]
+                ),
             )
         except TypeError:
             # cbar_ax is not iterable
-            cb = fig.colorbar(mappable, orientation=cbar_orientation, format=cbar_format)
+            cb = fig.colorbar(
+                mappable,
+                orientation=cbar_orientation,
+                format=cbar_format,
+                extend=cbar_extend,
+                extendfrac=cbar_extendfrac,
+                extendrect=cbar_extendrect,
+            )
         except IndexError:
             # cbar_ax contains an index which exceeds the number of axes in the figure
-            cb = fig.colorbar(mappable, orientation=cbar_orientation, format=cbar_format)
+            cb = fig.colorbar(
+                mappable,
+                orientation=cbar_orientation,
+                format=cbar_format,
+                extend=cbar_extend,
+                extendfrac=cbar_extendfrac,
+                extendrect=cbar_extendrect,
+            )
 
     cb.ax.set_title(cbar_title)
     cb.ax.set_xlabel(cbar_x_label)
     cb.ax.set_ylabel(cbar_y_label)
 
     if cbar_ticks_pos == "center":
-        cb.set_ticks(0.5 * (color_levels[:-1] + color_levels[1:])[::cbar_ticks_step])
+        cb.set_ticks(
+            0.5 * (color_levels[:-1] + color_levels[1:])[::cbar_ticks_step]
+        )
     else:
         cb.set_ticks(color_levels[::cbar_ticks_step])
 
 
-def make_lineplot(x: np.ndarray, y: np.ndarray, ax: plt.Axes, **kwargs) -> None:
-    """ Plot a line.
+def make_lineplot(
+    x: np.ndarray, y: np.ndarray, ax: plt.Axes, **kwargs
+) -> None:
+    """Plot a line.
 
     Parameters
     ----------
@@ -994,7 +1151,9 @@ def make_lineplot(x: np.ndarray, y: np.ndarray, ax: plt.Axes, **kwargs) -> None:
             x,
             y,
             color=linecolor,
-            linestyle=linestyle_dict[linestyle] if linestyle is not None else None,
+            linestyle=linestyle_dict[linestyle]
+            if linestyle is not None
+            else None,
             linewidth=linewidth,
             marker=marker,
             markersize=markersize,
@@ -1007,7 +1166,9 @@ def make_lineplot(x: np.ndarray, y: np.ndarray, ax: plt.Axes, **kwargs) -> None:
             x,
             y,
             color=linecolor,
-            linestyle=linestyle_dict[linestyle] if linestyle is not None else None,
+            linestyle=linestyle_dict[linestyle]
+            if linestyle is not None
+            else None,
             linewidth=linewidth,
             marker=marker,
             markersize=markersize,
@@ -1178,6 +1339,12 @@ def make_contourf(
         Format for colorbar tick labels.
     cbar_extend : bool
         :obj:``False`` to set to white all values outside the range of the colorbar,
+    cbar_extend : str
+        TODO
+    cbar_extendfrac : str
+        TODO
+    cbar_extendrect : bool
+        TODO
         :obj:``True`` to more nicely extends the colorbar. Defaults to :obj:``True``.
     draw_vertical_levels : bool
         :obj:``True`` to draw the underlying vertical levels, :obj:``False`` otherwise.
@@ -1203,6 +1370,9 @@ def make_contourf(
     cbar_ax = kwargs.get("cbar_ax", None)
     cbar_format = kwargs.get("cbar_format", None)
     cbar_extend = kwargs.get("cbar_extend", True)
+    cbar_extend = kwargs.get("cbar_extend", "both")
+    cbar_extendfrac = kwargs.get("cbar_extendfrac", None)
+    cbar_extendrect = kwargs.get("cbar_extendrect", False)
     draw_vlevels = kwargs.get("draw_vertical_levels", False)
 
     # global settings
@@ -1240,6 +1410,9 @@ def make_contourf(
         cm = reverse_colormap(plt.get_cmap("CMRmap"), "CMRmap_r")
     elif cmap_name == "Spectral_r":
         cm = reverse_colormap(plt.get_cmap("Spectral"), "Spectral_r")
+    elif cmap_name == "viridis_white":
+        cm = plt.get_cmap()
+        cm.set_over("white")
     else:
         cm = plt.get_cmap(cmap_name)
 
@@ -1249,10 +1422,7 @@ def make_contourf(
             ax.plot(x[:, k], y[:, k], color="gray", linewidth=1, alpha=0.5)
 
     # plot the field
-    if cbar_extend:
-        surf = ax.contourf(x, y, field, color_levels, cmap=cm, extend="both")
-    else:
-        surf = ax.contourf(x, y, field, color_levels, cmap=cm)
+    surf = ax.contourf(x, y, field, color_levels, cmap=cm, extend=cbar_extend)
 
     # set the colorbar
     if cbar_on:
@@ -1268,6 +1438,9 @@ def make_contourf(
             cbar_orientation=cbar_orientation,
             cbar_ax=cbar_ax,
             cbar_format=cbar_format,
+            cbar_extend=cbar_extend,
+            cbar_extendfrac=cbar_extendfrac,
+            cbar_extendrect=cbar_extendrect,
         )
 
     # bring axes and field back to original units
@@ -1455,8 +1628,13 @@ def make_quiver(
                 if cbar_half_width is None
                 else cbar_half_width
             )
-            cbar_lb, cbar_ub = cbar_center - half_width, cbar_center + half_width
-        color_levels = np.linspace(cbar_lb, cbar_ub, cbar_levels, endpoint=True)
+            cbar_lb, cbar_ub = (
+                cbar_center - half_width,
+                cbar_center + half_width,
+            )
+        color_levels = np.linspace(
+            cbar_lb, cbar_ub, cbar_levels, endpoint=True
+        )
         if eq(color_levels[0], color_levels[-1]):
             color_levels = np.linspace(
                 cbar_lb - 1e-8, cbar_ub + 1e-8, cbar_levels, endpoint=True
@@ -1572,7 +1750,11 @@ def make_circle(ax: plt.Axes, **kwargs) -> None:
     facecolor = kwargs.get("facecolor", "white")
 
     circ = patches.Circle(
-        xy, radius, linewidth=linewidth, edgecolor=edgecolor, facecolor=facecolor
+        xy,
+        radius,
+        linewidth=linewidth,
+        edgecolor=edgecolor,
+        facecolor=facecolor,
     )
     ax.add_patch(circ)
 
@@ -1683,11 +1865,11 @@ def make_cdf(data: np.ndarray, ax: plt.Axes, **kwargs) -> None:
 
 
 def add_annotation(ax: plt.Axes, **kwargs) -> None:
-    """ Add a text annotation to a plot. """
+    """Add a text annotation to a plot."""
     # get keyword arguments
     fontsize = kwargs.get("fontsize", 16)
     text = kwargs.get("text", "")
-    text_color = kwargs.get("text_color", "blue")
+    text_color = kwargs.get("text_color", "black")
     location = kwargs.get("location", (0, 0))
     horizontal_alignment = kwargs.get("horizontal_alignment", "left")
     vertical_alignment = kwargs.get("vertical_alignment", "center")

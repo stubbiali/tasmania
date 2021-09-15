@@ -38,10 +38,9 @@ hb_type = "relaxed"
 nb = 3
 hb_kwargs = {"nr": 6}
 
-# gt4py settings
-gt_powered = True
-gt_kwargs = {
-    "backend": "gtx86",
+# backend settings
+backend_kwargs = {
+    "backend": "gt4py:gtx86",
     "build_info": None,
     "dtype": np.float64,
     "exec_info": None,
@@ -49,8 +48,8 @@ gt_kwargs = {
     "rebuild": False,
     "managed_memory": False,
 }
-gt_kwargs["backend_opts"] = (
-    {"verbose": True} if gt_kwargs["backend"] in ("gtx86", "gtmc", "gtcuda") else None
+backend_kwargs["backend_opts"] = (
+    {"verbose": True} if backend_kwargs["backend"] in ("gt4py:gtx86", "gt4py:gtmc", "gt4py:gtcuda") else None
 )
 
 # topography
@@ -119,13 +118,15 @@ niter = int(12 * 60 * 60 / timestep.total_seconds())
 
 # output
 save = False
-save_frequency = 20
+save_frequency = -1
 filename = (
-    "/scratch/snx3000tds/subbiali/data/pdc_paper/isentropic_dry/isentropic_dry_{}_{}_"
-    "nx{}_nz{}_dt{}_nt{}_{}_L{}_H{}_u{}_{}{}{}{}_sus_{}.nc".format(
+    "/scratch/snx3000tds/subbiali/data/isentropic_dry_{}_{}_{}_nx{}_ny{}_nz{}_dt{}_nt{}_"
+    "{}_L{}_H{}_u{}_{}{}{}{}_sus_{}.nc".format(
         time_integration_scheme,
         horizontal_flux_scheme,
+        physics_time_integration_scheme,
         nx,
+        ny,
         nz,
         int(timestep.total_seconds()),
         niter,
@@ -137,7 +138,7 @@ filename = (
         "_diff" if diff else "",
         "_smooth" if smooth else "",
         "_turb" if turbulence else "",
-        gt_kwargs["backend"],
+        backend_kwargs["backend"],
     )
 )
 store_names = (
@@ -148,4 +149,4 @@ store_names = (
     "y_momentum_isentropic",
     "y_velocity_at_v_locations",
 )
-print_frequency = 5
+print_frequency = 1

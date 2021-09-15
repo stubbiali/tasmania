@@ -20,7 +20,9 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from tasmania import Grid, load_netcdf_dataset, taz_types
+from tasmania.python.domain.grid import Grid
+from tasmania.python.utils import typingx as ty
+from tasmania.python.utils.io import load_netcdf_dataset
 
 
 class DatasetMounter:
@@ -32,9 +34,8 @@ class DatasetMounter:
             DatasetMounter.ledger[filename] = super().__new__(cls)
             DatasetMounter.order[filename] = len(DatasetMounter.ledger)
             print(
-                "Instance #{:03d} of DatasetMounter: created.".format(
-                    DatasetMounter.order[filename]
-                )
+                f"Instance #{DatasetMounter.order[filename]:03d} of "
+                f"DatasetMounter: created."
             )
         return DatasetMounter.ledger[filename]
 
@@ -43,19 +44,19 @@ class DatasetMounter:
             self.fname = filename
             domain, grid_type, self.states = load_netcdf_dataset(filename)
             print(
-                "Instance #{:03d} of DatasetMounter: dataset mounted.".format(
-                    DatasetMounter.order[filename]
-                )
+                f"Instance #{DatasetMounter.order[filename]:03d} of "
+                f"DatasetMounter: dataset mounted."
             )
             self.grid = (
-                domain.physical_grid if grid_type == "physical" else domain.numerical_grid
+                domain.physical_grid
+                if grid_type == "physical"
+                else domain.numerical_grid
             )
             self.mounted = True  # tag
         else:
             print(
-                "Instance #{:03d} of DatasetMounter: dataset already mounted.".format(
-                    DatasetMounter.order[filename]
-                )
+                f"Instance #{DatasetMounter.order[filename]:03d} of "
+                f"DatasetMounter: dataset already mounted."
             )
 
     def get_grid(self) -> Grid:
@@ -64,7 +65,7 @@ class DatasetMounter:
     def get_nt(self) -> int:
         return len(self.states)
 
-    def get_state(self, tlevel: int) -> taz_types.dataarray_dict_t:
+    def get_state(self, tlevel: int) -> ty.DataArrayDict:
         state = self.states[tlevel]
         self.grid.update_topography(state["time"] - self.states[0]["time"])
         return state

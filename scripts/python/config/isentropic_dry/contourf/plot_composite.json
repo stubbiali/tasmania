@@ -73,10 +73,10 @@
 	},
 	"figure_properties": {
 		"fontsize": 16,
-		"figsize": [12.5, 9],
+		"figsize": [12.5, 8],
 		"tight_layout": true,
 		"tight_layout_rect": null,
 		"suptitle": null
 	},
-	"save_dest": "/Users/subbiali/Desktop/phd/manuscripts/pdc_paper/img/isentropic_dry/bv15/contourf.eps"
+	"save_dest": null
 }

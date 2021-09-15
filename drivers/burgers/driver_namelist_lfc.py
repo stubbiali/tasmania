@@ -51,12 +51,6 @@ nl = locals()["namelist"]
 taz.feed_module(target=nl, source=namelist_lfc)
 
 # ============================================================
-# Prepare NumPy
-# ============================================================
-if nl.gt_powered:
-    gt.storage.prepare_numpy()
-
-# ============================================================
 # The underlying domain
 # ============================================================
 domain = taz.Domain(
@@ -70,8 +64,7 @@ domain = taz.Domain(
     nb=nl.nb,
     horizontal_boundary_kwargs=nl.hb_kwargs,
     topography_type="flat",
-    gt_powered=nl.gt_powered,
-    **nl.gt_kwargs
+    **nl.backend_settings
 )
 pgrid = domain.physical_grid
 cgrid = domain.numerical_grid
@@ -83,11 +76,10 @@ zsof = taz.ZhaoSolutionFactory(nl.init_time, nl.diffusion_coeff)
 zsf = taz.ZhaoStateFactory(
     nl.init_time,
     nl.diffusion_coeff,
-    gt_powered=nl.gt_powered,
-    backend=nl.gt_kwargs["backend"],
-    dtype=nl.gt_kwargs["dtype"],
-    default_origin=nl.gt_kwargs["default_origin"],
-    managed_memory=nl.gt_kwargs["managed_memory"],
+    backend=nl.backend_settings["backend"],
+    dtype=nl.backend_settings["dtype"],
+    default_origin=nl.backend_settings["default_origin"],
+    managed_memory=nl.backend_settings["managed_memory"],
 )
 state = zsf(nl.init_time, cgrid)
 
@@ -104,8 +96,7 @@ diff = taz.BurgersHorizontalDiffusion(
     "numerical",
     nl.diffusion_type,
     nl.diffusion_coeff,
-    gt_powered=nl.gt_powered,
-    **nl.gt_kwargs
+    **nl.backend_settings
 )
 
 # ============================================================
@@ -113,11 +104,10 @@ diff = taz.BurgersHorizontalDiffusion(
 # ============================================================
 dycore = taz.BurgersDynamicalCore(
     domain,
-    intermediate_tendency_component=None,
+    fast_tendency_component=None,
     time_integration_scheme=nl.time_integration_scheme,
     flux_scheme=nl.flux_scheme,
-    gt_powered=nl.gt_powered,
-    **nl.gt_kwargs
+    **nl.backend_settings
 )
 
 # ============================================================
@@ -141,7 +131,7 @@ wall_time_start = time.time()
 compute_time = 0.0
 
 # dict operator
-dict_op = taz.DataArrayDictOperator(nl.gt_powered, **nl.gt_kwargs)
+dict_op = taz.DataArrayDictOperator(**nl.backend_settings)
 
 for i in range(nt):
     compute_time_start = time.time()
@@ -155,29 +145,35 @@ for i in range(nt):
 
     compute_time += time.time() - compute_time_start
 
-    if (nl.print_frequency > 0) and ((i + 1) % nl.print_frequency == 0) or i + 1 == nt:
-        # dx = pgrid.dx.to_units("m").values.item()
-        # dy = pgrid.dy.to_units("m").values.item()
-        #
-        # u = state["x_velocity"].to_units("m s^-1").values[3:-3, 3:-3, :]
-        # v = state["y_velocity"].to_units("m s^-1").values[3:-3, 3:-3, :]
-        #
-        # max_u = u.max()
-        # max_v = v.max()
-        #
-        # # print useful info
-        # print(
-        #     "Iteration {:6d}: max(u) = {:12.10E} m/s, max(v) = {:12.10E} m/s".format(
-        #         i + 1, max_u.item(), max_v.item()
-        #     )
-        # )
-        pass
+    if (
+        (nl.print_frequency > 0)
+        and ((i + 1) % nl.print_frequency == 0)
+        or i + 1 == nt
+    ):
+        dx = pgrid.dx.to_units("m").data.item()
+        dy = pgrid.dy.to_units("m").data.item()
+
+        u = state["x_velocity"].to_units("m s^-1").data[3:-3, 3:-3, :]
+        v = state["y_velocity"].to_units("m s^-1").data[3:-3, 3:-3, :]
+
+        max_u = u.max()
+        max_v = v.max()
+
+        # print useful info
+        print(
+            "Iteration {:6d}: max(u) = {:12.10E} m/s, max(v) = {:12.10E} m/s".format(
+                i + 1, max_u.item(), max_v.item()
+            )
+        )
 
     # shortcuts
     to_save = (
         nl.save
         and nl.filename is not None
-        and ((nl.save_frequency > 0 and (i + 1) % nl.save_frequency == 0) or i + 1 == nt)
+        and (
+            (nl.save_frequency > 0 and (i + 1) % nl.save_frequency == 0)
+            or i + 1 == nt
+        )
     )
 
     if to_save:
@@ -196,11 +192,16 @@ if nl.save and nl.filename is not None:
 # stop chronometer
 wall_time = time.time() - wall_time_start
 
+# restore numpy
+gt.storage.restore_numpy()
+
 # compute the error
-# gt.storage.restore_numpy()
-# u = np.asarray(state["x_velocity"].values)
-# uex = zsof(state["time"], cgrid, field_name="x_velocity", field_units="m s^-1")
-# print("RMSE(u) = {:.5E} m/s".format(np.linalg.norm(u - uex) / np.sqrt(u.size)))
+try:
+    u = np.asarray(state["x_velocity"].data)
+except ValueError:
+    u = state["x_velocity"].data.get()
+uex = zsof(state["time"], cgrid, field_name="x_velocity", field_units="m s^-1")
+print("RMSE(u) = {:.5E} m/s".format(np.linalg.norm(u - uex) / np.sqrt(u.size)))
 
 # print logs
 print("Total wall time: {}.".format(taz.get_time_string(wall_time, False)))

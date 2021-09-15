@@ -20,17 +20,21 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-import numpy as np
+from typing import Dict, Optional, TYPE_CHECKING
+
 from sympl import DataArray
-from typing import Optional, TYPE_CHECKING, Tuple
 
 from tasmania.python.dwarfs.horizontal_diffusion import HorizontalDiffusion
-from tasmania.python.framework.base_components import TendencyComponent
-from tasmania.python.utils import taz_types
-from tasmania.python.utils.storage_utils import zeros
+from tasmania.python.framework.core_components import TendencyComponent
 
 if TYPE_CHECKING:
+    from sympl._core.typingx import NDArrayLikeDict, PropertyDict
+
     from tasmania.python.domain.domain import Domain
+    from tasmania.python.framework.options import (
+        BackendOptions,
+        StorageOptions,
+    )
 
 
 class BurgersHorizontalDiffusion(TendencyComponent):
@@ -45,16 +49,11 @@ class BurgersHorizontalDiffusion(TendencyComponent):
         grid_type: str,
         diffusion_type: str,
         diffusion_coeff: DataArray,
-        gt_powered: bool = True,
         *,
+        enable_checks: bool = True,
         backend: str = "numpy",
-        backend_opts: Optional[taz_types.options_dict_t] = None,
-        build_info: Optional[taz_types.options_dict_t] = None,
-        dtype: taz_types.dtype_t = np.float64,
-        exec_info: Optional[taz_types.mutable_options_dict_t] = None,
-        default_origin: Optional[taz_types.triplet_int_t] = None,
-        rebuild: bool = False,
-        managed_memory: bool = False,
+        backend_options: Optional["BackendOptions"] = None,
+        storage_options: Optional["StorageOptions"] = None,
         **kwargs
     ) -> None:
         """
@@ -71,29 +70,26 @@ class BurgersHorizontalDiffusion(TendencyComponent):
         diffusion_coeff : sympl.DataArray
             1-item :class:`sympl.DataArray` representing the diffusion
             coefficient. The units should be compatible with 'm^2 s^-1'.
-        gt_powered : `bool`, optional
-            ``True`` to harness GT4Py, ``False`` for a vanilla Numpy implementation.
+        enable_checks : `bool`, optional
+            TODO
         backend : `str`, optional
-            The GT4Py backend.
-        backend_opts : `dict`, optional
-            Dictionary of backend-specific options.
-        build_info : `dict`, optional
-            Dictionary of building options.
-        dtype : `data-type`, optional
-            Data type of the storages.
-        exec_info : `dict`, optional
-            Dictionary which will store statistics and diagnostics gathered at run time.
-        default_origin : `tuple[int]`, optional
-            Storage default origin.
-        rebuild : `bool`, optional
-            ``True`` to trigger the stencils compilation at any class instantiation,
-            ``False`` to rely on the caching mechanism implemented by GT4Py.
-        managed_memory : `bool`, optional
-            ``True`` to allocate the storages as managed memory, ``False`` otherwise.
+            The backend.
+        backend_options : `BackendOptions`, optional
+            Backend-specific options.
+        storage_options : `StorageOptions`, optional
+            Storage-related options.
         kwargs :
             Keyword arguments to be broadcast to :class:`sympl.TendencyComponent`.
         """
-        super().__init__(domain, grid_type, **kwargs)
+        super().__init__(
+            domain,
+            grid_type,
+            enable_checks=enable_checks,
+            backend=backend,
+            backend_options=backend_options,
+            storage_options=storage_options,
+            **kwargs
+        )
 
         nx, ny = self.grid.grid_xy.nx, self.grid.grid_xy.ny
         dx = self.grid.grid_xy.dx.to_units("m").values.item()
@@ -105,39 +101,18 @@ class BurgersHorizontalDiffusion(TendencyComponent):
             dx,
             dy,
             diffusion_coeff=diffusion_coeff.to_units("m^2 s^-1").values.item(),
-            diffusion_coeff_max=diffusion_coeff.to_units("m^2 s^-1").values.item(),
+            diffusion_coeff_max=diffusion_coeff.to_units(
+                "m^2 s^-1"
+            ).values.item(),
             diffusion_damp_depth=0,
             nb=self.horizontal_boundary.nb,
-            gt_powered=gt_powered,
             backend=backend,
-            backend_opts=backend_opts,
-            build_info=build_info,
-            dtype=dtype,
-            exec_info=exec_info,
-            default_origin=default_origin,
-            rebuild=rebuild,
-            managed_memory=managed_memory,
-        )
-
-        self._out_u_tnd = zeros(
-            (nx, ny, 1),
-            gt_powered=gt_powered,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-            managed_memory=managed_memory,
-        )
-        self._out_v_tnd = zeros(
-            (nx, ny, 1),
-            gt_powered=gt_powered,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-            managed_memory=managed_memory,
+            backend_options=backend_options,
+            storage_options=storage_options,
         )
 
     @property
-    def input_properties(self) -> taz_types.properties_dict_t:
+    def input_properties(self) -> "PropertyDict":
         g = self.grid
         dims = (g.grid_xy.x.dims[0], g.grid_xy.y.dims[0], g.z.dims[0])
         return {
@@ -146,7 +121,7 @@ class BurgersHorizontalDiffusion(TendencyComponent):
         }
 
     @property
-    def tendency_properties(self) -> taz_types.properties_dict_t:
+    def tendency_properties(self) -> "PropertyDict":
         g = self.grid
         dims = (g.grid_xy.x.dims[0], g.grid_xy.y.dims[0], g.z.dims[0])
         return {
@@ -155,16 +130,23 @@ class BurgersHorizontalDiffusion(TendencyComponent):
         }
 
     @property
-    def diagnostic_properties(self) -> taz_types.properties_dict_t:
+    def diagnostic_properties(self) -> "PropertyDict":
         return {}
 
     def array_call(
-        self, state: taz_types.array_dict_t
-    ) -> Tuple[taz_types.array_dict_t, taz_types.array_dict_t]:
-        self._diffuser(state["x_velocity"], self._out_u_tnd)
-        self._diffuser(state["y_velocity"], self._out_v_tnd)
-
-        tendencies = {"x_velocity": self._out_u_tnd, "y_velocity": self._out_v_tnd}
-        diagnostics = {}
-
-        return tendencies, diagnostics
+        self,
+        state: "NDArrayLikeDict",
+        out_tendencies: "NDArrayLikeDict",
+        out_diagnostics: "NDArrayLikeDict",
+        overwrite_tendencies: Dict[str, bool],
+    ) -> None:
+        self._diffuser(
+            state["x_velocity"],
+            out_tendencies["x_velocity"],
+            overwrite_output=overwrite_tendencies["x_velocity"],
+        )
+        self._diffuser(
+            state["y_velocity"],
+            out_tendencies["y_velocity"],
+            overwrite_output=overwrite_tendencies["y_velocity"],
+        )

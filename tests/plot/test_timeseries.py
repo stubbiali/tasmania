@@ -25,7 +25,7 @@ import os
 import pytest
 import sys
 
-from tasmania.python.framework.base_components import DiagnosticComponent
+from tasmania import DiagnosticComponent
 from tasmania.python.plot.monitors import Plot
 from tasmania.python.plot.trackers import TimeSeries
 
@@ -55,7 +55,11 @@ def test_datapoint(isentropic_data):
 
     # grab data from dataset
     domain, grid_type, states = isentropic_data
-    grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
+    grid = (
+        domain.physical_grid
+        if grid_type == "physical"
+        else domain.numerical_grid
+    )
 
     # indices identifying the grid point to visualize
     x, y, z = int(grid.nx / 2), int(grid.ny / 2), -1
@@ -81,7 +85,11 @@ def test_datapoint(isentropic_data):
     )
 
     # figure and axes properties
-    figure_properties = {"fontsize": 16, "figsize": (7, 8), "tight_layout": False}
+    figure_properties = {
+        "fontsize": 16,
+        "figsize": (7, 8),
+        "tight_layout": False,
+    }
     axes_properties = {
         "fontsize": 16,
         "title_center": "$x$ = {} km, $y$ = {} km, $\\theta$ = {} K".format(
@@ -120,12 +128,19 @@ class MaxVelocity(DiagnosticComponent):
     def input_properties(self):
         g = self.grid
         dims = (g.x_at_u_locations.dims[0], g.y.dims[0], g.z.dims[0])
-        return {"x_velocity_at_u_locations": {"dims": dims, "units": "km hr^-1"}}
+        return {
+            "x_velocity_at_u_locations": {"dims": dims, "units": "km hr^-1"}
+        }
 
     @property
     def diagnostic_properties(self):
         dims = ("scalar", "scalar", "scalar")
-        return {"max_x_velocity_at_u_locations": {"dims": dims, "units": "km hr^-1"}}
+        return {
+            "max_x_velocity_at_u_locations": {
+                "dims": dims,
+                "units": "km hr^-1",
+            }
+        }
 
     def array_call(self, state):
         val = np.max(state["x_velocity_at_u_locations"])
@@ -153,7 +168,11 @@ def test_diagnostic(isentropic_data):
 
     # grab data from dataset
     domain, grid_type, states = isentropic_data
-    grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
+    grid = (
+        domain.physical_grid
+        if grid_type == "physical"
+        else domain.numerical_grid
+    )
 
     # drawer properties
     drawer_properties = {
@@ -175,7 +194,11 @@ def test_diagnostic(isentropic_data):
     )
 
     # figure and axes properties
-    figure_properties = {"fontsize": 16, "figsize": (7, 8), "tight_layout": True}
+    figure_properties = {
+        "fontsize": 16,
+        "figsize": (7, 8),
+        "tight_layout": True,
+    }
     axes_properties = {
         "fontsize": 16,
         "x_label": "Elapsed time [hr]",

@@ -20,35 +20,41 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from typing import Tuple
+from typing import TYPE_CHECKING, Tuple
 
-from tasmania.python.framework.base_components import TendencyComponent
-from tasmania.python.domain.domain import Domain
-from tasmania.python.utils import taz_types
+from tasmania.python.framework.core_components import TendencyComponent
+from tasmania.python.utils import typingx as ty
+
+if TYPE_CHECKING:
+    from tasmania.python.domain.domain import Domain
 
 
 class FakeTendencyComponent(TendencyComponent):
-    def __init__(self, domain: Domain, grid_type: str = "numerical", **kwargs) -> None:
+    def __init__(
+        self, domain: "Domain", grid_type: str = "numerical", **kwargs
+    ) -> None:
         super().__init__(domain, grid_type, **kwargs)
 
     @property
-    def input_properties(self) -> taz_types.properties_dict_t:
+    def input_properties(self) -> ty.PropertiesDict:
         return {}
 
     @property
-    def tendency_properties(self) -> taz_types.properties_dict_t:
+    def tendency_properties(self) -> ty.PropertiesDict:
         return {}
 
     @property
-    def diagnostic_properties(self) -> taz_types.properties_dict_t:
+    def diagnostic_properties(self) -> ty.PropertiesDict:
         return {}
 
-    def array_call(self, state) -> Tuple[taz_types.array_dict_t, taz_types.array_dict_t]:
+    def array_call(
+        self, state: ty.StorageDict
+    ) -> Tuple[ty.StorageDict, ty.StorageDict]:
         return {}, {}
 
 
 class FakeComponent:
     def __init__(
-        self, real_component: taz_types.component_t, property_name: str
+        self, real_component: ty.Component, property_name: str
     ) -> None:
         self.input_properties = getattr(real_component, property_name)

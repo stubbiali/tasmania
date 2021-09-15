@@ -26,22 +26,27 @@ from sympl import DataArray
 
 
 # computational domain
-domain_x = DataArray([-176, 176], dims="x", attrs={"units": "km"}).to_units("m")
+domain_x = DataArray([-176, 176], dims="x", attrs={"units": "km"}).to_units(
+    "m"
+)
 nx = 41
-domain_y = DataArray([-176, 176], dims="y", attrs={"units": "km"}).to_units("m")
+domain_y = DataArray([-176, 176], dims="y", attrs={"units": "km"}).to_units(
+    "m"
+)
 ny = 41
-domain_z = DataArray([340, 280], dims="potential_temperature", attrs={"units": "K"})
+domain_z = DataArray(
+    [400, 280], dims="potential_temperature", attrs={"units": "K"}
+)
 nz = 60
 
 # horizontal boundary
 hb_type = "relaxed"
 nb = 3
-hb_kwargs = {"nr": 6}
+hb_kwargs = {"nr": 6, "nz": nz}
 
-# gt4py settings
-gt_powered = False
-gt_kwargs = {
-    "backend": "gtx86",
+# backend settings
+backend_kwargs = {
+    "backend": "gt4py:gtx86",
     "build_info": None,
     "dtype": np.float64,
     "exec_info": None,
@@ -49,15 +54,18 @@ gt_kwargs = {
     "rebuild": False,
     "managed_memory": False,
 }
-gt_kwargs["backend_opts"] = (
-    {"verbose": True} if gt_kwargs["backend"] in ("gtx86", "gtmc", "gtcuda") else None
+backend_kwargs["backend_opts"] = (
+    {"verbose": True}
+    if backend_kwargs["backend"]
+    in ("gt4py:gtx86", "gt4py:gtmc", "gt4py:gtcuda")
+    else None
 )
 
 # topography
 topo_type = "gaussian"
 topo_kwargs = {
     "time": timedelta(seconds=1800),
-    "max_height": DataArray(1.0, attrs={"units": "km"}),
+    "max_height": DataArray(0.5, attrs={"units": "km"}),
     "width_x": DataArray(50.0, attrs={"units": "km"}),
     "width_y": DataArray(50.0, attrs={"units": "km"}),
     "smooth": False,
@@ -65,10 +73,10 @@ topo_kwargs = {
 
 # initial conditions
 init_time = datetime(year=1992, month=2, day=20, hour=0)
-x_velocity = DataArray(15.0, attrs={"units": "m s^-1"})
+x_velocity = DataArray(22.5, attrs={"units": "m s^-1"})
 y_velocity = DataArray(0.0, attrs={"units": "m s^-1"})
-brunt_vaisala = DataArray(0.01, attrs={"units": "s^-1"})
-relative_humidity = 0.8
+brunt_vaisala = DataArray(0.015, attrs={"units": "s^-1"})
+relative_humidity = 0.95
 
 # time stepping
 time_integration_scheme = "rk3ws_si"
@@ -89,7 +97,7 @@ vertical_flux_scheme = "third_order_upwind"
 damp = True
 damp_type = "rayleigh"
 damp_depth = 15
-damp_max = 0.0002
+damp_max = 0.0005
 damp_at_every_stage = False
 
 # horizontal diffusion
@@ -123,52 +131,50 @@ turbulence = True
 smagorinsky_constant = 0.18
 
 # coriolis
-coriolis = True
+coriolis = False
 coriolis_parameter = None  # DataArray(1e-3, attrs={'units': 'rad s^-1'})
 
 # microphysics
 sedimentation = True
 sedimentation_flux_scheme = "second_order_upwind"
-rain_evaporation = True
+rain_evaporation = False
 autoconversion_threshold = DataArray(0.1, attrs={"units": "g kg^-1"})
 autoconversion_rate = DataArray(0.001, attrs={"units": "s^-1"})
 collection_rate = DataArray(2.2, attrs={"units": "s^-1"})
-saturation_vapor_pressure_formula = "tetens"
 saturation_rate = DataArray(0.025, attrs={"units": "s^-1"})
 update_frequency = 0
 
 # simulation length
 timestep = timedelta(seconds=40)
-niter = int(1 * 60 * 60 / timestep.total_seconds())
+niter = 100  # int(1 * 60 * 60 / timestep.total_seconds())
 
 # output
 save = False
 save_frequency = 20
-filename = (
-    "../../data/isentropic_prognostic-validation/isentropic_moist_{}_{}{}_{}_nx{}_ny{}_nz{}_dt{}_nt{}_"
-    "{}_L{}_H{}_u{}_rh{}{}{}{}{}{}{}_sts_{}.nc".format(
-        time_integration_scheme,
-        horizontal_flux_scheme,
-        "_{}".format(vertical_flux_scheme) if vertical_advection else "",
-        physics_time_integration_scheme,
-        nx,
-        ny,
-        nz,
-        int(timestep.total_seconds()),
-        niter,
-        topo_type,
-        int(topo_kwargs["width_x"].to_units("m").values.item()),
-        int(topo_kwargs["max_height"].to_units("m").values.item()),
-        int(x_velocity.to_units("m s^-1").values.item()),
-        int(relative_humidity * 100),
-        "_diff" if diff else "",
-        "_smooth" if smooth else "",
-        "_turb" if turbulence else "",
-        "_f" if coriolis else "",
-        "_sed" if sedimentation else "",
-        "_evap" if rain_evaporation else "",
-        gt_kwargs["backend"],
-    )
+filename = """../../data/isentropic_prognostic/isentropic_moist_{}_{}{}_{}_" \
+    nx{}_ny{}_nz{}_dt{}_nt{}_{}_L{}_H{}_u{}_rh{}{}{}{}{}{}{}_sts_{}
+    .nc""".format(
+    time_integration_scheme,
+    horizontal_flux_scheme,
+    "_{}".format(vertical_flux_scheme) if vertical_advection else "",
+    physics_time_integration_scheme,
+    nx,
+    ny,
+    nz,
+    int(timestep.total_seconds()),
+    niter,
+    topo_type,
+    int(topo_kwargs["width_x"].to_units("m").values.item()),
+    int(topo_kwargs["max_height"].to_units("m").values.item()),
+    int(x_velocity.to_units("m s^-1").values.item()),
+    int(relative_humidity * 100),
+    "_diff" if diff else "",
+    "_smooth" if smooth else "",
+    "_turb" if turbulence else "",
+    "_f" if coriolis else "",
+    "_sed" if sedimentation else "",
+    "_evap" if rain_evaporation else "",
+    backend_kwargs["backend"],
 )
 store_names = (
     "accumulated_precipitation",

@@ -24,28 +24,22 @@ from copy import deepcopy
 from datetime import timedelta
 from hypothesis import (
     given,
-    HealthCheck,
-    settings,
     strategies as hyp_st,
     reproduce_failure,
 )
 import pytest
 
-import gt4py as gt
-
+from tasmania.python.framework.allocators import zeros
+from tasmania.python.framework.options import BackendOptions, StorageOptions
 from tasmania.python.isentropic.physics.implicit_vertical_advection import (
     IsentropicImplicitVerticalAdvectionDiagnostic,
 )
-from tasmania.python.isentropic.physics.sts_tendency_stepper import (
+from tasmania.python.isentropic.physics.sequential_tendency_stepper import (
     IsentropicVerticalAdvection,
 )
-from tasmania.python.utils.storage_utils import get_dataarray_3d, zeros
+from tasmania.python.utils.storage import get_dataarray_3d
 
-from tests.conf import (
-    backend as conf_backend,
-    datatype as conf_dtype,
-    default_origin as conf_dorigin,
-)
+from tests import conf
 from tests.utils.test_gtscript_utils import thomas_validation
 from tests.strategies import (
     st_domain,
@@ -54,7 +48,7 @@ from tests.strategies import (
     st_raw_field,
     st_timedeltas,
 )
-from tests.utilities import compare_arrays, compare_datetimes
+from tests.utilities import compare_arrays, compare_datetimes, hyp_settings
 
 
 mfwv = "mass_fraction_of_water_vapor_in_air"
@@ -62,7 +56,9 @@ mfcw = "mass_fraction_of_cloud_liquid_water_in_air"
 mfpw = "mass_fraction_of_precipitation_water_in_air"
 
 
-def setup_tridiagonal_system(gamma, w, phi, phi_prv, a=None, b=None, c=None, d=None):
+def setup_tridiagonal_system(
+    gamma, w, phi, phi_prv, a=None, b=None, c=None, d=None
+):
     ni, nj, nk = phi.shape
 
     a = deepcopy(phi) if a is None else a
@@ -82,7 +78,8 @@ def setup_tridiagonal_system(gamma, w, phi, phi_prv, a=None, b=None, c=None, d=N
                 b[i, j, k] = 1.0
                 c[i, j, k] = -gamma * w[i, j, k + 1]
                 d[i, j, k] = phi_prv[i, j, k] - gamma * (
-                    w[i, j, k - 1] * phi[i, j, k - 1] - w[i, j, k + 1] * phi[i, j, k + 1]
+                    w[i, j, k - 1] * phi[i, j, k - 1]
+                    - w[i, j, k + 1] * phi[i, j, k + 1]
                 )
 
             a[i, j, nk - 1] = 0.0
@@ -97,10 +94,9 @@ def validation(
     domain,
     moist,
     toaptoil,
-    gt_powered,
     backend,
-    default_origin,
-    rebuild,
+    backend_options,
+    storage_options,
     state,
     state_prv,
     timestep,
@@ -117,15 +113,16 @@ def validation(
         domain,
         moist,
         tendency_of_air_potential_temperature_on_interface_levels=toaptoil,
-        gt_powered=gt_powered,
         backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-        rebuild=rebuild,
+        backend_options=backend_options,
         storage_shape=storage_shape,
+        storage_options=storage_options,
     )
     stepper = IsentropicVerticalAdvection(
-        core, gt_powered=gt_powered, backend=backend, dtype=dtype, rebuild=rebuild
+        core,
+        backend=backend,
+        backend_options=backend_options,
+        storage_options=storage_options,
     )
 
     input_names = [
@@ -134,7 +131,9 @@ def validation(
         "y_momentum_isentropic",
     ]
     if toaptoil:
-        input_names.append("tendency_of_air_potential_temperature_on_interface_levels")
+        input_names.append(
+            "tendency_of_air_potential_temperature_on_interface_levels"
+        )
     else:
         input_names.append("tendency_of_air_potential_temperature")
     if moist:
@@ -181,59 +180,57 @@ def validation(
 
     if toaptoil:
         name = "tendency_of_air_potential_temperature_on_interface_levels"
-        w_hl = state[name].to_units("K s^-1").values
-        w = zeros(
-            (nx, ny, nz),
-            gt_powered=gt_powered,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-        )
+        w_hl = state[name].to_units("K s^-1").data
+        w = zeros(backend, shape=(nx, ny, nz), storage_options=storage_options)
         w[...] = 0.5 * (w_hl[:nx, :ny, :nz] + w_hl[:nx, :ny, 1 : nz + 1])
     else:
         name = "tendency_of_air_potential_temperature"
-        w = state[name].to_units("K s^-1").values[:nx, :ny, :nz]
+        w = state[name].to_units("K s^-1").data[:nx, :ny, :nz]
 
-    s = state["air_isentropic_density"].to_units("kg m^-2 K^-1").values[:nx, :ny, :nz]
+    s = (
+        state["air_isentropic_density"]
+        .to_units("kg m^-2 K^-1")
+        .data[:nx, :ny, :nz]
+    )
     su = (
         state["x_momentum_isentropic"]
         .to_units("kg m^-1 K^-1 s^-1")
-        .values[:nx, :ny, :nz]
+        .data[:nx, :ny, :nz]
     )
     sv = (
         state["y_momentum_isentropic"]
         .to_units("kg m^-1 K^-1 s^-1")
-        .values[:nx, :ny, :nz]
+        .data[:nx, :ny, :nz]
     )
     if moist:
-        qv = state[mfwv].to_units("g g^-1").values[:nx, :ny, :nz]
+        qv = state[mfwv].to_units("g g^-1").data[:nx, :ny, :nz]
         sqv = s * qv
-        qc = state[mfcw].to_units("g g^-1").values[:nx, :ny, :nz]
+        qc = state[mfcw].to_units("g g^-1").data[:nx, :ny, :nz]
         sqc = s * qc
-        qr = state[mfpw].to_units("g g^-1").values[:nx, :ny, :nz]
+        qr = state[mfpw].to_units("g g^-1").data[:nx, :ny, :nz]
         sqr = s * qr
 
     s_prv = (
         state_prv["air_isentropic_density"]
         .to_units("kg m^-2 K^-1")
-        .values[:nx, :ny, :nz]
+        .data[:nx, :ny, :nz]
     )
     su_prv = (
         state_prv["x_momentum_isentropic"]
         .to_units("kg m^-1 K^-1 s^-1")
-        .values[:nx, :ny, :nz]
+        .data[:nx, :ny, :nz]
     )
     sv_prv = (
         state_prv["y_momentum_isentropic"]
         .to_units("kg m^-1 K^-1 s^-1")
-        .values[:nx, :ny, :nz]
+        .data[:nx, :ny, :nz]
     )
     if moist:
-        qv_prv = state_prv[mfwv].to_units("g g^-1").values[:nx, :ny, :nz]
+        qv_prv = state_prv[mfwv].to_units("g g^-1").data[:nx, :ny, :nz]
         sqv_prv = s_prv * qv_prv
-        qc_prv = state_prv[mfcw].to_units("g g^-1").values[:nx, :ny, :nz]
+        qc_prv = state_prv[mfcw].to_units("g g^-1").data[:nx, :ny, :nz]
         sqc_prv = s_prv * qc_prv
-        qr_prv = state_prv[mfpw].to_units("g g^-1").values[:nx, :ny, :nz]
+        qr_prv = state_prv[mfpw].to_units("g g^-1").data[:nx, :ny, :nz]
         sqr_prv = s_prv * qr_prv
 
     diagnostics, state_out = stepper(state, state_prv, timestep)
@@ -242,80 +239,52 @@ def validation(
     compare_datetimes(state["time"], diagnostics["time"])
     assert len(diagnostics) == 1
 
-    dz = grid.dz.to_units("K").values.item()
+    dz = grid.dz.to_units("K").data.item()
     dt = timestep.total_seconds()
     gamma = dt / (4.0 * dz)
 
-    a = zeros(
-        (nx, ny, nz),
-        gt_powered=gt_powered,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
-    b = zeros(
-        (nx, ny, nz),
-        gt_powered=gt_powered,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
-    c = zeros(
-        (nx, ny, nz),
-        gt_powered=gt_powered,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
-    d = zeros(
-        (nx, ny, nz),
-        gt_powered=gt_powered,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
-    out = zeros(
-        (nx, ny, nz),
-        gt_powered=gt_powered,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
+    a = zeros(backend, shape=(nx, ny, nz), storage_options=storage_options)
+    b = zeros(backend, shape=(nx, ny, nz), storage_options=storage_options)
+    c = zeros(backend, shape=(nx, ny, nz), storage_options=storage_options)
+    d = zeros(backend, shape=(nx, ny, nz), storage_options=storage_options)
+    out = zeros(backend, shape=(nx, ny, nz), storage_options=storage_options)
 
     setup_tridiagonal_system(gamma, w, s, s_prv, a=a, b=b, c=c, d=d)
     thomas_validation(a, b, c, d, x=out)
     out_s = deepcopy(out)
     assert "air_isentropic_density" in state_out
-    compare_arrays(out, state_out["air_isentropic_density"].values[:nx, :ny, :nz])
+    compare_arrays(
+        out, state_out["air_isentropic_density"].data[:nx, :ny, :nz]
+    )
 
     setup_tridiagonal_system(gamma, w, su, su_prv, a=a, b=b, c=c, d=d)
     thomas_validation(a, b, c, d, x=out)
     assert "x_momentum_isentropic" in state_out
-    compare_arrays(out, state_out["x_momentum_isentropic"].values[:nx, :ny, :nz])
+    compare_arrays(out, state_out["x_momentum_isentropic"].data[:nx, :ny, :nz])
 
     setup_tridiagonal_system(gamma, w, sv, sv_prv, a=a, b=b, c=c, d=d)
     thomas_validation(a, b, c, d, x=out)
     assert "y_momentum_isentropic" in state_out
-    compare_arrays(out, state_out["y_momentum_isentropic"].values[:nx, :ny, :nz])
+    compare_arrays(out, state_out["y_momentum_isentropic"].data[:nx, :ny, :nz])
 
     if moist:
         setup_tridiagonal_system(gamma, w, sqv, sqv_prv, a=a, b=b, c=c, d=d)
         thomas_validation(a, b, c, d, x=out)
         out[...] = out / out_s
         assert mfwv in state_out
-        compare_arrays(out, state_out[mfwv].values[:nx, :ny, :nz])
+        compare_arrays(out, state_out[mfwv].data[:nx, :ny, :nz])
 
         setup_tridiagonal_system(gamma, w, sqc, sqc_prv, a=a, b=b, c=c, d=d)
         thomas_validation(a, b, c, d, x=out)
         out[...] = out / out_s
         assert mfcw in state_out
-        compare_arrays(out, state_out[mfcw].values[:nx, :ny, :nz])
+        compare_arrays(out, state_out[mfcw].data[:nx, :ny, :nz])
 
         setup_tridiagonal_system(gamma, w, sqr, sqr_prv, a=a, b=b, c=c, d=d)
         thomas_validation(a, b, c, d, x=out)
         out[...] = out / out_s
         assert mfpw in state_out
-        compare_arrays(out, state_out[mfpw].values[:nx, :ny, :nz])
+        compare_arrays(out, state_out[mfpw].data[:nx, :ny, :nz])
 
     assert "time" in state_out
     compare_datetimes(state_out["time"], state["time"] + timestep)
@@ -323,31 +292,20 @@ def validation(
     assert len(state_out) == len(output_names) + 1
 
 
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
+@hyp_settings
 @given(data=hyp_st.data())
-def test_isentropic_vertical_advection_dry(data, subtests):
+@pytest.mark.parametrize("backend", conf.backend)
+@pytest.mark.parametrize("dtype", conf.dtype)
+def test_isentropic_vertical_advection_dry(data, backend, dtype, subtests):
     # ========================================
     # random data generation
     # ========================================
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-
-    if gt_powered:
-        gt.storage.prepare_numpy()
+    aligned_index = data.draw(
+        st_one_of(conf.aligned_index), label="aligned_index"
+    )
 
     domain = data.draw(
-        st_domain(
-            zaxis_length=(2, None), gt_powered=gt_powered, backend=backend, dtype=dtype
-        ),
+        st_domain(zaxis_length=(2, None), backend=backend, dtype=dtype),
         label="domain",
     )
     grid = domain.numerical_grid
@@ -359,9 +317,8 @@ def test_isentropic_vertical_advection_dry(data, subtests):
             grid,
             moist=False,
             precipitation=False,
-            gt_powered=gt_powered,
             backend=backend,
-            default_origin=default_origin,
+            aligned_index=aligned_index,
             storage_shape=storage_shape,
         ),
         label="state",
@@ -371,10 +328,9 @@ def test_isentropic_vertical_advection_dry(data, subtests):
             storage_shape,
             -1e4,
             1e4,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
-            default_origin=default_origin,
+            aligned_index=aligned_index,
         ),
         label="field",
     )
@@ -384,7 +340,11 @@ def test_isentropic_vertical_advection_dry(data, subtests):
     state[
         "tendency_of_air_potential_temperature_on_interface_levels"
     ] = get_dataarray_3d(
-        field, grid, "K s^-1", grid_shape=(nx, ny, nz + 1), set_coordinates=False
+        field,
+        grid,
+        "K s^-1",
+        grid_shape=(nx, ny, nz + 1),
+        set_coordinates=False,
     )
 
     state_prv = data.draw(
@@ -392,30 +352,33 @@ def test_isentropic_vertical_advection_dry(data, subtests):
             grid,
             moist=False,
             precipitation=False,
-            gt_powered=gt_powered,
             backend=backend,
-            default_origin=default_origin,
+            aligned_index=aligned_index,
             storage_shape=storage_shape,
         ),
         label="prv_state",
     )
 
     timestep = data.draw(
-        st_timedeltas(min_value=timedelta(seconds=0), max_value=timedelta(minutes=60)),
+        st_timedeltas(
+            min_value=timedelta(seconds=0), max_value=timedelta(minutes=60)
+        ),
         label="timestep",
     )
 
     # ========================================
     # test bed
     # ========================================
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype)
+
     validation(
         domain,
         False,
         False,
-        gt_powered,
         backend,
-        default_origin,
-        False,
+        bo,
+        so,
         state,
         state_prv,
         timestep,
@@ -425,10 +388,9 @@ def test_isentropic_vertical_advection_dry(data, subtests):
         domain,
         False,
         True,
-        gt_powered,
         backend,
-        default_origin,
-        False,
+        bo,
+        so,
         state,
         state_prv,
         timestep,
@@ -436,31 +398,20 @@ def test_isentropic_vertical_advection_dry(data, subtests):
     )
 
 
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
+@hyp_settings
 @given(data=hyp_st.data())
-def test_isentropic_vertical_advection_moist(data, subtests):
+@pytest.mark.parametrize("backend", conf.backend)
+@pytest.mark.parametrize("dtype", conf.dtype)
+def test_isentropic_vertical_advection_moist(data, backend, dtype, subtests):
     # ========================================
     # random data generation
     # ========================================
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-
-    if gt_powered:
-        gt.storage.prepare_numpy()
+    aligned_index = data.draw(
+        st_one_of(conf.aligned_index), label="aligned_index"
+    )
 
     domain = data.draw(
-        st_domain(
-            zaxis_length=(2, None), gt_powered=gt_powered, backend=backend, dtype=dtype
-        ),
+        st_domain(zaxis_length=(2, None), backend=backend, dtype=dtype),
         label="domain",
     )
     grid = domain.numerical_grid
@@ -472,9 +423,8 @@ def test_isentropic_vertical_advection_moist(data, subtests):
             grid,
             moist=True,
             precipitation=False,
-            gt_powered=gt_powered,
             backend=backend,
-            default_origin=default_origin,
+            aligned_index=aligned_index,
             storage_shape=storage_shape,
         ),
         label="state",
@@ -484,10 +434,9 @@ def test_isentropic_vertical_advection_moist(data, subtests):
             storage_shape,
             -1e4,
             1e4,
-            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
-            default_origin=default_origin,
+            aligned_index=aligned_index,
         ),
         label="field",
     )
@@ -497,7 +446,11 @@ def test_isentropic_vertical_advection_moist(data, subtests):
     state[
         "tendency_of_air_potential_temperature_on_interface_levels"
     ] = get_dataarray_3d(
-        field, grid, "K s^-1", grid_shape=(nx, ny, nz + 1), set_coordinates=False
+        field,
+        grid,
+        "K s^-1",
+        grid_shape=(nx, ny, nz + 1),
+        set_coordinates=False,
     )
 
     state_prv = data.draw(
@@ -505,30 +458,33 @@ def test_isentropic_vertical_advection_moist(data, subtests):
             grid,
             moist=True,
             precipitation=False,
-            gt_powered=gt_powered,
             backend=backend,
-            default_origin=default_origin,
+            aligned_index=aligned_index,
             storage_shape=storage_shape,
         ),
         label="prv_state",
     )
 
     timestep = data.draw(
-        st_timedeltas(min_value=timedelta(seconds=0), max_value=timedelta(minutes=60)),
+        st_timedeltas(
+            min_value=timedelta(seconds=0), max_value=timedelta(minutes=60)
+        ),
         label="timestep",
     )
 
     # ========================================
     # test bed
     # ========================================
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype)
+
     validation(
         domain,
         True,
         False,
-        gt_powered,
         backend,
-        default_origin,
-        False,
+        bo,
+        so,
         state,
         state_prv,
         timestep,
@@ -538,10 +494,9 @@ def test_isentropic_vertical_advection_moist(data, subtests):
         domain,
         True,
         True,
-        gt_powered,
         backend,
-        default_origin,
-        False,
+        bo,
+        so,
         state,
         state_prv,
         timestep,

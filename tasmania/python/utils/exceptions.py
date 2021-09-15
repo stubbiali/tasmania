@@ -20,13 +20,27 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+
+
 class ConstantNotFoundError(Exception):
     pass
 
 
-class TimeInconsistencyError(Exception):
+class FrameworkError(Exception):
     pass
 
 
 class InconsistencyError(Exception):
+    pass
+
+
+class ProtocolError(Exception):
+    pass
+
+
+class FactoryRegistryError(Exception):
+    pass
+
+
+class TimeInconsistencyError(Exception):
     pass

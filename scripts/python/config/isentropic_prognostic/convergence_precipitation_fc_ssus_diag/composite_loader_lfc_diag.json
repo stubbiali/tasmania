@@ -1,0 +1,34 @@
+{
+    "slaves": [
+        {
+            "module": "diff",
+            "classname": "RMSDLoader",
+            "config": "config/isentropic_prognostic/rmsd_precipitation/lfc_diag_0.json"
+        },
+        {
+            "module": "diff",
+            "classname": "RMSDLoader",
+            "config": "config/isentropic_prognostic/rmsd_precipitation/lfc_diag_1.json"
+        },
+        {
+            "module": "diff",
+            "classname": "RMSDLoader",
+            "config": "config/isentropic_prognostic/rmsd_precipitation/lfc_diag_2.json"
+        },
+        {
+            "module": "diff",
+            "classname": "RMSDLoader",
+            "config": "config/isentropic_prognostic/rmsd_precipitation/lfc_diag_3.json"
+        },
+        {
+            "module": "diff",
+            "classname": "RMSDLoader",
+            "config": "config/isentropic_prognostic/rmsd_precipitation/lfc_diag_4.json"
+        },
+        {
+            "module": "diff",
+            "classname": "RMSDLoader",
+            "config": "config/isentropic_prognostic/rmsd_precipitation/lfc_diag_5.json"
+        }
+    ]
+}

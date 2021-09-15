@@ -20,21 +20,21 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-import numpy as np
 import pytest
 import xarray as xr
 
-from gt4py.storage.storage import CPUStorage
+from gt4py.storage.definitions import Storage
 
-from tasmania.python.utils.storage_utils import zeros
+from tasmania.python.framework.allocators import zeros
 
 
 def test_xarray_gt4py_compatibility_gtmc():
-    x = zeros((5, 5, 2), gt_powered=True, backend="gtmc", dtype=np.float64)
+    x = zeros("gt4py:gtmc", shape=(5, 5, 2))
     x_da = xr.DataArray(x, dims=["x", "y", "z"], attrs={"units": "kg"})
 
-    assert isinstance(x_da.data, CPUStorage)
+    assert isinstance(x_da.data, Storage)
 
 
 if __name__ == "__main__":
-    pytest.main([__file__])
+    # pytest.main([__file__])
+    test_xarray_gt4py_compatibility_gtmc()

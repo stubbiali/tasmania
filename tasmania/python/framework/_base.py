@@ -20,25 +20,56 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-""" Base components placed in a separate file to avoid circular dependencies. """
-
+"""Base components placed in a separate file to avoid circular dependencies."""
 import abc
+from typing import Optional, TYPE_CHECKING
+
+from sympl._core.base_component import BaseComponent
+
+if TYPE_CHECKING:
+    from sympl._core.typingx import (
+        DataArrayDict,
+        NDArrayLike,
+        NDArrayLikeDict,
+        PropertyDict,
+    )
 
 
-class BaseConcurrentCoupling(abc.ABC):
+class BaseConcurrentCoupling(BaseComponent):
+    def __init__(self):
+        super().__init__()
+
     @abc.abstractmethod
     def __call__(self, *args, **kwargs):
         pass
 
 
-class BaseDiagnostic2Tendency(abc.ABC):
+class BaseFromDiagnosticToTendency(abc.ABC):
+    def __init__(self):
+        self._initialized = True
+
     @property
     @abc.abstractmethod
-    def input_properties(self):
+    def input_properties(self) -> "PropertyDict":
         pass
 
     @abc.abstractmethod
-    def __call__(self, *args, **kwargs):
+    def __call__(
+        self,
+        diagnostics: "DataArrayDict",
+        *,
+        out: Optional["DataArrayDict"] = None,
+    ) -> "DataArrayDict":
+        pass
+
+    @abc.abstractmethod
+    def allocate_tendency(self, name: str) -> "NDArrayLike":
+        pass
+
+    @abc.abstractmethod
+    def array_call(
+        self, diagnostics: "NDArrayLikeDict", out: "NDArrayLikeDict"
+    ) -> None:
         pass
 
 
@@ -48,12 +79,30 @@ class BaseDiagnosticComponentComposite(abc.ABC):
         pass
 
 
-class BaseTendency2Diagnostic(abc.ABC):
+class BaseFromTendencyToDiagnostic(abc.ABC):
+    def __init__(self):
+        self._initialized = True
+
     @property
     @abc.abstractmethod
-    def input_properties(self):
+    def input_tendency_properties(self) -> "PropertyDict":
         pass
 
     @abc.abstractmethod
-    def __call__(self, *args, **kwargs):
+    def __call__(
+        self,
+        tendencies: "DataArrayDict",
+        *,
+        out: Optional["DataArrayDict"] = None
+    ) -> "DataArrayDict":
+        pass
+
+    @abc.abstractmethod
+    def allocate_diagnostic(self, name: str) -> "NDArrayLike":
+        pass
+
+    @abc.abstractmethod
+    def array_call(
+        self, tendencies: "NDArrayLikeDict", out: "NDArrayLikeDict"
+    ) -> None:
         pass

@@ -23,60 +23,46 @@
 from datetime import datetime
 from hypothesis import (
     given,
-    HealthCheck,
     reproduce_failure,
-    settings,
     strategies as hyp_st,
 )
 import pytest
 from sympl import DataArray
 
-import gt4py as gt
-
+from tasmania.python.framework.options import StorageOptions
 from tasmania.python.isentropic.state import (
     get_isentropic_state_from_brunt_vaisala_frequency,
 )
 
-from tests.conf import (
-    backend as conf_backend,
-    datatype as conf_dtype,
-    default_origin as conf_dorigin,
-    nb as conf_nb,
-)
+from tests import conf
 from tests.strategies import st_one_of, st_domain
+from tests.utilities import hyp_settings
 
 
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
-@given(hyp_st.data())
-def test_brunt_vaisala(data):
+@hyp_settings
+@given(data=hyp_st.data())
+@pytest.mark.parametrize("backend", conf.backend)
+@pytest.mark.parametrize("dtype", conf.dtype)
+def test_brunt_vaisala(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+    aligned_index = data.draw(
+        st_one_of(conf.aligned_index), label="aligned_index"
+    )
+    so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
 
-    if gt_powered:
-        gt.storage.prepare_numpy()
-
-    nb = data.draw(hyp_st.integers(min_value=3, max_value=max(3, conf_nb)), label="nb")
+    nb = data.draw(
+        hyp_st.integers(min_value=3, max_value=max(3, conf.nb)), label="nb"
+    )
     domain = data.draw(
         st_domain(
             xaxis_length=(1, 20),
             yaxis_length=(1, 20),
             zaxis_length=(2, 10),
             nb=nb,
-            gt_powered=gt_powered,
             backend=backend,
-            dtype=dtype,
+            storage_options=so,
         ),
         label="domain",
     )
@@ -96,12 +82,9 @@ def test_brunt_vaisala(data):
         moist=False,
         precipitation=False,
         relative_humidity=0.5,
-        gt_powered=gt_powered,
         backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
         storage_shape=storage_shape,
-        managed_memory=False,
+        storage_options=so,
     )
 
 

@@ -20,23 +20,28 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-import numpy as np
 from sympl import DataArray
-from typing import Mapping, Optional, TYPE_CHECKING
+from typing import Mapping, Optional, Sequence, TYPE_CHECKING
 
 from tasmania.python.dwarfs.diagnostics import HorizontalVelocity
-from tasmania.python.framework.base_components import DiagnosticComponent
-from tasmania.python.isentropic.dynamics.diagnostics import IsentropicDiagnostics as Core
-from tasmania.python.utils import taz_types
-from tasmania.python.utils.storage_utils import zeros
+from tasmania.python.framework.core_components import DiagnosticComponent
+from tasmania.python.isentropic.dynamics.diagnostics import (
+    IsentropicDiagnostics as Core,
+)
 
 if TYPE_CHECKING:
+    from sympl._core.typingx import NDArrayLikeDict, PropertyDict
+
     from tasmania.python.domain.domain import Domain
+    from tasmania.python.framework.options import (
+        BackendOptions,
+        StorageOptions,
+    )
 
 
 class IsentropicDiagnostics(DiagnosticComponent):
     """
-    With the help of the isentropic density, this class diagnosed
+    With the help of the isentropic density, this class diagnoses
 
         * the pressure,
         * the Exner function,
@@ -52,10 +57,14 @@ class IsentropicDiagnostics(DiagnosticComponent):
     """
 
     # default values for the physical constants used in the class
-    _d_physical_constants = {
+    default_physical_constants = {
         "air_pressure_at_sea_level": DataArray(1e5, attrs={"units": "Pa"}),
-        "gas_constant_of_dry_air": DataArray(287.05, attrs={"units": "J K^-1 kg^-1"}),
-        "gravitational_acceleration": DataArray(9.80665, attrs={"units": "m s^-2"}),
+        "gas_constant_of_dry_air": DataArray(
+            287.05, attrs={"units": "J K^-1 kg^-1"}
+        ),
+        "gravitational_acceleration": DataArray(
+            9.80665, attrs={"units": "m s^-2"}
+        ),
         "specific_heat_of_dry_air_at_constant_pressure": DataArray(
             1004.0, attrs={"units": "J K^-1 kg^-1"}
         ),
@@ -68,17 +77,12 @@ class IsentropicDiagnostics(DiagnosticComponent):
         moist: bool,
         pt: DataArray,
         physical_constants: Optional[Mapping[str, DataArray]] = None,
-        gt_powered: bool = True,
         *,
+        enable_checks: bool = True,
         backend: str = "numpy",
-        backend_opts: Optional[taz_types.options_dict_t] = None,
-        build_info: Optional[taz_types.options_dict_t] = None,
-        dtype: taz_types.dtype_t = np.float64,
-        exec_info: Optional[taz_types.mutable_options_dict_t] = None,
-        default_origin: Optional[taz_types.triplet_int_t] = None,
-        rebuild: bool = False,
-        storage_shape: Optional[taz_types.triplet_int_t] = None,
-        managed_memory: bool = False
+        backend_options: Optional["BackendOptions"] = None,
+        storage_shape: Optional[Sequence[int]] = None,
+        storage_options: Optional["StorageOptions"] = None,
     ) -> None:
         """
         Parameters
@@ -97,133 +101,78 @@ class IsentropicDiagnostics(DiagnosticComponent):
         physical_constants : `dict[str, sympl.DataArray]`, optional
             Dictionary whose keys are strings indicating physical constants used
             within this object, and whose values are :class:`sympl.DataArray`\s
-            storing the values and units of those constants. The constants might be:
+            storing the values and units of those constants.
+            The constants might be:
 
                 * 'air_pressure_at_sea_level', in units compatible with [Pa];
-                * 'gas_constant_of_dry_air', in units compatible with \
+                * 'gas_constant_of_dry_air', in units compatible with
                     [J K^-1 kg^-1];
-                * 'gravitational_acceleration', in units compatible with [m s^-2];
-                * 'specific_heat_of_dry_air_at_constant_pressure', in units compatible \
-                    with [J K^-1 kg^-1].
+                * 'gravitational_acceleration', in units compatible with
+                    [m s^-2];
+                * 'specific_heat_of_dry_air_at_constant_pressure', in units
+                    compatible with [J K^-1 kg^-1].
 
             Please refer to
             :func:`tasmania.utils.data_utils.get_physical_constants` and
             :obj:`tasmania.physics.isentropic.IsentropicDiagnostics._d_physical_constants`
             for the default values.
-        gt_powered : `bool`, optional
+        enable_checks : `bool`, optional
             TODO
         backend : `str`, optional
-            The GT4Py backend.
-        backend_opts : `dict`, optional
-            Dictionary of backend-specific options.
-        build_info : `dict`, optional
-            Dictionary of building options.
-        dtype : `data-type`, optional
-            Data type of the storages.
-        exec_info : `dict`, optional
-            Dictionary which will store statistics and diagnostics gathered at run time.
-        default_origin : `tuple[int]`, optional
-            Storage default origin.
-        rebuild : `bool`, optional
-            ``True`` to trigger the stencils compilation at any class instantiation,
-            ``False`` to rely on the caching mechanism implemented by GT4Py.
-        storage_shape : `tuple[int]`, optional
-            Shape of the storages.
-        managed_memory : `bool`, optional
-            ``True`` to allocate the storages as managed memory, ``False`` otherwise.
+            The backend.
+        backend_options : `BackendOptions`, optional
+            Backend-specific options.
+        storage_shape : `Sequence[int]`, optional
+            The shape of the storages allocated within the class.
+        storage_options : `StorageOptions`, optional
+            Storage-related options.
         """
         # store input parameters needed at run-time
         self._moist = moist
         self._pt = pt.to_units("Pa").data.item()
 
-        # call parent's constructor
-        super().__init__(domain, grid_type)
+        # initialize the parent class
+        super().__init__(
+            domain,
+            grid_type,
+            physical_constants=physical_constants,
+            enable_checks=enable_checks,
+            backend=backend,
+            backend_options=backend_options,
+            storage_shape=storage_shape,
+            storage_options=storage_options,
+        )
 
         # instantiate the class computing the diagnostic variables
-        nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
-        storage_shape = (nx, ny, nz + 1) if storage_shape is None else storage_shape
         self._core = Core(
             self.grid,
             physical_constants=physical_constants,
-            gt_powered=gt_powered,
-            backend=backend,
-            backend_opts=backend_opts,
-            build_info=build_info,
-            dtype=dtype,
-            exec_info=exec_info,
-            default_origin=default_origin,
-            rebuild=rebuild,
-            storage_shape=storage_shape,
-            managed_memory=managed_memory,
+            backend=self.backend,
+            backend_options=self.backend_options,
+            storage_shape=self.storage_shape,
+            storage_options=self.storage_options,
         )
-
-        # allocate the gt4py storages collecting the output fields calculated
-        # by the stencils
-        self._out_p = zeros(
-            storage_shape,
-            gt_powered=gt_powered,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-            managed_memory=managed_memory,
-        )
-        self._out_exn = zeros(
-            storage_shape,
-            gt_powered=gt_powered,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-            managed_memory=managed_memory,
-        )
-        self._out_mtg = zeros(
-            storage_shape,
-            gt_powered=gt_powered,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-            managed_memory=managed_memory,
-        )
-        self._out_h = zeros(
-            storage_shape,
-            gt_powered=gt_powered,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-            managed_memory=managed_memory,
-        )
-        if moist:
-            self._out_r = zeros(
-                storage_shape,
-                gt_powered=gt_powered,
-                backend=backend,
-                dtype=dtype,
-                default_origin=default_origin,
-                managed_memory=managed_memory,
-            )
-            self._out_t = zeros(
-                storage_shape,
-                gt_powered=gt_powered,
-                backend=backend,
-                dtype=dtype,
-                default_origin=default_origin,
-                managed_memory=managed_memory,
-            )
 
     @property
-    def input_properties(self) -> taz_types.properties_dict_t:
+    def input_properties(self) -> "PropertyDict":
         dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])
 
-        return_dict = {"air_isentropic_density": {"dims": dims, "units": "kg m^-2 K^-1"}}
+        return_dict = {
+            "air_isentropic_density": {"dims": dims, "units": "kg m^-2 K^-1"}
+        }
 
         return return_dict
 
     @property
-    def diagnostic_properties(self) -> taz_types.properties_dict_t:
+    def diagnostic_properties(self) -> "PropertyDict":
         dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])
         dims_stgz = (dims[0], dims[1], self.grid.z_on_interface_levels.dims[0])
 
         return_dict = {
-            "air_pressure_on_interface_levels": {"dims": dims_stgz, "units": "Pa"},
+            "air_pressure_on_interface_levels": {
+                "dims": dims_stgz,
+                "units": "Pa",
+            },
             "exner_function_on_interface_levels": {
                 "dims": dims_stgz,
                 "units": "J K^-1 kg^-1",
@@ -239,26 +188,24 @@ class IsentropicDiagnostics(DiagnosticComponent):
         return return_dict
 
     def array_call(
-        self, state: taz_types.gtstorage_dict_t
-    ) -> taz_types.gtstorage_dict_t:
-        s = state["air_isentropic_density"]
+        self, state: "NDArrayLikeDict", out: "NDArrayLikeDict"
+    ) -> None:
         self._core.get_diagnostic_variables(
-            s, self._pt, self._out_p, self._out_exn, self._out_mtg, self._out_h
+            state["air_isentropic_density"],
+            self._pt,
+            out["air_pressure_on_interface_levels"],
+            out["exner_function_on_interface_levels"],
+            out["montgomery_potential"],
+            out["height_on_interface_levels"],
         )
-        diagnostics = {
-            "air_pressure_on_interface_levels": self._out_p,
-            "exner_function_on_interface_levels": self._out_exn,
-            "montgomery_potential": self._out_mtg,
-            "height_on_interface_levels": self._out_h,
-        }
         if self._moist:
             self._core.get_density_and_temperature(
-                s, self._out_exn, self._out_h, self._out_r, self._out_t
+                state["air_isentropic_density"],
+                out["exner_function_on_interface_levels"],
+                out["height_on_interface_levels"],
+                out["air_density"],
+                out["air_temperature"],
             )
-            diagnostics["air_density"] = self._out_r
-            diagnostics["air_temperature"] = self._out_t
-
-        return diagnostics
 
 
 class IsentropicVelocityComponents(DiagnosticComponent):
@@ -272,103 +219,70 @@ class IsentropicVelocityComponents(DiagnosticComponent):
     def __init__(
         self,
         domain: "Domain",
-        gt_powered: bool = True,
         *,
+        enable_checks: bool = True,
         backend: str = "numpy",
-        backend_opts: Optional[taz_types.options_dict_t] = None,
-        build_info: Optional[taz_types.options_dict_t] = None,
-        dtype: taz_types.dtype_t = np.float64,
-        exec_info: Optional[taz_types.mutable_options_dict_t] = None,
-        default_origin: Optional[taz_types.triplet_int_t] = None,
-        rebuild: bool = False,
-        storage_shape: Optional[taz_types.triplet_int_t] = None,
-        managed_memory: bool = False
+        backend_options: Optional["BackendOptions"] = None,
+        storage_shape: Optional[Sequence[int]] = None,
+        storage_options: Optional["StorageOptions"] = None,
     ) -> None:
         """
         Parameters
         ----------
         domain : tasmania.Domain
             The :class:`~tasmania.Domain` holding the grid underneath.
-        gt_powered : `bool`, optional
+        enable_checks : `bool`, optional
             TODO
         backend : `str`, optional
-            The GT4Py backend.
-        backend_opts : `dict`, optional
-            Dictionary of backend-specific options.
-        build_info : `dict`, optional
-            Dictionary of building options.
-        dtype : `data-type`, optional
-            Data type of the storages.
-        exec_info : `dict`, optional
-            Dictionary which will store statistics and diagnostics gathered at run time.
-        default_origin : `tuple[int]`, optional
-            Storage default origin.
-        rebuild : `bool`, optional
-            ``True`` to trigger the stencils compilation at any class instantiation,
-            ``False`` to rely on the caching mechanism implemented by GT4Py.
-        storage_shape : `tuple[int]`, optional
-            Shape of the storages.
-        managed_memory : `bool`, optional
-            ``True`` to allocate the storages as managed memory, ``False`` otherwise.
+            The backend.
+        backend_options : `BackendOptions`, optional
+            Backend-specific options.
+        storage_shape : `Sequence[int]`, optional
+            The shape of the storages allocated within the class.
+        storage_options : `StorageOptions`, optional
+            Storage-related options.
         """
-        # call the parent's constructor
-        super().__init__(domain, "numerical")
+        # initialize the parent class
+        super().__init__(
+            domain,
+            "numerical",
+            enable_checks=enable_checks,
+            backend=backend,
+            backend_options=backend_options,
+            storage_shape=storage_shape,
+            storage_options=storage_options,
+        )
 
         # instantiate the class retrieving the velocity components
         self._core = HorizontalVelocity(
             self.grid,
             staggering=True,
-            gt_powered=gt_powered,
-            backend=backend,
-            backend_opts=backend_opts,
-            build_info=build_info,
-            exec_info=exec_info,
-            rebuild=rebuild,
-        )
-
-        # set the shape of the gt4py storages
-        nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
-        storage_shape = (nx + 1, ny + 1, nz) if storage_shape is None else storage_shape
-        error_msg = "storage_shape must be larger or equal than {}.".format(
-            (nx + 1, ny + 1, nz)
-        )
-        assert storage_shape[0] >= nx, error_msg
-        assert storage_shape[1] >= ny, error_msg
-        assert storage_shape[2] >= nz + 1, error_msg
-
-        # allocate the storages gathering the output fields
-        self._out_u = zeros(
-            storage_shape,
-            gt_powered=gt_powered,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-            managed_memory=managed_memory,
-        )
-        self._out_v = zeros(
-            storage_shape,
-            gt_powered=gt_powered,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-            managed_memory=managed_memory,
+            backend=self.backend,
+            backend_options=self.backend_options,
+            storage_options=self.storage_options,
         )
 
     @property
-    def input_properties(self) -> taz_types.properties_dict_t:
+    def input_properties(self) -> "PropertyDict":
         g = self.grid
         dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
 
         return_dict = {
             "air_isentropic_density": {"dims": dims, "units": "kg m^-2 K^-1"},
-            "x_momentum_isentropic": {"dims": dims, "units": "kg m^-1 K^-1 s^-1"},
-            "y_momentum_isentropic": {"dims": dims, "units": "kg m^-1 K^-1 s^-1"},
+            "x_momentum_isentropic": {
+                "dims": dims,
+                "units": "kg m^-1 K^-1 s^-1",
+            },
+            "y_momentum_isentropic": {
+                "dims": dims,
+                "units": "kg m^-1 K^-1 s^-1",
+            },
         }
 
         return return_dict
 
     @property
-    def diagnostic_properties(self) -> taz_types.properties_dict_t:
+    def diagnostic_properties(self) -> "PropertyDict":
         g = self.grid
         dims_x = (g.x_at_u_locations.dims[0], g.y.dims[0], g.z.dims[0])
         dims_y = (g.x.dims[0], g.y_at_v_locations.dims[0], g.z.dims[0])
@@ -381,35 +295,27 @@ class IsentropicVelocityComponents(DiagnosticComponent):
         return return_dict
 
     def array_call(
-        self, state: taz_types.gtstorage_dict_t
-    ) -> taz_types.gtstorage_dict_t:
-        # extract the required model variables from the input state
-        s = state["air_isentropic_density"]
-        su = state["x_momentum_isentropic"]
-        sv = state["y_momentum_isentropic"]
-
+        self, state: "NDArrayLikeDict", out: "NDArrayLikeDict"
+    ) -> None:
         # diagnose the velocity components
-        self._core.get_velocity_components(s, su, sv, self._out_u, self._out_v)
+        self._core.get_velocity_components(
+            state["air_isentropic_density"],
+            state["x_momentum_isentropic"],
+            state["y_momentum_isentropic"],
+            out["x_velocity_at_u_locations"],
+            out["y_velocity_at_v_locations"],
+        )
 
         # enforce the boundary conditions
-        hb = self.horizontal_boundary
-        hb.dmn_set_outermost_layers_x(
-            self._out_u,
+        self.horizontal_boundary.set_outermost_layers_x(
+            out["x_velocity_at_u_locations"],
             field_name="x_velocity_at_u_locations",
             field_units="m s^-1",
             time=state["time"],
         )
-        hb.dmn_set_outermost_layers_y(
-            self._out_v,
+        self.horizontal_boundary.set_outermost_layers_y(
+            out["y_velocity_at_v_locations"],
             field_name="y_velocity_at_v_locations",
             field_units="m s^-1",
             time=state["time"],
         )
-
-        # instantiate the output dictionary
-        diagnostics = {
-            "x_velocity_at_u_locations": self._out_u,
-            "y_velocity_at_v_locations": self._out_v,
-        }
-
-        return diagnostics

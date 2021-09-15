@@ -26,11 +26,11 @@ from typing import List, Optional, Sequence, Union
 
 from tasmania.python.domain.grid import Grid
 from tasmania.python.plot.utils import to_units
-from tasmania.python.utils import taz_types
+from tasmania.python.utils import typingx
 
 
 class DataRetriever:
-    """ Functor retrieving a raw scalar field from a state dictionary. """
+    """Functor retrieving a raw scalar field from a state dictionary."""
 
     def __init__(
         self,
@@ -72,7 +72,7 @@ class DataRetriever:
         self.y = y if y is not None else slice(0, None)
         self.z = z if z is not None else slice(0, None)
 
-    def __call__(self, state: taz_types.dataarray_dict_t) -> taz_types.array_t:
+    def __call__(self, state: typingx.DataArrayDict) -> typingx.array_t:
         """
         Retrieve the field.
 
@@ -100,12 +100,22 @@ class DataRetriever:
             else:
                 return to_units(state[field_name][x, y, z], field_units).values
 
-        elif field_name == "horizontal_velocity":  # horizontal velocity magnitude
+        elif (
+            field_name == "horizontal_velocity"
+        ):  # horizontal velocity magnitude
 
             try:
                 r = state["air_density"][x, y, z].to_units("kg m^-3").values
-                ru = state["x_momentum"][x, y, z].to_units("kg m^-2 s^-1").values
-                rv = state["y_momentum"][x, y, z].to_units("kg m^-2 s^-1").values
+                ru = (
+                    state["x_momentum"][x, y, z]
+                    .to_units("kg m^-2 s^-1")
+                    .values
+                )
+                rv = (
+                    state["y_momentum"][x, y, z]
+                    .to_units("kg m^-2 s^-1")
+                    .values
+                )
                 u, v = ru / r, rv / r
             except KeyError:
                 try:
@@ -127,24 +137,36 @@ class DataRetriever:
                     u, v = su / s, sv / s
                 except KeyError:
                     try:
-                        u = to_units(state["x_velocity"][x, y, z], "m s^-1").values
-                        v = to_units(state["y_velocity"][x, y, z], "m s^-1").values
+                        u = to_units(
+                            state["x_velocity"][x, y, z], "m s^-1"
+                        ).values
+                        v = to_units(
+                            state["y_velocity"][x, y, z], "m s^-1"
+                        ).values
                     except KeyError:
                         try:
                             x_ = slice(
-                                x.start, x.stop + 1 if x.stop is not None else x.stop
+                                x.start,
+                                x.stop + 1 if x.stop is not None else x.stop,
                             )
                             y_ = slice(
-                                y.start, y.stop + 1 if y.stop is not None else y.stop
+                                y.start,
+                                y.stop + 1 if y.stop is not None else y.stop,
                             )
                             u = to_units(
-                                state["x_velocity_at_u_locations"][x_, y, z], "m s^-1"
+                                state["x_velocity_at_u_locations"][x_, y, z],
+                                "m s^-1",
                             )
                             v = to_units(
-                                state["y_velocity_at_v_locations"][x, y_, z], "m s^-1"
+                                state["y_velocity_at_v_locations"][x, y_, z],
+                                "m s^-1",
                             )
-                            u = 0.5 * (u.values[:-1, :, :] + u.values[1:, :, :])
-                            v = 0.5 * (v.values[:, :-1, :] + v.values[:, 1:, :])
+                            u = 0.5 * (
+                                u.values[:-1, :, :] + u.values[1:, :, :]
+                            )
+                            v = 0.5 * (
+                                v.values[:, :-1, :] + v.values[:, 1:, :]
+                            )
                         except KeyError:
                             raise RuntimeError(
                                 "Sorry, don't know how to retrieve 'horizontal_velocity'."
@@ -172,20 +194,30 @@ class DataRetriever:
 
             try:
                 r = state["air_density"][x, y, z].to_units("kg m^-3").values
-                ru = state["x_momentum"][x, y, z].to_units("kg m^-2 s^-1").values
+                ru = (
+                    state["x_momentum"][x, y, z]
+                    .to_units("kg m^-2 s^-1")
+                    .values
+                )
                 return factor * ru / r
             except KeyError:
                 try:
-                    s = state["air_isentropic_density"][x, y, z].to_units("kg m^-2 K^-1")
+                    s = state["air_isentropic_density"][x, y, z].to_units(
+                        "kg m^-2 K^-1"
+                    )
                     su = state["x_momentum_isentropic"][x, y, z].to_units(
                         "kg m^-1 K^-1 s^-1"
                     )
                     return factor * su.values / s.values
                 except KeyError:
                     try:
-                        x_ = slice(x.start, x.stop + 1 if x.stop is not None else x.stop)
+                        x_ = slice(
+                            x.start,
+                            x.stop + 1 if x.stop is not None else x.stop,
+                        )
                         u = to_units(
-                            state["x_velocity_at_u_locations"][x_, y, z], field_units
+                            state["x_velocity_at_u_locations"][x_, y, z],
+                            field_units,
                         )
                         return 0.5 * (u.values[:-1, :, :] + u.values[1:, :, :])
                     except KeyError:
@@ -205,20 +237,30 @@ class DataRetriever:
 
             try:
                 r = state["air_density"][x, y, z].to_units("kg m^-3").values
-                rv = state["y_momentum"][x, y, z].to_units("kg m^-2 s^-1").values
+                rv = (
+                    state["y_momentum"][x, y, z]
+                    .to_units("kg m^-2 s^-1")
+                    .values
+                )
                 return factor * rv / r
             except KeyError:
                 try:
-                    s = state["air_isentropic_density"][x, y, z].to_units("kg m^-2 K^-1")
+                    s = state["air_isentropic_density"][x, y, z].to_units(
+                        "kg m^-2 K^-1"
+                    )
                     sv = state["y_momentum_isentropic"][x, y, z].to_units(
                         "kg m^-1 K^-1 s^-1"
                     )
                     return factor * sv.values / s.values
                 except KeyError:
                     try:
-                        y_ = slice(y.start, y.stop + 1 if y.stop is not None else y.stop)
+                        y_ = slice(
+                            y.start,
+                            y.stop + 1 if y.stop is not None else y.stop,
+                        )
                         v = to_units(
-                            state["y_velocity_at_v_locations"][x, y_, z], field_units
+                            state["y_velocity_at_v_locations"][x, y_, z],
+                            field_units,
                         )
                         return 0.5 * (v.values[:, :-1, :] + v.values[:, 1:, :])
                     except KeyError:
@@ -231,18 +273,24 @@ class DataRetriever:
             try:
                 return to_units(grid.height[x, y, z], field_units).values
             except AttributeError:
-                z_ = slice(z.start, z.stop + 1 if z.stop is not None else z.stop)
+                z_ = slice(
+                    z.start, z.stop + 1 if z.stop is not None else z.stop
+                )
                 try:
                     tmp = to_units(
-                        state["height_on_interface_levels"][x, y, z_], field_units
+                        state["height_on_interface_levels"][x, y, z_],
+                        field_units,
                     )
                     return 0.5 * (tmp.values[:, :, :-1] + tmp.values[:, :, 1:])
                 except KeyError:
                     try:
                         tmp = to_units(
-                            grid.height_on_interface_levels[x, y, z_], field_units
+                            grid.height_on_interface_levels[x, y, z_],
+                            field_units,
                         )
-                        return 0.5 * (tmp.values[:, :, :-1] + tmp.values[:, :, 1:])
+                        return 0.5 * (
+                            tmp.values[:, :, :-1] + tmp.values[:, :, 1:]
+                        )
                     except AttributeError:
                         pass
 
@@ -258,9 +306,12 @@ class DataRetriever:
         elif field_name == "air_pressure":  # pressure
 
             try:
-                z_ = slice(z.start, z.stop + 1 if z.stop is not None else z.stop)
+                z_ = slice(
+                    z.start, z.stop + 1 if z.stop is not None else z.stop
+                )
                 tmp = to_units(
-                    state["air_pressure_on_interface_levels"][x, y, z_], field_units
+                    state["air_pressure_on_interface_levels"][x, y, z_],
+                    field_units,
                 ).values
                 return 0.5 * (tmp[:, :, :-1] + tmp[:, :, 1:])
             except KeyError:
@@ -269,7 +320,9 @@ class DataRetriever:
         elif field_name == "air_pressure_on_interface_levels":  # pressure
 
             try:
-                return to_units(state["air_pressure"][x, y, z], field_units).values
+                return to_units(
+                    state["air_pressure"][x, y, z], field_units
+                ).values
             except KeyError:
                 pass
 
@@ -293,10 +346,18 @@ class DataRetrieverComposite:
         self,
         grid: Union[Grid, Sequence[Grid]],
         field_name: Union[str, Sequence[str], Sequence[Sequence[str]]],
-        field_units: Optional[Union[str, Sequence[str], Sequence[Sequence[str]]]] = None,
-        x: Optional[Union[slice, Sequence[slice], Sequence[Sequence[slice]]]] = None,
-        y: Optional[Union[slice, Sequence[slice], Sequence[Sequence[slice]]]] = None,
-        z: Optional[Union[slice, Sequence[slice], Sequence[Sequence[slice]]]] = None,
+        field_units: Optional[
+            Union[str, Sequence[str], Sequence[Sequence[str]]]
+        ] = None,
+        x: Optional[
+            Union[slice, Sequence[slice], Sequence[Sequence[slice]]]
+        ] = None,
+        y: Optional[
+            Union[slice, Sequence[slice], Sequence[Sequence[slice]]]
+        ] = None,
+        z: Optional[
+            Union[slice, Sequence[slice], Sequence[Sequence[slice]]]
+        ] = None,
     ) -> None:
         """
         Parameters
@@ -340,7 +401,9 @@ class DataRetrieverComposite:
 
         if isinstance(grid, Grid):
             grids = (grid,) * len(fnames)
-        elif isinstance(grid, SequenceType) and all(isinstance(g, Grid) for g in grid):
+        elif isinstance(grid, SequenceType) and all(
+            isinstance(g, Grid) for g in grid
+        ):
             grids = grid
         else:
             raise TypeError(
@@ -349,7 +412,9 @@ class DataRetrieverComposite:
                 )
             )
 
-        assert len(grids) == len(fnames), "grid''s length: expected {}, got {}.".format(
+        assert len(grids) == len(
+            fnames
+        ), "grid''s length: expected {}, got {}.".format(
             len(fnames), len(grids)
         )
 
@@ -373,7 +438,9 @@ class DataRetrieverComposite:
 
         assert len(funits) == len(
             fnames
-        ), "field_units''s length: expected {}, got{}.".format(len(fnames), len(funits))
+        ), "field_units''s length: expected {}, got{}.".format(
+            len(fnames), len(funits)
+        )
         for i in range(len(funits)):
             assert len(funits[i]) == len(
                 fnames[i]
@@ -385,7 +452,9 @@ class DataRetrieverComposite:
             fx = tuple((None,) * len(arg) for arg in fnames)
         elif isinstance(x, slice):
             fx = tuple((x,) * len(arg) for arg in fnames)
-        elif isinstance(x, SequenceType) and all(isinstance(arg, slice) for arg in x):
+        elif isinstance(x, SequenceType) and all(
+            isinstance(arg, slice) for arg in x
+        ):
             fx = (x,)
         elif isinstance(x, SequenceType) and all(
             isinstance(arg, SequenceType) for arg in x
@@ -397,9 +466,9 @@ class DataRetrieverComposite:
                 "sequence[sequence[slice]], got {}.".format(type(x))
             )
 
-        assert len(fx) == len(fnames), "x''s length: expected {}, got{}.".format(
-            len(fnames), len(fx)
-        )
+        assert len(fx) == len(
+            fnames
+        ), "x''s length: expected {}, got{}.".format(len(fnames), len(fx))
         for i in range(len(fx)):
             assert len(fx[i]) == len(
                 fnames[i]
@@ -411,7 +480,9 @@ class DataRetrieverComposite:
             fy = tuple((None,) * len(arg) for arg in fnames)
         elif isinstance(y, slice):
             fy = tuple((y,) * len(arg) for arg in fnames)
-        elif isinstance(y, SequenceType) and all(isinstance(arg, slice) for arg in y):
+        elif isinstance(y, SequenceType) and all(
+            isinstance(arg, slice) for arg in y
+        ):
             fy = (y,)
         elif isinstance(y, SequenceType) and all(
             isinstance(arg, SequenceType) for arg in y
@@ -423,9 +494,9 @@ class DataRetrieverComposite:
                 "sequence[sequence[slice]], got {}.".format(type(y))
             )
 
-        assert len(fy) == len(fnames), "y''s length: expected {}, got{}.".format(
-            len(fnames), len(fy)
-        )
+        assert len(fy) == len(
+            fnames
+        ), "y''s length: expected {}, got{}.".format(len(fnames), len(fy))
         for i in range(len(fy)):
             assert len(fy[i]) == len(
                 fnames[i]
@@ -437,7 +508,9 @@ class DataRetrieverComposite:
             fz = tuple((None,) * len(arg) for arg in fnames)
         elif isinstance(z, slice):
             fz = tuple((z,) * len(arg) for arg in fnames)
-        elif isinstance(z, SequenceType) and all(isinstance(arg, slice) for arg in z):
+        elif isinstance(z, SequenceType) and all(
+            isinstance(arg, slice) for arg in z
+        ):
             fz = (z,)
         elif isinstance(z, SequenceType) and all(
             isinstance(arg, SequenceType) for arg in z
@@ -449,9 +522,9 @@ class DataRetrieverComposite:
                 "sequence[sequence[slice]], got {}.".format(type(z))
             )
 
-        assert len(fz) == len(fnames), "z''s length: expected {}, got{}.".format(
-            len(fnames), len(fz)
-        )
+        assert len(fz) == len(
+            fnames
+        ), "z''s length: expected {}, got{}.".format(len(fnames), len(fz))
         for i in range(len(fy)):
             assert len(fz[i]) == len(
                 fnames[i]
@@ -477,8 +550,8 @@ class DataRetrieverComposite:
 
     def __call__(
         self,
-        *args: Union[taz_types.dataarray_dict_t, Sequence[taz_types.dataarray_dict_t]]
-    ) -> List[taz_types.array_t]:
+        *args: Union[typingx.DataArrayDict, Sequence[typingx.DataArrayDict]]
+    ) -> List[typingx.array_t]:
         """
         Retrieve the field(s).
 
@@ -495,7 +568,9 @@ class DataRetrieverComposite:
         """
         got, expected = len(args), len(self._retrievers)
         if got != expected:
-            raise RuntimeError("Expected {} input states, got {}.".format(expected, got))
+            raise RuntimeError(
+                "Expected {} input states, got {}.".format(expected, got)
+            )
 
         return_seq = []
         for state, state_retrievers in zip(args, self._retrievers):

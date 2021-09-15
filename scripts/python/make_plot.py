@@ -20,11 +20,14 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+import click
 from datetime import datetime
 import json
 from matplotlib import pyplot as plt
-from tasmania import Plot, taz_types
 from typing import List, Optional, Sequence, Tuple, Union
+
+from tasmania.python.plot.monitors import Plot
+from tasmania.python.utils import typingx as ty
 
 
 class PlotWrapper:
@@ -39,7 +42,9 @@ class PlotWrapper:
                 loader_classname = drawer_data["loader_classname"]
                 loader_config = drawer_data["loader_config"]
 
-                import_str = "from {} import {}".format(loader_module, loader_classname)
+                import_str = "from {} import {}".format(
+                    loader_module, loader_classname
+                )
                 exec(import_str)
                 loader = locals()[loader_classname](loader_config)
 
@@ -47,7 +52,9 @@ class PlotWrapper:
                 wrapper_classname = drawer_data["wrapper_classname"]
                 wrapper_config = drawer_data["wrapper_config"]
 
-                import_str = "from {} import {}".format(wrapper_module, wrapper_classname)
+                import_str = "from {} import {}".format(
+                    wrapper_module, wrapper_classname
+                )
                 exec(import_str)
                 self.drawer_wrappers.append(
                     locals()[wrapper_classname](loader, wrapper_config)
@@ -87,11 +94,13 @@ class PlotWrapper:
 
     def get_states(
         self, tlevels: Optional[Union[int, Sequence[int]]] = None
-    ) -> List[taz_types.dataarray_dict_t]:
+    ) -> List[ty.DataArrayDict]:
         wrappers = self.drawer_wrappers
 
         tlevels = self.tlevels if tlevels is None else tlevels
-        tlevels = (tlevels,) * len(wrappers) if isinstance(tlevels, int) else tlevels
+        tlevels = (
+            (tlevels,) * len(wrappers) if isinstance(tlevels, int) else tlevels
+        )
 
         states = []
 
@@ -113,21 +122,19 @@ class PlotWrapper:
         )
 
 
-if __name__ == "__main__":
-    import argparse
+@click.command()
+@click.option(
+    "-j", "--jsonfile", type=str, default=None, help="JSON configuration file."
+)
+@click.option(
+    "--no-show",
+    is_flag=True,
+    help="Disable visualization of generated figure.",
+)
+def main(jsonfile, no_show=False):
+    plot_wrapper = PlotWrapper(jsonfile)
+    plot_wrapper.store(show=not no_show)
 
-    parser = argparse.ArgumentParser(description="Generate a figure with a single panel.")
-    parser.add_argument(
-        "configfile", metavar="configfile", type=str, help="JSON configuration file."
-    )
-    parser.add_argument(
-        "--no-show",
-        dest="show",
-        action="store_const",
-        const=0,
-        default=1,
-        help="Do not show the generated plot.",
-    )
-    args = parser.parse_args()
-    plot_wrapper = PlotWrapper(args.configfile)
-    plot_wrapper.store(show=args.show)
+
+if __name__ == "__main__":
+    main()

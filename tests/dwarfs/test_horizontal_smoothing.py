@@ -22,15 +22,14 @@
 #
 from hypothesis import (
     given,
-    HealthCheck,
-    reproduce_failure,
-    settings,
     strategies as hyp_st,
 )
 import pytest
 
-from tasmania.python.dwarfs.horizontal_smoothing import HorizontalSmoothing as HS
-from tasmania.python.dwarfs.horizontal_smoothers import (
+from tasmania.python.dwarfs.horizontal_smoothing import (
+    HorizontalSmoothing as HS,
+)
+from tasmania.python.dwarfs.subclasses.horizontal_smoothers import (
     FirstOrder,
     FirstOrder1DX,
     FirstOrder1DY,
@@ -43,42 +42,40 @@ from tasmania.python.dwarfs.horizontal_smoothers import (
 )
 
 from tests.strategies import st_floats
+from tests.utilities import hyp_settings
 
 
 def test_registry():
+    registry = HS.registry[
+        "tasmania.python.dwarfs.horizontal_smoothing.HorizontalSmoothing"
+    ]
+
     # first order
-    assert "first_order" in HS.registry
-    assert HS.registry["first_order"] == FirstOrder
-    assert "first_order_1dx" in HS.registry
-    assert HS.registry["first_order_1dx"] == FirstOrder1DX
-    assert "first_order_1dy" in HS.registry
-    assert HS.registry["first_order_1dy"] == FirstOrder1DY
+    assert "first_order" in registry
+    assert registry["first_order"] == FirstOrder
+    assert "first_order_1dx" in registry
+    assert registry["first_order_1dx"] == FirstOrder1DX
+    assert "first_order_1dy" in registry
+    assert registry["first_order_1dy"] == FirstOrder1DY
 
     # second order
-    assert "second_order" in HS.registry
-    assert HS.registry["second_order"] == SecondOrder
-    assert "second_order_1dx" in HS.registry
-    assert HS.registry["second_order_1dx"] == SecondOrder1DX
-    assert "second_order_1dy" in HS.registry
-    assert HS.registry["second_order_1dy"] == SecondOrder1DY
+    assert "second_order" in registry
+    assert registry["second_order"] == SecondOrder
+    assert "second_order_1dx" in registry
+    assert registry["second_order_1dx"] == SecondOrder1DX
+    assert "second_order_1dy" in registry
+    assert registry["second_order_1dy"] == SecondOrder1DY
 
     # third order
-    assert "third_order" in HS.registry
-    assert HS.registry["third_order"] == ThirdOrder
-    assert "third_order_1dx" in HS.registry
-    assert HS.registry["third_order_1dx"] == ThirdOrder1DX
-    assert "third_order_1dy" in HS.registry
-    assert HS.registry["third_order_1dy"] == ThirdOrder1DY
+    assert "third_order" in registry
+    assert registry["third_order"] == ThirdOrder
+    assert "third_order_1dx" in registry
+    assert registry["third_order_1dx"] == ThirdOrder1DX
+    assert "third_order_1dy" in registry
+    assert registry["third_order_1dy"] == ThirdOrder1DY
 
 
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
+@hyp_settings
 @given(hyp_st.data())
 def test_factory(data):
     # ========================================
@@ -98,7 +95,11 @@ def test_factory(data):
     # ========================================
     # first_order
     obj = HS.factory(
-        "first_order", (ni, nj, nk), smooth_coeff, smooth_coeff_max, smooth_damp_depth
+        "first_order",
+        (ni, nj, nk),
+        smooth_coeff,
+        smooth_coeff_max,
+        smooth_damp_depth,
     )
     assert isinstance(obj, FirstOrder)
 
@@ -124,7 +125,11 @@ def test_factory(data):
 
     # second_order
     obj = HS.factory(
-        "second_order", (ni, nj, nk), smooth_coeff, smooth_coeff_max, smooth_damp_depth
+        "second_order",
+        (ni, nj, nk),
+        smooth_coeff,
+        smooth_coeff_max,
+        smooth_damp_depth,
     )
     assert isinstance(obj, SecondOrder)
 
@@ -150,7 +155,11 @@ def test_factory(data):
 
     # third_order
     obj = HS.factory(
-        "third_order", (ni, nj, nk), smooth_coeff, smooth_coeff_max, smooth_damp_depth
+        "third_order",
+        (ni, nj, nk),
+        smooth_coeff,
+        smooth_coeff_max,
+        smooth_damp_depth,
     )
     assert isinstance(obj, ThirdOrder)
 

@@ -20,290 +20,207 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+from property_cached import cached_property
 from hypothesis import (
     given,
-    HealthCheck,
     reproduce_failure,
-    settings,
     strategies as hyp_st,
 )
 import pytest
 
-import gt4py as gt
-
-from tasmania.python.physics.static_energy import DryStaticEnergy, MoistStaticEnergy
-from tasmania import get_dataarray_3d
-
-from tests.conf import (
-    backend as conf_backend,
-    datatype as conf_dtype,
-    default_origin as conf_dorigin,
+from tasmania.python.framework.generic_functions import to_numpy
+from tasmania.python.framework.options import BackendOptions, StorageOptions
+from tasmania.python.physics.static_energy import (
+    DryStaticEnergy,
+    MoistStaticEnergy,
 )
+from tasmania.python.utils.storage import get_dataarray_3d
+
+from tests import conf
 from tests.strategies import st_domain, st_one_of, st_raw_field
-from tests.utilities import compare_dataarrays
+from tests.suites.core_components import DiagnosticComponentTestSuite
+from tests.suites.domain import DomainSuite
+from tests.utilities import compare_dataarrays, hyp_settings
 
 
 mfwv = "mass_fraction_of_water_vapor_in_air"
 
 
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
-@given(hyp_st.data())
-def test_dry(data):
-    # ========================================
-    # random data generation
-    # ========================================
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+class DryStaticEnergyTestSuite(DiagnosticComponentTestSuite):
+    def __init__(self, domain_suite, staggered):
+        self.staggered = staggered
+        super().__init__(domain_suite)
 
-    if gt_powered:
-        gt.storage.prepare_numpy()
+    @cached_property
+    def component(self):
+        return DryStaticEnergy(
+            self.ds.domain,
+            self.ds.grid_type,
+            self.staggered,
+            backend=self.ds.backend,
+            backend_options=self.ds.bo,
+            storage_shape=self.ds.storage_shape,
+            storage_options=self.ds.so,
+        )
 
-    domain = data.draw(
-        st_domain(
-            xaxis_length=(1, 30),
-            yaxis_length=(1, 30),
-            zaxis_length=(1, 20),
-            gt_powered=gt_powered,
-            backend=backend,
-            dtype=dtype,
-        ),
-        label="domain",
-    )
-    grid_type = data.draw(st_one_of(("physical", "numerical")), label="grid_type")
-    grid = domain.numerical_grid if grid_type == "numerical" else domain.physical_grid
+    def get_state(self):
+        nx, ny, nz = self.ds.grid.nx, self.ds.grid.ny, self.ds.grid.nz
+        t = self.hyp_data.draw(
+            st_raw_field(
+                self.ds.storage_shape or (nx, ny, nz),
+                -1e3,
+                1e3,
+                backend=self.ds.backend,
+                storage_options=self.ds.so,
+            ),
+            label="t",
+        )
+        h = self.hyp_data.draw(
+            st_raw_field(
+                self.ds.storage_shape or (nx, ny, nz),
+                -1e3,
+                1e3,
+                backend=self.ds.backend,
+                storage_options=self.ds.so,
+            ),
+            label="h",
+        )
+        h_stg = self.hyp_data.draw(
+            st_raw_field(
+                self.ds.storage_shape or (nx, ny, nz + 1),
+                -1e3,
+                1e3,
+                backend=self.ds.backend,
+                storage_options=self.ds.so,
+            ),
+            label="h_stg",
+        )
+        time = self.hyp_data.draw(hyp_st.datetimes(), label="time")
+        state = {
+            "time": time,
+            "air_temperature": get_dataarray_3d(
+                t,
+                self.ds.grid,
+                "K",
+                grid_shape=(nx, ny, nz),
+                set_coordinates=False,
+            ),
+            "height": get_dataarray_3d(
+                h,
+                self.ds.grid,
+                "m",
+                grid_shape=(nx, ny, nz),
+                set_coordinates=False,
+            ),
+            "height_on_interface_levels": get_dataarray_3d(
+                h_stg,
+                self.ds.grid,
+                "m",
+                grid_shape=(nx, ny, nz + 1),
+                set_coordinates=False,
+            ),
+        }
+        return state
 
-    nx, ny, nz = grid.nx, grid.ny, grid.nz
-    dnx = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dnx")
-    dny = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dny")
-    dnz = 1
-    storage_shape = (nx + dnx, ny + dny, nz + dnz)
-
-    t = data.draw(
-        st_raw_field(
-            storage_shape,
-            -1e3,
-            1e3,
-            gt_powered=gt_powered,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-        ),
-        label="dse",
-    )
-    h = data.draw(
-        st_raw_field(
-            storage_shape,
-            -1e3,
-            1e3,
-            gt_powered=gt_powered,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-        ),
-        label="qv",
-    )
-
-    time = data.draw(hyp_st.datetimes(), label="time")
-
-    # ========================================
-    # test bed
-    # ========================================
-    state = {
-        "time": time,
-        "air_temperature": get_dataarray_3d(
-            t, grid, "K", grid_shape=(nx, ny, nz), set_coordinates=False
-        ),
-        "height": get_dataarray_3d(
-            h, grid, "m", grid_shape=(nx, ny, nz), set_coordinates=False
-        ),
-        "height_on_interface_levels": get_dataarray_3d(
-            h, grid, "m", grid_shape=(nx, ny, nz + 1), set_coordinates=False
-        ),
-    }
-
-    #
-    # height
-    #
-    comp = DryStaticEnergy(
-        domain,
-        grid_type,
-        height_on_interface_levels=False,
-        gt_powered=gt_powered,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-        storage_shape=storage_shape,
-        rebuild=False,
-    )
-
-    diagnostics = comp(state)
-
-    assert "montgomery_potential" in diagnostics
-    compare_dataarrays(
-        diagnostics["montgomery_potential"][:nx, :ny, :nz],
-        get_dataarray_3d(
-            comp._cp * t[:nx, :ny, :nz] + comp._g * h[:nx, :ny, :nz],
-            grid,
-            "m^2 s^-2",
-            grid_shape=(nx, ny, nz),
-            set_coordinates=False,
-        ),
-        compare_coordinate_values=False,
-    )
-
-    assert len(diagnostics) == 1
-
-    #
-    # height_on_interface_levels
-    #
-    comp = DryStaticEnergy(
-        domain,
-        grid_type,
-        height_on_interface_levels=True,
-        gt_powered=gt_powered,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-        storage_shape=storage_shape,
-        rebuild=False,
-    )
-
-    diagnostics = comp(state)
-
-    assert "montgomery_potential" in diagnostics
-    compare_dataarrays(
-        diagnostics["montgomery_potential"][:nx, :ny, :nz],
-        get_dataarray_3d(
-            comp._cp * t[:nx, :ny, :nz]
-            + comp._g * 0.5 * (h[:nx, :ny, :nz] + h[:nx, :ny, 1 : nz + 1]),
-            grid,
-            "m^2 s^-2",
-            grid_shape=(nx, ny, nz),
-            set_coordinates=False,
-        ),
-        compare_coordinate_values=False,
-    )
-
-    assert len(diagnostics) == 1
+    def get_validation_diagnostics(self, raw_state_np):
+        nx, ny, nz = self.ds.grid.nx, self.ds.grid.ny, self.ds.grid.nz
+        t = raw_state_np["air_temperature"][:nx, :ny, :nz]
+        if self.staggered:
+            aux = raw_state_np["height_on_interface_levels"]
+            h = 0.5 * (aux[:nx, :ny, :nz] + aux[:nx, :ny, 1 : nz + 1])
+        else:
+            h = raw_state_np["height"][:nx, :ny, :nz]
+        cp = self.component.rcp[
+            "specific_heat_of_dry_air_at_constant_pressure"
+        ]
+        g = self.component.rcp["gravitational_acceleration"]
+        dse = cp * t + g * h
+        return {"montgomery_potential": dse}
 
 
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
-@given(hyp_st.data())
-def test_moist(data):
-    # ========================================
-    # random data generation
-    # ========================================
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+@hyp_settings
+@given(data=hyp_st.data())
+@pytest.mark.parametrize("backend", conf.backend)
+@pytest.mark.parametrize("dtype", conf.dtype)
+def test_dry(data, backend, dtype):
+    ds = DomainSuite(data, backend, dtype)
+    ts = DryStaticEnergyTestSuite(ds, staggered=False)
+    ts.run()
+    ts = DryStaticEnergyTestSuite(ds, staggered=True)
+    ts.run()
 
-    if gt_powered:
-        gt.storage.prepare_numpy()
 
-    domain = data.draw(
-        st_domain(
-            xaxis_length=(1, 30),
-            yaxis_length=(1, 30),
-            zaxis_length=(1, 20),
-            gt_powered=gt_powered,
-            backend=backend,
-            dtype=dtype,
-        ),
-        label="domain",
-    )
-    grid_type = data.draw(st_one_of(("physical", "numerical")), label="grid_type")
-    grid = domain.numerical_grid if grid_type == "numerical" else domain.physical_grid
+class MoistStaticEnergyTestSuite(DiagnosticComponentTestSuite):
+    @cached_property
+    def component(self):
+        return MoistStaticEnergy(
+            self.ds.domain,
+            self.ds.grid_type,
+            backend=self.ds.backend,
+            backend_options=self.ds.bo,
+            storage_shape=self.ds.storage_shape,
+            storage_options=self.ds.so,
+        )
 
-    nx, ny, nz = grid.nx, grid.ny, grid.nz
-    dnx = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dnx")
-    dny = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dny")
-    dnz = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dnz")
-    storage_shape = (nx + dnx, ny + dny, nz + dnz)
+    def get_state(self):
+        nx, ny, nz = self.ds.grid.nx, self.ds.grid.ny, self.ds.grid.nz
+        time = self.hyp_data.draw(hyp_st.datetimes(), label="time")
+        mtg = self.hyp_data.draw(
+            st_raw_field(
+                self.ds.storage_shape or (nx, ny, nz),
+                -1e3,
+                1e3,
+                backend=self.ds.backend,
+                storage_options=self.ds.so,
+            ),
+            label="mtg",
+        )
+        qv = self.hyp_data.draw(
+            st_raw_field(
+                self.ds.storage_shape or (nx, ny, nz),
+                -1e3,
+                1e3,
+                backend=self.ds.backend,
+                storage_options=self.ds.so,
+            ),
+            label="qv",
+        )
+        state = {
+            "time": time,
+            "montgomery_potential": get_dataarray_3d(
+                mtg,
+                self.ds.grid,
+                "m^2 s^-2",
+                grid_shape=(nx, ny, nz),
+                set_coordinates=False,
+            ),
+            mfwv: get_dataarray_3d(
+                qv,
+                self.ds.grid,
+                "g g^-1",
+                grid_shape=(nx, ny, nz),
+                set_coordinates=False,
+            ),
+        }
+        return state
 
-    dse = data.draw(
-        st_raw_field(
-            storage_shape,
-            -1e3,
-            1e3,
-            gt_powered=gt_powered,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-        ),
-        label="dse",
-    )
-    qv = data.draw(
-        st_raw_field(
-            storage_shape,
-            -1e3,
-            1e3,
-            gt_powered=gt_powered,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-        ),
-        label="qv",
-    )
+    def get_validation_diagnostics(self, raw_state_np):
+        nx, ny, nz = self.ds.grid.nx, self.ds.grid.ny, self.ds.grid.nz
+        mtg = raw_state_np["montgomery_potential"][:nx, :ny, :nz]
+        qv = raw_state_np[mfwv][:nx, :ny, :nz]
+        lhwv = self.component.rpc["latent_heat_of_vaporization_of_water"]
+        mse = mtg + lhwv * qv
+        return {"moist_static_energy": mse}
 
-    time = data.draw(hyp_st.datetimes(), label="time")
 
-    # ========================================
-    # test bed
-    # ========================================
-    state = {
-        "time": time,
-        "montgomery_potential": get_dataarray_3d(
-            dse, grid, "m^2 s^-2", grid_shape=(nx, ny, nz), set_coordinates=False
-        ),
-        mfwv: get_dataarray_3d(
-            qv, grid, "g g^-1", grid_shape=(nx, ny, nz), set_coordinates=False
-        ),
-    }
-
-    comp = MoistStaticEnergy(
-        domain,
-        grid_type,
-        gt_powered=gt_powered,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-        storage_shape=storage_shape,
-        rebuild=False,
-    )
-
-    diagnostics = comp(state)
-
-    assert "moist_static_energy" in diagnostics
-    compare_dataarrays(
-        diagnostics["moist_static_energy"][:nx, :ny, :nz],
-        get_dataarray_3d(
-            dse + comp._lhvw * qv,
-            grid,
-            "m^2 s^-2",
-            grid_shape=(nx, ny, nz),
-            set_coordinates=False,
-        )[:nx, :ny, :nz],
-        compare_coordinate_values=False,
-    )
-
-    assert len(diagnostics) == 1
+@hyp_settings
+@given(data=hyp_st.data())
+@pytest.mark.parametrize("backend", conf.backend)
+@pytest.mark.parametrize("dtype", conf.dtype)
+def test_moist(data, backend, dtype):
+    ds = DomainSuite(data, backend, dtype)
+    ts = MoistStaticEnergyTestSuite(ds)
+    ts.run()
 
 
 if __name__ == "__main__":

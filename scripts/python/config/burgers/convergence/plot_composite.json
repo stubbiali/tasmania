@@ -23,15 +23,18 @@
 	},
 	"figure_properties": {
 		"fontsize": 16,
-		"figsize": [10.5, 6.25],
+		"figsize": [12, 6.25],
 		"tight_layout": true,
-		"tight_layout_rect": [0, 0.06, 1, 1],
+		"tight_layout_rect": null,
 		"suptitle": null,
 		"figlegend_on": true,
+		"figlegend_multiple": false,
 		"figlegend_ax": 0,
-		"figlegend_loc": [0.135, 0.01],
-		"figlegend_framealpha": 1.0,
-		"figlegend_ncol": 6
+		"figlegend_loc": "center right",
+		"figlegend_ncol": 1,
+		"figlegend_title": null,
+		"subplots_adjust_right": 0.85,
+		"subplots_adjust_wspace": 0.35
 	},
 	"save_dest": null
 }

@@ -22,266 +22,17 @@
 #
 import abc
 import numpy as np
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Tuple
+
+from sympl._core.factory import AbstractFactory
 
 from gt4py import gtscript
 
-from tasmania.python.utils import taz_types
+from tasmania.python.framework.stencil import StencilFactory
+from tasmania.python.framework.tag import subroutine_definition
 
 
-class IsentropicVerticalFlux(abc.ABC):
-    """
-    Abstract base class whose derived classes implement different schemes
-    to compute the vertical numerical fluxes for the three-dimensional isentropic
-    dynamical core. The conservative form of the governing equations is used.
-    """
-
-    # class attributes
-    extent: int = None
-    order: int = None
-    externals: Dict[str, Any] = None
-
-    @staticmethod
-    @gtscript.function
-    @abc.abstractmethod
-    def __call__(
-        dt: float,
-        dz: float,
-        w: taz_types.gtfield_t,
-        s: taz_types.gtfield_t,
-        s_prv: taz_types.gtfield_t,
-        su: taz_types.gtfield_t,
-        su_prv: taz_types.gtfield_t,
-        sv: taz_types.gtfield_t,
-        sv_prv: taz_types.gtfield_t,
-        sqv: "Optional[taz_types.gtfield_t]" = None,
-        sqv_prv: "Optional[taz_types.gtfield_t]" = None,
-        sqc: "Optional[taz_types.gtfield_t]" = None,
-        sqc_prv: "Optional[taz_types.gtfield_t]" = None,
-        sqr: "Optional[taz_types.gtfield_t]" = None,
-        sqr_prv: "Optional[taz_types.gtfield_t]" = None,
-    ) -> "Tuple[taz_types.gtfield_t, ...]":
-        """
-        This method returns the :class:`gt4py.gtscript.Field`\s representing
-        the vertical fluxes for all the conservative model variables.
-        As this method is marked as abstract, its implementation is delegated
-        to the derived classes.
-
-        Parameters
-        ----------
-        dt : float
-            The time step, in seconds.
-        dz : float
-            The grid spacing in the vertical direction, in units of [K].
-        w : gt4py.gtscript.Field
-            The vertical velocity, i.e., the change over time in potential temperature,
-            in units of [K s^-1].
-        s : gt4py.gtscript.Field
-            The current isentropic density, in units of [kg m^-2 K^-1].
-        s_prv : gt4py.gtscript.Field
-            The provisional isentropic density, i.e., the isentropic density stepped
-            disregarding the vertical advection, in units of [kg m^-2 K^-1].
-        su : gt4py.gtscript.Field
-            The current x-momentum, in units of [kg m^-1 K^-1 s^-1].
-        su_prv : gt4py.gtscript.Field
-            The provisional x-momentum, i.e., the isentropic density stepped
-            disregarding the vertical advection, in units of [kg m^-1 K^-1 s^-1].
-        sv : gt4py.gtscript.Field
-            The current y-momentum, in units of [kg m^-1 K^-1 s^-1].
-        sv_prv : gt4py.gtscript.Field
-            The provisional y-momentum, i.e., the isentropic density stepped
-            disregarding the vertical advection, in units of [kg m^-1 K^-1 s^-1].
-        sqv : `gt4py.gtscript.Field`, optional
-            The current isentropic density of water vapor, in units of [kg m^-2 K^-1].
-        sqv_prv : `gt4py.gtscript.Field`, optional
-            The provisional isentropic density of water vapor, i.e., the isentropic
-            density of water vapor stepped disregarding the vertical advection,
-            in units of [kg m^-2 K^-1].
-        sqc : `gt4py.gtscript.Field`, optional
-            The current isentropic density of cloud liquid water, in units of [kg m^-2 K^-1].
-        sqc_prv : `gt4py.gtscript.Field`, optional
-            The provisional isentropic density of cloud liquid water, i.e., the isentropic
-            density of water vapor stepped disregarding the vertical advection,
-            in units of [kg m^-2 K^-1].
-        sqr : `gt4py.gtscript.Field`, optional
-            The current isentropic density of precipitation water, in units of [kg m^-2 K^-1].
-        sqr_prv : `gt4py.gtscript.Field`, optional
-            The provisional isentropic density of precipitation water, i.e., the isentropic
-            density of water vapor stepped disregarding the vertical advection,
-            in units of [kg m^-2 K^-1].
-
-        Returns
-        -------
-        flux_s_z : gt4py.gtscript.Field
-            The vertical flux for the isentropic density.
-        flux_su_z : gt4py.gtscript.Field
-            The vertical flux for the x-momentum.
-        flux_sv_z : gt4py.gtscript.Field
-            The vertical flux for the y-momentum.
-        flux_sqv_z : `gt4py.gtscript.Field`, optional
-            The vertical flux for the isentropic density of water vapor.
-        flux_sqc_z : `gt4py.gtscript.Field`, optional
-            The vertical flux for the isentropic density of cloud liquid water.
-        flux_sqr_z : `gt4py.gtscript.Field`, optional
-            The vertical flux for the isentropic density of precipitation water.
-        """
-        pass
-
-    @staticmethod
-    def factory(scheme: str) -> "IsentropicVerticalFlux":
-        """
-        Static method which returns an instance of the derived class
-        implementing the numerical scheme specified by `scheme`.
-
-        Parameters
-        ----------
-        scheme : str
-            String specifying the numerical scheme to implement. Either:
-
-                * 'upwind', for the upwind scheme;
-                * 'centered', for a second-order centered scheme;
-                * 'maccormack', for the MacCormack scheme.
-
-        Return
-        ------
-        obj :
-            Instance of the derived class implementing the scheme
-            specified by `scheme`.
-        """
-        from .implementations.vertical_fluxes import Upwind, Centered, MacCormack
-
-        if scheme == "upwind":
-            return Upwind()
-        elif scheme == "centered":
-            return Centered()
-        else:
-            return MacCormack()
-
-
-class IsentropicNonconservativeVerticalFlux(abc.ABC):
-    """
-    Abstract base class whose derived classes implement different schemes
-    to compute the vertical numerical fluxes for the three-dimensional isentropic
-    dynamical core. The nonconservative form of the governing equations is used.
-    """
-
-    # class attributes
-    extent: int = None
-    order: int = None
-    externals: Dict[str, Any] = None
-
-    @staticmethod
-    @gtscript.function
-    @abc.abstractmethod
-    def __call__(
-        dt: float,
-        dz: float,
-        w: taz_types.gtfield_t,
-        s: taz_types.gtfield_t,
-        s_prv: taz_types.gtfield_t,
-        u: taz_types.gtfield_t,
-        u_prv: taz_types.gtfield_t,
-        v: taz_types.gtfield_t,
-        v_prv: taz_types.gtfield_t,
-        qv: "Optional[taz_types.gtfield_t]" = None,
-        qv_prv: "Optional[taz_types.gtfield_t]" = None,
-        qc: "Optional[taz_types.gtfield_t]" = None,
-        qc_prv: "Optional[taz_types.gtfield_t]" = None,
-        qr: "Optional[taz_types.gtfield_t]" = None,
-        qr_prv: "Optional[taz_types.gtfield_t]" = None,
-    ) -> "Tuple[taz_types.gtfield_t, ...]":
-        """
-        Method returning the :class:`gt4py.gtscript.Field`\s representing
-        the vertical flux for all the prognostic model variables.
-        As this method is marked as abstract, its implementation is delegated
-        to the derived classes.
-
-        Parameters
-        ----------
-        dt : float
-            The time step, in seconds.
-        dz : float
-            The grid spacing in the vertical direction, in units of [K].
-        w : gt4py.gtscript.Field
-            The vertical velocity, i.e., the change over time in potential temperature,
-            in units of [K s^-1].
-        s : gt4py.gtscript.Field
-            The current isentropic density, in units of [kg m^-2 K^-1].
-        s_prv : gt4py.gtscript.Field
-            The provisional isentropic density, i.e., the isentropic density stepped
-            disregarding the vertical advection, in units of [kg m^-2 K^-1].
-        u : gt4py.gtscript.Field
-            The current x-velocity, in units of [m s^-1].
-        u_prv : gt4py.gtscript.Field
-            The provisional x-velocity, i.e., the isentropic density stepped
-            disregarding the vertical advection, in units of [m s^-1].
-        v : gt4py.gtscript.Field
-            The current y-velocity, in units of [m s^-1].
-        v_prv : gt4py.gtscript.Field
-            The provisional y-velocity, i.e., the isentropic density stepped
-            disregarding the vertical advection, in units of [m s^-1].
-        qv : `gt4py.gtscript.Field`, optional
-            The current mass fraction of water vapor, in units of [g g^-1].
-        qv_prv : `gt4py.gtscript.Field`, optional
-            The provisional mass fraction of water vapor, i.e., the isentropic
-            density of water vapor stepped disregarding the vertical advection,
-            in units of [g g^-1].
-        qc : `gt4py.gtscript.Field`, optional
-            The current mass fraction of cloud liquid water, in units of [g g^-1].
-        qc_prv : `gt4py.gtscript.Field`, optional
-            The provisional mass fraction of cloud liquid water, i.e., the isentropic
-            density of water vapor stepped disregarding the vertical advection,
-            in units of [g g^-1].
-        qr : `gt4py.gtscript.Field`, optional
-            The current mass fraction of precipitation water, in units of [g g^-1].
-        qr_prv : `gt4py.gtscript.Field`, optional
-            The provisional mass fraction of precipitation water, i.e., the isentropic
-            density of water vapor stepped disregarding the vertical advection,
-            in units of [g g^-1].
-
-        Returns
-        -------
-        flux_s_z : gt4py.gtscript.Field
-            The vertical flux for the isentropic density.
-        flux_u_z : gt4py.gtscript.Field
-            The vertical flux for the x-velocity.
-        flux_v_z : gt4py.gtscript.Field
-            The vertical flux for the y-velocity.
-        flux_qv_z : `gt4py.gtscript.Field`, optional
-            The vertical flux for the mass fraction of water vapor.
-        flux_qc_z : `gt4py.gtscript.Field`, optional
-            The vertical flux for the mass fraction of cloud liquid water.
-        flux_qr_z : `gt4py.gtscript.Field`, optional
-            The vertical flux for the mass fraction of precipitation water.
-        """
-        pass
-
-    @staticmethod
-    def factory(scheme: str) -> "IsentropicNonconservativeVerticalFlux":
-        """
-        Static method which returns an instance of the derived class
-        implementing the numerical scheme specified by `scheme`.
-
-        Parameters
-        ----------
-        scheme : str
-            String specifying the numerical scheme to implement. Either:
-
-                * 'centered', for a second-order centered scheme.
-
-        Return
-        ------
-        obj :
-            Instance of the derived class implementing the scheme
-            specified by `scheme`.
-        """
-        from .implementations.nonconservative_vertical_fluxes import Centered
-
-        if scheme == "centered":
-            return Centered()
-
-
-class IsentropicMinimalVerticalFlux(abc.ABC):
+class IsentropicMinimalVerticalFlux(AbstractFactory, StencilFactory):
     """
     Abstract base class whose derived classes implement different schemes
     to compute the vertical numerical fluxes for the three-dimensional
@@ -294,261 +45,59 @@ class IsentropicMinimalVerticalFlux(abc.ABC):
     order: int = None
     externals: Dict[str, Any] = None
 
-    def __init__(self, moist, gt_powered):
-        self.moist = moist
-        self.call = self.call_gt if gt_powered else self.call_numpy
-
-    @abc.abstractmethod
-    def call_numpy(
-            self,
-            dt: float,
-            dz: float,
-            w: np.ndarray,
-            s: np.ndarray,
-            su: np.ndarray,
-            sv: np.ndarray,
-            sqv: Optional[np.ndarray] = None,
-            sqc: Optional[np.ndarray] = None,
-            sqr: Optional[np.ndarray] = None,
-    ) -> List[np.ndarray]:
-        pass
+    def __init__(self, *, backend):
+        super().__init__(backend)
 
     @staticmethod
-    @gtscript.function
+    @subroutine_definition(backend=("numpy", "cupy"), stencil="flux_dry")
     @abc.abstractmethod
-    def call_gt(
+    def flux_dry_numpy(
         dt: float,
         dz: float,
-        w: taz_types.gtfield_t,
-        s: taz_types.gtfield_t,
-        su: taz_types.gtfield_t,
-        sv: taz_types.gtfield_t,
-        sqv: "Optional[taz_types.gtfield_t]" = None,
-        sqc: "Optional[taz_types.gtfield_t]" = None,
-        sqr: "Optional[taz_types.gtfield_t]" = None,
-    ) -> "Tuple[taz_types.gtfield_t, ...]":
-        """
-        This method returns the :class:`gt4py.gtscript.Field`\s representing
-        the vertical flux for all the conservative model variables.
-        As this method is marked as abstract, its implementation is delegated
-        to the derived classes.
-
-        Parameters
-        ----------
-        dt : float
-            The time step, in seconds.
-        dz : float
-            The grid spacing in the vertical direction, in units of [K].
-        w : gt4py.gtscript.Field
-            The vertical velocity, i.e., the change over time in potential temperature,
-            defined at the vertical interface levels, in units of [K s^-1].
-        s : gt4py.gtscript.Field
-            The isentropic density, in units of [kg m^-2 K^-1].
-        su : gt4py.gtscript.Field
-            The x-momentum, in units of [kg m^-1 K^-1 s^-1].
-        sv : gt4py.gtscript.Field
-            The y-momentum, in units of [kg m^-1 K^-1 s^-1].
-        sqv : `gt4py.gtscript.Field`, optional
-            The isentropic density of water vapor, in units of [kg m^-2 K^-1].
-        sqc : `gt4py.gtscript.Field`, optional
-            The isentropic density of cloud liquid water, in units of [kg m^-2 K^-1].
-        sqr : `gt4py.gtscript.Field`, optional
-            The isentropic density of precipitation water, in units of [kg m^-2 K^-1].
-
-        Returns
-        -------
-        flux_s_z : gt4py.gtscript.Field
-            The vertical flux for the isentropic density.
-        flux_su_z : gt4py.gtscript.Field
-            The vertical flux for the x-momentum.
-        flux_sv_z : gt4py.gtscript.Field
-            The vertical flux for the y-momentum.
-        flux_sqv_z : `gt4py.gtscript.Field`, optional
-            The vertical flux for the isentropic density of water vapor.
-        flux_sqc_z : `gt4py.gtscript.Field`, optional
-            The vertical flux for the isentropic density of cloud liquid water.
-        flux_sqr_z : `gt4py.gtscript.Field`, optional
-            The vertical flux for the isentropic density of precipitation water.
-        """
+        w: np.ndarray,
+        s: np.ndarray,
+        su: np.ndarray,
+        sv: np.ndarray,
+    ) -> Tuple[np.ndarray]:
         pass
 
     @staticmethod
-    def factory(scheme: str, moist: bool, gt_powered: bool) -> "IsentropicMinimalVerticalFlux":
-        """
-        Static method which returns an instance of the derived class
-        implementing the numerical scheme specified by `scheme`.
-
-        Parameters
-        ----------
-        scheme : str
-            String specifying the numerical scheme to implement. Either:
-
-                * 'upwind', for the upwind scheme;
-                * 'centered', for a second-order centered scheme;
-                * 'third_order_upwind', for the third-order upwind scheme;
-                * 'fifth_order_upwind', for the fifth-order upwind scheme.
-
-        moist : bool
-            TODO
-        gt_powered : bool
-            TODO
-
-        Return
-        ------
-        obj :
-            Instance of the derived class implementing the scheme
-            specified by `scheme`.
-
-        References
-        ----------
-        Wicker, L. J., and W. C. Skamarock. (2002). Time-splitting methods for \
-            elastic models using forward time schemes. *Monthly Weather Review*, \
-            *130*:2088-2097.
-        Zeman, C. (2016). An isentropic mountain flow model with iterative \
-            synchronous flux correction. *Master thesis, ETH Zurich*.
-        """
-        from .implementations.minimal_vertical_fluxes import (
-            Upwind,
-            Centered,
-            ThirdOrderUpwind,
-            FifthOrderUpwind,
-        )
-
-        if scheme == "upwind":
-            return Upwind(moist, gt_powered)
-        elif scheme == "centered":
-            return Centered(moist, gt_powered)
-        elif scheme == "third_order_upwind":
-            return ThirdOrderUpwind(moist, gt_powered)
-        elif scheme == "fifth_order_upwind":
-            return FifthOrderUpwind(moist, gt_powered)
-        else:
-            raise ValueError("Unsupported vertical flux scheme " "{}" "".format(scheme))
-
-
-class IsentropicBoussinesqMinimalVerticalFlux(abc.ABC):
-    """
-    Abstract base class whose derived classes implement different schemes
-    to compute the vertical numerical fluxes for the three-dimensional
-    isentropic, Boussinesq and *minimal* dynamical core. The conservative
-    form of the governing equations is used.
-    """
-
-    # class attributes
-    extent: int = None
-    order: int = None
-    externals: Dict[str, Any] = None
-
-    @staticmethod
-    @gtscript.function
+    @subroutine_definition(backend=("numpy", "cupy"), stencil="flux_moist")
     @abc.abstractmethod
-    def __call__(
+    def flux_moist_numpy(
         dt: float,
         dz: float,
-        w: taz_types.gtfield_t,
-        s: taz_types.gtfield_t,
-        su: taz_types.gtfield_t,
-        sv: taz_types.gtfield_t,
-        ddmtg: taz_types.gtfield_t,
-        sqv: "Optional[taz_types.gtfield_t]" = None,
-        sqc: "Optional[taz_types.gtfield_t]" = None,
-        sqr: "Optional[taz_types.gtfield_t]" = None,
-    ) -> "Tuple[taz_types.gtfield_t, ...]":
-        """
-        This method returns the :class:`gt4py.gtscript.Field`\s representing
-        the vertical flux for all the conservative model variables.
-        As this method is marked as abstract, its implementation is delegated
-        to the derived classes.
-
-        Parameters
-        ----------
-        dt : float
-            The time step, in seconds.
-        dz : float
-            The grid spacing in the vertical direction, in units of [K].
-        w : gt4py.gtscript.Field
-            The vertical velocity, i.e., the change over time in potential temperature,
-            defined at the vertical interface levels, in units of [K s^-1].
-        s : gt4py.gtscript.Field
-            The isentropic density, in units of [kg m^-2 K^-1].
-        su : gt4py.gtscript.Field
-            The x-momentum, in units of [kg m^-1 K^-1 s^-1].
-        sv : gt4py.gtscript.Field
-            The y-momentum, in units of [kg m^-1 K^-1 s^-1].
-        ddmtg : gt4py.gtscript.Field
-            Second derivative with respect to the potential temperature
-            of the Montgomery potential, in units of [m^2 K^-2 s^-2].
-        sqv : `gt4py.gtscript.Field`, optional
-            The isentropic density of water vapor, in units of [kg m^-2 K^-1].
-        sqc : `gt4py.gtscript.Field`, optional
-            The isentropic density of cloud liquid water, in units of [kg m^-2 K^-1].
-        sqr : `gt4py.gtscript.Field`, optional
-            The isentropic density of precipitation water, in units of [kg m^-2 K^-1].
-
-        Returns
-        -------
-        flux_s_z : gt4py.gtscript.Field
-            The vertical flux for the isentropic density.
-        flux_su_z : gt4py.gtscript.Field
-            The vertical flux for the x-momentum.
-        flux_sv_z : gt4py.gtscript.Field
-            The vertical flux for the y-momentum.
-        flux_ddmtg_z : gt4py.gtscript.Field
-            The vertical flux for the second derivative with respect to
-            the potential temperature of the Montgomery potential.
-        flux_sqv_z : `gt4py.gtscript.Field`, optional
-            The vertical flux for the isentropic density of water vapor.
-        flux_sqc_z : `gt4py.gtscript.Field`, optional
-            The vertical flux for the isentropic density of cloud liquid water.
-        flux_sqr_z : `gt4py.gtscript.Field`, optional
-            The vertical flux for the isentropic density of precipitation water.
-        """
+        w: np.ndarray,
+        sqv: np.ndarray,
+        sqc: np.ndarray,
+        sqr: np.ndarray,
+    ) -> Tuple[np.ndarray]:
         pass
 
     @staticmethod
-    def factory(scheme: str) -> "IsentropicBoussinesqMinimalVerticalFlux":
-        """
-        Static method which returns an instance of the derived class
-        implementing the numerical scheme specified by `scheme`.
+    @subroutine_definition(backend="gt4py*", stencil="flux_dry")
+    @gtscript.function
+    @abc.abstractmethod
+    def flux_dry_gt4py(
+        dt: float,
+        dz: float,
+        w: gtscript.Field["dtype"],
+        s: gtscript.Field["dtype"],
+        su: gtscript.Field["dtype"],
+        sv: gtscript.Field["dtype"],
+    ) -> "Tuple[gtscript.Field['dtype'], ...]":
+        pass
 
-        Parameters
-        ----------
-        scheme : str
-            String specifying the numerical scheme to implement. Either:
-
-                * 'upwind', for the upwind scheme;
-                * 'centered', for a second-order centered scheme;
-                * 'third_order_upwind', for the third-order upwind scheme;
-                * 'fifth_order_upwind', for the fifth-order upwind scheme.
-
-        Return
-        ------
-        obj :
-            Instance of the derived class implementing the scheme
-            specified by `scheme`.
-
-        References
-        ----------
-        Wicker, L. J., and W. C. Skamarock. (2002). Time-splitting methods for \
-            elastic models using forward time schemes. *Monthly Weather Review*, \
-            *130*:2088-2097.
-        Zeman, C. (2016). An isentropic mountain flow model with iterative \
-            synchronous flux correction. *Master thesis, ETH Zurich*.
-        """
-        from .implementations.boussinesq_minimal_vertical_fluxes import (
-            Upwind,
-            Centered,
-            ThirdOrderUpwind,
-            FifthOrderUpwind,
-        )
-
-        if scheme == "upwind":
-            return Upwind()
-        elif scheme == "centered":
-            return Centered()
-        elif scheme == "third_order_upwind":
-            return ThirdOrderUpwind()
-        elif scheme == "fifth_order_upwind":
-            return FifthOrderUpwind()
-        else:
-            raise ValueError("Unsupported vertical flux scheme " "{}" "".format(scheme))
+    @staticmethod
+    @subroutine_definition(backend="gt4py*", stencil="flux_moist")
+    @gtscript.function
+    @abc.abstractmethod
+    def flux_moist_gt4py(
+        dt: float,
+        dz: float,
+        w: gtscript.Field["dtype"],
+        sqv: gtscript.Field["dtype"],
+        sqc: gtscript.Field["dtype"],
+        sqr: gtscript.Field["dtype"],
+    ) -> "Tuple[gtscript.Field['dtype'], ...]":
+        pass

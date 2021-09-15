@@ -20,14 +20,20 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-import functools
-import numpy as np
 from sympl import DataArray
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Sequence, TYPE_CHECKING
 
+from tasmania.python.domain.grid import PhysicalGrid
 from tasmania.python.domain.horizontal_boundary import HorizontalBoundary
-from tasmania.python.domain.grid import PhysicalGrid, NumericalGrid
-from tasmania.python.utils import taz_types
+from tasmania.python.framework.allocators import as_storage
+from tasmania.python.utils import typingx as ty
+
+if TYPE_CHECKING:
+    from tasmania.python.domain.grid import NumericalGrid
+    from tasmania.python.framework.options import (
+        BackendOptions,
+        StorageOptions,
+    )
 
 
 class Domain:
@@ -42,7 +48,7 @@ class Domain:
     """
 
     def __init__(
-        self,
+        self: "Domain",
         domain_x: DataArray,
         nx: int,
         domain_y: DataArray,
@@ -55,17 +61,11 @@ class Domain:
         horizontal_boundary_kwargs: Optional[Dict[str, Any]] = None,
         topography_type: str = "flat",
         topography_kwargs: Optional[Dict[str, Any]] = None,
-        gt_powered: bool = True,
         *,
         backend: str = "numpy",
-        backend_opts: Optional[taz_types.options_dict_t] = None,
-        build_info: Optional[taz_types.options_dict_t] = None,
-        dtype: taz_types.dtype_t = np.float64,
-        exec_info: Optional[taz_types.mutable_options_dict_t] = None,
-        default_origin: Optional[taz_types.triplet_int_t] = None,
-        rebuild: bool = False,
-        storage_shape: Optional[taz_types.triplet_int_t] = None,
-        managed_memory: bool = False
+        backend_options: Optional["BackendOptions"] = None,
+        storage_shape: Optional[Sequence[int]] = None,
+        storage_options: Optional["StorageOptions"] = None
     ) -> None:
         """
         Parameters
@@ -110,32 +110,22 @@ class Domain:
         topography_kwargs : `dict`, optional
             Keyword arguments to be forwarded to the constructor of
             :class:`tasmania.Topography`.
-        gt_powered : bool
-            ``True`` to harness GT4Py, ``False`` for a vanilla Numpy implementation.
         backend : `str`, optional
-            The GT4Py backend.
-        backend_opts : `dict`, optional
-            Dictionary of backend-specific options.
-        build_info : `dict`, optional
-            Dictionary of building options.
-        dtype : `data-type`, optional
-            The data type of the storages.
-        exec_info : `dict`, optional
-            Dictionary which will store statistics and diagnostics gathered at run time.
-        default_origin : `tuple[int]`, optional
-            The default origin of the storages.
-        rebuild : `bool`, optional
-            ``True`` to trigger the stencils compilation at any class instantiation,
-            ``False`` to rely on the caching mechanism implemented by GT4Py.
-        storage_shape : `tuple[int]`, optional
-            The shape of the storages allocated within this class.
-        managed_memory : `bool`, optional
-            ``True`` to allocate the storages as managed memory, ``False`` otherwise.
+            The backend.
+        backend_options : `BackendOptions`, optional
+            Backend-specific options.
+        storage_shape : `Sequence[int]`, optional
+            The shape of the storages allocated within the class.
+        storage_options : `StorageOptions`, optional
+            Storage-related options.
         """
         # the physical grid
         topo_kwargs = (
             {}
-            if (topography_kwargs is None or not isinstance(topography_kwargs, dict))
+            if (
+                topography_kwargs is None
+                or not isinstance(topography_kwargs, dict)
+            )
             else topography_kwargs
         )
         self._pgrid = PhysicalGrid(
@@ -148,7 +138,7 @@ class Domain:
             z_interface=z_interface,
             topography_type=topography_type,
             topography_kwargs=topo_kwargs,
-            dtype=dtype,
+            storage_options=storage_options,
         )
 
         # the object handling the horizontal boundary conditions
@@ -162,67 +152,35 @@ class Domain:
         )
         self._hb = HorizontalBoundary.factory(
             horizontal_boundary_type,
-            nx,
-            ny,
+            self._pgrid,
             nb,
-            gt_powered=gt_powered,
             backend=backend,
-            backend_opts=backend_opts,
-            build_info=build_info,
-            dtype=dtype,
-            exec_info=exec_info,
-            default_origin=default_origin,
-            rebuild=rebuild,
+            backend_options=backend_options,
             storage_shape=storage_shape,
-            managed_memory=managed_memory,
+            storage_options=storage_options,
             **hb_kwargs
         )
 
-        # the numerical grid
-        self._cgrid = NumericalGrid(self._pgrid, self._hb)
-
     @property
-    def physical_grid(self) -> PhysicalGrid:
-        """ The :class:`~tasmania.PhysicalGrid`. """
-        return self._pgrid
-
-    @property
-    def numerical_grid(self) -> NumericalGrid:
-        """ The :class:`~tasmania.NumericalGrid`. """
-        return self._cgrid
-
-    @property
-    def horizontal_boundary(self) -> HorizontalBoundary:
+    def horizontal_boundary(self: "Domain") -> HorizontalBoundary:
         """
-        Instance of :class:`~tasmania.HorizontalBoundary` handling the boundary
-        conditions.
-
-        This object is enriched with the following new methods:
-
-        * ``dmn_enforce_field``,
-        * ``dmn_enforce_raw``,
-        * ``dmn_enforce``,
-        * ``dmn_set_outermost_layers_x``, and
-        * ``dmn_set_outermost_layers_y``.
+        Instance of :class:`~tasmania.HorizontalBoundary` handling the
+        boundary conditions.
         """
-        hb = self._hb
-
-        hb.dmn_enforce_field = functools.partial(
-            hb.enforce_field, grid=self.numerical_grid
-        )
-        hb.dmn_enforce_raw = functools.partial(hb.enforce_raw, grid=self.numerical_grid)
-        hb.dmn_enforce = functools.partial(hb.enforce, grid=self.numerical_grid)
-        hb.dmn_set_outermost_layers_x = functools.partial(
-            hb.set_outermost_layers_x, grid=self.numerical_grid
-        )
-        hb.dmn_set_outermost_layers_y = functools.partial(
-            hb.set_outermost_layers_y, grid=self.numerical_grid
-        )
-
         return self._hb
 
-    def update_topography(self, time: taz_types.datetime_t) -> None:
-        """ Update the (time-dependent) :class:`~tasmania.Topography`.
+    @property
+    def numerical_grid(self: "Domain") -> "NumericalGrid":
+        """The :class:`~tasmania.NumericalGrid`."""
+        return self._hb.numerical_grid
+
+    @property
+    def physical_grid(self: "Domain") -> PhysicalGrid:
+        """The :class:`~tasmania.PhysicalGrid`."""
+        return self._pgrid
+
+    def update_topography(self: "Domain", time: ty.Datetime) -> None:
+        """Update the (time-dependent) :class:`~tasmania.Topography`.
 
         Parameters
         ----------
@@ -230,4 +188,84 @@ class Domain:
             The elapsed simulation time.
         """
         self._pgrid.update_topography(time)
-        self._cgrid.update_topography(time)
+        self._hb.numerical_grid.update_topography(time)
+
+    def copy(
+        self,
+        *,
+        backend: Optional[str] = None,
+        backend_options: Optional["BackendOptions"] = None,
+        storage_options: Optional["StorageOptions"] = None
+    ) -> "Domain":
+        nx = self.physical_grid.nx
+        x0 = self.physical_grid.x.values[0]
+        x1 = self.physical_grid.x.values[int(nx > 1)]
+        dims = self.physical_grid.x.dims[0]
+        units = self.physical_grid.x.attrs["units"]
+        domain_x = DataArray([x0, x1], dims=dims, attrs={"units": units})
+
+        ny = self.physical_grid.ny
+        y0 = self.physical_grid.y.values[0]
+        y1 = self.physical_grid.y.values[int(ny > 1)]
+        dims = self.physical_grid.y.dims[0]
+        units = self.physical_grid.y.attrs["units"]
+        domain_y = DataArray([y0, y1], dims=dims, attrs={"units": units})
+
+        z0 = self.physical_grid.z_on_interface_levels.values[0]
+        z1 = self.physical_grid.z_on_interface_levels.values[1]
+        dims = self.physical_grid.z.dims[0]
+        units = self.physical_grid.z.attrs["units"]
+        domain_z = DataArray([z0, z1], dims=dims, attrs={"units": units})
+        nz = self.physical_grid.nz
+        z_interface = self.physical_grid.z_interface
+
+        hb_type = self.horizontal_boundary.type
+        nb = self.horizontal_boundary.nb
+        hb_kwargs = self.horizontal_boundary.kwargs
+
+        topo_type = self.physical_grid.topography.type
+        topo_kwargs = self.physical_grid.topography.kwargs
+
+        ba = backend or self.horizontal_boundary.backend
+        bo = backend_options or self.horizontal_boundary.backend_options
+        so = storage_options or self.horizontal_boundary.storage_options
+
+        out = Domain(
+            domain_x,
+            nx,
+            domain_y,
+            ny,
+            domain_z,
+            nz,
+            z_interface,
+            hb_type,
+            nb,
+            hb_kwargs,
+            topo_type,
+            topo_kwargs,
+            backend=ba,
+            backend_options=bo,
+            storage_options=so,
+        )
+
+        ref_state_src = self.horizontal_boundary.reference_state
+        if len(ref_state_src) > 0:
+            ref_state = {"time": ref_state_src["time"]}
+            for name in ref_state_src:
+                if name != "time":
+                    raw_field_src = ref_state_src[name].data
+                    raw_field = as_storage(
+                        ba, data=raw_field_src, storage_options=so
+                    )
+                    dims = ref_state_src[name].dims
+                    coords = ref_state_src[name].coords
+                    units = ref_state_src[name].attrs["units"]
+                    ref_state[name] = DataArray(
+                        raw_field,
+                        coords=coords,
+                        dims=dims,
+                        attrs={"units": units},
+                    )
+            out.horizontal_boundary.reference_state = ref_state
+
+        return out

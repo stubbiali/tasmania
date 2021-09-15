@@ -21,58 +21,56 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 from hypothesis import (
-    assume,
     given,
-    HealthCheck,
-    settings,
     strategies as hyp_st,
-    reproduce_failure,
 )
 import pytest
 
 from tasmania.python.framework.fakes import FakeTendencyComponent
-from tasmania.python.framework.tendency_stepper import TendencyStepper
-from tasmania.python.framework.tendency_steppers.forward_euler import ForwardEuler
-from tasmania.python.framework.tendency_steppers.implicit import Implicit
-from tasmania.python.framework.tendency_steppers.rk2 import RK2
-from tasmania.python.framework.tendency_steppers.rk3ws import RK3WS
+from tasmania.python.framework.steppers import TendencyStepper
+from tasmania.python.framework.subclasses.tendency_steppers import (
+    ForwardEuler,
+)
+from tasmania.python.framework.subclasses.tendency_steppers import RK2
+from tasmania.python.framework.subclasses.tendency_steppers import RK3WS
 
+from tests import conf
 from tests.strategies import st_domain, st_one_of
+from tests.suites.concurrent_coupling import ConcurrentCouplingTestSuite
+from tests.suites.core_components import FakeTendencyComponent1TestSuite
+from tests.suites.domain import DomainSuite
+from tests.suites.steppers import TendencyStepperTestSuite
+from tests.utilities import hyp_settings
 
 
 def test_registry():
+    registry = TendencyStepper.registry[
+        "tasmania.python.framework.tendency_stepper.TendencyStepper"
+    ]
+
     # forward euler
-    assert "forward_euler" in TendencyStepper.registry
-    assert TendencyStepper.registry["forward_euler"] == ForwardEuler
+    assert "forward_euler" in registry
+    assert registry["forward_euler"] == ForwardEuler
 
     # rk2
-    assert "rk2" in TendencyStepper.registry
-    assert TendencyStepper.registry["rk2"] == RK2
+    assert "rk2" in registry
+    assert registry["rk2"] == RK2
 
     # rk3ws
-    assert "rk3ws" in TendencyStepper.registry
-    assert TendencyStepper.registry["rk3ws"] == RK3WS
-
-    # implicit
-    assert "implicit" in TendencyStepper.registry
-    assert TendencyStepper.registry["implicit"] == Implicit
+    assert "rk3ws" in registry
+    assert registry["rk3ws"] == RK3WS
 
 
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
+@hyp_settings
 @given(data=hyp_st.data())
 def test_factory(data):
     # ========================================
     # random data generation
     # ========================================
     domain = data.draw(st_domain(), label="domain")
-    grid_type = data.draw(st_one_of(("physical", "numerical")), label="grid_type")
+    grid_type = data.draw(
+        st_one_of(("physical", "numerical")), label="grid_type"
+    )
 
     # ========================================
     # test bed
@@ -91,9 +89,20 @@ def test_factory(data):
     obj = TendencyStepper.factory("rk3ws", ftc)
     assert isinstance(obj, RK3WS)
 
-    # implicit
-    obj = TendencyStepper.factory("implicit", ftc)
-    assert isinstance(obj, Implicit)
+
+@hyp_settings
+@given(data=hyp_st.data())
+@pytest.mark.parametrize("scheme", ("forward_euler", "rk2", "rk3ws"))
+@pytest.mark.parametrize("enforce_hb", (False, True))
+@pytest.mark.parametrize("backend", conf.backend)
+@pytest.mark.parametrize("dtype", conf.dtype)
+def test_numerics(data, scheme, enforce_hb, backend, dtype):
+    ds = DomainSuite(data, backend, dtype, grid_type="numerical")
+    tcts = FakeTendencyComponent1TestSuite(ds)
+    tsts = TendencyStepperTestSuite.factory(
+        scheme, tcts, enforce_horizontal_boundary=enforce_hb
+    )
+    tsts.run()
 
 
 if __name__ == "__main__":

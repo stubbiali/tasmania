@@ -29,7 +29,7 @@
 		"cbar_ticks_pos": "center",
 		"cbar_center": null,
 		"cbar_half_width": null,
-		"cbar_x_label": "$x$-velocity [$10^{-3}$ m s$^{-1}$]",
+		"cbar_x_label": "$x$-velocity [$\\times 10^3$]",
 		"cbar_y_label": "",
 		"cbar_title": "",
 		"cbar_orientation": "horizontal",

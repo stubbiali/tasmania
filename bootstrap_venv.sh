@@ -1,12 +1,32 @@
 #!/bin/bash
+#
+# Tasmania
+#
+# Copyright (c) 2018-2019, ETH Zurich
+# All rights reserved.
+#
+# This file is part of the Tasmania project. Tasmania is free software:
+# you can redistribute it and/or modify it under the terms of the
+# GNU General Public License as published by the Free Software Foundation,
+# either version 3 of the License, or any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
 
 MODULES=( )
 # MODULES=( daint-gpu cray-python/3.6.5.7 cudatoolkit )
-PYTHON=python3.6
+PYTHON=python3.8
 PIP_UPGRADE=1
 DISABLE_CEXT=1
-GT4PY_CUDA=
-GT4PY_DAWN=1
+GT4PY_EXTRAS=
 VENV=venv
 FRESH_INSTALL=1
 
@@ -29,13 +49,8 @@ function install()
   pip install -e docker/external/sympl
 
   # install gt4py from source
-  if [ "$GT4PY_DAWN" -gt 0 ]; then
-    pip install -e docker/external/gt4py[$GT4PY_CUDA,dawn] || \
-      pip install -e docker/external/gt4py[dawn]
-  else
-    pip install -e docker/external/gt4py[$GT4PY_CUDA] || \
-      pip install -e docker/external/gt4py
-  fi
+  pip install -e docker/external/gt4py[$GT4PY_EXTRAS] || \
+    pip install -e docker/external/gt4py
 
   # install gt sources
   python -m gt4py.gt_src_manager install

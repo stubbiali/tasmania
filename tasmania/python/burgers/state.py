@@ -25,26 +25,19 @@ import pint
 from sympl import DataArray
 from typing import Optional, TYPE_CHECKING
 
-try:
-    import cupy as cp
-except ImportError:
-    cp = np
-
-from tasmania.python.utils import taz_types
-from tasmania.python.utils.storage_utils import (
-    get_asarray_function,
-    get_dataarray_3d,
-    zeros,
-)
+from tasmania.python.framework.options import StorageOptions
+from tasmania.python.framework.stencil import StencilFactory
+from tasmania.python.utils import typingx as ty
+from tasmania.python.utils.storage import get_dataarray_3d
 
 if TYPE_CHECKING:
     from tasmania.python.domain.grid import Grid
 
 
 class ZhaoSolutionFactory:
-    """ Factory of valid velocity fields for the Zhao test case. """
+    """Factory of valid velocity fields for the Zhao test case."""
 
-    def __init__(self, initial_time: taz_types.datetime_t, eps: DataArray) -> None:
+    def __init__(self, initial_time: ty.Datetime, eps: DataArray) -> None:
         """
         Parameters
         ----------
@@ -52,16 +45,15 @@ class ZhaoSolutionFactory:
             The starting time of the simulation.
         eps : sympl.DataArray
             1-item :class:`sympl.DataArray` representing the diffusivity.
-            The units should be compatible with 'm s^-2'.
+            The units should be compatible with 'm^2 s^-1'.
         """
         self._itime = initial_time
         self._eps = eps.to_units("m^2 s^-1").values.item()
-
         self._ureg = pint.UnitRegistry()
 
     def __call__(
         self,
-        time: taz_types.datetime_t,
+        time: ty.Datetime,
         grid: "Grid",
         slice_x: Optional[slice] = None,
         slice_y: Optional[slice] = None,
@@ -76,11 +68,13 @@ class ZhaoSolutionFactory:
         grid : tasmania.Grid
             The underlying grid.
         slice_x : `slice`, optional
-            The portion of the grid along the x-axis where the solution should be computed.
-            If not specified, the solution is calculated over all grid points in x-direction.
+            The portion of the grid along the x-axis where the solution should
+            be computed. If not specified, the solution is calculated over all
+            grid points in x-direction.
         slice_y : `slice`, optional
-            The portion of the grid along the y-axis where the solution should be computed.
-            If not specified, the solution is calculated over all grid points in y-direction.
+            The portion of the grid along the y-axis where the solution should
+            be computed. If not specified, the solution is calculated over all
+            grid points in y-direction.
         field_name : `str`, optional
             The field to calculate. Either:
 
@@ -153,19 +147,16 @@ class ZhaoSolutionFactory:
         return factor * tmp
 
 
-class ZhaoStateFactory:
-    """ Factory of valid states for the Zhao test case. """
+class ZhaoStateFactory(StencilFactory):
+    """Factory of valid states for the Zhao test case."""
 
     def __init__(
         self,
-        initial_time: taz_types.datetime_t,
+        initial_time: ty.Datetime,
         eps: DataArray,
-        gt_powered: bool,
         *,
         backend: str = "numpy",
-        dtype: taz_types.dtype_t = np.float64,
-        default_origin: Optional[taz_types.triplet_int_t] = None,
-        managed_memory: bool = False
+        storage_options: Optional["StorageOptions"] = None
     ) -> None:
         """
         Parameters
@@ -174,28 +165,16 @@ class ZhaoStateFactory:
             The initial time of the simulation.
         eps : sympl.DataArray
             1-item :class:`sympl.DataArray` representing the diffusivity.
-            The units should be compatible with 'm s^-2'.
-        gt_powered : bool
-            ``True`` to harness GT4Py, ``False`` for a vanilla Numpy implementation.
+            The units should be compatible with 'm^2 s^-1'.
         backend : `str`, optional
-            The GT4Py backend.
-        dtype : `data-type`, optional
-            Data type of the storages.
-        default_origin : `tuple[int]`, optional
-            Storage default origin.
-        managed_memory : `bool`, optional
-            ``True`` to allocate the storages as managed memory, ``False`` otherwise.
+            The backend.
+        storage_options : `StorageOptions`, optional
+            Storage-related options.
         """
+        super().__init__(backend=backend, storage_options=storage_options)
         self._solution_factory = ZhaoSolutionFactory(initial_time, eps)
-        self._gt_powered = gt_powered
-        self._backend = backend
-        self._dtype = dtype
-        self._default_origin = default_origin
-        self._managed_memory = managed_memory
 
-    def __call__(
-        self, time: taz_types.datetime_t, grid: "Grid"
-    ) -> taz_types.dataarray_dict_t:
+    def __call__(self, time: ty.Datetime, grid: "Grid") -> ty.DataArrayDict:
         """
         Parameters
         ----------
@@ -210,38 +189,25 @@ class ZhaoStateFactory:
             The computed model state dictionary.
         """
         nx, ny = grid.nx, grid.ny
-        gt_powered = self._gt_powered
-        backend = self._backend
-        dtype = self._dtype
-        default_origin = self._default_origin
-        managed_memory = self._managed_memory
 
-        asarray = get_asarray_function(gt_powered, backend)
-
-        u = zeros(
-            (nx, ny, 1),
-            gt_powered=gt_powered,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-            managed_memory=managed_memory,
+        u = self.zeros(shape=(nx, ny, 1))
+        u[...] = self.as_storage(
+            data=self._solution_factory(time, grid, field_name="x_velocity")
         )
-        u[...] = asarray(self._solution_factory(time, grid, field_name="x_velocity"))
-        u_da = get_dataarray_3d(u, grid, "m s^-1", "x_velocity", set_coordinates=False)
-        u_da.attrs["backend"] = backend
-        u_da.attrs["default_origin"] = default_origin
-
-        v = zeros(
-            (nx, ny, 1),
-            gt_powered=gt_powered,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-            managed_memory=managed_memory,
+        u_da = get_dataarray_3d(
+            u, grid, "m s^-1", "x_velocity", set_coordinates=False
         )
-        v[...] = asarray(self._solution_factory(time, grid, field_name="y_velocity"))
-        v_da = get_dataarray_3d(v, grid, "m s^-1", "y_velocity", set_coordinates=False)
-        v_da.attrs["backend"] = backend
-        v_da.attrs["default_origin"] = default_origin
+        # u_da.attrs["backend"] = backend
+        # u_da.attrs["default_origin"] = default_origin
+
+        v = self.zeros(shape=(nx, ny, 1))
+        v[...] = self.as_storage(
+            data=self._solution_factory(time, grid, field_name="y_velocity")
+        )
+        v_da = get_dataarray_3d(
+            v, grid, "m s^-1", "y_velocity", set_coordinates=False
+        )
+        # v_da.attrs["backend"] = backend
+        # v_da.attrs["default_origin"] = default_origin
 
         return {"time": time, "x_velocity": u_da, "y_velocity": v_da}

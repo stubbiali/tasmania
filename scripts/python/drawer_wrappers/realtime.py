@@ -21,7 +21,11 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 import json
-from tasmania import Contour, Contourf, LineProfile, Quiver
+
+from tasmania.python.plot.contour import Contour
+from tasmania.python.plot.contourf import Contourf
+from tasmania.python.plot.profile import LineProfile
+from tasmania.python.plot.quiver import Quiver
 
 from scripts.python.data_loaders.base import BaseLoader
 from scripts.python.drawer_wrappers.base import DrawerWrapper

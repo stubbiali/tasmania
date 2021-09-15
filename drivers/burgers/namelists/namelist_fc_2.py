@@ -46,18 +46,27 @@ hb_type = "dirichlet"
 nb = 3
 hb_kwargs = {"core": zsof}
 
-# gt4py settings
-gt_powered = True
-gt_kwargs = {
-    "backend": "gtcuda",
-    "build_info": None,
-    "dtype": np.float64,
-    "exec_info": None,
-    "default_origin": (nb, nb, 0),
-    "rebuild": False,
-    "managed_memory": False,
-}
-gt_kwargs["backend_opts"] = {"verbose": True} if gt_kwargs["backend"] != "numpy" else None
+# backend settings and low-level details
+backend = "gt4py:gtx86"
+bo = taz.BackendOptions(
+    # gt4py
+    build_info={},
+    device_sync=True,
+    exec_info={"__aggregate_data": True},
+    rebuild=False,
+    validate_args=False,
+    # numba
+    cache=True,
+    check_rebuild=False,
+    fastmath=False,
+    inline="always",
+    nopython=True,
+    parallel=True,
+)
+so = taz.StorageOptions(
+    dtype=np.float64, aligned_index=(nb, nb, 0), managed="gt4py"
+)
+enable_checks = False
 
 # numerical scheme
 time_integration_scheme = "rk3ws"
@@ -65,15 +74,14 @@ flux_scheme = "fifth_order"
 
 # simulation time
 cfl = 1.0
-# timestep = pd.Timedelta(cfl / (nx - 1) ** 2, unit="s")
-timestep = pd.Timedelta(0.00048, unit="s")
+timestep = pd.Timedelta(cfl / (nx - 1) ** 2, unit="s")
 niter = 4 ** factor * 100
 
 # output
 save = True
 save_frequency = -1
 filename = (
-    "/scratch/snx3000tds/subbiali/data/pdc_paper/burgers/"
-    "burgers_fc_{}_{}.nc".format(gt_kwargs["backend"], factor)
+    f"/Users/subbiali/Desktop/phd/tasmania/oop/data/test/burgers_fc_"
+    f"{backend}_{factor}.nc"
 )
 print_frequency = -1

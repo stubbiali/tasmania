@@ -20,5 +20,4 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from tasmania.python.framework import sts_tendency_steppers
-from tasmania.python.framework import tendency_steppers
+from tasmania.python.framework import subclasses

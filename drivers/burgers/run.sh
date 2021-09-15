@@ -20,7 +20,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-NITER=4
+NITER=6
 
 for i in $(seq 1 $NITER); do
 #  rm -rf $SCRATCH/gt_cache/tasmania-new-calling-api
@@ -28,9 +28,9 @@ for i in $(seq 1 $NITER); do
   python driver_namelist_fc.py
   echo ""
 
-  echo "python driver_namelist_lfc.py"
-  python driver_namelist_lfc.py
-  echo ""
+#  echo "python driver_namelist_lfc.py"
+#  python driver_namelist_lfc.py
+#  echo ""
 
 #  echo "python driver_namelist_ps.py"
 #  python driver_namelist_ps.py
@@ -40,11 +40,11 @@ for i in $(seq 1 $NITER); do
 #  python driver_namelist_sts.py
 #  echo ""
 
-  echo "python driver_namelist_sus.py"
-  python driver_namelist_sus.py
-  echo ""
-
-  echo "python driver_namelist_ssus.py"
-  python driver_namelist_ssus.py
-  echo ""
+#  echo "python driver_namelist_sus.py"
+#  python driver_namelist_sus.py
+#  echo ""
+#
+#  echo "python driver_namelist_ssus.py"
+#  python driver_namelist_ssus.py
+#  echo ""
 done

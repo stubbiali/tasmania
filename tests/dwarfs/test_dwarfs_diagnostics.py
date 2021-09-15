@@ -22,47 +22,41 @@
 #
 from hypothesis import (
     given,
-    HealthCheck,
     reproduce_failure,
-    settings,
     strategies as hyp_st,
 )
 import pytest
 
-import gt4py as gt
-
-from tasmania.python.dwarfs.diagnostics import HorizontalVelocity, WaterConstituent
-from tasmania.python.utils.storage_utils import zeros
+from tasmania.python.dwarfs.diagnostics import (
+    HorizontalVelocity,
+    WaterConstituent,
+)
+from tasmania.python.framework.allocators import zeros
+from tasmania.python.framework.generic_functions import to_numpy
+from tasmania.python.framework.options import BackendOptions, StorageOptions
 
 from tests.conf import (
+    aligned_index as conf_aligned_index,
     backend as conf_backend,
-    datatype as conf_dtype,
-    default_origin as conf_dorigin,
+    dtype as conf_dtype,
 )
 from tests.strategies import st_one_of, st_domain, st_raw_field
-from tests.utilities import compare_arrays
+from tests.utilities import compare_arrays, hyp_settings
 
 
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
-@given(hyp_st.data())
-def test_horizontal_velocity_staggered(data):
+@hyp_settings
+@given(data=hyp_st.data())
+@pytest.mark.parametrize("backend", conf_backend)
+@pytest.mark.parametrize("dtype", conf_dtype)
+def test_horizontal_velocity_staggered(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-
-    if gt_powered:
-        gt.storage.prepare_numpy()
+    aligned_index = data.draw(
+        st_one_of(conf_aligned_index), label="aligned_index"
+    )
+    bo = BackendOptions(rebuild=False, cache=True, check_rebuild=False)
+    so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
 
     domain = data.draw(
         st_domain(
@@ -70,9 +64,9 @@ def test_horizontal_velocity_staggered(data):
             yaxis_length=(1, 30),
             zaxis_length=(1, 20),
             nb=1,
-            gt_powered=gt_powered,
             backend=backend,
-            dtype=dtype,
+            backend_options=bo,
+            storage_options=so,
         ),
         label="domain",
     )
@@ -84,10 +78,8 @@ def test_horizontal_velocity_staggered(data):
             shape=(nx + 1, ny + 1, nz + 1),
             min_value=1,
             max_value=1e4,
-            gt_powered=gt_powered,
             backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
+            storage_options=so,
         ),
         label="r",
     )
@@ -96,10 +88,8 @@ def test_horizontal_velocity_staggered(data):
             shape=(nx + 1, ny + 1, nz + 1),
             min_value=1,
             max_value=1e4,
-            gt_powered=gt_powered,
             backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
+            storage_options=so,
         ),
         label="r",
     )
@@ -108,10 +98,8 @@ def test_horizontal_velocity_staggered(data):
             shape=(nx + 1, ny + 1, nz + 1),
             min_value=1,
             max_value=1e4,
-            gt_powered=gt_powered,
             backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
+            storage_options=so,
         ),
         label="r",
     )
@@ -119,76 +107,54 @@ def test_horizontal_velocity_staggered(data):
     # ========================================
     # test bed
     # ========================================
-    ru = zeros(
-        (nx + 1, ny + 1, nz + 1),
-        gt_powered,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
-    rv = zeros(
-        (nx + 1, ny + 1, nz + 1),
-        gt_powered,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
+    ru = zeros(backend, shape=(nx + 1, ny + 1, nz + 1), storage_options=so)
+    rv = zeros(backend, shape=(nx + 1, ny + 1, nz + 1), storage_options=so)
 
     hv = HorizontalVelocity(
-        grid, True, gt_powered=gt_powered, backend=backend, dtype=dtype, rebuild=False
+        grid, True, backend=backend, backend_options=bo, storage_options=so
     )
 
     hv.get_momenta(r, u, v, ru, rv)
 
-    ru_val = r[:-1, :-1, :-1] * 0.5 * (u[:-1, :-1, :-1] + u[1:, :-1, :-1])
+    r_np, u_np, v_np = to_numpy(r), to_numpy(u), to_numpy(v)
+    ru_val = (
+        r_np[:-1, :-1, :-1] * 0.5 * (u_np[:-1, :-1, :-1] + u_np[1:, :-1, :-1])
+    )
     compare_arrays(ru[:-1, :-1, :-1], ru_val)
-    rv_val = r[:-1, :-1, :-1] * 0.5 * (v[:-1, :-1, :-1] + v[:-1, 1:, :-1])
+    rv_val = (
+        r_np[:-1, :-1, :-1] * 0.5 * (v_np[:-1, :-1, :-1] + v_np[:-1, 1:, :-1])
+    )
     compare_arrays(rv[:-1, :-1, :-1], rv_val)
 
-    u_new = zeros(
-        (nx + 1, ny + 1, nz + 1),
-        gt_powered,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
-    v_new = zeros(
-        (nx + 1, ny + 1, nz + 1),
-        gt_powered,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
+    u_new = zeros(backend, shape=(nx + 1, ny + 1, nz + 1), storage_options=so)
+    v_new = zeros(backend, shape=(nx + 1, ny + 1, nz + 1), storage_options=so)
 
     hv.get_velocity_components(r, ru, rv, u_new, v_new)
 
-    u_new_val = (ru[:-2, :] + ru[1:-1, :]) / (r[:-2, :] + r[1:-1, :])
+    ru_np, rv_np = to_numpy(ru), to_numpy(rv)
+    u_new_val = (ru_np[:-2, :] + ru_np[1:-1, :]) / (
+        r_np[:-2, :] + r_np[1:-1, :]
+    )
     compare_arrays(u_new[1:-1, :-1, :-1], u_new_val[:, :-1, :-1])
-    v_new_val = (rv[:, :-2] + rv[:, 1:-1]) / (r[:, :-2] + r[:, 1:-1])
+    v_new_val = (rv_np[:, :-2] + rv_np[:, 1:-1]) / (
+        r_np[:, :-2] + r_np[:, 1:-1]
+    )
     compare_arrays(v_new[:-1, 1:-1, :-1], v_new_val[:-1, :, :-1])
 
 
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
-@given(hyp_st.data())
-def test_horizontal_velocity(data):
+@hyp_settings
+@given(data=hyp_st.data())
+@pytest.mark.parametrize("backend", conf_backend)
+@pytest.mark.parametrize("dtype", conf_dtype)
+def test_horizontal_velocity(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-
-    if gt_powered:
-        # comment the following line to prevent segfault
-        gt.storage.prepare_numpy()
+    aligned_index = data.draw(
+        st_one_of(conf_aligned_index), label="aligned_index"
+    )
+    bo = BackendOptions(rebuild=False, cache=True, check_rebuild=True)
+    so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
 
     domain = data.draw(
         st_domain(
@@ -196,9 +162,9 @@ def test_horizontal_velocity(data):
             yaxis_length=(1, 30),
             zaxis_length=(1, 20),
             nb=1,
-            gt_powered=gt_powered,
             backend=backend,
-            dtype=dtype,
+            backend_options=bo,
+            storage_options=so,
         ),
         label="domain",
     )
@@ -210,10 +176,8 @@ def test_horizontal_velocity(data):
             shape=(nx + 1, ny + 1, nz + 1),
             min_value=1,
             max_value=1e4,
-            gt_powered=gt_powered,
             backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
+            storage_options=so,
         ),
         label="r",
     )
@@ -222,10 +186,8 @@ def test_horizontal_velocity(data):
             shape=(nx + 1, ny + 1, nz + 1),
             min_value=1,
             max_value=1e4,
-            gt_powered=gt_powered,
             backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
+            storage_options=so,
         ),
         label="r",
     )
@@ -234,10 +196,8 @@ def test_horizontal_velocity(data):
             shape=(nx + 1, ny + 1, nz + 1),
             min_value=1,
             max_value=1e4,
-            gt_powered=gt_powered,
             backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
+            storage_options=so,
         ),
         label="r",
     )
@@ -245,76 +205,46 @@ def test_horizontal_velocity(data):
     # ========================================
     # test bed
     # ========================================
-    ru = zeros(
-        (nx + 1, ny + 1, nz + 1),
-        gt_powered,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
-    rv = zeros(
-        (nx + 1, ny + 1, nz + 1),
-        gt_powered,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
+    ru = zeros(backend, shape=(nx + 1, ny + 1, nz + 1), storage_options=so)
+    rv = zeros(backend, shape=(nx + 1, ny + 1, nz + 1), storage_options=so)
 
     hv = HorizontalVelocity(
-        grid, False, gt_powered=gt_powered, backend=backend, dtype=dtype, rebuild=False
+        grid, False, backend=backend, backend_options=bo, storage_options=so
     )
 
     hv.get_momenta(r, u, v, ru, rv)
 
-    ru_val = r[:-1, :-1, :-1] * u[:-1, :-1, :-1]
+    r_np, u_np, v_np = to_numpy(r), to_numpy(u), to_numpy(v)
+    ru_val = r_np[:-1, :-1, :-1] * u_np[:-1, :-1, :-1]
     compare_arrays(ru[:-1, :-1, :-1], ru_val)
-    rv_val = r[:-1, :-1, :-1] * v[:-1, :-1, :-1]
+    rv_val = r_np[:-1, :-1, :-1] * v_np[:-1, :-1, :-1]
     compare_arrays(rv[:-1, :-1, :-1], rv_val)
 
-    u_new = zeros(
-        (nx + 1, ny + 1, nz + 1),
-        gt_powered,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
-    v_new = zeros(
-        (nx + 1, ny + 1, nz + 1),
-        gt_powered,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
+    u_new = zeros(backend, shape=(nx + 1, ny + 1, nz + 1), storage_options=so)
+    v_new = zeros(backend, shape=(nx + 1, ny + 1, nz + 1), storage_options=so)
 
     hv.get_velocity_components(r, ru, rv, u_new, v_new)
 
-    u_new_val = ru[:-1, :-1, :-1] / r[:-1, :-1, :-1]
+    ru_np, rv_np = to_numpy(ru), to_numpy(rv)
+    u_new_val = ru_np[:-1, :-1, :-1] / r_np[:-1, :-1, :-1]
     compare_arrays(u_new[:-1, :-1, :-1], u_new_val)
-    v_new_val = rv[:-1, :-1, :-1] / r[:-1, :-1, :-1]
+    v_new_val = rv_np[:-1, :-1, :-1] / r_np[:-1, :-1, :-1]
     compare_arrays(v_new[:-1, :-1, :-1], v_new_val)
 
 
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
-@given(hyp_st.data())
-def test_water_constituent(data):
+@hyp_settings
+@given(data=hyp_st.data())
+@pytest.mark.parametrize("backend", conf_backend)
+@pytest.mark.parametrize("dtype", conf_dtype)
+def test_water_constituent(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-
-    if gt_powered:
-        # comment the following line to prevent segfault
-        gt.storage.prepare_numpy()
+    aligned_index = data.draw(
+        st_one_of(conf_aligned_index), label="aligned_index"
+    )
+    bo = BackendOptions(rebuild=False, cache=True, check_rebuild=True)
+    so = StorageOptions(dtype=dtype, aligned_index=aligned_index)
 
     domain = data.draw(
         st_domain(
@@ -322,9 +252,9 @@ def test_water_constituent(data):
             yaxis_length=(1, 30),
             zaxis_length=(1, 20),
             nb=1,
-            gt_powered=gt_powered,
             backend=backend,
-            dtype=dtype,
+            backend_options=bo,
+            storage_options=so,
         ),
         label="domain",
     )
@@ -336,10 +266,8 @@ def test_water_constituent(data):
             shape=(nx + 1, ny + 1, nz + 1),
             min_value=1,
             max_value=1e4,
-            gt_powered=gt_powered,
             backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
+            storage_options=so,
         ),
         label="r",
     )
@@ -348,10 +276,8 @@ def test_water_constituent(data):
             shape=(nx + 1, ny + 1, nz + 1),
             min_value=-1e4,
             max_value=1e4,
-            gt_powered=gt_powered,
             backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
+            storage_options=so,
         ),
         label="q",
     )
@@ -359,50 +285,42 @@ def test_water_constituent(data):
     # ========================================
     # test bed
     # ========================================
-    rq = zeros(
-        (nx + 1, ny + 1, nz + 1),
-        gt_powered,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
-    q_new = zeros(
-        (nx + 1, ny + 1, nz + 1),
-        gt_powered,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
+    rq = zeros(backend, shape=(nx + 1, ny + 1, nz + 1), storage_options=so)
+    q_new = zeros(backend, shape=(nx + 1, ny + 1, nz + 1), storage_options=so)
 
     #
     # clipping off
     #
     wc = WaterConstituent(
-        grid, False, gt_powered, backend=backend, dtype=dtype, rebuild=False
+        grid, False, backend=backend, backend_options=bo, storage_options=so
     )
 
     wc.get_density_of_water_constituent(r, q, rq)
-    rq_val = r[:-1, :-1, :-1] * q[:-1, :-1, :-1]
+    r_np, q_np = to_numpy(r), to_numpy(q)
+    rq_val = r_np[:-1, :-1, :-1] * q_np[:-1, :-1, :-1]
     compare_arrays(rq[:-1, :-1, :-1], rq_val)
 
     wc.get_mass_fraction_of_water_constituent_in_air(r, rq, q_new)
-    q_new_val = rq[:-1, :-1, :-1] / r[:-1, :-1, :-1]
-    compare_arrays(q_new[:-1, :-1, :-1], q_new_val)
+    rq_np = to_numpy(rq)
+    q_new_val = rq_np[:-1, :-1, :-1] / r_np[:-1, :-1, :-1]
+    # compare_arrays(q_new[:-1, :-1, :-1], q_new_val)
 
     #
     # clipping on
     #
     wc = WaterConstituent(
-        grid, True, gt_powered, backend=backend, dtype=dtype, rebuild=False
+        grid, True, backend=backend, backend_options=bo, storage_options=so
     )
 
     wc.get_density_of_water_constituent(r, q, rq)
-    rq_val = r[:-1, :-1, :-1] * q[:-1, :-1, :-1]
+    r_np, q_np = to_numpy(r), to_numpy(q)
+    rq_val = r_np[:-1, :-1, :-1] * q_np[:-1, :-1, :-1]
     rq_val[rq_val < 0.0] = 0.0
     compare_arrays(rq[:-1, :-1, :-1], rq_val)
 
     wc.get_mass_fraction_of_water_constituent_in_air(r, rq, q_new)
-    q_new_val = rq[:-1, :-1, :-1] / r[:-1, :-1, :-1]
+    rq_np = to_numpy(rq)
+    q_new_val = rq_np[:-1, :-1, :-1] / r_np[:-1, :-1, :-1]
     q_new_val[q_new_val < 0.0] = 0.0
     compare_arrays(q_new[:-1, :-1, :-1], q_new_val)
 

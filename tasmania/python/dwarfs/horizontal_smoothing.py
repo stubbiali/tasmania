@@ -23,37 +23,38 @@
 import abc
 import math
 import numpy as np
-from typing import Optional
+from typing import TYPE_CHECKING
+
+from sympl._core.factory import AbstractFactory
 
 from gt4py import gtscript
 
-from tasmania.python.utils import taz_types
-from tasmania.python.utils.dict_utils import stencil_copy_defs
-from tasmania.python.utils.framework_utils import factorize
-from tasmania.python.utils.storage_utils import get_asarray_function, zeros
+from tasmania.python.framework.stencil import StencilFactory
+from tasmania.python.framework.tag import stencil_definition
+
+if TYPE_CHECKING:
+    from sympl._core.typingx import NDArrayLike
+
+    from tasmania.python.framework.options import (
+        BackendOptions,
+        StorageOptions,
+    )
+    from tasmania.python.utils.typingx import TripletInt
 
 
-class HorizontalSmoothing(abc.ABC):
-    """ Apply horizontal numerical smoothing to a generic (prognostic) field. """
-
-    registry = {}
+class HorizontalSmoothing(AbstractFactory, StencilFactory):
+    """Apply horizontal numerical smoothing to a generic (prognostic) field."""
 
     def __init__(
-        self,
-        shape: taz_types.triplet_int_t,
+        self: "HorizontalSmoothing",
+        shape: "TripletInt",
         smooth_coeff: float,
         smooth_coeff_max: float,
         smooth_damp_depth: int,
         nb: int,
-        gt_powered: bool,
         backend: str,
-        backend_opts: taz_types.options_dict_t,
-        build_info: taz_types.options_dict_t,
-        dtype: taz_types.dtype_t,
-        exec_info: taz_types.mutable_options_dict_t,
-        default_origin: taz_types.triplet_int_t,
-        rebuild: bool,
-        managed_memory: bool,
+        backend_options: "BackendOptions",
+        storage_options: "StorageOptions",
     ) -> None:
         """
         Parameters
@@ -68,939 +69,76 @@ class HorizontalSmoothing(abc.ABC):
             Depth of, i.e., number of vertical regions in the damping region.
         nb : int
             Number of boundary layers.
-        gt_powered : bool
-            ``True`` to harness GT4Py, ``False`` for a vanilla Numpy implementation.
         backend : str
-            The GT4Py backend.
-        backend_opts : dict
-            Dictionary of backend-specific options.
-        build_info : dict
-            Dictionary of building options.
-        dtype : data-type
-            Data type of the storages.
-        exec_info : dict
-            Dictionary which will store statistics and diagnostics gathered at run time.
-        default_origin : tuple[int]
-            Storage default origin.
-        rebuild : bool
-            ``True`` to trigger the stencils compilation at any class instantiation,
-            ``False`` to rely on the caching mechanism implemented by GT4Py.
-        managed_memory : `bool`, optional
-            ``True`` to allocate the storages as managed memory, ``False`` otherwise.
+            The backend.
+        backend_options : BackendOptions
+            Backend-specific options.
+        storage_options : StorageOptions
+            Storage-related options.
         """
+        super().__init__(backend, backend_options, storage_options)
+
         # store input arguments needed at run-time
         self._shape = shape
         self._nb = nb
-        self._gt_powered = gt_powered
-        self._exec_info = exec_info
 
         # initialize the diffusivity
+        dtype = self.storage_options.dtype
         gamma = smooth_coeff * np.ones((1, 1, shape[2]), dtype=dtype)
 
-        # the diffusivity is monotonically increased towards the top of the model,
-        # so to mimic the effect of a short-length wave absorber
+        # the diffusivity is monotonically increased towards the top of the
+        # model, so to mimic the effect of a short-length wave absorber
         n = smooth_damp_depth
         if n > 0:
-            pert = np.sin(0.5 * math.pi * (n - np.arange(0, n, dtype=dtype)) / n) ** 2
+            pert = (
+                np.sin(0.5 * math.pi * (n - np.arange(0, n, dtype=dtype)) / n)
+                ** 2
+            )
             gamma[:, :, :n] += (smooth_coeff_max - smooth_coeff) * pert
 
-        # convert diffusivity to gt4py storage
-        self._gamma = zeros(
-            shape,
-            gt_powered=gt_powered,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-            mask=(True, True, True),
-            managed_memory=managed_memory,
-        )
-        asarray = get_asarray_function(gt_powered, backend)
-        self._gamma[...] = asarray(gamma)
+        # convert diffusivity to proper storage
+        self._gamma = self.zeros(backend, shape=shape)
+        self._gamma[...] = self.as_storage(data=gamma)
 
         # initialize the underlying stencil
-        if gt_powered:
-            self._stencil = gtscript.stencil(
-                definition=self._stencil_gt_defs,
-                name=self.__class__.__name__,
-                backend=backend,
-                build_info=build_info,
-                rebuild=rebuild,
-                dtypes={"dtype": dtype},
-                **(backend_opts or {})
-            )
-            self._stencil_copy = gtscript.stencil(
-                definition=stencil_copy_defs,
-                backend=backend,
-                build_info=build_info,
-                rebuild=rebuild,
-                dtypes={"dtype": dtype},
-                **(backend_opts or {})
-            )
-        else:
-            self._stencil = self._stencil_numpy
+        self.backend_options.dtypes = {"dtype": dtype}
+        self._stencil_smooth = self.compile_stencil("smoothing")
+        self._stencil_copy = self.compile_stencil("copy")
 
     @abc.abstractmethod
-    def __call__(self, phi: taz_types.array_t, phi_out: taz_types.array_t) -> None:
-        """ Apply horizontal smoothing to a prognostic field.
+    def __call__(self, phi: "NDArrayLike", phi_out: "NDArrayLike") -> None:
+        """Apply horizontal smoothing to a prognostic field.
 
         Parameters
         ----------
-        phi : gt4py.storage.storage.Storage
+        phi : array-like
             The 3-D field to filter.
-        phi_out : gt4py.storage.storage.Storage
-            The 3-D buffer into which the filtered field is written.
+        phi_out : array-like
+            Output buffer in which to place the computed field.
         """
         pass
 
     @staticmethod
-    def factory(
-        smooth_type: str,
-        shape: taz_types.triplet_int_t,
-        smooth_coeff: float,
-        smooth_coeff_max: float,
-        smooth_damp_depth: int,
-        nb: Optional[int] = None,
-        gt_powered: bool = True,
-        *,
-        backend: str = "numpy",
-        backend_opts: Optional[taz_types.options_dict_t] = None,
-        build_info: Optional[taz_types.options_dict_t] = None,
-        dtype: taz_types.dtype_t = np.float64,
-        exec_info: Optional[taz_types.mutable_options_dict_t] = None,
-        default_origin: Optional[taz_types.triplet_int_t] = None,
-        rebuild: bool = False,
-        managed_memory: bool = False
-    ) -> "HorizontalSmoothing":
-        """ Get an instance of a registered derived class.
-
-        Parameters
-        ----------
-        smooth_type : str
-            String specifying the smoothing technique to implement. Either:
-
-            * 'first_order';
-            * 'first_order_1dx';
-            * 'first_order_1dy';
-            * 'second_order';
-            * 'second_order_1dx';
-            * 'second_order_1dy';
-            * 'third_order';
-            * 'third_order_1dx';
-            * 'third_order_1dy'.
-
-        shape : tuple[int]
-            Shape of the 3-D arrays which should be filtered.
-        smooth_coeff : float
-            Value for the smoothing coefficient far from the top boundary.
-        smooth_coeff_max : float
-            Maximum value for the smoothing coefficient.
-        smooth_damp_depth : int
-            Depth of, i.e., number of vertical regions in the damping region.
-        nb : `int`, optional
-            Number of boundary layers.
-        gt_powered : `bool`, optional
-            ``True`` to harness GT4Py, ``False`` for a vanilla Numpy implementation.
-        backend : `str`, optional
-            The GT4Py backend.
-        backend_opts : `dict`, optional
-            Dictionary of backend-specific options.
-        build_info : `dict`, optional
-            Dictionary of building options.
-        dtype : `data-type`, optional
-            Data type of the storages.
-        exec_info : `dict`, optional
-            Dictionary which will store statistics and diagnostics gathered at run time.
-        default_origin : `tuple[int]`, optional
-            Storage default origin.
-        rebuild : `bool`, optional
-            ``True`` to trigger the stencils compilation at any class instantiation,
-            ``False`` to rely on the caching mechanism implemented by GT4Py.
-        managed_memory : `bool`, optional
-            ``True`` to allocate the storages as managed memory, ``False`` otherwise.
-
-        Return
-        ------
-        obj :
-            Instance of the suitable derived class.
-        """
-        args = (
-            shape,
-            smooth_coeff,
-            smooth_coeff_max,
-            smooth_damp_depth,
-            nb,
-            gt_powered,
-            backend,
-            backend_opts,
-            build_info,
-            dtype,
-            exec_info,
-            default_origin,
-            rebuild,
-            managed_memory,
-        )
-        obj = factorize(smooth_type, HorizontalSmoothing, args)
-        return obj
-
-    @staticmethod
+    @stencil_definition(
+        backend=("numpy", "cupy", "numba:cpu:numpy"), stencil="smoothing"
+    )
     @abc.abstractmethod
-    def _stencil_numpy(
+    def _smoothing_numpy(
         in_phi: np.ndarray,
         in_gamma: np.ndarray,
         out_phi: np.ndarray,
         *,
-        origin: taz_types.triplet_int_t,
-        domain: taz_types.triplet_int_t,
-        **kwargs  # catch-all
+        origin: "TripletInt",
+        domain: "TripletInt"
     ) -> None:
         pass
 
     @staticmethod
+    @stencil_definition(backend="gt4py*", stencil="smoothing")
     @abc.abstractmethod
-    def _stencil_gt_defs(
+    def _smoothing_gt4py(
         in_phi: gtscript.Field["dtype"],
         in_gamma: gtscript.Field["dtype"],
         out_phi: gtscript.Field["dtype"],
     ) -> None:
         pass
-
-
-class SecondOrder(HorizontalSmoothing):
-    """
-    This class inherits	:class:`~tasmania.HorizontalSmoothing`
-    to apply a second-order horizontal digital filter to three-dimensional fields
-    with at least three elements along each dimension.
-
-    Note
-    ----
-    An instance of this class should only be applied to fields whose
-    dimensions match those specified at instantiation time.
-    Hence, one should use (at least) one instance per field shape.
-    """
-
-    def __init__(
-        self,
-        shape,
-        smooth_coeff,
-        smooth_coeff_max,
-        smooth_damp_depth,
-        nb,
-        gt_powered,
-        backend,
-        backend_opts,
-        build_info,
-        dtype,
-        exec_info,
-        default_origin,
-        rebuild,
-        managed_memory,
-    ):
-        nb = 2 if (nb is None or nb < 2) else nb
-        super().__init__(
-            shape,
-            smooth_coeff,
-            smooth_coeff_max,
-            smooth_damp_depth,
-            nb,
-            gt_powered,
-            backend,
-            backend_opts,
-            build_info,
-            dtype,
-            exec_info,
-            default_origin,
-            rebuild,
-            managed_memory,
-        )
-
-    def __call__(self, phi, phi_out):
-        # shortcuts
-        nb = self._nb
-        nx, ny, nz = self._shape
-
-        # run the stencil
-        self._stencil(
-            in_phi=phi,
-            in_gamma=self._gamma,
-            out_phi=phi_out,
-            origin=(nb, nb, 0),
-            domain=(nx - 2 * nb, ny - 2 * nb, nz),
-            exec_info=self._exec_info,
-        )
-
-        # set the outermost lateral layers of the output field,
-        # not affected by the stencil
-        if not self._gt_powered:
-            phi_out[:nb, :] = phi[:nb, :]
-            phi_out[-nb:, :] = phi[-nb:, :]
-            phi_out[nb:-nb, :nb] = phi[nb:-nb, :nb]
-            phi_out[nb:-nb, -nb:] = phi[nb:-nb, -nb:]
-        else:
-            self._stencil_copy(
-                src=phi, dst=phi_out, origin=(0, 0, 0), domain=(nb, ny, nz)
-            )
-            self._stencil_copy(
-                src=phi, dst=phi_out, origin=(nx - nb, 0, 0), domain=(nb, ny, nz)
-            )
-            self._stencil_copy(
-                src=phi, dst=phi_out, origin=(nb, 0, 0), domain=(nx - 2 * nb, nb, nz)
-            )
-            self._stencil_copy(
-                src=phi,
-                dst=phi_out,
-                origin=(nb, ny - nb, 0),
-                domain=(nx - 2 * nb, nb, nz),
-            )
-
-    @staticmethod
-    def _stencil_numpy(
-        in_phi: np.ndarray,
-        in_gamma: np.ndarray,
-        out_phi: np.ndarray,
-        *,
-        origin: taz_types.triplet_int_t,
-        domain: taz_types.triplet_int_t,
-        **kwargs  # catch-all
-    ) -> None:
-        i = slice(origin[0], origin[0] + domain[0])
-        im2 = slice(origin[0] - 2, origin[0] + domain[0] - 2)
-        im1 = slice(origin[0] - 1, origin[0] + domain[0] - 1)
-        ip1 = slice(origin[0] + 1, origin[0] + domain[0] + 1)
-        ip2 = slice(origin[0] + 2, origin[0] + domain[0] + 2)
-        j = slice(origin[1], origin[1] + domain[1])
-        jm2 = slice(origin[1] - 2, origin[1] + domain[1] - 2)
-        jm1 = slice(origin[1] - 1, origin[1] + domain[1] - 1)
-        jp1 = slice(origin[1] + 1, origin[1] + domain[1] + 1)
-        jp2 = slice(origin[1] + 2, origin[1] + domain[1] + 2)
-        k = slice(origin[2], origin[2] + domain[2])
-
-        out_phi[i, j, k] = (1.0 - 0.75 * in_gamma[i, j, k]) * in_phi[
-            i, j, k
-        ] + 0.0625 * in_gamma[i, j, k] * (
-            -in_phi[im2, j, k]
-            + 4.0 * in_phi[im1, j, k]
-            - in_phi[ip2, j, k]
-            + 4.0 * in_phi[ip1, j, k]
-            - in_phi[i, jm2, k]
-            + 4.0 * in_phi[i, jm1, k]
-            - in_phi[i, jp2, k]
-            + 4.0 * in_phi[i, jp1, k]
-        )
-
-    @staticmethod
-    def _stencil_gt_defs(
-        in_phi: gtscript.Field["dtype"],
-        in_gamma: gtscript.Field["dtype"],
-        out_phi: gtscript.Field["dtype"],
-    ) -> None:
-        with computation(PARALLEL), interval(...):
-            out_phi = (1.0 - 0.75 * in_gamma[0, 0, 0]) * in_phi[
-                0, 0, 0
-            ] + 0.0625 * in_gamma[0, 0, 0] * (
-                -in_phi[-2, 0, 0]
-                + 4.0 * in_phi[-1, 0, 0]
-                - in_phi[+2, 0, 0]
-                + 4.0 * in_phi[+1, 0, 0]
-                - in_phi[0, -2, 0]
-                + 4.0 * in_phi[0, -1, 0]
-                - in_phi[0, +2, 0]
-                + 4.0 * in_phi[0, +1, 0]
-            )
-
-
-class SecondOrder1DX(HorizontalSmoothing):
-    """
-    This class inherits	:class:`~tasmania.HorizontalSmoothing`
-    to apply a second-order horizontal digital filter to three-dimensional fields
-    with only one element along the second dimension.
-
-    Note
-    ----
-    An instance of this class should only be applied to fields whose
-    dimensions match those specified at instantiation time.
-    Hence, one should use (at least) one instance per field shape.
-    """
-
-    def __init__(
-        self,
-        shape,
-        smooth_coeff,
-        smooth_coeff_max,
-        smooth_damp_depth,
-        nb,
-        gt_powered,
-        backend,
-        backend_opts,
-        build_info,
-        dtype,
-        exec_info,
-        default_origin,
-        rebuild,
-        managed_memory,
-    ):
-        nb = 2 if (nb is None or nb < 2) else nb
-        super().__init__(
-            shape,
-            smooth_coeff,
-            smooth_coeff_max,
-            smooth_damp_depth,
-            nb,
-            gt_powered,
-            backend,
-            backend_opts,
-            build_info,
-            dtype,
-            exec_info,
-            default_origin,
-            rebuild,
-            managed_memory,
-        )
-
-    def __call__(self, phi, phi_out):
-        # shortcuts
-        nb = self._nb
-        nx, ny, nz = self._shape
-
-        # run the stencil
-        self._stencil(
-            in_phi=phi,
-            in_gamma=self._gamma,
-            out_phi=phi_out,
-            origin=(nb, 0, 0),
-            domain=(nx - 2 * nb, ny, nz),
-            exec_info=self._exec_info,
-        )
-
-        # set the outermost lateral layers of the output field,
-        # not affected by the stencil
-        phi_out[:nb, :] = phi[:nb, :]
-        phi_out[-nb:, :] = phi[-nb:, :]
-
-    @staticmethod
-    def _stencil_numpy(
-        in_phi: np.ndarray,
-        in_gamma: np.ndarray,
-        out_phi: np.ndarray,
-        *,
-        origin: taz_types.triplet_int_t,
-        domain: taz_types.triplet_int_t,
-        **kwargs  # catch-all
-    ) -> None:
-        i = slice(origin[0], origin[0] + domain[0])
-        im2 = slice(origin[0] - 2, origin[0] + domain[0] - 2)
-        im1 = slice(origin[0] - 1, origin[0] + domain[0] - 1)
-        ip1 = slice(origin[0] + 1, origin[0] + domain[0] + 1)
-        ip2 = slice(origin[0] + 2, origin[0] + domain[0] + 2)
-        j = slice(origin[1], origin[1] + domain[1])
-        k = slice(origin[2], origin[2] + domain[2])
-
-        out_phi[i, j, k] = (1.0 - 0.375 * in_gamma[i, j, k]) * in_phi[
-            i, j, k
-        ] + 0.0625 * in_gamma[i, j, k] * (
-            -in_phi[im2, j, k]
-            + 4.0 * in_phi[im1, j, k]
-            - in_phi[ip2, j, k]
-            + 4.0 * in_phi[ip1, j, k]
-        )
-
-    @staticmethod
-    def _stencil_gt_defs(
-        in_phi: gtscript.Field["dtype"],
-        in_gamma: gtscript.Field["dtype"],
-        out_phi: gtscript.Field["dtype"],
-    ) -> None:
-        with computation(PARALLEL), interval(...):
-            out_phi = (1.0 - 0.375 * in_gamma[0, 0, 0]) * in_phi[
-                0, 0, 0
-            ] + 0.0625 * in_gamma[0, 0, 0] * (
-                -in_phi[-2, 0, 0]
-                + 4.0 * in_phi[-1, 0, 0]
-                - in_phi[+2, 0, 0]
-                + 4.0 * in_phi[+1, 0, 0]
-            )
-
-
-class SecondOrder1DY(HorizontalSmoothing):
-    """
-    This class inherits	:class:`~tasmania.HorizontalSmoothing`
-    to apply a second-order horizontal digital filter to three-dimensional fields
-    with only one element along the first dimension.
-
-    Note
-    ----
-    An instance of this class should only be applied to fields whose
-    dimensions match those specified at instantiation time.
-    Hence, one should use (at least) one instance per field shape.
-    """
-
-    def __init__(
-        self,
-        shape,
-        smooth_coeff,
-        smooth_coeff_max,
-        smooth_damp_depth,
-        nb,
-        gt_powered,
-        backend,
-        backend_opts,
-        build_info,
-        dtype,
-        exec_info,
-        default_origin,
-        rebuild,
-        managed_memory,
-    ):
-        nb = 2 if (nb is None or nb < 2) else nb
-        super().__init__(
-            shape,
-            smooth_coeff,
-            smooth_coeff_max,
-            smooth_damp_depth,
-            nb,
-            gt_powered,
-            backend,
-            backend_opts,
-            build_info,
-            dtype,
-            exec_info,
-            default_origin,
-            rebuild,
-            managed_memory,
-        )
-
-    def __call__(self, phi, phi_out):
-        # shortcuts
-        nb = self._nb
-        nx, ny, nz = self._shape
-
-        # run the stencil
-        self._stencil(
-            in_phi=phi,
-            in_gamma=self._gamma,
-            out_phi=phi_out,
-            origin=(0, nb, 0),
-            domain=(nx, ny - 2 * nb, nz),
-            exec_info=self._exec_info,
-        )
-
-        # set the outermost lateral layers of the output field,
-        # not affected by the stencil
-        phi_out[:, :nb] = phi[:, :nb]
-        phi_out[:, -nb:] = phi[:, -nb:]
-
-    @staticmethod
-    def _stencil_numpy(
-        in_phi: np.ndarray,
-        in_gamma: np.ndarray,
-        out_phi: np.ndarray,
-        *,
-        origin: taz_types.triplet_int_t,
-        domain: taz_types.triplet_int_t,
-        **kwargs  # catch-all
-    ) -> None:
-        i = slice(origin[0], origin[0] + domain[0])
-        j = slice(origin[1], origin[1] + domain[1])
-        jm2 = slice(origin[1] - 2, origin[1] + domain[1] - 2)
-        jm1 = slice(origin[1] - 1, origin[1] + domain[1] - 1)
-        jp1 = slice(origin[1] + 1, origin[1] + domain[1] + 1)
-        jp2 = slice(origin[1] + 2, origin[1] + domain[1] + 2)
-        k = slice(origin[2], origin[2] + domain[2])
-
-        out_phi[i, j, k] = (1.0 - 0.375 * in_gamma[i, j, k]) * in_phi[
-            i, j, k
-        ] + 0.0625 * in_gamma[i, j, k] * (
-            -in_phi[i, jm2, k]
-            + 4.0 * in_phi[i, jm1, k]
-            - in_phi[i, jp2, k]
-            + 4.0 * in_phi[i, jp1, k]
-        )
-
-    @staticmethod
-    def _stencil_gt_defs(
-        in_phi: gtscript.Field["dtype"],
-        in_gamma: gtscript.Field["dtype"],
-        out_phi: gtscript.Field["dtype"],
-    ) -> None:
-        with computation(PARALLEL), interval(...):
-            out_phi = (1.0 - 0.375 * in_gamma[0, 0, 0]) * in_phi[
-                0, 0, 0
-            ] + 0.0625 * in_gamma[0, 0, 0] * (
-                -in_phi[0, -2, 0]
-                + 4.0 * in_phi[0, -1, 0]
-                - in_phi[0, +2, 0]
-                + 4.0 * in_phi[0, +1, 0]
-            )
-
-
-class ThirdOrder(HorizontalSmoothing):
-    """
-    This class inherits :class:`~tasmania.HorizontalSmoothing`
-    to apply a third-order horizontal digital filter to three-dimensional fields
-    with at least three elements along each dimension.
-
-    Note
-    ----
-    An instance of this class should only be applied to fields whose
-    dimensions match those specified at instantiation time.
-    Hence, one should use (at least) one instance per field shape.
-    """
-
-    def __init__(
-        self,
-        shape,
-        smooth_coeff,
-        smooth_coeff_max,
-        smooth_damp_depth,
-        nb,
-        gt_powered,
-        backend,
-        backend_opts,
-        build_info,
-        dtype,
-        exec_info,
-        default_origin,
-        rebuild,
-        managed_memory,
-    ):
-        nb = 3 if (nb is None or nb < 3) else nb
-        super().__init__(
-            shape,
-            smooth_coeff,
-            smooth_coeff_max,
-            smooth_damp_depth,
-            nb,
-            gt_powered,
-            backend,
-            backend_opts,
-            build_info,
-            dtype,
-            exec_info,
-            default_origin,
-            rebuild,
-            managed_memory,
-        )
-
-    def __call__(self, phi, phi_out):
-        # shortcuts
-        nb = self._nb
-        nx, ny, nz = self._shape
-
-        # run the stencil
-        self._stencil(
-            in_phi=phi,
-            in_gamma=self._gamma,
-            out_phi=phi_out,
-            origin=(nb, nb, 0),
-            domain=(nx - 2 * nb, ny - 2 * nb, nz),
-            exec_info=self._exec_info,
-        )
-
-        # set the outermost lateral layers of the output field,
-        # not affected by the stencil
-        phi_out[:nb, :] = phi[:nb, :]
-        phi_out[-nb:, :] = phi[-nb:, :]
-        phi_out[nb:-nb, :nb] = phi[nb:-nb, :nb]
-        phi_out[nb:-nb, -nb:] = phi[nb:-nb, -nb:]
-
-    @staticmethod
-    def _stencil_numpy(
-        in_phi: np.ndarray,
-        in_gamma: np.ndarray,
-        out_phi: np.ndarray,
-        *,
-        origin: taz_types.triplet_int_t,
-        domain: taz_types.triplet_int_t,
-        **kwargs  # catch-all
-    ) -> None:
-        i = slice(origin[0], origin[0] + domain[0])
-        im3 = slice(origin[0] - 3, origin[0] + domain[0] - 3)
-        im2 = slice(origin[0] - 2, origin[0] + domain[0] - 2)
-        im1 = slice(origin[0] - 1, origin[0] + domain[0] - 1)
-        ip1 = slice(origin[0] + 1, origin[0] + domain[0] + 1)
-        ip2 = slice(origin[0] + 2, origin[0] + domain[0] + 2)
-        ip3 = slice(origin[0] + 3, origin[0] + domain[0] + 3)
-        j = slice(origin[1], origin[1] + domain[1])
-        jm3 = slice(origin[1] - 3, origin[1] + domain[1] - 3)
-        jm2 = slice(origin[1] - 2, origin[1] + domain[1] - 2)
-        jm1 = slice(origin[1] - 1, origin[1] + domain[1] - 1)
-        jp1 = slice(origin[1] + 1, origin[1] + domain[1] + 1)
-        jp2 = slice(origin[1] + 2, origin[1] + domain[1] + 2)
-        jp3 = slice(origin[1] + 3, origin[1] + domain[1] + 3)
-        k = slice(origin[2], origin[2] + domain[2])
-
-        out_phi[i, j, k] = (1.0 - 0.625 * in_gamma[i, j, k]) * in_phi[
-            i, j, k
-        ] + 0.015625 * in_gamma[i, j, k] * (
-            in_phi[im3, j, k]
-            - 6.0 * in_phi[im2, j, k]
-            + 15.0 * in_phi[im1, j, k]
-            + in_phi[ip3, j, k]
-            - 6.0 * in_phi[ip2, j, k]
-            + 15.0 * in_phi[ip1, j, k]
-            + in_phi[i, jm3, k]
-            - 6.0 * in_phi[i, jm2, k]
-            + 15.0 * in_phi[i, jm1, k]
-            + in_phi[i, jp3, k]
-            - 6.0 * in_phi[i, jp2, k]
-            + 15.0 * in_phi[i, jp1, k]
-        )
-
-    @staticmethod
-    def _stencil_gt_defs(
-        in_phi: gtscript.Field["dtype"],
-        in_gamma: gtscript.Field["dtype"],
-        out_phi: gtscript.Field["dtype"],
-    ) -> None:
-        with computation(PARALLEL), interval(...):
-            out_phi = (1.0 - 0.625 * in_gamma[0, 0, 0]) * in_phi[
-                0, 0, 0
-            ] + 0.015625 * in_gamma[0, 0, 0] * (
-                in_phi[-3, 0, 0]
-                - 6.0 * in_phi[-2, 0, 0]
-                + 15.0 * in_phi[-1, 0, 0]
-                + in_phi[+3, 0, 0]
-                - 6.0 * in_phi[+2, 0, 0]
-                + 15.0 * in_phi[+1, 0, 0]
-                + in_phi[0, -3, 0]
-                - 6.0 * in_phi[0, -2, 0]
-                + 15.0 * in_phi[0, -1, 0]
-                + in_phi[0, +3, 0]
-                - 6.0 * in_phi[0, +2, 0]
-                + 15.0 * in_phi[0, +1, 0]
-            )
-
-
-class ThirdOrder1DX(HorizontalSmoothing):
-    """
-    This class inherits :class:`~tasmania.HorizontalSmoothing`
-    to apply a third-order horizontal digital filter to three-dimensional fields
-    with only one element along the second dimension.
-
-    Note
-    ----
-    An instance of this class should only be applied to fields whose
-    dimensions match those specified at instantiation time.
-    Hence, one should use (at least) one instance per field shape.
-    """
-
-    def __init__(
-        self,
-        shape,
-        smooth_coeff,
-        smooth_coeff_max,
-        smooth_damp_depth,
-        nb,
-        gt_powered,
-        backend,
-        backend_opts,
-        build_info,
-        dtype,
-        exec_info,
-        default_origin,
-        rebuild,
-        managed_memory,
-    ):
-        nb = 3 if (nb is None or nb < 3) else nb
-        super().__init__(
-            shape,
-            smooth_coeff,
-            smooth_coeff_max,
-            smooth_damp_depth,
-            nb,
-            gt_powered,
-            backend,
-            backend_opts,
-            build_info,
-            dtype,
-            exec_info,
-            default_origin,
-            rebuild,
-            managed_memory,
-        )
-
-    def __call__(self, phi, phi_out):
-        # shortcuts
-        nb = self._nb
-        nx, ny, nz = self._shape
-
-        # run the stencil
-        self._stencil(
-            in_phi=phi,
-            in_gamma=self._gamma,
-            out_phi=phi_out,
-            origin=(nb, 0, 0),
-            domain=(nx - 2 * nb, ny, nz),
-            exec_info=self._exec_info,
-        )
-
-        # set the outermost lateral layers of the output field,
-        # not affected by the stencil
-        phi_out[:nb, :] = phi[:nb, :]
-        phi_out[-nb:, :] = phi[-nb:, :]
-
-    @staticmethod
-    def _stencil_numpy(
-        in_phi: np.ndarray,
-        in_gamma: np.ndarray,
-        out_phi: np.ndarray,
-        *,
-        origin: taz_types.triplet_int_t,
-        domain: taz_types.triplet_int_t,
-        **kwargs  # catch-all
-    ) -> None:
-        i = slice(origin[0], origin[0] + domain[0])
-        im3 = slice(origin[0] - 3, origin[0] + domain[0] - 3)
-        im2 = slice(origin[0] - 2, origin[0] + domain[0] - 2)
-        im1 = slice(origin[0] - 1, origin[0] + domain[0] - 1)
-        ip1 = slice(origin[0] + 1, origin[0] + domain[0] + 1)
-        ip2 = slice(origin[0] + 2, origin[0] + domain[0] + 2)
-        ip3 = slice(origin[0] + 3, origin[0] + domain[0] + 3)
-        j = slice(origin[1], origin[1] + domain[1])
-        k = slice(origin[2], origin[2] + domain[2])
-
-        out_phi[i, j, k] = (1.0 - 0.3125 * in_gamma[i, j, k]) * in_phi[
-            i, j, k
-        ] + 0.015625 * in_gamma[i, j, k] * (
-            in_phi[im3, j, k]
-            - 6.0 * in_phi[im2, j, k]
-            + 15.0 * in_phi[im1, j, k]
-            + in_phi[ip3, j, k]
-            - 6.0 * in_phi[ip2, j, k]
-            + 15.0 * in_phi[ip1, j, k]
-        )
-
-    @staticmethod
-    def _stencil_gt_defs(
-        in_phi: gtscript.Field["dtype"],
-        in_gamma: gtscript.Field["dtype"],
-        out_phi: gtscript.Field["dtype"],
-    ) -> None:
-        with computation(PARALLEL), interval(...):
-            out_phi = (1.0 - 0.3125 * in_gamma[0, 0, 0]) * in_phi[
-                0, 0, 0
-            ] + 0.015625 * in_gamma[0, 0, 0] * (
-                in_phi[-3, 0, 0]
-                - 6.0 * in_phi[-2, 0, 0]
-                + 15.0 * in_phi[-1, 0, 0]
-                + in_phi[+3, 0, 0]
-                - 6.0 * in_phi[+2, 0, 0]
-                + 15.0 * in_phi[+1, 0, 0]
-            )
-
-
-class ThirdOrder1DY(HorizontalSmoothing):
-    """
-    This class inherits	:class:`~tasmania.HorizontalSmoothing`
-    to apply a third-order horizontal digital filter to three-dimensional fields
-    with only one element along the first dimension.
-
-    Note
-    ----
-    An instance of this class should only be applied to fields whose
-    dimensions match those specified at instantiation time.
-    Hence, one should use (at least) one instance per field shape.
-    """
-
-    def __init__(
-        self,
-        shape,
-        smooth_coeff,
-        smooth_coeff_max,
-        smooth_damp_depth,
-        nb,
-        gt_powered,
-        backend,
-        backend_opts,
-        build_info,
-        dtype,
-        exec_info,
-        default_origin,
-        rebuild,
-        managed_memory,
-    ):
-        nb = 3 if (nb is None or nb < 3) else nb
-        super().__init__(
-            shape,
-            smooth_coeff,
-            smooth_coeff_max,
-            smooth_damp_depth,
-            nb,
-            gt_powered,
-            backend,
-            backend_opts,
-            build_info,
-            dtype,
-            exec_info,
-            default_origin,
-            rebuild,
-            managed_memory,
-        )
-
-    def __call__(self, phi, phi_out):
-        # shortcuts
-        nb = self._nb
-        nx, ny, nz = self._shape
-
-        # run the stencil
-        self._stencil(
-            in_phi=phi,
-            in_gamma=self._gamma,
-            out_phi=phi_out,
-            origin=(0, nb, 0),
-            domain=(nx, ny - 2 * nb, nz),
-            exec_info=self._exec_info,
-        )
-
-        # set the outermost lateral layers of the output field,
-        # not affected by the stencil
-        phi_out[:, :nb] = phi[:, :nb]
-        phi_out[:, -nb:] = phi[:, -nb:]
-
-    @staticmethod
-    def _stencil_numpy(
-        in_phi: np.ndarray,
-        in_gamma: np.ndarray,
-        out_phi: np.ndarray,
-        *,
-        origin: taz_types.triplet_int_t,
-        domain: taz_types.triplet_int_t,
-        **kwargs  # catch-all
-    ) -> None:
-        i = slice(origin[0], origin[0] + domain[0])
-        j = slice(origin[1], origin[1] + domain[1])
-        jm3 = slice(origin[1] - 3, origin[1] + domain[1] - 3)
-        jm2 = slice(origin[1] - 2, origin[1] + domain[1] - 2)
-        jm1 = slice(origin[1] - 1, origin[1] + domain[1] - 1)
-        jp1 = slice(origin[1] + 1, origin[1] + domain[1] + 1)
-        jp2 = slice(origin[1] + 2, origin[1] + domain[1] + 2)
-        jp3 = slice(origin[1] + 3, origin[1] + domain[1] + 3)
-        k = slice(origin[2], origin[2] + domain[2])
-
-        out_phi[i, j, k] = (1.0 - 0.3125 * in_gamma[i, j, k]) * in_phi[
-            i, j, k
-        ] + 0.015625 * in_gamma[i, j, k] * (
-            +in_phi[i, jm3, k]
-            - 6.0 * in_phi[i, jm2, k]
-            + 15.0 * in_phi[i, jm1, k]
-            + in_phi[i, jp3, k]
-            - 6.0 * in_phi[i, jp2, k]
-            + 15.0 * in_phi[i, jp1, k]
-        )
-
-    @staticmethod
-    def _stencil_gt_defs(
-        in_phi: gtscript.Field["dtype"],
-        in_gamma: gtscript.Field["dtype"],
-        out_phi: gtscript.Field["dtype"],
-    ) -> None:
-        with computation(PARALLEL), interval(...):
-            out_phi = (1.0 - 0.3125 * in_gamma[0, 0, 0]) * in_phi[
-                0, 0, 0
-            ] + 0.015625 * in_gamma[0, 0, 0] * (
-                in_phi[0, -3, 0]
-                - 6.0 * in_phi[0, -2, 0]
-                + 15.0 * in_phi[0, -1, 0]
-                + in_phi[0, +3, 0]
-                - 6.0 * in_phi[0, +2, 0]
-                + 15.0 * in_phi[0, +1, 0]
-            )

@@ -32,24 +32,53 @@ a = np.random.rand(10)
 x, y = np.meshgrid(sorted(a), sorted(a))
 field = np.random.rand(10, 10)
 
-fig, ax = get_figure_and_axes(nrows=1, ncols=1, index=1, figsize=(8, 2.5), fontsize=16)
+fig, ax = get_figure_and_axes(
+    nrows=2, ncols=4, index=1, figsize=(14, 8.75), fontsize=16
+)
+fig, _ = get_figure_and_axes(
+    fig=fig, nrows=2, ncols=4, index=2, figsize=(14, 8.75), fontsize=16
+)
+fig, _ = get_figure_and_axes(
+    fig=fig, nrows=2, ncols=4, index=3, figsize=(14, 8.75), fontsize=16
+)
+fig, _ = get_figure_and_axes(
+    fig=fig, nrows=2, ncols=4, index=4, figsize=(14, 8.75), fontsize=16
+)
+fig, _ = get_figure_and_axes(
+    fig=fig, nrows=2, ncols=4, index=5, figsize=(14, 8.75), fontsize=16
+)
+fig, _ = get_figure_and_axes(
+    fig=fig, nrows=2, ncols=4, index=6, figsize=(14, 8.75), fontsize=16
+)
+fig, _ = get_figure_and_axes(
+    fig=fig, nrows=2, ncols=4, index=7, figsize=(14, 8.75), fontsize=16
+)
+fig, _ = get_figure_and_axes(
+    fig=fig, nrows=2, ncols=4, index=8, figsize=(14, 8.75), fontsize=16
+)
 make_contourf(
     x,
     y,
     field,
     fig,
     ax,
-    cmap_name="RdBu_r",
+    cmap_name="viridis_white",
     cbar_on=True,
-    cbar_levels=26,
-    cbar_ticks_step=6,
-    cbar_ticks_pos="center",
-    cbar_center=22.5,
-    cbar_half_width=12.5,
-    cbar_extend=True,
-    cbar_orientation="horizontal",
-    cbar_x_label="$x$-velocity [m s$^{-1}$]",
-    fontsize=16
+    cbar_levels=17,
+    cbar_ticks_step=4,
+    cbar_ticks_pos="interface",
+    cbar_center=0.5,
+    cbar_half_width=0.5,
+    cbar_x_label="",
+    cbar_y_label="$\\vert r \\, (\\beta \\Delta t, \\, \\alpha \\Delta t) \\vert$",
+    cbar_title="",
+    cbar_orientation="vertical",
+    cbar_ax=[0, 1, 2, 3, 4, 5],
+    cbar_format="%2.1f  ",
+    cbar_extend="max",
+    cbar_extendfrac="auto",
+    cbar_extendrect=True,
+    fontsize=16,
 )
 set_figure_properties(fig, tight_layout=True, fontsize=16)
 ax.set_visible(False)

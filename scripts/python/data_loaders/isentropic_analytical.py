@@ -22,11 +22,12 @@
 #
 import json
 from sympl import DataArray
-from tasmania import (
-    DataArrayDictOperator,
-    Grid,
+
+from tasmania.python.domain.grid import Grid
+from tasmania.python.utils import typingx as ty
+from tasmania.python.utils.dict import DataArrayDictOperator
+from tasmania.python.utils.meteo import (
     get_isothermal_isentropic_analytical_solution,
-    taz_types,
 )
 
 from scripts.python.data_loaders.base import BaseLoader
@@ -65,10 +66,10 @@ class IsentropicAnalyticalLoader(BaseLoader):
     def get_grid(self) -> Grid:
         return self.dsmounter.get_grid()
 
-    def get_initial_time(self) -> taz_types.datetime_t:
+    def get_initial_time(self) -> ty.Datetime:
         return self.dsmounter.get_state(0)["time"]
 
-    def get_state(self, tlevel: int) -> taz_types.dataarray_dict_t:
+    def get_state(self, tlevel: int) -> ty.DataArrayDict:
         grid = self.get_grid()
         init_state = self.dsmounter.get_state(0)
 
@@ -77,7 +78,7 @@ class IsentropicAnalyticalLoader(BaseLoader):
         )
         final_state = {"x_velocity_at_u_locations": u}
 
-        op = DataArrayDictOperator(gt_powered=False)
+        op = DataArrayDictOperator(backend="numpy")
 
         state = op.sub(final_state, init_state)
         state.update(

@@ -22,7 +22,9 @@
 #
 from datetime import datetime
 import json
-from tasmania import HovmollerDiagram, TimeSeries, taz_types
+
+from tasmania.python.plot.trackers import HovmollerDiagram, TimeSeries
+from tasmania.python.utils import typingx as ty
 
 from scripts.python.data_loaders.base import BaseLoader
 from scripts.python.drawer_wrappers.base import DrawerWrapper
@@ -61,7 +63,7 @@ class TimeSeriesWrapper(DrawerWrapper):
                 properties=drawer_properties,
             )
 
-    def get_state(self, tlevel: int) -> taz_types.dataarray_dict_t:
+    def get_state(self, tlevel: int) -> ty.DataArrayDict:
         tlevel = self.loader.get_nt() + tlevel if tlevel < 0 else tlevel
         drawer_tlevel = len(self.core._data) - 1
 
@@ -79,7 +81,7 @@ class LazyTimeSeriesWrapper(TimeSeriesWrapper):
     def __init__(self, loader: BaseLoader, json_filename: str) -> None:
         super().__init__(loader, json_filename)
 
-    def get_state(self, tlevel: int) -> taz_types.dataarray_dict_t:
+    def get_state(self, tlevel: int) -> ty.DataArrayDict:
         tlevel = self.loader.get_nt() + tlevel if tlevel < 0 else tlevel
         return self.loader.get_state(tlevel)
 
@@ -135,7 +137,7 @@ class HovmollerDiagramWrapper(DrawerWrapper):
                 properties=drawer_properties,
             )
 
-    def get_state(self, tlevel: int) -> taz_types.dataarray_dict_t:
+    def get_state(self, tlevel: int) -> ty.DataArrayDict:
         tlevel = self.loader.get_nt() + tlevel if tlevel < 0 else tlevel
         drawer_tlevel = len(self.core._time) - 1
 
@@ -157,6 +159,6 @@ class LazyHovmollerDiagramWrapper(HovmollerDiagramWrapper):
     def __init__(self, loader: BaseLoader, json_filename: str) -> None:
         super().__init__(loader, json_filename)
 
-    def get_state(self, tlevel: int) -> taz_types.dataarray_dict_t:
+    def get_state(self, tlevel: int) -> ty.DataArrayDict:
         tlevel = self.loader.get_nt() + tlevel if tlevel < 0 else tlevel
         return self.loader.get_state(tlevel)

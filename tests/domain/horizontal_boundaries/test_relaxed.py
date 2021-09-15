@@ -20,44 +20,37 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from copy import deepcopy
 from hypothesis import (
     given,
-    HealthCheck,
-    settings,
     strategies as hyp_st,
     reproduce_failure,
 )
-import numpy as np
 import pytest
 
-import gt4py as gt
-
 from tasmania.python.domain.horizontal_boundary import HorizontalBoundary
+from tasmania.python.framework.options import BackendOptions, StorageOptions
+from tasmania.python.framework.stencil import StencilFactory
 
-from tests.conf import backend as conf_backend, datatype as conf_dtype
+from tests.conf import backend as conf_backend, dtype as conf_dtype
 from tests.strategies import (
     st_horizontal_boundary_kwargs,
     st_horizontal_boundary_layers,
-    st_one_of,
     st_physical_grid,
     st_raw_field,
     st_state,
 )
-from tests.utilities import compare_arrays, compare_dataarrays
+from tests.utilities import compare_arrays, compare_dataarrays, hyp_settings
 
 
-@settings(
-    suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
-    deadline=None,
-)
+@hyp_settings
 @given(hyp_st.data())
 def test_properties(data):
     # ========================================
     # random data generation
     # ========================================
     grid = data.draw(
-        st_physical_grid(xaxis_length=(2, None), yaxis_length=(2, None)), label="grid"
+        st_physical_grid(xaxis_length=(2, None), yaxis_length=(2, None)),
+        label="grid",
     )
     nx, ny = grid.grid_xy.nx, grid.grid_xy.ny
     nb = data.draw(st_horizontal_boundary_layers(nx, ny), label="nb")
@@ -68,7 +61,7 @@ def test_properties(data):
     # ========================================
     # test
     # ========================================
-    hb = HorizontalBoundary.factory("relaxed", nx, ny, nb, **hb_kwargs)
+    hb = HorizontalBoundary.factory("relaxed", grid, nb, **hb_kwargs)
 
     assert hb.nx == nx
     assert hb.ny == ny
@@ -77,21 +70,18 @@ def test_properties(data):
     assert hb.nj == ny
     assert hb.type == "relaxed"
     assert "nr" in hb.kwargs
-    assert "nz" in hb.kwargs
-    assert len(hb.kwargs) == 2
+    assert len(hb.kwargs) == 1
 
 
-@settings(
-    suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
-    deadline=None,
-)
+@hyp_settings
 @given(hyp_st.data())
 def test_axis(data):
     # ========================================
     # random data generation
     # ========================================
     grid = data.draw(
-        st_physical_grid(xaxis_length=(2, None), yaxis_length=(2, None)), label="grid"
+        st_physical_grid(xaxis_length=(2, None), yaxis_length=(2, None)),
+        label="grid",
     )
     nx, ny = grid.grid_xy.nx, grid.grid_xy.ny
     nb = data.draw(st_horizontal_boundary_layers(nx, ny), label="nb")
@@ -102,68 +92,42 @@ def test_axis(data):
     # ========================================
     # test
     # ========================================
-    hb = HorizontalBoundary.factory("relaxed", nx, ny, nb, **hb_kwargs)
+    hb = HorizontalBoundary.factory("relaxed", grid, nb, **hb_kwargs)
 
-    #
-    # get_numerical_axis
-    #
-    # mass points
-    px = grid.x
-    cx = hb.get_numerical_xaxis(px, dims=px.dims[0])
-    compare_dataarrays(cx, px)
-    cx = hb.get_numerical_yaxis(px, dims=px.dims[0])
-    compare_dataarrays(cx, px)
+    # numerical axes - mass points
+    compare_dataarrays(hb.get_numerical_xaxis(grid.x.dims[0]), grid.x)
+    compare_dataarrays(hb.get_numerical_yaxis(grid.y.dims[0]), grid.y)
 
-    # staggered points
-    px = grid.x_at_u_locations
-    cx = hb.get_numerical_xaxis(px, dims=px.dims[0])
-    compare_dataarrays(cx, px)
-    cx = hb.get_numerical_yaxis(px, dims=px.dims[0])
-    compare_dataarrays(cx, px)
-
-    #
-    # get_physical_axis
-    #
-    # mass points
-    px_val = grid.x
-    cx = hb.get_numerical_xaxis(px_val)
-    px = hb.get_physical_xaxis(cx)
-    compare_dataarrays(px, px_val)
-    px = hb.get_physical_yaxis(cx)
-    compare_dataarrays(px, px_val)
-
-    # staggered points
-    px_val = grid.y_at_v_locations
-    cx = hb.get_numerical_xaxis(px_val)
-    px = hb.get_physical_xaxis(cx)
-    compare_dataarrays(px, px_val)
-    px = hb.get_physical_yaxis(cx)
-    compare_dataarrays(px, px_val)
+    # numerical axes - staggered points
+    compare_dataarrays(
+        hb.get_numerical_xaxis_staggered(grid.x_at_u_locations.dims[0]),
+        grid.x_at_u_locations,
+    )
+    compare_dataarrays(
+        hb.get_numerical_yaxis_staggered(grid.y_at_v_locations.dims[0]),
+        grid.y_at_v_locations,
+    )
 
 
-@settings(
-    suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
-    deadline=None,
-)
-@given(hyp_st.data())
-def test_field(data):
+@hyp_settings
+@given(data=hyp_st.data())
+@pytest.mark.parametrize("backend", conf_backend)
+@pytest.mark.parametrize("dtype", conf_dtype)
+def test_field(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
-
-    if gt_powered:
-        gt.storage.prepare_numpy()
+    so = StorageOptions(dtype=dtype)
 
     grid = data.draw(
-        st_physical_grid(xaxis_length=(2, None), yaxis_length=(2, None)), label="grid"
+        st_physical_grid(xaxis_length=(2, None), yaxis_length=(2, None)),
+        label="grid",
     )
     nx, ny, nz = grid.grid_xy.nx, grid.grid_xy.ny, grid.nz
     nb = data.draw(st_horizontal_boundary_layers(nx, ny), label="nb")
     hb_kwargs = data.draw(
-        st_horizontal_boundary_kwargs("relaxed", nx, ny, nb, nz=nz), label="hb_kwargs"
+        st_horizontal_boundary_kwargs("relaxed", nx, ny, nb),
+        label="hb_kwargs",
     )
 
     pfield = data.draw(
@@ -171,9 +135,8 @@ def test_field(data):
             (nx + 1, ny + 1, nz),
             -1e4,
             1e4,
-            gt_powered=gt_powered,
             backend=backend,
-            dtype=dtype,
+            storage_options=so,
         )
     )
 
@@ -181,14 +144,7 @@ def test_field(data):
     # test
     # ========================================
     hb = HorizontalBoundary.factory(
-        "relaxed",
-        nx,
-        ny,
-        nb,
-        gt_powered=gt_powered,
-        backend=backend,
-        dtype=dtype,
-        **hb_kwargs
+        "relaxed", grid, nb, backend=backend, storage_options=so, **hb_kwargs
     )
 
     # (nx, ny)
@@ -209,80 +165,78 @@ def test_field(data):
     # (nx+1, ny+1)
     pf = pfield
     compare_arrays(
-        hb.get_numerical_field(pf, field_name="at_u_locations_at_v_locations"), pf
+        hb.get_numerical_field(pf, field_name="at_u_locations_at_v_locations"),
+        pf,
     )
     compare_arrays(
-        hb.get_physical_field(pf, field_name="at_u_locations_at_v_locations"), pf
+        hb.get_physical_field(pf, field_name="at_u_locations_at_v_locations"),
+        pf,
     )
 
 
-def enforce(cf_val, cf_ref, hb):
-    mi, mj, mk = cf_val.shape
-    cf_val -= hb._gamma[:mi, :mj, :mk] * (cf_val - cf_ref[:mi, :mj, :mk])
+def enforce(stencil_irelax, nf_val, nf_ref, hb):
+    mi, mj, mk = nf_val.shape
+    stencil_irelax(
+        in_gamma=hb._gamma,
+        in_phi_ref=nf_ref,
+        inout_phi=nf_val,
+        origin=(0, 0, 0),
+        domain=(mi, mj, mk),
+    )
 
 
-def validation(cf, cf_val, hb):
+def validation(nf, nf_val, hb):
     nr = hb.kwargs["nr"]
 
-    compare_arrays(cf[nr:-nr, nr:-nr], cf_val[nr:-nr, nr:-nr])
-    compare_arrays(cf[:nr, :nr], cf_val[:nr, :nr])
-    compare_arrays(cf[:nr, nr:-nr], cf_val[:nr, nr:-nr])
-    compare_arrays(cf[:nr, -nr:], cf_val[:nr, -nr:])
-    compare_arrays(cf[-nr:, :nr], cf_val[-nr:, :nr])
-    compare_arrays(cf[-nr:, nr:-nr], cf_val[-nr:, nr:-nr])
-    compare_arrays(cf[-nr:, -nr:], cf_val[-nr:, -nr:])
-    compare_arrays(cf[nr:-nr, :nr], cf_val[nr:-nr, :nr])
-    compare_arrays(cf[nr:-nr, -nr:], cf_val[nr:-nr, -nr:])
+    compare_arrays(nf[nr:-nr, nr:-nr], nf_val[nr:-nr, nr:-nr])
+    compare_arrays(nf[:nr, :nr], nf_val[:nr, :nr])
+    compare_arrays(nf[:nr, nr:-nr], nf_val[:nr, nr:-nr])
+    compare_arrays(nf[:nr, -nr:], nf_val[:nr, -nr:])
+    compare_arrays(nf[-nr:, :nr], nf_val[-nr:, :nr])
+    compare_arrays(nf[-nr:, nr:-nr], nf_val[-nr:, nr:-nr])
+    compare_arrays(nf[-nr:, -nr:], nf_val[-nr:, -nr:])
+    compare_arrays(nf[nr:-nr, :nr], nf_val[nr:-nr, :nr])
+    compare_arrays(nf[nr:-nr, -nr:], nf_val[nr:-nr, -nr:])
 
 
-@settings(
-    suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
-    deadline=None,
-)
-@given(hyp_st.data())
-def test_enforce(data):
+@hyp_settings
+@given(data=hyp_st.data())
+@pytest.mark.parametrize("backend", conf_backend)
+@pytest.mark.parametrize("dtype", conf_dtype)
+def test_enforce(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
-
-    if gt_powered:
-        gt.storage.prepare_numpy()
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype)
 
     grid = data.draw(
-        st_physical_grid(xaxis_length=(2, None), yaxis_length=(2, None)), label="grid"
+        st_physical_grid(xaxis_length=(2, None), yaxis_length=(2, None)),
+        label="grid",
     )
     nx, ny, nz = grid.grid_xy.nx, grid.grid_xy.ny, grid.nz
     nb = data.draw(st_horizontal_boundary_layers(nx, ny), label="nb")
     hb_kwargs = data.draw(
-        st_horizontal_boundary_kwargs("relaxed", nx, ny, nb, nz=nz), label="hb_kwargs"
+        st_horizontal_boundary_kwargs("relaxed", nx, ny, nb),
+        label="hb_kwargs",
     )
 
-    cfield = data.draw(
+    dnx = data.draw(hyp_st.integers(min_value=1, max_value=3), label="dnx")
+    dny = data.draw(hyp_st.integers(min_value=1, max_value=3), label="dny")
+    dnz = data.draw(hyp_st.integers(min_value=1, max_value=3), label="dnz")
+    storage_shape = (nx + dnx, ny + dny, nz + dnz)
+
+    nfield = data.draw(
         st_raw_field(
-            (nx + 1, ny + 1, nz + 1),
-            -1e4,
-            1e4,
-            gt_powered=gt_powered,
-            backend=backend,
-            dtype=dtype,
+            storage_shape, -1e4, 1e4, backend=backend, storage_options=so
         )
-    )
-
-    dnx = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dnx")
-    dny = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dny")
-    dnz = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dnz")
-    storage_shape = (
-        None
-        if data.draw(hyp_st.booleans(), label="not_storage_shape") and not gt_powered
-        else (nx + dnx, ny + dny, nz + dnz)
     )
 
     ref_state = data.draw(
         st_state(
-            grid, gt_powered=gt_powered, backend=backend, storage_shape=storage_shape
+            grid,
+            backend=backend,
+            storage_shape=storage_shape,
         )
     )
 
@@ -291,85 +245,90 @@ def test_enforce(data):
     # ========================================
     hb = HorizontalBoundary.factory(
         "relaxed",
-        nx,
-        ny,
+        grid,
         nb,
-        gt_powered=gt_powered,
         backend=backend,
-        dtype=dtype,
+        backend_options=bo,
         storage_shape=storage_shape,
+        storage_options=so,
         **hb_kwargs
     )
     hb.reference_state = ref_state
+
+    sf = StencilFactory(
+        backend=backend, backend_options=bo, storage_options=so
+    )
+    stencil_irelax = sf.compile_stencil("irelax")
 
     # (nx, ny)
-    cf = deepcopy(cfield)
+    nf_val = sf.as_storage(data=nfield)
     units = ref_state["afield"].attrs["units"]
-    hb.enforce_field(cf, field_name="afield", field_units=units)
-    cf_val = deepcopy(cfield[:-1, :-1, :-1])
-    cf_ref = ref_state["afield"].values
-    enforce(cf_val, cf_ref, hb)
-    validation(cf[:-1, :-1, :-1], cf_val, hb)
+    hb.enforce_field(nfield, field_name="afield", field_units=units)
+    nf_ref = ref_state["afield"].data
+    enforce(stencil_irelax, nf_val, nf_ref, hb)
+    validation(nfield[:nx, :ny, :nz], nf_val[:nx, :ny, :nz], hb)
 
     # (nx+1, ny)
-    cf = deepcopy(cfield)
+    nf_val = sf.as_storage(data=nfield)
     units = ref_state["afield_at_u_locations"].attrs["units"]
-    hb.enforce_field(cf, field_name="afield_at_u_locations", field_units=units)
-    cf_val = deepcopy(cfield[:, :-1, :-1])
-    cf_ref = ref_state["afield_at_u_locations"].values
-    enforce(cf_val, cf_ref, hb)
-    validation(cf[:, :-1, :-1], cf_val, hb)
+    hb.enforce_field(
+        nfield, field_name="afield_at_u_locations", field_units=units
+    )
+    nf_ref = ref_state["afield_at_u_locations"].data
+    enforce(stencil_irelax, nf_val, nf_ref, hb)
+    validation(nfield[: nx + 1, :ny, :nz], nf_val[: nx + 1, :ny, :nz], hb)
 
     # (nx, ny+1)
-    cf = deepcopy(cfield)
+    nf_val = sf.as_storage(data=nfield)
     units = ref_state["afield_at_v_locations"].attrs["units"]
-    hb.enforce_field(cf, field_name="afield_at_v_locations", field_units=units)
-    cf_val = deepcopy(cfield[:-1, :, :-1])
-    cf_ref = ref_state["afield_at_v_locations"].values
-    enforce(cf_val, cf_ref, hb)
-    validation(cf[:-1, :, :-1], cf_val, hb)
+    hb.enforce_field(
+        nfield, field_name="afield_at_v_locations", field_units=units
+    )
+    nf_ref = ref_state["afield_at_v_locations"].data
+    enforce(stencil_irelax, nf_val, nf_ref, hb)
+    validation(nfield[:nx, : ny + 1, :nz], nf_val[:nx, : ny + 1, :nz], hb)
 
     # (nx+1, ny+1)
-    cf = deepcopy(cfield)
+    nf_val = sf.as_storage(data=nfield)
     units = ref_state["afield_at_uv_locations"].attrs["units"]
-    hb.enforce_field(cf, field_name="afield_at_uv_locations", field_units=units)
-    cf_val = cfield[:, :, :-1]
-    cf_ref = ref_state["afield_at_uv_locations"].values
-    enforce(cf_val, cf_ref, hb)
-    validation(cf[:, :, :-1], cf_val, hb)
+    hb.enforce_field(
+        nfield, field_name="afield_at_uv_locations", field_units=units
+    )
+    nf_ref = ref_state["afield_at_uv_locations"].data
+    enforce(stencil_irelax, nf_val, nf_ref, hb)
+    validation(
+        nfield[: nx + 1, : ny + 1, :nz], nf_val[: nx + 1, : ny + 1, :nz], hb
+    )
 
 
-@settings(
-    suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
-    deadline=None,
-)
-@given(hyp_st.data())
-def test_outermost_layers(data):
+@hyp_settings
+@given(data=hyp_st.data())
+@pytest.mark.parametrize("backend", conf_backend)
+@pytest.mark.parametrize("dtype", conf_dtype)
+def test_outermost_layers(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
-
-    if gt_powered:
-        gt.storage.prepare_numpy()
+    bo = BackendOptions(rebuild=False)
+    so = StorageOptions(dtype=dtype)
 
     grid = data.draw(
-        st_physical_grid(xaxis_length=(2, None), yaxis_length=(2, None)), label="grid"
+        st_physical_grid(xaxis_length=(2, None), yaxis_length=(2, None)),
+        label="grid",
     )
     nx, ny, nz = grid.grid_xy.nx, grid.grid_xy.ny, grid.nz
     nb = data.draw(st_horizontal_boundary_layers(nx, ny), label="nb")
     hb_kwargs = data.draw(
-        st_horizontal_boundary_kwargs("relaxed", nx, ny, nb, nz=nz), label="hb_kwargs"
+        st_horizontal_boundary_kwargs("relaxed", nx, ny, nb),
+        label="hb_kwargs",
     )
-
     storage_shape = (nx + 1, ny + 1, nz + 1)
-    cfield = np.zeros(storage_shape, dtype=dtype)
-
     ref_state = data.draw(
         st_state(
-            grid, gt_powered=gt_powered, backend=backend, storage_shape=storage_shape
+            grid,
+            backend=backend,
+            storage_shape=storage_shape,
+            storage_options=so,
         )
     )
 
@@ -378,42 +337,53 @@ def test_outermost_layers(data):
     # ========================================
     hb = HorizontalBoundary.factory(
         "relaxed",
-        nx,
-        ny,
+        grid,
         nb,
-        gt_powered=gt_powered,
         backend=backend,
-        dtype=dtype,
+        backend_options=bo,
+        storage_options=so,
         **hb_kwargs
     )
     hb.reference_state = ref_state
 
+    sf = StencilFactory(
+        backend=backend, backend_options=bo, storage_options=so
+    )
+
     # (nx+1, ny)
-    cf = deepcopy(cfield)
+    nfield = sf.zeros(shape=storage_shape)
     units = ref_state["afield_at_u_locations"].attrs["units"]
-    hb.set_outermost_layers_x(cf, field_name="afield_at_u_locations", field_units=units)
-    cf_ref = ref_state["afield_at_u_locations"].values
-    compare_arrays(cf[0, :-1], cf_ref[0, :-1])
-    compare_arrays(cf[-1, :-1], cf_ref[-1, :-1])
+    hb.set_outermost_layers_x(
+        nfield, field_name="afield_at_u_locations", field_units=units
+    )
+    nf_ref = ref_state["afield_at_u_locations"].data
+    compare_arrays(nfield[0, :-1], nf_ref[0, :-1])
+    compare_arrays(nfield[-1, :-1], nf_ref[-1, :-1])
 
     # (nx, ny+1)
-    cf = deepcopy(cfield)
+    nfield = sf.zeros(shape=storage_shape)
     units = ref_state["afield_at_v_locations"].attrs["units"]
-    hb.set_outermost_layers_y(cf, field_name="afield_at_v_locations", field_units=units)
-    cf_ref = ref_state["afield_at_v_locations"].values
-    compare_arrays(cf[:-1, 0], cf_ref[:-1, 0])
-    compare_arrays(cf[:-1, -1], cf_ref[:-1, -1])
+    hb.set_outermost_layers_y(
+        nfield, field_name="afield_at_v_locations", field_units=units
+    )
+    nf_ref = ref_state["afield_at_v_locations"].data
+    compare_arrays(nfield[:-1, 0], nf_ref[:-1, 0])
+    compare_arrays(nfield[:-1, -1], nf_ref[:-1, -1])
 
     # (nx+1, ny+1)
-    cf = deepcopy(cfield)
+    nfield = sf.zeros(shape=storage_shape)
     units = ref_state["afield_at_uv_locations"].attrs["units"]
-    hb.set_outermost_layers_x(cf, field_name="afield_at_uv_locations", field_units=units)
-    hb.set_outermost_layers_y(cf, field_name="afield_at_uv_locations", field_units=units)
-    cf_ref = ref_state["afield_at_uv_locations"].values
-    compare_arrays(cf[0, :], cf_ref[0, :])
-    compare_arrays(cf[-1, :], cf_ref[-1, :])
-    compare_arrays(cf[:, 0], cf_ref[:, 0])
-    compare_arrays(cf[:, -1], cf_ref[:, -1])
+    hb.set_outermost_layers_x(
+        nfield, field_name="afield_at_uv_locations", field_units=units
+    )
+    hb.set_outermost_layers_y(
+        nfield, field_name="afield_at_uv_locations", field_units=units
+    )
+    nf_ref = ref_state["afield_at_uv_locations"].data
+    compare_arrays(nfield[0, :], nf_ref[0, :])
+    compare_arrays(nfield[-1, :], nf_ref[-1, :])
+    compare_arrays(nfield[:, 0], nf_ref[:, 0])
+    compare_arrays(nfield[:, -1], nf_ref[:, -1])
 
 
 if __name__ == "__main__":

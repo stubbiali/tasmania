@@ -20,36 +20,70 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-def print_info(dt, i, nl, pgrid, state):
-    if (nl.print_frequency > 0) and ((i + 1) % nl.print_frequency == 0):
-        u = (
-            state["x_momentum_isentropic"]
-            .to_units("kg m^-1 K^-1 s^-1")
-            .data[3:-4, 3:-4, :-1]
-            / state["air_isentropic_density"]
-            .to_units("kg m^-2 K^-1")
-            .data[3:-4, 3:-4, :-1]
-        )
-        v = (
-            state["y_momentum_isentropic"]
-            .to_units("kg m^-1 K^-1 s^-1")
-            .data[3:-4, 3:-4, :-1]
-            / state["air_isentropic_density"]
-            .to_units("kg m^-2 K^-1")
-            .data[3:-4, 3:-4, :-1]
-        )
+import os
+import pandas as pd
+from pydantic import BaseModel
 
-        umax, umin = u.max().item(), u.min().item()
-        vmax, vmin = v.max().item(), v.min().item()
-        cfl = max(
-            umax * dt.total_seconds() / pgrid.dx.to_units("m").values.item(),
-            vmax * dt.total_seconds() / pgrid.dy.to_units("m").values.item(),
-        )
+from tasmania.python.utils.backend import is_gt, get_gt_backend
 
-        # print useful info
-        print(
-            "Iteration {:6d}: CFL = {:4f}, umax = {:10.8f} m/s, umin = {:10.8f} m/s, "
-            "vmax = {:10.8f} m/s, vmin = {:10.8f} m/s".format(
-                i + 1, cfl, umax, umin, vmax, vmin
-            )
-        )
+
+class Statistics(BaseModel):
+    ncalls: int = 0
+    total_call_time: float = 0.0
+    total_run_time: float = 0.0
+    total_run_cpp_time: float = 0.0
+
+
+def inject_backend(namelist, backend=None):
+    if (
+        backend is not None
+        and getattr(namelist, "backend", backend) != backend
+    ):
+        old_backend = getattr(namelist, "backend")
+        for key in namelist.__dict__:
+            if isinstance(namelist.__dict__[key], str):
+                namelist.__dict__[key] = namelist.__dict__[key].replace(
+                    old_backend, backend
+                )
+
+
+def exec_info_to_csv(filename, backend, backend_options):
+    if (
+        filename is not None
+        and is_gt(backend)
+        and backend_options.exec_info.get("__aggregate_data", False)
+    ):
+        df = pd.DataFrame()
+
+        dct = backend_options.exec_info
+        gt_backend = get_gt_backend(backend).replace(":", "")
+        rows = [key for key in dct if gt_backend in key]
+        cols = [
+            "ncalls",
+            "total_call_time",
+            "total_run_time",
+            "total_run_cpp_time",
+        ]
+
+        for row in rows:
+            raw_stats = {col: dct[row].get(col, 0) for col in cols}
+            stats = Statistics(**raw_stats)
+            for col in cols:
+                df.at[row, col] = getattr(stats, col)
+
+        df.to_csv(filename)
+
+
+def run_info_to_csv(filename, backend, value):
+    if filename is not None:
+        if os.path.exists(filename):
+            df = pd.read_csv(filename, sep=",")
+        else:
+            df = pd.DataFrame()
+
+        if backend not in df:
+            df.at[0, backend] = value
+        else:
+            df.at[len(df.loc[:, backend].dropna()), backend] = value
+
+        df.to_csv(filename, index=False)

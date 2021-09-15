@@ -21,7 +21,9 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 import json
-from tasmania import Line, taz_types
+
+from tasmania.python.plot.offline import Line
+from tasmania.python.utils import typingx as ty
 
 from scripts.python.data_loaders.composite import CompositeLoader
 from scripts.python.drawer_wrappers.base import DrawerWrapper
@@ -56,7 +58,7 @@ class LineWrapper(DrawerWrapper):
                 properties=drawer_properties,
             )
 
-    def get_state(self, tlevel: int) -> taz_types.dataarray_dict_t:
+    def get_state(self, tlevel: int) -> ty.DataArrayDict:
         self.core.reset()
         states = self.loader.get_state(tlevel)
         for state in states[:-1]:

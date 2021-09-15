@@ -27,7 +27,7 @@ from typing import Optional, TYPE_CHECKING
 from tasmania.python.plot.drawer import Drawer
 from tasmania.python.plot.retrievers import DataRetriever
 from tasmania.python.plot.plot_utils import make_cdf
-from tasmania.python.utils import taz_types
+from tasmania.python.utils import typingx
 
 if TYPE_CHECKING:
     from tasmania.python.domain.grid import Grid
@@ -47,7 +47,7 @@ class CDF(Drawer):
         x: Optional[slice] = None,
         y: Optional[slice] = None,
         z: Optional[slice] = None,
-        properties: Optional[taz_types.options_dict_t] = None,
+        properties: Optional[typingx.options_dict_t] = None,
     ) -> None:
         """
         Parameters
@@ -84,15 +84,17 @@ class CDF(Drawer):
 
     def __call__(
         self,
-        state: taz_types.dataarray_dict_t,
+        state: typingx.DataArrayDict,
         fig: Optional[plt.Figure] = None,
         ax: Optional[plt.Axes] = None,
     ) -> None:
-        """ Call operator computing and visualizing the CDF. """
+        """Call operator computing and visualizing the CDF."""
         if self._data is None:
             self._data = self._retriever(state)
         else:
-            self._data = np.concatenate((self._data, self._retriever(state)), axis=2)
+            self._data = np.concatenate(
+                (self._data, self._retriever(state)), axis=2
+            )
 
         if ax is not None:
             make_cdf(self._data, ax, **self.properties)

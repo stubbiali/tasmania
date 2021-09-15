@@ -23,29 +23,20 @@
 from hypothesis import (
     assume,
     given,
-    HealthCheck,
     reproduce_failure,
-    seed,
-    settings,
     strategies as hyp_st,
 )
+from property_cached import cached_property
 import pytest
+
 from sympl import DataArray
 
-import gt4py as gt
-
-from tasmania.python.burgers.physics.diffusion import BurgersHorizontalDiffusion
-
-from tests.conf import (
-    backend as conf_backend,
-    datatype as conf_dtype,
-    default_origin as conf_dorigin,
-    nb as conf_nb,
+from tasmania.python.burgers.physics.diffusion import (
+    BurgersHorizontalDiffusion,
 )
-from tests.dwarfs.test_horizontal_diffusion import (
-    second_order_diffusion_xyz,
-    second_order_diffusion_xz,
-    second_order_diffusion_yz,
+
+from tests import conf
+from tests.dwarfs.horizontal_diffusers.test_fourth_order import (
     fourth_order_diffusion_xyz,
     fourth_order_diffusion_xz,
     fourth_order_diffusion_yz,
@@ -53,307 +44,157 @@ from tests.dwarfs.test_horizontal_diffusion import (
     assert_xz,
     assert_yz,
 )
-from tests.strategies import st_burgers_state, st_domain, st_floats, st_one_of
-
-
-def second_order_validation(grid, smooth_coeff, phi, phi_tnd, nb):
-    nx, ny = grid.nx, grid.ny
-    dx = grid.dx.to_units("m").values.item()
-    dy = grid.dy.to_units("m").values.item()
-
-    if nx < 3:
-        phi_tnd_assert = smooth_coeff * second_order_diffusion_yz(dy, phi)
-        assert_yz(phi_tnd, phi_tnd_assert, nb)
-    elif ny < 3:
-        phi_tnd_assert = smooth_coeff * second_order_diffusion_xz(dx, phi)
-        assert_xz(phi_tnd, phi_tnd_assert, nb)
-    else:
-        phi_tnd_assert = smooth_coeff * second_order_diffusion_xyz(dx, dy, phi)
-        assert_xyz(phi_tnd, phi_tnd_assert, nb)
-
-
-@settings(
-    suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
-    deadline=None,
+from tests.dwarfs.horizontal_diffusers.test_second_order import (
+    second_order_diffusion_xyz,
+    second_order_diffusion_xz,
+    second_order_diffusion_yz,
 )
-@given(hyp_st.data())
-def test_second_order(data):
-    # ========================================
-    # random data generation
-    # ========================================
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+from tests.strategies import st_burgers_state, st_floats
+from tests.suites.core_components import TendencyComponentTestSuite
+from tests.suites.domain import DomainSuite
+from tests.utilities import hyp_settings
 
-    if gt_powered:
-        gt.storage.prepare_numpy()
 
-    nb = data.draw(hyp_st.integers(min_value=1, max_value=max(1, conf_nb)), label="nb")
-    domain = data.draw(
-        st_domain(
-            xaxis_length=(1, 40),
-            yaxis_length=(1, 40),
-            zaxis_length=(1, 1),
-            nb=nb,
-            gt_powered=gt_powered,
-            backend=backend,
-            dtype=dtype,
-        ),
-        label="domain",
+class SecondOrder(TendencyComponentTestSuite):
+    def __init__(self, domain_suite):
+        self.smooth_coeff = domain_suite.hyp_data.draw(
+            st_floats(min_value=0, max_value=1), label="smooth_coeff"
+        )
+        super().__init__(domain_suite)
+
+    @cached_property
+    def component(self):
+        order = "second_order"
+        if self.ds.grid.nx < 3:
+            order += "_1dy"
+        elif self.ds.grid.ny < 3:
+            order += "_1dx"
+
+        return BurgersHorizontalDiffusion(
+            self.ds.domain,
+            self.ds.grid_type,
+            order,
+            DataArray(self.smooth_coeff, attrs={"units": "m^2 s^-1"}),
+            backend=self.ds.backend,
+            backend_options=self.ds.bo,
+            storage_options=self.ds.so,
+        )
+
+    def assert_allclose(self, name, field_a, field_b):
+        if self.ds.grid.nx < 3:
+            assert_yz(field_a, field_b, self.ds.domain.horizontal_boundary.nb)
+        elif self.ds.grid.ny < 3:
+            assert_xz(field_a, field_b, self.ds.domain.horizontal_boundary.nb)
+        else:
+            assert_xyz(field_a, field_b, self.ds.domain.horizontal_boundary.nb)
+
+    def get_state(self):
+        return self.hyp_data.draw(
+            st_burgers_state(
+                self.ds.grid,
+                backend=self.ds.backend,
+                storage_options=self.ds.so,
+            ),
+            label="state",
+        )
+
+    def get_validation_tendencies_and_diagnostics(self, raw_state_np, dt=None):
+        tendencies = {
+            "x_velocity": self.get_validation_field(
+                raw_state_np, "x_velocity"
+            ),
+            "y_velocity": self.get_validation_field(
+                raw_state_np, "y_velocity"
+            ),
+        }
+        diagnostics = {}
+        return tendencies, diagnostics
+
+    def get_validation_field(self, raw_state_np, name):
+        dx = self.ds.grid.dx.to_units("m").values.item()
+        dy = self.ds.grid.dy.to_units("m").values.item()
+        phi = raw_state_np[name]
+        if self.ds.grid.nx < 3:
+            return self.smooth_coeff * second_order_diffusion_yz(dy, phi)
+        elif self.ds.grid.ny < 3:
+            return self.smooth_coeff * second_order_diffusion_xz(dx, phi)
+        else:
+            return self.smooth_coeff * second_order_diffusion_xyz(dx, dy, phi)
+
+
+@hyp_settings
+@given(data=hyp_st.data())
+@pytest.mark.parametrize("backend", conf.backend)
+@pytest.mark.parametrize("dtype", conf.dtype)
+def test_second_order(data, backend, dtype):
+    ds = DomainSuite(
+        data,
+        backend,
+        dtype,
+        zaxis_length=(1, 1),
+        nb_min=1,
+        check_rebuild=False,
     )
-    pgrid = domain.physical_grid
-    cgrid = domain.numerical_grid
+    assume(ds.grid.nx > 2 or ds.grid.ny > 2)
+    ts = SecondOrder(ds)
+    ts.run()
 
-    pstate = data.draw(
-        st_burgers_state(
-            pgrid, gt_powered=gt_powered, backend=backend, default_origin=default_origin
-        ),
-        label="pstate",
+
+class FourthOrder(SecondOrder):
+    @cached_property
+    def component(self):
+        order = "fourth_order"
+        if self.ds.grid.nx < 5:
+            order += "_1dy"
+        elif self.ds.grid.ny < 5:
+            order += "_1dx"
+
+        return BurgersHorizontalDiffusion(
+            self.ds.domain,
+            self.ds.grid_type,
+            order,
+            DataArray(self.smooth_coeff, attrs={"units": "m^2 s^-1"}),
+            backend=self.ds.backend,
+            backend_options=self.ds.bo,
+            storage_options=self.ds.so,
+        )
+
+    def assert_allclose(self, name, field_a, field_b):
+        if self.ds.grid.nx < 5:
+            assert_yz(field_a, field_b, self.ds.domain.horizontal_boundary.nb)
+        elif self.ds.grid.ny < 5:
+            assert_xz(field_a, field_b, self.ds.domain.horizontal_boundary.nb)
+        else:
+            assert_xyz(field_a, field_b, self.ds.domain.horizontal_boundary.nb)
+
+    def get_validation_field(self, raw_state_np, name):
+        dx = self.ds.grid.dx.to_units("m").values.item()
+        dy = self.ds.grid.dy.to_units("m").values.item()
+        phi = raw_state_np[name]
+        if self.ds.grid.nx < 5:
+            return self.smooth_coeff * fourth_order_diffusion_yz(dy, phi)
+        elif self.ds.grid.ny < 5:
+            return self.smooth_coeff * fourth_order_diffusion_xz(dx, phi)
+        else:
+            return self.smooth_coeff * fourth_order_diffusion_xyz(dx, dy, phi)
+
+
+@hyp_settings
+@given(data=hyp_st.data())
+@pytest.mark.parametrize("backend", conf.backend)
+@pytest.mark.parametrize("dtype", conf.dtype)
+def test_fourth_order(data, backend, dtype):
+    ds = DomainSuite(
+        data,
+        backend,
+        dtype,
+        zaxis_length=(1, 1),
+        nb_min=2,
+        check_rebuild=False,
     )
-    cstate = data.draw(
-        st_burgers_state(
-            cgrid, gt_powered=gt_powered, backend=backend, default_origin=default_origin
-        ),
-        label="cstate",
-    )
-
-    smooth_coeff = data.draw(st_floats(min_value=0, max_value=1), label="smooth_coeff")
-
-    # ========================================
-    # test
-    # ========================================
-    #
-    # physical grid
-    #
-    pbhd = BurgersHorizontalDiffusion(
-        domain,
-        "physical",
-        "second_order",
-        DataArray(smooth_coeff, attrs={"units": "m^2 s^-1"}),
-        gt_powered=gt_powered,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-        rebuild=False,
-    )
-
-    tendencies, diagnostics = pbhd(pstate)
-
-    assert len(diagnostics) == 0
-
-    assert "x_velocity" in tendencies
-    assert "y_velocity" in tendencies
-    assert len(tendencies) == 2
-
-    assert tendencies["x_velocity"].attrs["units"] == "m s^-2"
-    second_order_validation(
-        pgrid,
-        smooth_coeff,
-        pstate["x_velocity"].to_units("m s^-1").values,
-        tendencies["x_velocity"].values,
-        nb,
-    )
-
-    assert tendencies["y_velocity"].attrs["units"] == "m s^-2"
-    second_order_validation(
-        pgrid,
-        smooth_coeff,
-        pstate["y_velocity"].to_units("m s^-1").values,
-        tendencies["y_velocity"].values,
-        nb,
-    )
-
-    #
-    # numerical grid
-    #
-    cbhd = BurgersHorizontalDiffusion(
-        domain,
-        "numerical",
-        "second_order",
-        DataArray(smooth_coeff, attrs={"units": "m^2 s^-1"}),
-        gt_powered=gt_powered,
-        backend=backend,
-        dtype=cgrid.x.dtype,
-        default_origin=default_origin,
-        rebuild=True,
-    )
-
-    tendencies, diagnostics = cbhd(cstate)
-
-    assert len(diagnostics) == 0
-
-    assert "x_velocity" in tendencies
-    assert "y_velocity" in tendencies
-    assert len(tendencies) == 2
-
-    assert tendencies["x_velocity"].attrs["units"] == "m s^-2"
-    second_order_validation(
-        cgrid,
-        smooth_coeff,
-        cstate["x_velocity"].to_units("m s^-1").values,
-        tendencies["x_velocity"].values,
-        nb,
-    )
-
-    assert tendencies["y_velocity"].attrs["units"] == "m s^-2"
-    second_order_validation(
-        cgrid,
-        smooth_coeff,
-        cstate["y_velocity"].to_units("m s^-1").values,
-        tendencies["y_velocity"].values,
-        nb,
-    )
-
-
-def fourth_order_validation(grid, smooth_coeff, phi, phi_tnd, nb):
-    nx, ny = grid.nx, grid.ny
-    dx = grid.dx.to_units("m").values.item()
-    dy = grid.dy.to_units("m").values.item()
-
-    if nx < 5:
-        phi_tnd_assert = smooth_coeff * fourth_order_diffusion_yz(dy, phi)
-        assert_yz(phi_tnd, phi_tnd_assert, nb)
-    elif ny < 5:
-        phi_tnd_assert = smooth_coeff * fourth_order_diffusion_xz(dx, phi)
-        assert_xz(phi_tnd, phi_tnd_assert, nb)
-    else:
-        phi_tnd_assert = smooth_coeff * fourth_order_diffusion_xyz(dx, dy, phi)
-        assert_xyz(phi_tnd, phi_tnd_assert, nb)
-
-
-@settings(
-    suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
-    deadline=None,
-)
-@given(hyp_st.data())
-def test_fourth_order(data):
-    # ========================================
-    # random data generation
-    # ========================================
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-
-    if gt_powered:
-        gt.storage.prepare_numpy()
-
-    nb = data.draw(hyp_st.integers(min_value=2, max_value=max(2, conf_nb)))
-    domain = data.draw(
-        st_domain(
-            xaxis_length=(1, 40),
-            yaxis_length=(1, 40),
-            zaxis_length=(1, 1),
-            nb=nb,
-            gt_powered=gt_powered,
-            backend=backend,
-            dtype=dtype,
-        ),
-        label="domain",
-    )
-    pgrid = domain.physical_grid
-    cgrid = domain.numerical_grid
-
-    pstate = data.draw(
-        st_burgers_state(
-            pgrid, gt_powered=gt_powered, backend=backend, default_origin=default_origin
-        ),
-        label="pstate",
-    )
-    cstate = data.draw(
-        st_burgers_state(
-            cgrid, gt_powered=gt_powered, backend=backend, default_origin=default_origin
-        ),
-        label="cstate",
-    )
-
-    smooth_coeff = data.draw(st_floats(min_value=0, max_value=1), label="smooth_coeff")
-
-    # ========================================
-    # test
-    # ========================================
-    #
-    # physical grid
-    #
-    pbhd = BurgersHorizontalDiffusion(
-        domain,
-        "physical",
-        "fourth_order",
-        DataArray(smooth_coeff, attrs={"units": "m^2 s^-1"}),
-        gt_powered=gt_powered,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-        rebuild=False,
-    )
-
-    tendencies, diagnostics = pbhd(pstate)
-
-    assert len(diagnostics) == 0
-
-    assert "x_velocity" in tendencies
-    assert "y_velocity" in tendencies
-    assert len(tendencies) == 2
-
-    assert tendencies["x_velocity"].attrs["units"] == "m s^-2"
-    fourth_order_validation(
-        pgrid,
-        smooth_coeff,
-        pstate["x_velocity"].to_units("m s^-1").values,
-        tendencies["x_velocity"].values,
-        nb,
-    )
-
-    assert tendencies["y_velocity"].attrs["units"] == "m s^-2"
-    fourth_order_validation(
-        pgrid,
-        smooth_coeff,
-        pstate["y_velocity"].to_units("m s^-1").values,
-        tendencies["y_velocity"].values,
-        nb,
-    )
-
-    #
-    # numerical grid
-    #
-    cbhd = BurgersHorizontalDiffusion(
-        domain,
-        "numerical",
-        "fourth_order",
-        DataArray(smooth_coeff, attrs={"units": "m^2 s^-1"}),
-        gt_powered=gt_powered,
-        backend=backend,
-        dtype=cgrid.x.dtype,
-        default_origin=default_origin,
-        rebuild=True,
-    )
-
-    tendencies, diagnostics = cbhd(cstate)
-
-    assert len(diagnostics) == 0
-
-    assert "x_velocity" in tendencies
-    assert "y_velocity" in tendencies
-    assert len(tendencies) == 2
-
-    assert tendencies["x_velocity"].attrs["units"] == "m s^-2"
-    fourth_order_validation(
-        cgrid,
-        smooth_coeff,
-        cstate["x_velocity"].to_units("m s^-1").values,
-        tendencies["x_velocity"].values,
-        nb,
-    )
-
-    assert tendencies["y_velocity"].attrs["units"] == "m s^-2"
-    fourth_order_validation(
-        cgrid,
-        smooth_coeff,
-        cstate["y_velocity"].to_units("m s^-1").values,
-        tendencies["y_velocity"].values,
-        nb,
-    )
+    assume(ds.grid.nx > 4 or ds.grid.ny > 4)
+    ts = FourthOrder(ds)
+    ts.run()
 
 
 if __name__ == "__main__":

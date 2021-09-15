@@ -20,39 +20,27 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from copy import deepcopy
-from datetime import timedelta
 from hypothesis import (
     given,
-    HealthCheck,
     reproduce_failure,
-    settings,
     strategies as hyp_st,
 )
+import numpy as np
+from property_cached import cached_property
 import pytest
 
-import gt4py as gt
-
+from tasmania.python.framework.allocators import zeros
 from tasmania.python.isentropic.physics.implicit_vertical_advection import (
     IsentropicImplicitVerticalAdvectionDiagnostic,
     IsentropicImplicitVerticalAdvectionPrognostic,
 )
-from tasmania.python.utils.storage_utils import get_dataarray_3d, zeros
+from tasmania.python.utils.storage import get_dataarray_3d
 
-from tests.conf import (
-    backend as conf_backend,
-    datatype as conf_dtype,
-    default_origin as conf_dorigin,
-)
-from tests.utils.test_gtscript_utils import thomas_validation
-from tests.strategies import (
-    st_domain,
-    st_isentropic_state_f,
-    st_one_of,
-    st_raw_field,
-    st_timedeltas,
-)
-from tests.utilities import compare_arrays
+from tests import conf
+from tests.strategies import st_isentropic_state_f, st_raw_field
+from tests.suites.core_components import TendencyComponentTestSuite
+from tests.suites.domain import DomainSuite
+from tests.utilities import compare_arrays, hyp_settings
 
 
 mfwv = "mass_fraction_of_water_vapor_in_air"
@@ -63,10 +51,10 @@ mfpw = "mass_fraction_of_precipitation_water_in_air"
 def setup_tridiagonal_system(gamma, w, phi, a=None, b=None, c=None, d=None):
     ni, nj, nk = phi.shape
 
-    a = deepcopy(phi) if a is None else a
-    b = deepcopy(phi) if b is None else b
-    c = deepcopy(phi) if c is None else c
-    d = deepcopy(phi) if d is None else d
+    a = np.zeros_like(phi) if a is None else a
+    b = np.zeros_like(phi) if b is None else b
+    c = np.zeros_like(phi) if c is None else c
+    d = np.zeros_like(phi) if d is None else d
 
     for i in range(ni):
         for j in range(nj):
@@ -80,7 +68,8 @@ def setup_tridiagonal_system(gamma, w, phi, a=None, b=None, c=None, d=None):
                 b[i, j, k] = 1.0
                 c[i, j, k] = -gamma * w[i, j, k + 1]
                 d[i, j, k] = phi[i, j, k] - gamma * (
-                    w[i, j, k - 1] * phi[i, j, k - 1] - w[i, j, k + 1] * phi[i, j, k + 1]
+                    w[i, j, k - 1] * phi[i, j, k - 1]
+                    - w[i, j, k + 1] * phi[i, j, k + 1]
                 )
 
             a[i, j, nk - 1] = 0.0
@@ -91,918 +80,197 @@ def setup_tridiagonal_system(gamma, w, phi, a=None, b=None, c=None, d=None):
     return a, b, c, d
 
 
-def validation_diagnostic(
-    domain,
-    moist,
-    toaptoil,
-    gt_powered,
-    backend,
-    default_origin,
-    rebuild,
-    state,
-    timestep,
-    *,
-    subtests
+def thomas_validation(a, b, c, d, x=None):
+    nx, ny, nz = a.shape
+
+    w = np.zeros_like(b)
+    beta = b.copy()
+    delta = d.copy()
+    for i in range(nx):
+        for j in range(ny):
+            w[i, j, 0] = 0.0
+            for k in range(1, nz):
+                w[i, j, k] = (
+                    a[i, j, k] / beta[i, j, k - 1]
+                    if beta[i, j, k - 1] != 0.0
+                    else a[i, j, k]
+                )
+                beta[i, j, k] = b[i, j, k] - w[i, j, k] * c[i, j, k - 1]
+                delta[i, j, k] = d[i, j, k] - w[i, j, k] * delta[i, j, k - 1]
+
+    x = np.zeros_like(b) if x is None else x
+    for i in range(nx):
+        for j in range(ny):
+            x[i, j, -1] = (
+                delta[i, j, -1] / beta[i, j, -1]
+                if beta[i, j, -1] != 0.0
+                else delta[i, j, -1] / b[i, j, -1]
+            )
+            for k in range(nz - 2, -1, -1):
+                x[i, j, k] = (
+                    (delta[i, j, k] - c[i, j, k] * x[i, j, k + 1])
+                    / beta[i, j, k]
+                    if beta[i, j, k] != 0.0
+                    else (delta[i, j, k] - c[i, j, k] * x[i, j, k + 1])
+                    / b[i, j, k]
+                )
+
+    return x
+
+
+class IsentropicImplicitVerticalAdvectionDiagnosticTestSuite(
+    TendencyComponentTestSuite
 ):
-    grid = domain.numerical_grid
-    nx, ny, nz = grid.nx, grid.ny, grid.nz
-    dtype = grid.z.dtype
+    def __init__(self, domain_suite, moist, toaptoil):
+        self.moist = moist
+        self.toaptoil = toaptoil
+        super().__init__(domain_suite)
 
-    storage_shape = state["air_isentropic_density"].shape
-
-    fluxer = IsentropicImplicitVerticalAdvectionDiagnostic(
-        domain,
-        moist,
-        tendency_of_air_potential_temperature_on_interface_levels=toaptoil,
-        gt_powered=gt_powered,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-        rebuild=rebuild,
-        storage_shape=storage_shape,
-    )
-
-    input_names = [
-        "air_isentropic_density",
-        "x_momentum_isentropic",
-        "y_momentum_isentropic",
-    ]
-    if toaptoil:
-        input_names.append("tendency_of_air_potential_temperature_on_interface_levels")
-    else:
-        input_names.append("tendency_of_air_potential_temperature")
-    if moist:
-        input_names.append(mfwv)
-        input_names.append(mfcw)
-        input_names.append(mfpw)
-
-    output_names = [
-        "air_isentropic_density",
-        "x_momentum_isentropic",
-        "y_momentum_isentropic",
-    ]
-    if moist:
-        output_names.append(mfwv)
-        output_names.append(mfcw)
-        output_names.append(mfpw)
-
-    for name in input_names:
-        # with subtests.test(name=name):
-        assert name in fluxer.input_properties
-    assert len(fluxer.input_properties) == len(input_names)
-
-    assert fluxer.tendency_properties == {}
-
-    for name in output_names:
-        # with subtests.test(name=name):
-        assert name in fluxer.diagnostic_properties
-    assert len(fluxer.diagnostic_properties) == len(output_names)
-
-    if toaptoil:
-        name = "tendency_of_air_potential_temperature_on_interface_levels"
-        w_hl = state[name].to_units("K s^-1").values
-        w = zeros(
-            (nx, ny, nz),
-            gt_powered=gt_powered,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
+    @cached_property
+    def component(self):
+        return IsentropicImplicitVerticalAdvectionDiagnostic(
+            self.ds.domain,
+            self.moist,
+            self.toaptoil,
+            backend=self.ds.backend,
+            backend_options=self.ds.bo,
+            storage_shape=self.ds.storage_shape,
+            storage_options=self.ds.so,
         )
-        w[...] = 0.5 * (w_hl[:nx, :ny, :nz] + w_hl[:nx, :ny, 1 : nz + 1])
-    else:
-        name = "tendency_of_air_potential_temperature"
-        w = state[name].to_units("K s^-1").values[:nx, :ny, :nz]
 
-    s = state["air_isentropic_density"].to_units("kg m^-2 K^-1").values[:nx, :ny, :nz]
-    su = (
-        state["x_momentum_isentropic"]
-        .to_units("kg m^-1 K^-1 s^-1")
-        .values[:nx, :ny, :nz]
-    )
-    sv = (
-        state["y_momentum_isentropic"]
-        .to_units("kg m^-1 K^-1 s^-1")
-        .values[:nx, :ny, :nz]
-    )
-    if moist:
-        qv = state[mfwv].to_units("g g^-1").values[:nx, :ny, :nz]
-        sqv = s * qv
-        qc = state[mfcw].to_units("g g^-1").values[:nx, :ny, :nz]
-        sqc = s * qc
-        qr = state[mfpw].to_units("g g^-1").values[:nx, :ny, :nz]
-        sqr = s * qr
+    def get_state(self):
+        nx, ny, nz = self.ds.grid.nx, self.ds.grid.ny, self.ds.grid.nz
 
-    tendencies, diagnostics = fluxer(state, timestep)
+        state = self.hyp_data.draw(
+            st_isentropic_state_f(
+                self.ds.grid,
+                moist=self.moist,
+                backend=self.ds.backend,
+                storage_shape=self.ds.storage_shape,
+                storage_options=self.ds.so,
+            ),
+            label="state",
+        )
 
-    assert tendencies == {}
+        field = self.hyp_data.draw(
+            st_raw_field(
+                self.ds.storage_shape or (nx, ny, nz + 1),
+                -1e4,
+                1e4,
+                backend=self.ds.backend,
+                storage_options=self.ds.so,
+            ),
+            label="field",
+        )
+        if self.toaptoil:
+            state[
+                "tendency_of_air_potential_temperature_on_interface_levels"
+            ] = get_dataarray_3d(
+                field,
+                self.ds.grid,
+                "K s^-1",
+                grid_shape=(nx, ny, nz + 1),
+                set_coordinates=False,
+            )
+        else:
+            state["tendency_of_air_potential_temperature"] = get_dataarray_3d(
+                field if self.ds.storage_shape else field[:nx, :ny, :nz],
+                self.ds.grid,
+                "K s^-1",
+                grid_shape=(nx, ny, nz),
+                set_coordinates=False,
+            )
 
-    dz = grid.dz.to_units("K").values.item()
-    dt = timestep.total_seconds()
-    gamma = dt / (4.0 * dz)
+        return state
 
-    a = zeros(
-        (nx, ny, nz),
-        gt_powered=gt_powered,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
-    b = zeros(
-        (nx, ny, nz),
-        gt_powered=gt_powered,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
-    c = zeros(
-        (nx, ny, nz),
-        gt_powered=gt_powered,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
-    d = zeros(
-        (nx, ny, nz),
-        gt_powered=gt_powered,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
-    out = zeros(
-        (nx, ny, nz),
-        gt_powered=gt_powered,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
+    def get_validation_tendencies_and_diagnostics(self, raw_state_np, dt=None):
+        nx, ny, nz = self.ds.grid.nx, self.ds.grid.ny, self.ds.grid.nz
+        dz = self.ds.grid.dz.to_units("K").values.item()
+        gamma = dt / (4.0 * dz)
 
-    setup_tridiagonal_system(gamma, w, s, a=a, b=b, c=c, d=d)
-    thomas_validation(a, b, c, d, x=out)
-    out_s = deepcopy(out)
-    assert "air_isentropic_density" in diagnostics
-    compare_arrays(out, diagnostics["air_isentropic_density"].values[:nx, :ny, :nz])
+        if self.toaptoil:
+            w_hl = raw_state_np[
+                "tendency_of_air_potential_temperature_on_interface_levels"
+            ]
+            w = zeros("numpy", shape=(nx, ny, nz), storage_options=self.ds.so)
+            w[...] = 0.5 * (w_hl[:nx, :ny, :nz] + w_hl[:nx, :ny, 1 : nz + 1])
+        else:
+            w = raw_state_np["tendency_of_air_potential_temperature"]
 
-    setup_tridiagonal_system(gamma, w, su, a=a, b=b, c=c, d=d)
-    thomas_validation(a, b, c, d, x=out)
-    assert "x_momentum_isentropic" in diagnostics
-    compare_arrays(out, diagnostics["x_momentum_isentropic"].values[:nx, :ny, :nz])
+        diagnostics = {}
 
-    setup_tridiagonal_system(gamma, w, sv, a=a, b=b, c=c, d=d)
-    thomas_validation(a, b, c, d, x=out)
-    assert "y_momentum_isentropic" in diagnostics
-    compare_arrays(out, diagnostics["y_momentum_isentropic"].values[:nx, :ny, :nz])
+        s = raw_state_np["air_isentropic_density"][:nx, :ny, :nz]
+        a, b, c, d = setup_tridiagonal_system(gamma, w, s)
+        out_s = thomas_validation(a, b, c, d)
+        diagnostics["air_isentropic_density"] = out_s
 
-    if moist:
-        setup_tridiagonal_system(gamma, w, sqv, a=a, b=b, c=c, d=d)
-        thomas_validation(a, b, c, d, x=out)
-        out[...] = out / out_s
-        assert mfwv in diagnostics
-        compare_arrays(out, diagnostics[mfwv].values[:nx, :ny, :nz])
+        su = raw_state_np["x_momentum_isentropic"][:nx, :ny, :nz]
+        a, b, c, d = setup_tridiagonal_system(gamma, w, su)
+        diagnostics["x_momentum_isentropic"] = thomas_validation(a, b, c, d)
 
-        setup_tridiagonal_system(gamma, w, sqc, a=a, b=b, c=c, d=d)
-        thomas_validation(a, b, c, d, x=out)
-        out[...] = out / out_s
-        assert mfcw in diagnostics
-        compare_arrays(out, diagnostics[mfcw].values[:nx, :ny, :nz])
+        sv = raw_state_np["y_momentum_isentropic"][:nx, :ny, :nz]
+        a, b, c, d = setup_tridiagonal_system(gamma, w, sv)
+        diagnostics["y_momentum_isentropic"] = thomas_validation(a, b, c, d)
 
-        setup_tridiagonal_system(gamma, w, sqr, a=a, b=b, c=c, d=d)
-        thomas_validation(a, b, c, d, x=out)
-        out[...] = out / out_s
-        assert mfpw in diagnostics
-        compare_arrays(out, diagnostics[mfpw].values[:nx, :ny, :nz])
+        if self.moist:
+            qv = raw_state_np[mfwv][:nx, :ny, :nz]
+            sqv = s * qv
+            a, b, c, d = setup_tridiagonal_system(gamma, w, sqv)
+            out_sqv = thomas_validation(a, b, c, d)
+            diagnostics[mfwv] = out_sqv / out_s
 
-    assert len(diagnostics) == len(output_names)
+            qc = raw_state_np[mfcw][:nx, :ny, :nz]
+            sqc = s * qc
+            a, b, c, d = setup_tridiagonal_system(gamma, w, sqc)
+            out_sqc = thomas_validation(a, b, c, d)
+            diagnostics[mfcw] = out_sqc / out_s
+
+            qr = raw_state_np[mfpw][:nx, :ny, :nz]
+            sqr = s * qr
+            a, b, c, d = setup_tridiagonal_system(gamma, w, sqr)
+            out_sqr = thomas_validation(a, b, c, d)
+            diagnostics[mfpw] = out_sqr / out_s
+
+        return {}, diagnostics
+
+    def assert_allclose(self, name, field_a, field_b):
+        nx, ny, nz = self.ds.grid.nx, self.ds.grid.ny, self.ds.grid.nz
+        slc = (slice(0, nx), slice(0, ny), slice(0, nz))
+        try:
+            compare_arrays(field_a, field_b, slice=slc)
+        except AssertionError:
+            raise RuntimeError(f"assert_allclose failed on {name}")
 
 
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
+@hyp_settings
 @given(data=hyp_st.data())
-def test_diagnostic_dry(data, subtests):
+@pytest.mark.parametrize("backend", conf.backend)
+@pytest.mark.parametrize("dtype", conf.dtype)
+def test_diagnostic(data, backend, dtype):
     # ========================================
     # random data generation
     # ========================================
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-
-    if gt_powered:
-        gt.storage.prepare_numpy()
-
-    domain = data.draw(
-        st_domain(
-            zaxis_length=(3, 20), gt_powered=gt_powered, backend=backend, dtype=dtype
-        ),
-        label="domain",
+    ds = DomainSuite(
+        data, backend, dtype, grid_type="numerical", zaxis_length=(3, 50)
     )
-    grid = domain.numerical_grid
-
-    nx, ny, nz = grid.nx, grid.ny, grid.nz
-    storage_shape = (nx + 1, ny + 1, nz + 1)
-
-    state = data.draw(
-        st_isentropic_state_f(
-            grid,
-            moist=False,
-            gt_powered=gt_powered,
-            backend=backend,
-            default_origin=default_origin,
-            storage_shape=storage_shape,
-        ),
-        label="state",
+    ts = IsentropicImplicitVerticalAdvectionDiagnosticTestSuite(
+        ds, moist=False, toaptoil=False
     )
-    field = data.draw(
-        st_raw_field(
-            storage_shape,
-            -1e4,
-            1e4,
-            gt_powered=gt_powered,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-        ),
-        label="field",
+    ts.run()
+    ts = IsentropicImplicitVerticalAdvectionDiagnosticTestSuite(
+        ds, moist=True, toaptoil=False
     )
-    state["tendency_of_air_potential_temperature"] = get_dataarray_3d(
-        field, grid, "K s^-1", grid_shape=(nx, ny, nz), set_coordinates=False
+    ts.run()
+    ts = IsentropicImplicitVerticalAdvectionDiagnosticTestSuite(
+        ds, moist=False, toaptoil=True
     )
-    state[
-        "tendency_of_air_potential_temperature_on_interface_levels"
-    ] = get_dataarray_3d(
-        field, grid, "K s^-1", grid_shape=(nx, ny, nz + 1), set_coordinates=False
+    ts.run()
+    ts = IsentropicImplicitVerticalAdvectionDiagnosticTestSuite(
+        ds, moist=True, toaptoil=True
     )
-
-    timestep = data.draw(
-        st_timedeltas(min_value=timedelta(seconds=1), max_value=timedelta(hours=1)),
-        label="timestep",
-    )
-
-    # ========================================
-    # test bed
-    # ========================================
-    validation_diagnostic(
-        domain,
-        False,
-        False,
-        gt_powered,
-        backend,
-        default_origin,
-        False,
-        state,
-        timestep,
-        subtests=subtests,
-    )
-    validation_diagnostic(
-        domain,
-        False,
-        True,
-        gt_powered,
-        backend,
-        default_origin,
-        False,
-        state,
-        timestep,
-        subtests=subtests,
-    )
-
-
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
-@given(data=hyp_st.data())
-def test_diagnostic_moist(data, subtests):
-    # ========================================
-    # random data generation
-    # ========================================
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-
-    if gt_powered:
-        gt.storage.prepare_numpy()
-
-    domain = data.draw(
-        st_domain(
-            zaxis_length=(3, 20), gt_powered=gt_powered, backend=backend, dtype=dtype
-        ),
-        label="domain",
-    )
-    grid = domain.numerical_grid
-
-    nx, ny, nz = grid.nx, grid.ny, grid.nz
-    storage_shape = (nx + 1, ny + 1, nz + 1)
-
-    state = data.draw(
-        st_isentropic_state_f(
-            grid,
-            moist=True,
-            gt_powered=gt_powered,
-            backend=backend,
-            default_origin=default_origin,
-            storage_shape=storage_shape,
-        ),
-        label="state",
-    )
-    field = data.draw(
-        st_raw_field(
-            storage_shape,
-            -1e4,
-            1e4,
-            gt_powered=gt_powered,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-        ),
-        label="field",
-    )
-    state["tendency_of_air_potential_temperature"] = get_dataarray_3d(
-        field, grid, "K s^-1", grid_shape=(nx, ny, nz), set_coordinates=False
-    )
-    state[
-        "tendency_of_air_potential_temperature_on_interface_levels"
-    ] = get_dataarray_3d(
-        field, grid, "K s^-1", grid_shape=(nx, ny, nz + 1), set_coordinates=False
-    )
-
-    timestep = data.draw(
-        st_timedeltas(min_value=timedelta(seconds=1), max_value=timedelta(hours=1)),
-        label="timestep",
-    )
-
-    # ========================================
-    # test bed
-    # ========================================
-    validation_diagnostic(
-        domain,
-        True,
-        False,
-        gt_powered,
-        backend,
-        default_origin,
-        False,
-        state,
-        timestep,
-        subtests=subtests,
-    )
-    validation_diagnostic(
-        domain,
-        True,
-        True,
-        gt_powered,
-        backend,
-        default_origin,
-        False,
-        state,
-        timestep,
-        subtests=subtests,
-    )
-
-
-def check_consistency(
-    domain, moist, gt_powered, backend, default_origin, rebuild, state, timestep
-):
-    grid = domain.numerical_grid
-    nx, ny, nz = grid.nx, grid.ny, grid.nz
-    dtype = grid.z.dtype
-
-    storage_shape = state["air_isentropic_density"].shape
-
-    fluxer = IsentropicImplicitVerticalAdvectionDiagnostic(
-        domain,
-        moist,
-        tendency_of_air_potential_temperature_on_interface_levels=False,
-        gt_powered=gt_powered,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-        rebuild=rebuild,
-        storage_shape=storage_shape,
-    )
-
-    input_names = [
-        "air_isentropic_density",
-        "tendency_of_air_potential_temperature",
-        "x_momentum_isentropic",
-        "y_momentum_isentropic",
-    ]
-    if moist:
-        input_names.append(mfwv)
-        input_names.append(mfcw)
-        input_names.append(mfpw)
-
-    output_names = [
-        "air_isentropic_density",
-        "x_momentum_isentropic",
-        "y_momentum_isentropic",
-    ]
-    if moist:
-        output_names.append(mfwv)
-        output_names.append(mfcw)
-        output_names.append(mfpw)
-
-    state["tendency_of_air_potential_temperature"] = get_dataarray_3d(
-        zeros(
-            storage_shape,
-            gt_powered=gt_powered,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-        ),
-        grid,
-        units="K s^-1",
-        grid_shape=(nx, ny, nz),
-        set_coordinates=False,
-    )
-
-    tendencies, diagnostics = fluxer(state, timestep)
-
-    compare_arrays(
-        diagnostics["air_isentropic_density"]
-        .to_units("kg m^-2 K^-1")
-        .values[:nx, :ny, :nz],
-        state["air_isentropic_density"].to_units("kg m^-2 K^-1").values[:nx, :ny, :nz],
-    )
-    compare_arrays(
-        diagnostics["x_momentum_isentropic"]
-        .to_units("kg m^-1 K^-1 s^-1")
-        .values[:nx, :ny, :nz],
-        state["x_momentum_isentropic"]
-        .to_units("kg m^-1 K^-1 s^-1")
-        .values[:nx, :ny, :nz],
-    )
-    compare_arrays(
-        diagnostics["y_momentum_isentropic"]
-        .to_units("kg m^-1 K^-1 s^-1")
-        .values[:nx, :ny, :nz],
-        state["y_momentum_isentropic"]
-        .to_units("kg m^-1 K^-1 s^-1")
-        .values[:nx, :ny, :nz],
-    )
-    if moist:
-        compare_arrays(
-            diagnostics[mfwv].to_units("g g^-1").values[:nx, :ny, :nz],
-            state[mfwv].to_units("g g^-1").values[:nx, :ny, :nz],
-        )
-        compare_arrays(
-            diagnostics[mfcw].to_units("g g^-1").values[:nx, :ny, :nz],
-            state[mfcw].to_units("g g^-1").values[:nx, :ny, :nz],
-        )
-        compare_arrays(
-            diagnostics[mfpw].to_units("g g^-1").values[:nx, :ny, :nz],
-            state[mfpw].to_units("g g^-1").values[:nx, :ny, :nz],
-        )
-
-
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
-@given(hyp_st.data())
-def test_diagnostic_consistency(data):
-    # ========================================
-    # random data generation
-    # ========================================
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-
-    if gt_powered:
-        gt.storage.prepare_numpy()
-
-    domain = data.draw(
-        st_domain(
-            zaxis_length=(3, 20), gt_powered=gt_powered, backend=backend, dtype=dtype
-        ),
-        label="domain",
-    )
-    grid = domain.numerical_grid
-
-    nx, ny, nz = grid.nx, grid.ny, grid.nz
-    storage_shape = (nx + 1, ny + 1, nz + 1)
-
-    state = data.draw(
-        st_isentropic_state_f(
-            grid,
-            moist=True,
-            gt_powered=gt_powered,
-            backend=backend,
-            default_origin=default_origin,
-            storage_shape=storage_shape,
-        ),
-        label="state",
-    )
-
-    timestep = data.draw(
-        st_timedeltas(min_value=timedelta(seconds=1), max_value=timedelta(hours=1)),
-        label="timestep",
-    )
-
-    # ========================================
-    # test bed
-    # ========================================
-    check_consistency(
-        domain, True, gt_powered, backend, default_origin, False, state, timestep
-    )
-
-
-def validation_prognostic(
-    domain,
-    moist,
-    toaptoil,
-    gt_powered,
-    backend,
-    default_origin,
-    rebuild,
-    state,
-    timestep,
-    *,
-    subtests
-):
-    grid = domain.numerical_grid
-    nx, ny, nz = grid.nx, grid.ny, grid.nz
-    dtype = grid.z.dtype
-
-    storage_shape = state["air_isentropic_density"].shape
-
-    fluxer = IsentropicImplicitVerticalAdvectionPrognostic(
-        domain,
-        moist,
-        gt_powered=gt_powered,
-        tendency_of_air_potential_temperature_on_interface_levels=toaptoil,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-        rebuild=rebuild,
-        storage_shape=storage_shape,
-    )
-
-    input_names = [
-        "air_isentropic_density",
-        "x_momentum_isentropic",
-        "y_momentum_isentropic",
-    ]
-    if toaptoil:
-        input_names.append("tendency_of_air_potential_temperature_on_interface_levels")
-    else:
-        input_names.append("tendency_of_air_potential_temperature")
-    if moist:
-        input_names.append(mfwv)
-        input_names.append(mfcw)
-        input_names.append(mfpw)
-
-    output_names = [
-        "air_isentropic_density",
-        "x_momentum_isentropic",
-        "y_momentum_isentropic",
-    ]
-    if moist:
-        output_names.append(mfwv)
-        output_names.append(mfcw)
-        output_names.append(mfpw)
-
-    for name in input_names:
-        # with subtests.test(name=name):
-        assert name in fluxer.input_properties
-    assert len(fluxer.input_properties) == len(input_names)
-
-    for name in output_names:
-        # with subtests.test(name=name):
-        assert name in fluxer.tendency_properties
-    assert len(fluxer.tendency_properties) == len(output_names)
-
-    assert fluxer.diagnostic_properties == {}
-
-    if toaptoil:
-        name = "tendency_of_air_potential_temperature_on_interface_levels"
-        w_hl = state[name].to_units("K s^-1").values
-        w = zeros(
-            (nx, ny, nz),
-            gt_powered=gt_powered,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-        )
-        w[...] = 0.5 * (w_hl[:nx, :ny, :nz] + w_hl[:nx, :ny, 1 : nz + 1])
-    else:
-        name = "tendency_of_air_potential_temperature"
-        w = state[name].to_units("K s^-1").values[:nx, :ny, :nz]
-
-    s = state["air_isentropic_density"].to_units("kg m^-2 K^-1").values[:nx, :ny, :nz]
-    su = (
-        state["x_momentum_isentropic"]
-        .to_units("kg m^-1 K^-1 s^-1")
-        .values[:nx, :ny, :nz]
-    )
-    sv = (
-        state["y_momentum_isentropic"]
-        .to_units("kg m^-1 K^-1 s^-1")
-        .values[:nx, :ny, :nz]
-    )
-    if moist:
-        qv = state[mfwv].to_units("g g^-1").values[:nx, :ny, :nz]
-        sqv = s * qv
-        qc = state[mfcw].to_units("g g^-1").values[:nx, :ny, :nz]
-        sqc = s * qc
-        qr = state[mfpw].to_units("g g^-1").values[:nx, :ny, :nz]
-        sqr = s * qr
-
-    tendencies, diagnostics = fluxer(state, timestep)
-
-    assert diagnostics == {}
-
-    dz = grid.dz.to_units("K").values.item()
-    dt = timestep.total_seconds()
-    gamma = dt / (4.0 * dz)
-
-    a = zeros(
-        (nx, ny, nz),
-        gt_powered=gt_powered,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
-    b = zeros(
-        (nx, ny, nz),
-        gt_powered=gt_powered,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
-    c = zeros(
-        (nx, ny, nz),
-        gt_powered=gt_powered,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
-    d = zeros(
-        (nx, ny, nz),
-        gt_powered=gt_powered,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
-    out = zeros(
-        (nx, ny, nz),
-        gt_powered=gt_powered,
-        backend=backend,
-        dtype=dtype,
-        default_origin=default_origin,
-    )
-
-    setup_tridiagonal_system(gamma, w, s, a=a, b=b, c=c, d=d)
-    thomas_validation(a, b, c, d, x=out)
-    out_s = deepcopy(out)
-    out[...] = (out - s) / dt
-    assert "air_isentropic_density" in tendencies
-    compare_arrays(out, tendencies["air_isentropic_density"].values[:nx, :ny, :nz])
-
-    setup_tridiagonal_system(gamma, w, su, a=a, b=b, c=c, d=d)
-    thomas_validation(a, b, c, d, x=out)
-    out[...] = (out - su) / dt
-    assert "x_momentum_isentropic" in tendencies
-    compare_arrays(out, tendencies["x_momentum_isentropic"].values[:nx, :ny, :nz])
-
-    setup_tridiagonal_system(gamma, w, sv, a=a, b=b, c=c, d=d)
-    thomas_validation(a, b, c, d, x=out)
-    out[...] = (out - sv) / dt
-    assert "y_momentum_isentropic" in tendencies
-    compare_arrays(out, tendencies["y_momentum_isentropic"].values[:nx, :ny, :nz])
-
-    if moist:
-        setup_tridiagonal_system(gamma, w, sqv, a=a, b=b, c=c, d=d)
-        thomas_validation(a, b, c, d, x=out)
-        out[...] = (out / out_s - qv) / dt
-        assert mfwv in tendencies
-        compare_arrays(out, tendencies[mfwv].values[:nx, :ny, :nz])
-
-        setup_tridiagonal_system(gamma, w, sqc, a=a, b=b, c=c, d=d)
-        thomas_validation(a, b, c, d, x=out)
-        out[...] = (out / out_s - qc) / dt
-        assert mfcw in tendencies
-        compare_arrays(out, tendencies[mfcw].values[:nx, :ny, :nz])
-
-        setup_tridiagonal_system(gamma, w, sqr, a=a, b=b, c=c, d=d)
-        thomas_validation(a, b, c, d, x=out)
-        out[...] = (out / out_s - qr) / dt
-        assert mfpw in tendencies
-        compare_arrays(out, tendencies[mfpw].values[:nx, :ny, :nz])
-
-    assert len(tendencies) == len(output_names)
-
-
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
-@given(data=hyp_st.data())
-def test_prognostic_dry(data, subtests):
-    # ========================================
-    # random data generation
-    # ========================================
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-
-    if gt_powered:
-        gt.storage.prepare_numpy()
-
-    domain = data.draw(
-        st_domain(
-            zaxis_length=(3, 20), gt_powered=gt_powered, backend=backend, dtype=dtype
-        ),
-        label="domain",
-    )
-    grid = domain.numerical_grid
-
-    nx, ny, nz = grid.nx, grid.ny, grid.nz
-    storage_shape = (nx + 1, ny + 1, nz + 1)
-
-    state = data.draw(
-        st_isentropic_state_f(
-            grid,
-            moist=False,
-            gt_powered=gt_powered,
-            backend=backend,
-            default_origin=default_origin,
-            storage_shape=storage_shape,
-        ),
-        label="state",
-    )
-    field = data.draw(
-        st_raw_field(
-            storage_shape,
-            -1e4,
-            1e4,
-            gt_powered=gt_powered,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-        ),
-        label="field",
-    )
-    state["tendency_of_air_potential_temperature"] = get_dataarray_3d(
-        field, grid, "K s^-1", grid_shape=(nx, ny, nz), set_coordinates=False
-    )
-    state[
-        "tendency_of_air_potential_temperature_on_interface_levels"
-    ] = get_dataarray_3d(
-        field, grid, "K s^-1", grid_shape=(nx, ny, nz + 1), set_coordinates=False
-    )
-
-    timestep = data.draw(
-        st_timedeltas(min_value=timedelta(seconds=1), max_value=timedelta(hours=1)),
-        label="timestep",
-    )
-
-    # ========================================
-    # test bed
-    # ========================================
-    validation_prognostic(
-        domain,
-        False,
-        False,
-        gt_powered,
-        backend,
-        default_origin,
-        False,
-        state,
-        timestep,
-        subtests=subtests,
-    )
-    validation_prognostic(
-        domain,
-        False,
-        True,
-        gt_powered,
-        backend,
-        default_origin,
-        False,
-        state,
-        timestep,
-        subtests=subtests,
-    )
-
-
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
-@given(data=hyp_st.data())
-def test_prognostic_moist(data, subtests):
-    # ========================================
-    # random data generation
-    # ========================================
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-
-    if gt_powered:
-        gt.storage.prepare_numpy()
-
-    domain = data.draw(
-        st_domain(
-            zaxis_length=(3, 20), gt_powered=gt_powered, backend=backend, dtype=dtype
-        ),
-        label="domain",
-    )
-    grid = domain.numerical_grid
-
-    nx, ny, nz = grid.nx, grid.ny, grid.nz
-    storage_shape = (nx + 1, ny + 1, nz + 1)
-
-    state = data.draw(
-        st_isentropic_state_f(
-            grid,
-            moist=True,
-            gt_powered=gt_powered,
-            backend=backend,
-            default_origin=default_origin,
-            storage_shape=storage_shape,
-        ),
-        label="state",
-    )
-    field = data.draw(
-        st_raw_field(
-            storage_shape,
-            -1e4,
-            1e4,
-            gt_powered=gt_powered,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-        ),
-        label="field",
-    )
-    state["tendency_of_air_potential_temperature"] = get_dataarray_3d(
-        field, grid, "K s^-1", grid_shape=(nx, ny, nz), set_coordinates=False
-    )
-    state[
-        "tendency_of_air_potential_temperature_on_interface_levels"
-    ] = get_dataarray_3d(
-        field, grid, "K s^-1", grid_shape=(nx, ny, nz + 1), set_coordinates=False
-    )
-
-    timestep = data.draw(
-        st_timedeltas(min_value=timedelta(seconds=1), max_value=timedelta(hours=1)),
-        label="timestep",
-    )
-
-    # ========================================
-    # test bed
-    # ========================================
-    validation_prognostic(
-        domain,
-        True,
-        False,
-        gt_powered,
-        backend,
-        default_origin,
-        False,
-        state,
-        timestep,
-        subtests=subtests,
-    )
-    validation_prognostic(
-        domain,
-        True,
-        True,
-        gt_powered,
-        backend,
-        default_origin,
-        False,
-        state,
-        timestep,
-        subtests=subtests,
-    )
+    ts.run()
 
 
 if __name__ == "__main__":
     pytest.main([__file__])
+    # test_diagnostic("numpy", float)

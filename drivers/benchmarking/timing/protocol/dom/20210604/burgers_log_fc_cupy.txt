@@ -1,0 +1,3 @@
+stencil: 0.000 s
+compute_time: 9.685 s
+|- stencil: 7.880 s

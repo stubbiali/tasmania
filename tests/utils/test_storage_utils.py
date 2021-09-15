@@ -24,9 +24,7 @@ from datetime import datetime, timedelta
 from hypothesis import (
     assume,
     given,
-    HealthCheck,
     reproduce_failure,
-    settings,
     strategies as hyp_st,
 )
 import os
@@ -34,16 +32,13 @@ import pytest
 import tempfile
 
 from tasmania import get_dataarray_3d
-from tasmania.python.utils.io_utils import NetCDFMonitor, load_netcdf_dataset
+from tasmania.python.utils.io import NetCDFMonitor, load_netcdf_dataset
 
 from tests.strategies import st_domain, st_isentropic_state
-from tests.utilities import compare_arrays, compare_dataarrays
+from tests.utilities import compare_arrays, compare_dataarrays, hyp_settings
 
 
-@settings(
-    suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
-    deadline=None,
-)
+@hyp_settings
 @given(hyp_st.data())
 def test_store_pp(data):
     # ========================================
@@ -53,7 +48,8 @@ def test_store_pp(data):
 
     pgrid = domain.physical_grid
     pstate = data.draw(
-        st_isentropic_state(pgrid, moist=True, precipitation=True), label="pstate"
+        st_isentropic_state(pgrid, moist=True, precipitation=True),
+        label="pstate",
     )
 
     filename = data.draw(hyp_st.text(), label="filename")
@@ -67,23 +63,18 @@ def test_store_pp(data):
     netcdf.store(pstate)
 
 
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,  # HealthCheck.filter_too_much
-    ),
-    deadline=None,
-)
+@hyp_settings
 @given(hyp_st.data())
-def test_store_pc(data):
+def test_store_pn(data):
     # ========================================
     # random data generation
     # ========================================
     domain = data.draw(st_domain(), label="domain")
 
-    cgrid = domain.numerical_grid
-    cstate = data.draw(
-        st_isentropic_state(cgrid, moist=False, precipitation=False), label="cstate"
+    ngrid = domain.numerical_grid
+    nstate = data.draw(
+        st_isentropic_state(ngrid, moist=False, precipitation=False),
+        label="cstate",
     )
 
     filename = data.draw(hyp_st.text(), label="filename")
@@ -92,25 +83,23 @@ def test_store_pc(data):
     # test bed
     # ========================================
     netcdf = NetCDFMonitor(filename, domain, "physical")
-    netcdf.store(cstate)
-    netcdf.store(cstate)
-    netcdf.store(cstate)
+    netcdf.store(nstate)
+    netcdf.store(nstate)
+    netcdf.store(nstate)
 
 
-@settings(
-    suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
-    deadline=None,
-)
+@hyp_settings
 @given(hyp_st.data())
-def test_store_cc(data):
+def test_store_nn(data):
     # ========================================
     # random data generation
     # ========================================
     domain = data.draw(st_domain(), label="domain")
 
-    cgrid = domain.physical_grid
-    cstate = data.draw(
-        st_isentropic_state(cgrid, moist=True, precipitation=True), label="cstate"
+    ngrid = domain.numerical_grid
+    nstate = data.draw(
+        st_isentropic_state(ngrid, moist=True, precipitation=True),
+        label="cstate",
     )
 
     filename = data.draw(hyp_st.text(), label="filename")
@@ -119,28 +108,23 @@ def test_store_cc(data):
     # test bed
     # ========================================
     netcdf = NetCDFMonitor(filename, domain, "numerical")
-    netcdf.store(cstate)
-    netcdf.store(cstate)
-    netcdf.store(cstate)
+    netcdf.store(nstate)
+    netcdf.store(nstate)
+    netcdf.store(nstate)
 
 
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,  # HealthCheck.filter_too_much
-    ),
-    deadline=None,
-)
+@hyp_settings
 @given(hyp_st.data())
-def test_store_cp(data):
+def test_store_np(data):
     # ========================================
     # random data generation
     # ========================================
     domain = data.draw(st_domain(), label="domain")
 
-    pgrid = domain.numerical_grid
+    pgrid = domain.physical_grid
     pstate = data.draw(
-        st_isentropic_state(pgrid, moist=False, precipitation=False), label="pstate"
+        st_isentropic_state(pgrid, moist=False, precipitation=False),
+        label="pstate",
     )
 
     filename = data.draw(hyp_st.text(), label="filename")
@@ -176,7 +160,7 @@ def assert_grids(g1, g2):
     # topography
     topo1, topo2 = g1.topography, g2.topography
     assert topo1.type == topo2.type
-    compare_arrays(topo1.steady_profile, topo2.steady_profile)
+    compare_dataarrays(topo1.steady_profile, topo2.steady_profile)
 
 
 def assert_isentropic_states(state, state_ref, *, subtests):
@@ -194,14 +178,7 @@ def assert_isentropic_states(state, state_ref, *, subtests):
             )
 
 
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
+@hyp_settings
 @given(data=hyp_st.data())
 def test_write_and_load(data, subtests):
     # ========================================
@@ -209,10 +186,10 @@ def test_write_and_load(data, subtests):
     # ========================================
     domain = data.draw(st_domain(), label="domain")
 
-    assume(domain.horizontal_boundary.type != "dirichlet")
+    # assume(domain.horizontal_boundary.type != "dirichlet")
 
     pgrid = domain.physical_grid
-    cgrid = domain.numerical_grid
+    ngrid = domain.numerical_grid
 
     pstate = data.draw(
         st_isentropic_state(
@@ -225,18 +202,18 @@ def test_write_and_load(data, subtests):
     )
 
     hb = domain.horizontal_boundary
-    cstate = {"time": pstate["time"]}
+    nstate = {"time": pstate["time"]}
     for name in pstate:
         if name != "time":
             pfield = pstate[name].values
             units = pstate[name].attrs["units"]
-            cfield = hb.get_numerical_field(pfield, field_name=name)
-            cstate[name] = get_dataarray_3d(cfield, cgrid, units, name=name)
+            nfield = hb.get_numerical_field(pfield, field_name=name)
+            nstate[name] = get_dataarray_3d(nfield, ngrid, units, name=name)
 
-    if not os.path.exists("tmp"):
-        os.makedirs("tmp")
+    if not os.path.exists(".tmp"):
+        os.makedirs(".tmp")
 
-    _, filename = tempfile.mkstemp(suffix=".nc", dir="tmp")
+    _, filename = tempfile.mkstemp(suffix=".nc", dir=".tmp")
     os.remove(filename)
 
     # ========================================
@@ -246,11 +223,11 @@ def test_write_and_load(data, subtests):
     netcdf = NetCDFMonitor(filename, domain, "physical")
 
     # store the states
-    netcdf.store(cstate)
-    cstate["time"] += timedelta(hours=1)
-    netcdf.store(cstate)
-    cstate["time"] += timedelta(hours=1)
-    netcdf.store(cstate)
+    netcdf.store(nstate)
+    nstate["time"] += timedelta(hours=1)
+    netcdf.store(nstate)
+    nstate["time"] += timedelta(hours=1)
+    netcdf.store(nstate)
 
     # dump to file
     netcdf.write()

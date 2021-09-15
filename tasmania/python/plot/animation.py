@@ -23,7 +23,7 @@
 import matplotlib.animation as manimation
 from typing import TYPE_CHECKING, Union
 
-from tasmania.python.utils import taz_types
+from tasmania.python.utils import typingx
 
 if TYPE_CHECKING:
     from tasmania.python.plot.monitors import Plot, PlotComposite
@@ -36,7 +36,9 @@ class Animation:
     to generate the frames.
     """
 
-    def __init__(self, artist: "Union[Plot, PlotComposite]", fps: int = 15) -> None:
+    def __init__(
+        self, artist: "Union[Plot, PlotComposite]", fps: int = 15
+    ) -> None:
         """
         Parameters
         ----------
@@ -55,7 +57,7 @@ class Animation:
         # initialize the list of states
         self._states = []
 
-    def store(self, *states: taz_types.dataarray_dict_t) -> None:
+    def store(self, *states: typingx.DataArrayDict) -> None:
         """
         Append a new state (respectively, a list of states), to the list of
         states (resp., lists of states) stored in this object.
@@ -68,7 +70,7 @@ class Animation:
         self._states.append(states)
 
     def reset(self) -> None:
-        """ Empty the list of stored states. """
+        """Empty the list of stored states."""
         self._states = []
 
     def run(self, save_dest: str) -> None:
