@@ -23,7 +23,7 @@
 	},
 	"figure_properties": {
 		"fontsize": 16,
-		"figsize": [13, 6.25],
+		"figsize": [12, 6.25],
 		"tight_layout": true,
 		"tight_layout_rect": null,
 		"suptitle": null,

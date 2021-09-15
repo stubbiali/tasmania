@@ -5,14 +5,14 @@
         "dt2_nt17280_gaussian_L50000_H500_u22_bv_smooth_turb_sus_gtx86.nc"
 	],
 	"filename2": [
-		"../../data/pdc_paper/isentropic_dry/",
-		"isentropic_dry_rk3ws_si_fifth_order_upwind_nx2561_nz60_",
-        "dt0_nt69120_gaussian_L50000_H500_u22_bv_smooth_turb_fc_gtx86.nc"
+		"../../data/pdc_paper/isentropic_dry/20210826/",
+		"isentropic_dry_rk3ws_si_fifth_order_upwind_nx5121_ny1_nz60_",
+		"dt0_nt138240_gaussian_L50000_H500_u22_bv_smooth_turb_fc_gt4py:gtmc_oop.nc"
 	],
 	"field_name": "x_momentum_isentropic",
 	"field_units": "kg m^-1 K^-1 s^-1",
 	"x1": [240, 401, null],
-	"x2": [960, 1601, 4],
+	"x2": [1920, 3201, 8],
 	"y1": [0, 1, null],
 	"y2": [0, 1, null],
 	"z1": [30, 60, null],

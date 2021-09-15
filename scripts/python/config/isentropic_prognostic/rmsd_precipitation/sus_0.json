@@ -5,14 +5,14 @@
         "dt40_nt450_gaussian_L50000_H500_u22_rh95_lh_smooth_turb_sed_sus_gtx86.nc"
 	],
 	"filename2": [
-		"../../data/pdc_paper/isentropic_prognostic/",
-		"isentropic_moist_rk3ws_si_fifth_order_upwind_rk2_nx2561_ny1_nz60_",
-        "dt0_nt28800_gaussian_L50000_H500_u22_rh95_lh_smooth_turb_sed_ssus_gtx86.nc"
+		"../../data/pdc_paper/isentropic_prognostic/20210826/",
+		"isentropic_moist_rk3ws_si_fifth_order_upwind_rk2_nx5121_ny1_nz60_",
+		"dt0_nt57600_gaussian_L50000_H500_u22_rh95_lh_smooth_turb_sed_ssus_gt4py:gtmc_oop.nc"
 	],
 	"field_name": "precipitation",
 	"field_units": "mm hr^-1",
 	"x1": [15, 26, null],
-	"x2": [960, 1601, 64],
+	"x2": [1920, 3201, 128],
 	"y1": [0, 1, null],
 	"y2": [0, 1, null],
 	"z1": [0, 1, null],

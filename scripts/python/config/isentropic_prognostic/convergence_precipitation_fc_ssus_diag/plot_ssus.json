@@ -74,7 +74,7 @@
 	},
 	"axes_properties": {
 		"fontsize": 16,
-		"title_center": "$\\mathbf{(b) ~ SSUS ~ vs ~ SUS}$",
+		"title_center": "$\\mathbf{(b)}$ SSUS vs SUS $-$ Time: 00:40:00",
 		"title_left": "",
 		"title_right": "",
 		"x_label": "$\\Delta x$ [km]",
@@ -112,7 +112,7 @@
 		"x2_labelcolor": "",
 		"x2_lim": [0.75, 7.25],
 		"x2_ticks": [1, 2, 3, 4, 5, 6],
-		"x2_ticklabels": [20, 10, 5, 2.5, 1.25, 0.625],
+		"x2_ticklabels": [40, 20, 10, 5, 2.5, 1.25],
 		"x2_tickcolor": "",
 		"legend_on": false,
 		"legend_loc": "best",

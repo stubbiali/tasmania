@@ -77,7 +77,7 @@
 		"invert_yaxis": false,
 		"y_scale": null,
 		"y_ticks": null,
-		"y_ticklabels": null,
+		"y_ticklabels": [],
 		"y_ticklabels_color": "",
 		"yaxis_minor_ticks_visible": false,
 		"yaxis_visible": true,

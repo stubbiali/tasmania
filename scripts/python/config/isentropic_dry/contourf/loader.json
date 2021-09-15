@@ -1,7 +1,7 @@
 {
 	"filename": [
-		"../../data/pdc_paper/isentropic_dry/",
-		"isentropic_dry_rk3ws_si_fifth_order_upwind_nx321_nz60_dt5_nt8640_",
-		"gaussian_L50000_H500_u22_bv_smooth_turb_fc_gtx86.nc"
+		"../../data/pdc_paper/isentropic_dry/20210826/",
+		"isentropic_dry_rk3ws_si_fifth_order_upwind_nx2561_ny1_nz90_dt0_nt69120_",
+		"gaussian_L50000_H500_u22_bv_smooth_turb_fc_gt4py:gtx86_oop.nc"
 	]
 }

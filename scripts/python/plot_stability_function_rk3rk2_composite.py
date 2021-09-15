@@ -34,16 +34,17 @@ ny = 201
 
 figure_properties = {
     "fontsize": 16,
-    "figsize": (14, 7),
-    "tight_layout": False,
+    "figsize": (20, 8.25),
+    "tight_layout": True,
     "tight_layout_rect": None,  # (0.0, 0.0, 0.7, 1.0),
+    "subplots_adjust_right": 1.05,
 }
 
 axes_properties_00 = {
     "fontsize": 16,
     # title
     "title_left": "",
-    "title_center": "$\\mathbf{(a)}$ FC",
+    "title_center": "$\\mathbf{(a)}$ RK2",
     "title_right": "",
     # x-axis
     "x_label": "",
@@ -51,7 +52,7 @@ axes_properties_00 = {
     "x_lim": xlim,  # (-190, 210),
     "invert_xaxis": False,
     "x_scale": None,
-    "x_ticks": range(int(xlim[0]), int(xlim[1])+1),
+    "x_ticks": [-4, -3, -2, -1, 0],
     "x_ticklabels": [],
     "x_tickcolor": "black",
     "xaxis_minor_ticks_visible": False,
@@ -62,8 +63,16 @@ axes_properties_00 = {
     "y_lim": ylim,
     "invert_yaxis": False,
     "y_scale": None,
-    "y_ticks": range(int(ylim[0]), int(ylim[1])+1),
-    "y_ticklabels": None,  # ['{:1.1E}'.format(1e-4), '{:1.1E}'.format(1e-3), '{:1.1E}'.format(1e-2)],
+    "y_ticks": [-3, -2, -1, 0, 1, 2, 3],
+    "y_ticklabels": [
+        -3,
+        -2,
+        -1,
+        0,
+        1,
+        2,
+        3,
+    ],  # ['{:1.1E}'.format(1e-4), '{:1.1E}'.format(1e-3), '{:1.1E}'.format(1e-2)],
     "y_tickcolor": "black",
     "yaxis_minor_ticks_visible": False,
     "yaxis_visible": True,
@@ -77,20 +86,22 @@ axes_properties_00 = {
 }
 contourf_properties_00 = {
     "fontsize": 16,
-    "cmap_name": "jet",
+    "cmap_name": "viridis_white",
     "cbar_on": True,
-    "cbar_levels": 21,
-    "cbar_ticks_step": 2,
+    "cbar_levels": 17,
+    "cbar_ticks_step": 4,
     "cbar_ticks_pos": "interface",
     "cbar_center": 0.5,
     "cbar_half_width": 0.5,
     "cbar_x_label": "",
-    "cbar_y_label": "$\\mathcal{S} \\, (\\beta \\Delta t, \\, \\alpha \\Delta t)$",
+    "cbar_y_label": "$\\vert r \\, (\\beta \\Delta t, \\, \\alpha \\Delta t) \\vert$",
     "cbar_title": "",
     "cbar_orientation": "vertical",
-    "cbar_ax": [0, 1, 2, 3, 4, 5],
+    "cbar_ax": [0, 1, 2, 3, 4, 5, 6, 7],
     "cbar_format": "%2.1f  ",
-    "cbar_extend": False,
+    "cbar_extend": "max",
+    "cbar_extendfrac": "auto",
+    "cbar_extendrect": True,
     "draw_vertical_levels": False,
 }
 
@@ -98,7 +109,7 @@ axes_properties_01 = {
     "fontsize": 16,
     # title
     "title_left": "",
-    "title_center": "$\\mathbf{(b)}$ LFC",
+    "title_center": "$\\mathbf{(b)}$ RK3WS",
     "title_right": "",
     # x-axis
     "x_label": "",
@@ -106,7 +117,7 @@ axes_properties_01 = {
     "x_lim": xlim,  # (-190, 210),
     "invert_xaxis": False,
     "x_scale": None,
-    "x_ticks": range(int(xlim[0]), int(xlim[1])+1),
+    "x_ticks": [-4, -3, -2, -1, 0],
     "x_ticklabels": [],
     "x_tickcolor": "black",
     "xaxis_minor_ticks_visible": False,
@@ -117,13 +128,13 @@ axes_properties_01 = {
     "y_lim": ylim,
     "invert_yaxis": False,
     "y_scale": None,
-    "y_ticks": range(int(ylim[0]), int(ylim[1])+1),
+    "y_ticks": [-3, -2, -1, 0, 1, 2, 3],
     "y_ticklabels": [],  # ['{:1.1E}'.format(1e-4), '{:1.1E}'.format(1e-3), '{:1.1E}'.format(1e-2)],
     "y_tickcolor": "black",
     "yaxis_minor_ticks_visible": False,
     "yaxis_visible": True,
     # legend
-    "legend_on": True,
+    "legend_on": False,
     # textbox
     "text": None,  #'$w_{\\mathtt{FW}} = 0$',
     # grid
@@ -132,35 +143,68 @@ axes_properties_01 = {
 }
 contourf_properties_01 = {
     "fontsize": 16,
-    "cmap_name": "jet",
+    "cmap_name": "viridis_white",
     "cbar_on": False,
-    "cbar_levels": 21,
+    "cbar_levels": 17,
     "cbar_ticks_step": 4,
+    "cbar_ticks_pos": "interface",
     "cbar_center": 0.5,
     "cbar_half_width": 0.5,
-    "cbar_extend": False,
+    "cbar_x_label": "",
+    "cbar_y_label": "$\\vert r \\, (\\beta \\Delta t, \\, \\alpha \\Delta t) \\vert$",
+    "cbar_title": "",
+    "cbar_orientation": "vertical",
+    "cbar_ax": [0, 1, 2, 3, 4, 5],
+    "cbar_format": "%2.1f  ",
+    "cbar_extend": "max",
+    "cbar_extendfrac": "auto",
+    "cbar_extendrect": True,
     "draw_vertical_levels": False,
 }
 
 axes_properties_02 = axes_properties_01.copy()
-axes_properties_02["title_center"] = "$\\mathbf{(c)}$ PS"
+axes_properties_02[
+    "title_center"
+] = "$\\mathbf{(c)}$ FC ($\mathcal{E}_0 = $RK3WS)"
 contourf_properties_02 = contourf_properties_01.copy()
 
+axes_properties_03 = axes_properties_01.copy()
+axes_properties_03[
+    "title_center"
+] = "$\\mathbf{(d)}$ LFC ($\mathcal{E}_0 = $RK3WS)"
+contourf_properties_03 = contourf_properties_01.copy()
+
 axes_properties_10 = axes_properties_00.copy()
-axes_properties_10["title_center"] = "$\\mathbf{(d)}$ STS"
+axes_properties_10[
+    "title_center"
+] = "$\\mathbf{(e)}$ PS\n($\mathcal{E}_0 = $RK3WS, $\mathcal{E}_1 = $RK2)"
 axes_properties_10["x_label"] = "$\\beta \\Delta t$"
-axes_properties_10["x_ticklabels"] = None
+axes_properties_10["x_ticklabels"] = [-4, -3, -2, -1, 0]
 contourf_properties_10 = contourf_properties_01.copy()
 
 axes_properties_11 = axes_properties_01.copy()
-axes_properties_11["title_center"] = "$\\mathbf{(e)}$ SUS"
+axes_properties_11[
+    "title_center"
+] = "$\\mathbf{(f)}$ STS\n($\mathcal{E}_0 = $RK3WS, $\mathcal{E}_1 = $RK2)"
 axes_properties_11["x_label"] = "$\\beta \\Delta t$"
-axes_properties_11["x_ticklabels"] = None
+axes_properties_11["x_ticklabels"] = [-4, -3, -2, -1, 0]
 contourf_properties_11 = contourf_properties_01.copy()
 
 axes_properties_12 = axes_properties_11.copy()
-axes_properties_12["title_center"] = "$\\mathbf{(f)}$ SSUS"
+axes_properties_12[
+    "title_center"
+] = "$\\mathbf{(g)}$ SUS\n($\mathcal{E}_0 = $RK3WS, $\mathcal{E}_1 = $RK2)"
+axes_properties_12["x_label"] = "$\\beta \\Delta t$"
+axes_properties_12["x_ticklabels"] = [-4, -3, -2, -1, 0]
 contourf_properties_12 = contourf_properties_01.copy()
+
+axes_properties_13 = axes_properties_11.copy()
+axes_properties_13[
+    "title_center"
+] = "$\\mathbf{(h)}$ SSUS [$\\lambda = 1/2$]\n($\mathcal{E}_0 = $RK3WS, $\mathcal{E}_1 = \mathcal{E}^{\star}_1 = $RK2)"
+axes_properties_13["x_label"] = "$\\beta \\Delta t$"
+axes_properties_13["x_ticklabels"] = [-4, -3, -2, -1, 0]
+contourf_properties_13 = contourf_properties_01.copy()
 
 # ==================================================
 # Code
@@ -170,17 +214,42 @@ if __name__ == "__main__":
     yv = np.linspace(ylim[0], ylim[1], ny)
     x, y = np.meshgrid(xv, yv)
 
-    fig, ax00 = pu.get_figure_and_axes(nrows=2, ncols=3, index=1, **figure_properties)
-    _, ax01 = pu.get_figure_and_axes(fig=fig, nrows=2, ncols=3, index=2, **figure_properties)
-    _, ax02 = pu.get_figure_and_axes(fig=fig, nrows=2, ncols=3, index=3, **figure_properties)
-    _, ax10 = pu.get_figure_and_axes(fig=fig, nrows=2, ncols=3, index=4, **figure_properties)
-    _, ax11 = pu.get_figure_and_axes(fig=fig, nrows=2, ncols=3, index=5, **figure_properties)
-    _, ax12 = pu.get_figure_and_axes(fig=fig, nrows=2, ncols=3, index=6, **figure_properties)
+    fig, ax00 = pu.get_figure_and_axes(
+        nrows=2, ncols=4, index=1, **figure_properties
+    )
+    _, ax01 = pu.get_figure_and_axes(
+        fig=fig, nrows=2, ncols=4, index=2, **figure_properties
+    )
+    _, ax02 = pu.get_figure_and_axes(
+        fig=fig, nrows=2, ncols=4, index=3, **figure_properties
+    )
+    _, ax03 = pu.get_figure_and_axes(
+        fig=fig, nrows=2, ncols=4, index=4, **figure_properties
+    )
+    _, ax10 = pu.get_figure_and_axes(
+        fig=fig, nrows=2, ncols=4, index=5, **figure_properties
+    )
+    _, ax11 = pu.get_figure_and_axes(
+        fig=fig, nrows=2, ncols=4, index=6, **figure_properties
+    )
+    _, ax12 = pu.get_figure_and_axes(
+        fig=fig, nrows=2, ncols=4, index=7, **figure_properties
+    )
+    _, ax13 = pu.get_figure_and_axes(
+        fig=fig, nrows=2, ncols=4, index=8, **figure_properties
+    )
 
-    E = 1 + (x + 1j * y) + 0.5 * (x + 1j * y) ** 2 + 1.0 / 6.0 * (x + 1j * y) ** 3
+    E = (
+        1
+        + (x + 1j * y)
+        + 0.5 * (x + 1j * y) ** 2
+        + 1.0 / 6.0 * (x + 1j * y) ** 3
+    )
     S = np.abs(E)
-    pu.make_contourf(xv, yv, S, fig, ax00, **contourf_properties_00)
-    pu.set_axes_properties(ax00, **axes_properties_00)
+    pu.make_contourf(xv, yv, S, fig, ax01, **contourf_properties_01)
+    pu.set_axes_properties(ax01, **axes_properties_01)
+    pu.make_contourf(xv, yv, S, fig, ax02, **contourf_properties_02)
+    pu.set_axes_properties(ax02, **axes_properties_02)
 
     E = (
         1
@@ -189,13 +258,18 @@ if __name__ == "__main__":
         + 1.0 / 6.0 * (x + 1j * y) * (1j * y) ** 2
     )
     S = np.abs(E)
-    pu.make_contourf(xv, yv, S, fig, ax01, **contourf_properties_01)
-    pu.set_axes_properties(ax01, **axes_properties_01)
+    pu.make_contourf(xv, yv, S, fig, ax03, **contourf_properties_03)
+    pu.set_axes_properties(ax03, **axes_properties_03)
 
-    E = 1 + (x + 1j * y) + 0.5 * (x ** 2 + (1j * y) ** 2) + 1.0 / 6.0 * (1j * y) ** 3
+    E = (
+        1
+        + (x + 1j * y)
+        + 0.5 * (x ** 2 + (1j * y) ** 2)
+        + 1.0 / 6.0 * (1j * y) ** 3
+    )
     S = np.abs(E)
-    pu.make_contourf(xv, yv, S, fig, ax02, **contourf_properties_02)
-    pu.set_axes_properties(ax02, **axes_properties_02)
+    pu.make_contourf(xv, yv, S, fig, ax10, **contourf_properties_10)
+    pu.set_axes_properties(ax10, **axes_properties_10)
 
     E = (
         1
@@ -205,8 +279,8 @@ if __name__ == "__main__":
         + 1.0 / 12.0 * (x * (1j * y) ** 3)
     )
     S = np.abs(E)
-    pu.make_contourf(xv, yv, S, fig, ax10, **contourf_properties_10)
-    pu.set_axes_properties(ax10, **axes_properties_10)
+    pu.make_contourf(xv, yv, S, fig, ax11, **contourf_properties_11)
+    pu.set_axes_properties(ax11, **axes_properties_11)
 
     E = (
         1
@@ -218,8 +292,8 @@ if __name__ == "__main__":
         + 1.0 / 12.0 * (x ** 2) * ((1j * y) ** 3)
     )
     S = np.abs(E)
-    pu.make_contourf(xv, yv, S, fig, ax11, **contourf_properties_11)
-    pu.set_axes_properties(ax11, **axes_properties_11)
+    pu.make_contourf(xv, yv, S, fig, ax12, **contourf_properties_12)
+    pu.set_axes_properties(ax12, **axes_properties_12)
 
     E = (
         1
@@ -247,8 +321,18 @@ if __name__ == "__main__":
         + 1.0 / 384.0 * (x ** 4) * (1j * y) ** 3
     )
     S = np.abs(E)
-    pu.make_contourf(xv, yv, S, fig, ax12, **contourf_properties_12)
-    pu.set_axes_properties(ax12, **axes_properties_12)
+    pu.make_contourf(xv, yv, S, fig, ax13, **contourf_properties_13)
+    pu.set_axes_properties(ax13, **axes_properties_13)
 
     pu.set_figure_properties(fig, **figure_properties)
+
+    E = 1 + (x + 1j * y) + 0.5 * (x + 1j * y) ** 2
+    S = np.abs(E)
+    pu.make_contourf(xv, yv, S, fig, ax00, **contourf_properties_00)
+    pu.set_axes_properties(ax00, **axes_properties_00)
+
     plt.show()
+    # fig.savefig(
+    #     "/Users/subbiali/Desktop/phd/manuscripts/pdc-paper/revision2/img/theory/"
+    #     "stability_function_rk3rk2_3.eps"
+    # )

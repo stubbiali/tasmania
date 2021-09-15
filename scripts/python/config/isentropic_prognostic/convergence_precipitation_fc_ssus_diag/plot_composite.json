@@ -33,7 +33,7 @@
 		"figlegend_loc": "center right",
 		"figlegend_ncol": 1,
 		"figlegend_title": ["$\\mathbf{Plot}$ $\\mathbf{(a)}$", "$\\mathbf{Plot}$ $\\mathbf{(b)}$"],
-		"subplots_adjust_right": 0.7925
+		"subplots_adjust_right": 0.808
 	},
 	"save_dest": null
 }

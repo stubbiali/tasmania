@@ -133,7 +133,7 @@
 		"grid_on": true,
 		"grid_properties": {"linestyle": ":"},
 		"ax2_on": true,
-		"x2_label": "$\\Delta t$",
+		"x2_label": "$\\Delta t$ [$\\times 10^{6}$]",
 		"x2_lim": [0.75, 4.95],
 		"x2_scale": null,
 		"x2_ticks": [1, 2, 3, 4],
