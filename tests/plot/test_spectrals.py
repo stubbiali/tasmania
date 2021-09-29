@@ -2,7 +2,7 @@
 #
 # Tasmania
 #
-# Copyright (c) 2018-2019, ETH Zurich
+# Copyright (c) 2018-2021, ETH Zurich
 # All rights reserved.
 #
 # This file is part of the Tasmania project. Tasmania is free software:
@@ -53,7 +53,11 @@ def test_cdf_u(isentropic_data):
 
     # grab data from dataset
     domain, grid_type, states = isentropic_data
-    grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
+    grid = (
+        domain.physical_grid
+        if grid_type == "physical"
+        else domain.numerical_grid
+    )
 
     # drawer properties
     drawer_properties = {
@@ -68,7 +72,11 @@ def test_cdf_u(isentropic_data):
     drawer = CDF(grid, field_name, field_units, properties=drawer_properties)
 
     # figure and axes properties
-    figure_properties = {"fontsize": 16, "figsize": (7, 8), "tight_layout": True}
+    figure_properties = {
+        "fontsize": 16,
+        "figsize": (7, 8),
+        "tight_layout": True,
+    }
     axes_properties = {
         "fontsize": 16,
         "x_label": "$x$-velocity [m s$^{-1}$]",
@@ -111,7 +119,11 @@ def test_cdf_qc(isentropic_data):
 
     # grab data from dataset
     domain, grid_type, states = isentropic_data
-    grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
+    grid = (
+        domain.physical_grid
+        if grid_type == "physical"
+        else domain.numerical_grid
+    )
 
     # drawer properties
     drawer_properties = {
@@ -126,7 +138,11 @@ def test_cdf_qc(isentropic_data):
     drawer = CDF(grid, field_name, field_units, properties=drawer_properties)
 
     # figure and axes properties
-    figure_properties = {"fontsize": 16, "figsize": (7, 8), "tight_layout": True}
+    figure_properties = {
+        "fontsize": 16,
+        "figsize": (7, 8),
+        "tight_layout": True,
+    }
     axes_properties = {
         "fontsize": 16,
         "x_label": "CDF",

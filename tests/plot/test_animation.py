@@ -2,7 +2,7 @@
 #
 # Tasmania
 #
-# Copyright (c) 2018-2019, ETH Zurich
+# Copyright (c) 2018-2021, ETH Zurich
 # All rights reserved.
 #
 # This file is part of the Tasmania project. Tasmania is free software:
@@ -56,7 +56,9 @@ def test(isentropic_data):
     filename = "test_profile.mp4"
     baseline_video = os.path.join(baseline_dir, filename)
     result_video = os.path.join(result_dir, filename)
-    save_dest = result_video if os.path.exists(baseline_video) else baseline_video
+    save_dest = (
+        result_video if os.path.exists(baseline_video) else baseline_video
+    )
 
     # field to plot
     field_name = "x_velocity"
@@ -64,13 +66,21 @@ def test(isentropic_data):
 
     # grab data
     domain, grid_type, states = isentropic_data
-    grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
+    grid = (
+        domain.physical_grid
+        if grid_type == "physical"
+        else domain.numerical_grid
+    )
 
     # indices identifying the cross-line to visualize
     y, z = int(grid.ny / 2), -1
 
     # drawer properties
-    drawer_properties = {"linecolor": "blue", "linestyle": "-", "linewidth": 1.5}
+    drawer_properties = {
+        "linecolor": "blue",
+        "linestyle": "-",
+        "linewidth": 1.5,
+    }
 
     # instantiate the drawer
     drawer = LineProfile(
@@ -85,7 +95,11 @@ def test(isentropic_data):
     )
 
     # figure and axes properties
-    figure_properties = {"fontsize": 16, "figsize": (7, 7), "tight_layout": True}
+    figure_properties = {
+        "fontsize": 16,
+        "figsize": (7, 7),
+        "tight_layout": True,
+    }
     axes_properties = {
         "fontsize": 16,
         "title_left": "$x$-velocity [km hr$^{-1}$]",

@@ -2,13 +2,13 @@
 #
 # Tasmania
 #
-# Copyright (c) 2018-2019, ETH Zurich
+# Copyright (c) 2018-2021, ETH Zurich
 # All rights reserved.
 #
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -24,14 +24,14 @@ import abc
 
 
 class OfflineDiagnosticComponentsLedger:
-	_ledger = {}
-	
-	__metaclass__ = abc.ABCMeta
+    _ledger = {}
 
-	@staticmethod
-	def __getitem__(key):
-		return OfflineDiagnosticComponentsLedger._ledger.get(key, None)
+    __metaclass__ = abc.ABCMeta
 
-	@staticmethod
-	def __setitem__(key, value):
-		OfflineDiagnosticComponentsLedger._ledger[key] = value
+    @staticmethod
+    def __getitem__(key):
+        return OfflineDiagnosticComponentsLedger._ledger.get(key, None)
+
+    @staticmethod
+    def __setitem__(key, value):
+        OfflineDiagnosticComponentsLedger._ledger[key] = value

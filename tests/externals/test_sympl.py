@@ -2,7 +2,7 @@
 #
 # Tasmania
 #
-# Copyright (c) 2018-2019, ETH Zurich
+# Copyright (c) 2018-2021, ETH Zurich
 # All rights reserved.
 #
 # This file is part of the Tasmania project. Tasmania is free software:
@@ -48,7 +48,9 @@ def test_to_units():
         if nx == 1
         else np.linspace(domain_x[0], domain_x[1], nx, dtype=float)
     )
-    x = sympl.DataArray(xv, coords=[xv], dims=dims_x, name="x", attrs={"units": units_x})
+    x = sympl.DataArray(
+        xv, coords=[xv], dims=dims_x, name="x", attrs={"units": units_x}
+    )
 
     x_to_units = x.to_units("m")
 
@@ -81,16 +83,28 @@ def test_diagnostics(isentropic_data):
 
         @property
         def input_properties(self):
-            dims = (self._grid.x.dims[0], self._grid.y.dims[0], self._grid.z.dims[0])
+            dims = (
+                self._grid.x.dims[0],
+                self._grid.y.dims[0],
+                self._grid.z.dims[0],
+            )
 
-            return {"air_isentropic_density": {"dims": dims, "units": "kg m^-2 K^-1"}}
+            return {
+                "air_isentropic_density": {
+                    "dims": dims,
+                    "units": "kg m^-2 K^-1",
+                }
+            }
 
         @property
         def diagnostic_properties(self):
             dims = (self._grid.x.dims[0], self._grid.z.dims[0])
 
             return {
-                "maxy_air_isentropic_density": {"dims": dims, "units": "kg m^-2 K^-1"}
+                "maxy_air_isentropic_density": {
+                    "dims": dims,
+                    "units": "kg m^-2 K^-1",
+                }
             }
 
         def array_call(self, state):
@@ -99,7 +113,11 @@ def test_diagnostics(isentropic_data):
 
     domain, grid_type, states = isentropic_data
     state = states[-1]
-    grid = domain.numerical_grid if grid_type == "numerical" else domain.physical_grid
+    grid = (
+        domain.numerical_grid
+        if grid_type == "numerical"
+        else domain.physical_grid
+    )
     grid.update_topography(state["time"] - states[0]["time"])
 
     td = TestDiagnostic(grid)

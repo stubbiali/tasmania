@@ -2,7 +2,7 @@
 #
 # Tasmania
 #
-# Copyright (c) 2018-2019, ETH Zurich
+# Copyright (c) 2018-2021, ETH Zurich
 # All rights reserved.
 #
 # This file is part of the Tasmania project. Tasmania is free software:
@@ -33,13 +33,17 @@ class AnimationWrapper:
             wrapper_classname = data["artist"]["wrapper_classname"]
             wrapper_config = data["artist"]["wrapper_config"]
 
-            import_str = "from {} import {}".format(wrapper_module, wrapper_classname)
+            import_str = "from {} import {}".format(
+                wrapper_module, wrapper_classname
+            )
             exec(import_str)
             self.artist_wrapper = locals()[wrapper_classname](wrapper_config)
 
             fps = data["fps"]
 
-            self.core = taz.Animation(self.artist_wrapper.get_artist(), fps=fps)
+            self.core = taz.Animation(
+                self.artist_wrapper.get_artist(), fps=fps
+            )
 
             self.tlevels = range(
                 data["tlevels"][0], data["tlevels"][1], data["tlevels"][2]
@@ -58,9 +62,14 @@ class AnimationWrapper:
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(description="Generate a figure with a single plot.")
+    parser = argparse.ArgumentParser(
+        description="Generate a figure with a single plot."
+    )
     parser.add_argument(
-        "configfile", metavar="configfile", type=str, help="JSON configuration file."
+        "configfile",
+        metavar="configfile",
+        type=str,
+        help="JSON configuration file.",
     )
     args = parser.parse_args()
     animation = AnimationWrapper(args.configfile)

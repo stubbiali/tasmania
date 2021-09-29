@@ -2,13 +2,13 @@
 #
 # Tasmania
 #
-# Copyright (c) 2018-2019, ETH Zurich
+# Copyright (c) 2018-2021, ETH Zurich
 # All rights reserved.
 #
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -28,14 +28,16 @@ from python.grids import Planar as Grid
 #
 # Data
 #
-kwargs = dict(domain_x = [0.,10.],
-			  nx = 101,
-			  units_x = "km",
-			  dims_x = "x",
-			  domain_y = [-5.,7.],
-			  ny = 241,
-			  units_y = "km",
-			  dims_y = "y")
+kwargs = dict(
+    domain_x=[0.0, 10.0],
+    nx=101,
+    units_x="km",
+    dims_x="x",
+    domain_y=[-5.0, 7.0],
+    ny=241,
+    units_y="km",
+    dims_y="y",
+)
 
 #
 # Test

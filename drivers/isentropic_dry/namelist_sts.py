@@ -2,7 +2,7 @@
 #
 # Tasmania
 #
-# Copyright (c) 2018-2019, ETH Zurich
+# Copyright (c) 2018-2021, ETH Zurich
 # All rights reserved.
 #
 # This file is part of the Tasmania project. Tasmania is free software:
@@ -26,11 +26,17 @@ from sympl import DataArray
 
 
 # computational domain
-domain_x = DataArray([-176, 176], dims="x", attrs={"units": "km"}).to_units("m")
+domain_x = DataArray([-176, 176], dims="x", attrs={"units": "km"}).to_units(
+    "m"
+)
 nx = 161
-domain_y = DataArray([-176, 176], dims="y", attrs={"units": "km"}).to_units("m")
+domain_y = DataArray([-176, 176], dims="y", attrs={"units": "km"}).to_units(
+    "m"
+)
 ny = 161
-domain_z = DataArray([340, 280], dims="potential_temperature", attrs={"units": "K"})
+domain_z = DataArray(
+    [340, 280], dims="potential_temperature", attrs={"units": "K"}
+)
 nz = 60
 
 # horizontal boundary
@@ -49,7 +55,10 @@ backend_kwargs = {
     "managed_memory": False,
 }
 backend_kwargs["backend_opts"] = (
-    {"verbose": True} if backend_kwargs["backend"] in ("gt4py:gtx86", "gt4py:gtmc", "gt4py:gtcuda") else None
+    {"verbose": True}
+    if backend_kwargs["backend"]
+    in ("gt4py:gtx86", "gt4py:gtmc", "gt4py:gtcuda")
+    else None
 )
 
 # topography
@@ -118,27 +127,24 @@ niter = 100  # int(1 * 60 * 60 / timestep.total_seconds())
 # output
 save = False
 save_frequency = -1
-filename = (
-    "/scratch/snx3000tds/subbiali/data/isentropic_dry_{}_{}_{}_nx{}_ny{}_nz{}_dt{}_nt{}_"
-    "{}_L{}_H{}_u{}_{}{}{}{}_sts_{}.nc".format(
-        time_integration_scheme,
-        horizontal_flux_scheme,
-        physics_time_integration_scheme,
-        nx,
-        ny,
-        nz,
-        int(timestep.total_seconds()),
-        niter,
-        topo_type,
-        int(topo_kwargs["width_x"].to_units("m").values.item()),
-        int(topo_kwargs["max_height"].to_units("m").values.item()),
-        int(x_velocity.to_units("m s^-1").values.item()),
-        "T" if isothermal else "bv",
-        "_diff" if diff else "",
-        "_smooth" if smooth else "",
-        "_turb" if turbulence else "",
-        backend_kwargs["backend"],
-    )
+filename = "/scratch/snx3000tds/subbiali/data/isentropic_dry_{}_{}_{}_nx{}_ny{}_nz{}_dt{}_nt{}_" "{}_L{}_H{}_u{}_{}{}{}{}_sts_{}.nc".format(
+    time_integration_scheme,
+    horizontal_flux_scheme,
+    physics_time_integration_scheme,
+    nx,
+    ny,
+    nz,
+    int(timestep.total_seconds()),
+    niter,
+    topo_type,
+    int(topo_kwargs["width_x"].to_units("m").values.item()),
+    int(topo_kwargs["max_height"].to_units("m").values.item()),
+    int(x_velocity.to_units("m s^-1").values.item()),
+    "T" if isothermal else "bv",
+    "_diff" if diff else "",
+    "_smooth" if smooth else "",
+    "_turb" if turbulence else "",
+    backend_kwargs["backend"],
 )
 store_names = (
     "air_isentropic_density",

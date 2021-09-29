@@ -2,7 +2,7 @@
 #
 # Tasmania
 #
-# Copyright (c) 2018-2019, ETH Zurich
+# Copyright (c) 2018-2021, ETH Zurich
 # All rights reserved.
 #
 # This file is part of the Tasmania project. Tasmania is free software:
@@ -32,7 +32,10 @@ import numpy as np
 import pytest
 from sympl import DataArray
 
-from tasmania.python.plot.retrievers import DataRetriever, DataRetrieverComposite
+from tasmania.python.plot.retrievers import (
+    DataRetriever,
+    DataRetrieverComposite,
+)
 from tasmania import get_dataarray_3d
 
 from tests.strategies import st_domain, st_isentropic_state_f, st_one_of
@@ -67,22 +70,35 @@ def _test_field(data):
     # random data generation
     # ========================================
     domain = data.draw(st_domain(), label="domain")
-    grid_type = data.draw(st_one_of(("physical", "numerical")), label="grid_type")
-    grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
+    grid_type = data.draw(
+        st_one_of(("physical", "numerical")), label="grid_type"
+    )
+    grid = (
+        domain.physical_grid
+        if grid_type == "physical"
+        else domain.numerical_grid
+    )
     state = data.draw(
-        st_isentropic_state_f(grid, moist=True, precipitation=True), label="state"
+        st_isentropic_state_f(grid, moist=True, precipitation=True),
+        label="state",
     )
     field_name = data.draw(st_one_of(units.keys()), label="field_name")
     field_units = data.draw(st_one_of(units[field_name]), label="field_units")
-    xmin = data.draw(hyp_st.integers(min_value=0, max_value=grid.nx - 1), label="xmin")
+    xmin = data.draw(
+        hyp_st.integers(min_value=0, max_value=grid.nx - 1), label="xmin"
+    )
     xmax = data.draw(
         hyp_st.integers(min_value=xmin + 1, max_value=grid.nx), label="xmax"
     )
-    ymin = data.draw(hyp_st.integers(min_value=0, max_value=grid.ny - 1), label="ymin")
+    ymin = data.draw(
+        hyp_st.integers(min_value=0, max_value=grid.ny - 1), label="ymin"
+    )
     ymax = data.draw(
         hyp_st.integers(min_value=ymin + 1, max_value=grid.ny), label="ymax"
     )
-    zmin = data.draw(hyp_st.integers(min_value=0, max_value=grid.nz - 1), label="zmin")
+    zmin = data.draw(
+        hyp_st.integers(min_value=0, max_value=grid.nz - 1), label="zmin"
+    )
     zmax = data.draw(
         hyp_st.integers(min_value=zmin + 1, max_value=grid.nz), label="zmax"
     )
@@ -171,21 +187,33 @@ def _test_horizontal_velocity(data):
     # random data generation
     # ========================================
     domain = data.draw(st_domain(), label="domain")
-    grid_type = data.draw(st_one_of(("physical", "numerical")), label="grid_type")
-    grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
+    grid_type = data.draw(
+        st_one_of(("physical", "numerical")), label="grid_type"
+    )
+    grid = (
+        domain.physical_grid
+        if grid_type == "physical"
+        else domain.numerical_grid
+    )
     state = data.draw(st_isentropic_state_f(grid), label="state")
     field_units = data.draw(
         st_one_of(units["x_velocity_at_u_locations"]), label="field_units"
     )
-    xmin = data.draw(hyp_st.integers(min_value=0, max_value=grid.nx - 1), label="xmin")
+    xmin = data.draw(
+        hyp_st.integers(min_value=0, max_value=grid.nx - 1), label="xmin"
+    )
     xmax = data.draw(
         hyp_st.integers(min_value=xmin + 1, max_value=grid.nx), label="xmax"
     )
-    ymin = data.draw(hyp_st.integers(min_value=0, max_value=grid.ny - 1), label="ymin")
+    ymin = data.draw(
+        hyp_st.integers(min_value=0, max_value=grid.ny - 1), label="ymin"
+    )
     ymax = data.draw(
         hyp_st.integers(min_value=ymin + 1, max_value=grid.ny), label="ymax"
     )
-    zmin = data.draw(hyp_st.integers(min_value=0, max_value=grid.nz - 1), label="zmin")
+    zmin = data.draw(
+        hyp_st.integers(min_value=0, max_value=grid.nz - 1), label="zmin"
+    )
     zmax = data.draw(
         hyp_st.integers(min_value=zmin + 1, max_value=grid.nz), label="zmax"
     )
@@ -211,7 +239,9 @@ def _test_horizontal_velocity(data):
     data_val = (
         hv[x, y, z]
         if field_units is None
-        else get_dataarray_3d(hv, grid, "m s^-1")[x, y, z].to_units(field_units).values
+        else get_dataarray_3d(hv, grid, "m s^-1")[x, y, z]
+        .to_units(field_units)
+        .values
     )
     assert np.allclose(data, data_val, equal_nan=True)
 
@@ -230,21 +260,33 @@ def _test_height(data):
     # random data generation
     # ========================================
     domain = data.draw(st_domain(), label="domain")
-    grid_type = data.draw(st_one_of(("physical", "numerical")), label="grid_type")
-    grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
+    grid_type = data.draw(
+        st_one_of(("physical", "numerical")), label="grid_type"
+    )
+    grid = (
+        domain.physical_grid
+        if grid_type == "physical"
+        else domain.numerical_grid
+    )
     state = data.draw(st_isentropic_state_f(grid), label="state")
     field_units = data.draw(
         st_one_of(units["height_on_interface_levels"]), label="field_units"
     )
-    xmin = data.draw(hyp_st.integers(min_value=0, max_value=grid.nx - 1), label="xmin")
+    xmin = data.draw(
+        hyp_st.integers(min_value=0, max_value=grid.nx - 1), label="xmin"
+    )
     xmax = data.draw(
         hyp_st.integers(min_value=xmin + 1, max_value=grid.nx), label="xmax"
     )
-    ymin = data.draw(hyp_st.integers(min_value=0, max_value=grid.ny - 1), label="ymin")
+    ymin = data.draw(
+        hyp_st.integers(min_value=0, max_value=grid.ny - 1), label="ymin"
+    )
     ymax = data.draw(
         hyp_st.integers(min_value=ymin + 1, max_value=grid.ny), label="ymax"
     )
-    zmin = data.draw(hyp_st.integers(min_value=0, max_value=grid.nz - 1), label="zmin")
+    zmin = data.draw(
+        hyp_st.integers(min_value=0, max_value=grid.nz - 1), label="zmin"
+    )
     zmax = data.draw(
         hyp_st.integers(min_value=zmin + 1, max_value=grid.nz), label="zmax"
     )
@@ -269,7 +311,9 @@ def _test_height(data):
         else 1.0
     )
     h = state["height_on_interface_levels"].to_units("m").values
-    data_val = factor * 0.5 * (h[x, y, zmin:zmax] + h[x, y, zmin + 1 : zmax + 1])
+    data_val = (
+        factor * 0.5 * (h[x, y, zmin:zmax] + h[x, y, zmin + 1 : zmax + 1])
+    )
     assert np.allclose(data, data_val, equal_nan=True)
 
 
@@ -284,36 +328,58 @@ def _test_height(data):
 @given(hyp_st.data())
 def test_composite(data):
     domain = data.draw(st_domain(), label="domain")
-    grid_type = data.draw(st_one_of(("physical", "numerical")), label="grid_type")
-    grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
+    grid_type = data.draw(
+        st_one_of(("physical", "numerical")), label="grid_type"
+    )
+    grid = (
+        domain.physical_grid
+        if grid_type == "physical"
+        else domain.numerical_grid
+    )
     state = data.draw(st_isentropic_state_f(grid, moist=True), label="state")
 
     field1_name = data.draw(st_one_of(units.keys()), label="field1_name")
-    field1_units = data.draw(st_one_of(units[field1_name]), label="field1_units")
-    xmin1 = data.draw(hyp_st.integers(min_value=0, max_value=grid.nx - 1), label="xmin1")
+    field1_units = data.draw(
+        st_one_of(units[field1_name]), label="field1_units"
+    )
+    xmin1 = data.draw(
+        hyp_st.integers(min_value=0, max_value=grid.nx - 1), label="xmin1"
+    )
     xmax1 = data.draw(
         hyp_st.integers(min_value=xmin1 + 1, max_value=grid.nx), label="xmax1"
     )
-    ymin1 = data.draw(hyp_st.integers(min_value=0, max_value=grid.ny - 1), label="ymin1")
+    ymin1 = data.draw(
+        hyp_st.integers(min_value=0, max_value=grid.ny - 1), label="ymin1"
+    )
     ymax1 = data.draw(
         hyp_st.integers(min_value=ymin1 + 1, max_value=grid.ny), label="ymax1"
     )
-    zmin1 = data.draw(hyp_st.integers(min_value=0, max_value=grid.nz - 1), label="zmin1")
+    zmin1 = data.draw(
+        hyp_st.integers(min_value=0, max_value=grid.nz - 1), label="zmin1"
+    )
     zmax1 = data.draw(
         hyp_st.integers(min_value=zmin1 + 1, max_value=grid.nz), label="zmax1"
     )
 
     field2_name = data.draw(st_one_of(units.keys()), label="field2_name")
-    field2_units = data.draw(st_one_of(units[field2_name]), label="field2_units")
-    xmin2 = data.draw(hyp_st.integers(min_value=0, max_value=grid.nx - 1), label="xmin2")
+    field2_units = data.draw(
+        st_one_of(units[field2_name]), label="field2_units"
+    )
+    xmin2 = data.draw(
+        hyp_st.integers(min_value=0, max_value=grid.nx - 1), label="xmin2"
+    )
     xmax2 = data.draw(
         hyp_st.integers(min_value=xmin2 + 1, max_value=grid.nx), label="xmax2"
     )
-    ymin2 = data.draw(hyp_st.integers(min_value=0, max_value=grid.ny - 1), label="ymin2")
+    ymin2 = data.draw(
+        hyp_st.integers(min_value=0, max_value=grid.ny - 1), label="ymin2"
+    )
     ymax2 = data.draw(
         hyp_st.integers(min_value=ymin2 + 1, max_value=grid.ny), label="ymax2"
     )
-    zmin2 = data.draw(hyp_st.integers(min_value=0, max_value=grid.nz - 1), label="zmin2")
+    zmin2 = data.draw(
+        hyp_st.integers(min_value=0, max_value=grid.nz - 1), label="zmin2"
+    )
     zmax2 = data.draw(
         hyp_st.integers(min_value=zmin2 + 1, max_value=grid.nz), label="zmax2"
     )
@@ -332,9 +398,13 @@ def test_composite(data):
     assert data[0].shape[1] == ymax1 - ymin1
     assert data[0].shape[2] == zmax1 - zmin1
     f1_units = (
-        field1_units if field1_units is not None else state[field1_name].attrs["units"]
+        field1_units
+        if field1_units is not None
+        else state[field1_name].attrs["units"]
     )
-    assert np.allclose(data[0], state[field1_name][x1, y1, z1].to_units(f1_units))
+    assert np.allclose(
+        data[0], state[field1_name][x1, y1, z1].to_units(f1_units)
+    )
 
     # two input states
     drc = DataRetrieverComposite(
@@ -349,14 +419,20 @@ def test_composite(data):
     assert data[0].shape[0] == xmax1 - xmin1
     assert data[0].shape[1] == ymax1 - ymin1
     assert data[0].shape[2] == zmax1 - zmin1
-    assert np.allclose(data[0], state[field1_name][x1, y1, z1].to_units(f1_units))
+    assert np.allclose(
+        data[0], state[field1_name][x1, y1, z1].to_units(f1_units)
+    )
     assert data[1].shape[0] == xmax2 - xmin2
     assert data[1].shape[1] == ymax2 - ymin2
     assert data[1].shape[2] == zmax2 - zmin2
     f2_units = (
-        field2_units if field2_units is not None else state[field2_name].attrs["units"]
+        field2_units
+        if field2_units is not None
+        else state[field2_name].attrs["units"]
     )
-    assert np.allclose(data[1], state[field2_name][x2, y2, z2].to_units(f2_units))
+    assert np.allclose(
+        data[1], state[field2_name][x2, y2, z2].to_units(f2_units)
+    )
 
 
 if __name__ == "__main__":

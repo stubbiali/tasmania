@@ -2,7 +2,7 @@
 #
 # Tasmania
 #
-# Copyright (c) 2018-2019, ETH Zurich
+# Copyright (c) 2018-2021, ETH Zurich
 # All rights reserved.
 #
 # This file is part of the Tasmania project. Tasmania is free software:
@@ -51,7 +51,11 @@ def test_profile_x(isentropic_data):
 
     # load data
     domain, grid_type, states = isentropic_data
-    grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
+    grid = (
+        domain.physical_grid
+        if grid_type == "physical"
+        else domain.numerical_grid
+    )
     grid.update_topography(states[-1]["time"] - states[0]["time"])
     state = states[-1]
 
@@ -116,7 +120,11 @@ def test_profile_x(isentropic_data):
     # Plot
     #
     # figure and axes properties
-    figure_properties = {"fontsize": 16, "figsize": (7, 7), "tight_layout": True}
+    figure_properties = {
+        "fontsize": 16,
+        "figsize": (7, 7),
+        "tight_layout": True,
+    }
     axes_properties = {
         "fontsize": 16,
         "title_left": "$y = ${} km, $\\theta = ${} K".format(
@@ -163,7 +171,11 @@ def test_profile_z(isentropic_data):
 
     # load data
     domain, grid_type, states = isentropic_data
-    grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
+    grid = (
+        domain.physical_grid
+        if grid_type == "physical"
+        else domain.numerical_grid
+    )
     grid.update_topography(states[-1]["time"] - states[0]["time"])
     state = states[-1]
 
@@ -228,7 +240,11 @@ def test_profile_z(isentropic_data):
     # Plot
     #
     # figure and axes properties
-    figure_properties = {"fontsize": 16, "figsize": (7, 7), "tight_layout": True}
+    figure_properties = {
+        "fontsize": 16,
+        "figsize": (7, 7),
+        "tight_layout": True,
+    }
     axes_properties = {
         "fontsize": 16,
         "title_center": "$x$ = {} km, $y$ = {} km".format(
@@ -273,7 +289,11 @@ def test_plot_2d(isentropic_data, drawer_topography_2d):
 
     # load data
     domain, grid_type, states = isentropic_data
-    grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
+    grid = (
+        domain.physical_grid
+        if grid_type == "physical"
+        else domain.numerical_grid
+    )
     grid.update_topography(states[-1]["time"] - states[0]["time"])
     state = states[-1]
 
@@ -334,13 +354,19 @@ def test_plot_2d(isentropic_data, drawer_topography_2d):
     #
     # Drawer#3
     #
-    topo_drawer = drawer_topography_2d(grid, xaxis_units="km", yaxis_units="km")
+    topo_drawer = drawer_topography_2d(
+        grid, xaxis_units="km", yaxis_units="km"
+    )
 
     #
     # Plot
     #
     # figure and axes properties
-    figure_properties = {"fontsize": 16, "figsize": (7, 8), "tight_layout": True}
+    figure_properties = {
+        "fontsize": 16,
+        "figsize": (7, 8),
+        "tight_layout": True,
+    }
     axes_properties = {
         "fontsize": 16,
         "title_left": "Horizontal velocity [m s$^{-1}$] at the surface",

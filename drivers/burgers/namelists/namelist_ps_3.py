@@ -2,7 +2,7 @@
 #
 # Tasmania
 #
-# Copyright (c) 2018-2019, ETH Zurich
+# Copyright (c) 2018-2021, ETH Zurich
 # All rights reserved.
 #
 # This file is part of the Tasmania project. Tasmania is free software:
@@ -57,7 +57,9 @@ gt_kwargs = {
     "rebuild": False,
     "managed_memory": False,
 }
-gt_kwargs["backend_opts"] = {"verbose": True} if gt_kwargs["backend"] != "numpy" else None
+gt_kwargs["backend_opts"] = (
+    {"verbose": True} if gt_kwargs["backend"] != "numpy" else None
+)
 
 # numerical scheme
 time_integration_scheme = "rk3ws"

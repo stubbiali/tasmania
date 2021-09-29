@@ -2,7 +2,7 @@
 #
 # Tasmania
 #
-# Copyright (c) 2018-2019, ETH Zurich
+# Copyright (c) 2018-2021, ETH Zurich
 # All rights reserved.
 #
 # This file is part of the Tasmania project. Tasmania is free software:
@@ -53,7 +53,11 @@ def test_profile_x(isentropic_data):
 
     # grab data from dataset
     domain, grid_type, states = isentropic_data
-    grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
+    grid = (
+        domain.physical_grid
+        if grid_type == "physical"
+        else domain.numerical_grid
+    )
     grid.update_topography(states[-1]["time"] - states[0]["time"])
     state = states[-1]
 
@@ -61,7 +65,11 @@ def test_profile_x(isentropic_data):
     y, z = int(grid.ny / 2), -1
 
     # drawer properties
-    drawer_properties = {"linecolor": "blue", "linestyle": "-", "linewidth": 1.5}
+    drawer_properties = {
+        "linecolor": "blue",
+        "linestyle": "-",
+        "linewidth": 1.5,
+    }
 
     # instantiate the drawer
     drawer = LineProfile(
@@ -75,7 +83,11 @@ def test_profile_x(isentropic_data):
     )
 
     # figure and axes properties
-    figure_properties = {"fontsize": 16, "figsize": (7, 7), "tight_layout": True}
+    figure_properties = {
+        "fontsize": 16,
+        "figsize": (7, 7),
+        "tight_layout": True,
+    }
     axes_properties = {
         "fontsize": 16,
         "title_left": "$y = ${} km, $\\theta = ${} K".format(
@@ -121,7 +133,11 @@ def test_profile_y(isentropic_data):
 
     # grab data from dataset
     domain, grid_type, states = isentropic_data
-    grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
+    grid = (
+        domain.physical_grid
+        if grid_type == "physical"
+        else domain.numerical_grid
+    )
     grid.update_topography(states[-1]["time"] - states[0]["time"])
     state = states[-1]
 
@@ -129,7 +145,11 @@ def test_profile_y(isentropic_data):
     x, z = int(grid.nx / 2), -1
 
     # drawer properties
-    drawer_properties = {"linecolor": "red", "linestyle": "--", "linewidth": 1.5}
+    drawer_properties = {
+        "linecolor": "red",
+        "linestyle": "--",
+        "linewidth": 1.5,
+    }
 
     # instantiate the drawer
     drawer = LineProfile(
@@ -143,7 +163,11 @@ def test_profile_y(isentropic_data):
     )
 
     # figure and axes properties
-    figure_properties = {"fontsize": 16, "figsize": (7, 7), "tight_layout": True}
+    figure_properties = {
+        "fontsize": 16,
+        "figsize": (7, 7),
+        "tight_layout": True,
+    }
     axes_properties = {
         "fontsize": 16,
         "title_left": "$x = ${} km, $\\theta = ${} K".format(
@@ -189,7 +213,11 @@ def test_profile_z(isentropic_data):
 
     # grab data from dataset
     domain, grid_type, states = isentropic_data
-    grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
+    grid = (
+        domain.physical_grid
+        if grid_type == "physical"
+        else domain.numerical_grid
+    )
     grid.update_topography(states[-1]["time"] - states[0]["time"])
     state = states[-1]
 
@@ -197,7 +225,11 @@ def test_profile_z(isentropic_data):
     x, y = int(grid.nx / 3), int(0.75 * grid.ny)
 
     # drawer properties
-    drawer_properties = {"linecolor": "lightblue", "linestyle": "-", "linewidth": 1.5}
+    drawer_properties = {
+        "linecolor": "lightblue",
+        "linestyle": "-",
+        "linewidth": 1.5,
+    }
 
     # instantiate the drawer
     drawer = LineProfile(
@@ -211,7 +243,11 @@ def test_profile_z(isentropic_data):
     )
 
     # figure and axes properties
-    figure_properties = {"fontsize": 16, "figsize": (7, 7), "tight_layout": True}
+    figure_properties = {
+        "fontsize": 16,
+        "figsize": (7, 7),
+        "tight_layout": True,
+    }
     axes_properties = {
         "fontsize": 16,
         "title_left": "$x = ${} km, $y = ${} km".format(
@@ -257,7 +293,11 @@ def test_profile_h(isentropic_data):
 
     # grab data from dataset
     domain, grid_type, states = isentropic_data
-    grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
+    grid = (
+        domain.physical_grid
+        if grid_type == "physical"
+        else domain.numerical_grid
+    )
     grid.update_topography(states[-1]["time"] - states[0]["time"])
     state = states[-1]
 
@@ -285,7 +325,11 @@ def test_profile_h(isentropic_data):
     )
 
     # figure and axes properties
-    figure_properties = {"fontsize": 16, "figsize": (7, 7), "tight_layout": True}
+    figure_properties = {
+        "fontsize": 16,
+        "figsize": (7, 7),
+        "tight_layout": True,
+    }
     axes_properties = {
         "fontsize": 16,
         "title_left": "$x = ${} km, $y = ${} km".format(

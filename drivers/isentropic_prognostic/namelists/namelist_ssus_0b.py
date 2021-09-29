@@ -2,7 +2,7 @@
 #
 # Tasmania
 #
-# Copyright (c) 2018-2019, ETH Zurich
+# Copyright (c) 2018-2021, ETH Zurich
 # All rights reserved.
 #
 # This file is part of the Tasmania project. Tasmania is free software:
@@ -26,11 +26,17 @@ from sympl import DataArray
 
 
 # computational domain
-domain_x = DataArray([-176, 176], dims="x", attrs={"units": "km"}).to_units("m")
+domain_x = DataArray([-176, 176], dims="x", attrs={"units": "km"}).to_units(
+    "m"
+)
 nx = 41
-domain_y = DataArray([-176, 176], dims="y", attrs={"units": "km"}).to_units("m")
+domain_y = DataArray([-176, 176], dims="y", attrs={"units": "km"}).to_units(
+    "m"
+)
 ny = 41
-domain_z = DataArray([350, 290], dims="potential_temperature", attrs={"units": "K"})
+domain_z = DataArray(
+    [350, 290], dims="potential_temperature", attrs={"units": "K"}
+)
 nz = 60
 
 # horizontal boundary
@@ -49,7 +55,9 @@ gt_kwargs = {
     "managed_memory": False,
 }
 gt_kwargs["backend_opts"] = (
-    {"verbose": True} if gt_kwargs["backend"] in ("gtx86", "gtmc", "gtcuda") else None
+    {"verbose": True}
+    if gt_kwargs["backend"] in ("gtx86", "gtmc", "gtcuda")
+    else None
 )
 
 # topography
@@ -144,30 +152,27 @@ niter = int(1 * 60 * 60 / timestep.total_seconds())
 # output
 save = True
 save_frequency = 2
-filename = (
-    "/scratch/snx3000tds/subbiali/data/prognostic-saturation-290/isentropic_moist_{}_{}_{}_nx{}_ny{}_nz{}_dt{}_nt{}_"
-    "{}_L{}_H{}_u{}_rh{}{}{}{}{}{}{}_ssus_{}.nc".format(
-        time_integration_scheme,
-        horizontal_flux_scheme,
-        "rk2fe",  # physics_time_integration_scheme,
-        nx,
-        ny,
-        nz,
-        int(timestep.total_seconds()),
-        niter,
-        topo_type,
-        int(topo_kwargs["width_x"].to_units("m").values.item()),
-        int(topo_kwargs["max_height"].to_units("m").values.item()),
-        int(x_velocity.to_units("m s^-1").values.item()),
-        int(relative_humidity * 100),
-        "_diff" if diff else "",
-        "_smooth" if smooth else "",
-        "_turb" if turbulence else "",
-        "_f" if coriolis else "",
-        "_sed" if sedimentation else "",
-        "_evap" if rain_evaporation else "",
-        gt_kwargs["backend"],
-    )
+filename = "/scratch/snx3000tds/subbiali/data/prognostic-saturation-290/isentropic_moist_{}_{}_{}_nx{}_ny{}_nz{}_dt{}_nt{}_" "{}_L{}_H{}_u{}_rh{}{}{}{}{}{}{}_ssus_{}.nc".format(
+    time_integration_scheme,
+    horizontal_flux_scheme,
+    "rk2fe",  # physics_time_integration_scheme,
+    nx,
+    ny,
+    nz,
+    int(timestep.total_seconds()),
+    niter,
+    topo_type,
+    int(topo_kwargs["width_x"].to_units("m").values.item()),
+    int(topo_kwargs["max_height"].to_units("m").values.item()),
+    int(x_velocity.to_units("m s^-1").values.item()),
+    int(relative_humidity * 100),
+    "_diff" if diff else "",
+    "_smooth" if smooth else "",
+    "_turb" if turbulence else "",
+    "_f" if coriolis else "",
+    "_sed" if sedimentation else "",
+    "_evap" if rain_evaporation else "",
+    gt_kwargs["backend"],
 )
 store_names = (
     "accumulated_precipitation",

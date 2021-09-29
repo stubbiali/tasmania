@@ -2,7 +2,7 @@
 #
 # Tasmania
 #
-# Copyright (c) 2018-2019, ETH Zurich
+# Copyright (c) 2018-2021, ETH Zurich
 # All rights reserved.
 #
 # This file is part of the Tasmania project. Tasmania is free software:
@@ -31,7 +31,9 @@ d_tol = 1e-10
 
 
 def equal_to(
-    a: Union[float, np.ndarray], b: Union[float, np.ndarray], tol: float = d_tol
+    a: Union[float, np.ndarray],
+    b: Union[float, np.ndarray],
+    tol: float = d_tol,
 ) -> bool:
     """
     Compare floating point numbers, or arrays of floating point numbers,
@@ -56,7 +58,9 @@ def equal_to(
 
 
 def smaller_than(
-    a: Union[float, np.ndarray], b: Union[float, np.ndarray], tol: float = d_tol
+    a: Union[float, np.ndarray],
+    b: Union[float, np.ndarray],
+    tol: float = d_tol,
 ) -> bool:
     """
     Compare floating point numbers, or arrays of floating point numbers,
@@ -81,7 +85,9 @@ def smaller_than(
 
 
 def smaller_or_equal_than(
-    a: Union[float, np.ndarray], b: Union[float, np.ndarray], tol: float = d_tol
+    a: Union[float, np.ndarray],
+    b: Union[float, np.ndarray],
+    tol: float = d_tol,
 ) -> bool:
     """
     Compare floating point numbers or arrays of floating point numbers,
@@ -106,7 +112,9 @@ def smaller_or_equal_than(
 
 
 def greater_than(
-    a: Union[float, np.ndarray], b: Union[float, np.ndarray], tol: float = d_tol
+    a: Union[float, np.ndarray],
+    b: Union[float, np.ndarray],
+    tol: float = d_tol,
 ) -> bool:
     """
     Compare floating point numbers, or arrays of floating point numbers,
@@ -131,7 +139,9 @@ def greater_than(
 
 
 def greater_or_equal_than(
-    a: Union[float, np.ndarray], b: Union[float, np.ndarray], tol: float = d_tol
+    a: Union[float, np.ndarray],
+    b: Union[float, np.ndarray],
+    tol: float = d_tol,
 ) -> bool:
     """
     Compare floating point numbers, or arrays of floating point numbers,
@@ -156,7 +166,9 @@ def greater_or_equal_than(
 
 
 def assert_sequence(
-    seq: Sequence[Any], reflen: Optional[int] = None, reftype: Optional[Type] = None
+    seq: Sequence[Any],
+    reflen: Optional[int] = None,
+    reftype: Optional[Type] = None,
 ):
     """
     Assert if a sequence has appropriate length and contains objects

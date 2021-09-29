@@ -2,13 +2,13 @@
 #
 # Tasmania
 #
-# Copyright (c) 2018-2019, ETH Zurich
+# Copyright (c) 2018-2021, ETH Zurich
 # All rights reserved.
 #
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -24,26 +24,34 @@
 Test GalChen2d class. Data are retrieved from COSMO documentation, Part I.
 """
 
-from python.utils import set_namelist; set_namelist()
+from python.utils import set_namelist
+
+set_namelist()
 from python.grids import GalChen2d as Grid
 
 # Define zonal and vertical domain
-domain_x, nx = [0., 100.], 101
-domain_z, nz = [15000., 0.] , 20
+domain_x, nx = [0.0, 100.0], 101
+domain_z, nz = [15000.0, 0.0], 20
 
 # Specify the interfacial height separating the terrain-following part of
 # the domain from the z-system
-zf = 11360. 
+zf = 11360.0
 
 # Define terrain-surface height
-topo_str = '3000. * exp(- (x - 50.)*(x - 50.) / (20.*20.) )'
+topo_str = "3000. * exp(- (x - 50.)*(x - 50.) / (20.*20.) )"
 
 # Instantiate a grid object
-g = Grid(domain_x, nx, domain_z, nz, #interface_z = zf, 
-		 #topo_type = 'gaussian', topo_max_height = 3000., topo_width_x = 20)
-		topo_type = 'user_defined', topo_str = topo_str)
+g = Grid(
+    domain_x,
+    nx,
+    domain_z,
+    nz,  # interface_z = zf,
+    # topo_type = 'gaussian', topo_max_height = 3000., topo_width_x = 20)
+    topo_type="user_defined",
+    topo_str=topo_str,
+)
 
 # Plot
 g.plot()
 
-print('Test passed!')
+print("Test passed!")

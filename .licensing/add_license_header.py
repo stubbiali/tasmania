@@ -2,7 +2,7 @@
 #
 # Tasmania
 #
-# Copyright (c) 2018-2019, ETH Zurich
+# Copyright (c) 2018-2021, ETH Zurich
 # All rights reserved.
 #
 # This file is part of the Tasmania project. Tasmania is free software:
@@ -36,7 +36,7 @@ exclude_patterns = (
     "gridtools/",
     "gt_cache",
     "remove_license_header",
-    "venv"
+    "venv",
 )
 
 

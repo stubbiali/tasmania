@@ -2,13 +2,13 @@
 #
 # Tasmania
 #
-# Copyright (c) 2018-2019, ETH Zurich
+# Copyright (c) 2018-2021, ETH Zurich
 # All rights reserved.
 #
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -31,7 +31,7 @@ DOCKERFILE=$CDIR/dockerfiles/dockerfile.tasmania
 IMAGE_NAME=tasmania:cpu
 IMAGE_SAVE=$DOCKER_DIR/images/tasmania_cpu.tar
 
-echo "About to clone the GridTools/gt4py repository under" 
+echo "About to clone the GridTools/gt4py repository under"
 echo "'$EXTERNAL_DIR/gt4py',"
 echo "and check out the '$GT4PY_BRANCH' branch."
 read -n 1 -s -r -p "Press ENTER to continue, CTRL-C to exit, or any other key to bypass this step." key
@@ -52,7 +52,7 @@ if [[ $key = "" ]]; then
 fi
 
 echo ""
-echo "About to clone the stubbiali/sympl repository under" 
+echo "About to clone the stubbiali/sympl repository under"
 echo "'$EXTERNAL_DIR/sympl',"
 echo "and check out the '$SYMPL_BRANCH' branch."
 read -n 1 -s -r -p "Press ENTER to continue, CTRL-C to exit, or any other key to bypass this step." key
@@ -74,7 +74,7 @@ fi
 
 echo ""
 echo "About to copy a minimal version of"
-echo "'$TASMANIA_ROOT'" 
+echo "'$TASMANIA_ROOT'"
 echo "under '$TASMANIA_ROOT/tasmania'."
 read -n 1 -s -r -p "Press ENTER to continue, CTRL-C to exit, or any other key to bypass this step." key
 echo ""
@@ -146,4 +146,3 @@ echo ""
 if [[ $key = "" ]]; then
 	docker save --output $IMAGE_SAVE $IMAGE_NAME
 fi
-

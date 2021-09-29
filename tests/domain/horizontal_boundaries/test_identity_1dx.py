@@ -2,7 +2,7 @@
 #
 # Tasmania
 #
-# Copyright (c) 2018-2019, ETH Zurich
+# Copyright (c) 2018-2021, ETH Zurich
 # All rights reserved.
 #
 # This file is part of the Tasmania project. Tasmania is free software:
@@ -185,7 +185,11 @@ def test_enforce(data, backend, dtype):
     # test
     # ========================================
     hb = HorizontalBoundary.factory(
-        "identity", grid, nb, backend=backend, storage_options=so,
+        "identity",
+        grid,
+        nb,
+        backend=backend,
+        storage_options=so,
     )
 
     # (nx, 1)
@@ -247,7 +251,11 @@ def test_outermost_layers(data, backend, dtype):
     # test
     # ========================================
     hb = HorizontalBoundary.factory(
-        "identity", grid, nb, backend=backend, storage_options=so,
+        "identity",
+        grid,
+        nb,
+        backend=backend,
+        storage_options=so,
     )
 
     cfield_val = deepcopy(cfield)

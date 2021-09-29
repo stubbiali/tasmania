@@ -2,7 +2,7 @@
 #
 # Tasmania
 #
-# Copyright (c) 2018-2019, ETH Zurich
+# Copyright (c) 2018-2021, ETH Zurich
 # All rights reserved.
 #
 # This file is part of the Tasmania project. Tasmania is free software:
@@ -61,7 +61,11 @@ def test_circle():
     drawer = Circle(properties=drawer_properties)
 
     # figure and axes properties
-    figure_properties = {"fontsize": 16, "figsize": (7, 7), "tight_layout": True}
+    figure_properties = {
+        "fontsize": 16,
+        "figsize": (7, 7),
+        "tight_layout": True,
+    }
     axes_properties = {
         "fontsize": 16,
         "x_label": "x",
@@ -113,7 +117,11 @@ def test_rectangle():
     drawer = Rectangle(properties=drawer_properties)
 
     # figure and axes properties
-    figure_properties = {"fontsize": 16, "figsize": (7, 7), "tight_layout": True}
+    figure_properties = {
+        "fontsize": 16,
+        "figsize": (7, 7),
+        "tight_layout": True,
+    }
     axes_properties = {
         "fontsize": 16,
         "x_label": "x",

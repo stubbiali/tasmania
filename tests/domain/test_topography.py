@@ -2,7 +2,7 @@
 #
 # Tasmania
 #
-# Copyright (c) 2018-2019, ETH Zurich
+# Copyright (c) 2018-2021, ETH Zurich
 # All rights reserved.
 #
 # This file is part of the Tasmania project. Tasmania is free software:
@@ -70,7 +70,8 @@ def test_topography_properties(data, dtype):
     )
 
     steady_profile = data.draw(
-        st_horizontal_field(pgrid, 0, 10000, "m", "sprof"), label="sprof",
+        st_horizontal_field(pgrid, 0, 10000, "m", "sprof"),
+        label="sprof",
     )
 
     kwargs = data.draw(st_topography_kwargs(pgrid.x, pgrid.y), label="kwargs")
@@ -110,7 +111,8 @@ def test_topography_update(data, dtype):
     )
 
     steady_profile = data.draw(
-        st_horizontal_field(pgrid, 0, 10000, "m", "sprof"), label="sprof",
+        st_horizontal_field(pgrid, 0, 10000, "m", "sprof"),
+        label="sprof",
     )
 
     kwargs = data.draw(st_topography_kwargs(pgrid.x, pgrid.y), label="kwargs")

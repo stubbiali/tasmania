@@ -2,7 +2,7 @@
 #
 # Tasmania
 #
-# Copyright (c) 2018-2019, ETH Zurich
+# Copyright (c) 2018-2021, ETH Zurich
 # All rights reserved.
 #
 # This file is part of the Tasmania project. Tasmania is free software:
@@ -122,7 +122,12 @@ if __name__ == "__main__":
     x, y = np.meshgrid(xv, yv)
 
     if coupling_method == "cc":
-        E = 1 + (x + 1j * y) + 0.5 * (x + 1j * y) ** 2 + 1.0 / 6.0 * (x + 1j * y) ** 3
+        E = (
+            1
+            + (x + 1j * y)
+            + 0.5 * (x + 1j * y) ** 2
+            + 1.0 / 6.0 * (x + 1j * y) ** 3
+        )
     elif coupling_method == "lcc":
         E = (
             1
@@ -131,7 +136,12 @@ if __name__ == "__main__":
             + 1.0 / 6.0 * (x + 1j * y) * (1j * y) ** 2
         )
     elif coupling_method == "ps":
-        E = 1 + (x + 1j * y) + 0.5 * (x ** 2 + (1j * y) ** 2) + 1.0 / 6.0 * (1j * y) ** 3
+        E = (
+            1
+            + (x + 1j * y)
+            + 0.5 * (x ** 2 + (1j * y) ** 2)
+            + 1.0 / 6.0 * (1j * y) ** 3
+        )
     elif coupling_method == "sts":
         E = (
             1
@@ -173,7 +183,10 @@ if __name__ == "__main__":
             )
             + 1.0
             / 96.0
-            * (2.0 * (x ** 3) * (1j * y) ** 3 + 0.75 * (x ** 4) * (1j * y) ** 2)
+            * (
+                2.0 * (x ** 3) * (1j * y) ** 3
+                + 0.75 * (x ** 4) * (1j * y) ** 2
+            )
             + 1.0 / 384.0 * (x ** 4) * (1j * y) ** 3
         )
 

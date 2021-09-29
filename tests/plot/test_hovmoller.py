@@ -2,7 +2,7 @@
 #
 # Tasmania
 #
-# Copyright (c) 2018-2019, ETH Zurich
+# Copyright (c) 2018-2021, ETH Zurich
 # All rights reserved.
 #
 # This file is part of the Tasmania project. Tasmania is free software:
@@ -53,7 +53,11 @@ def test_x(isentropic_data):
 
     # grab data from dataset
     domain, grid_type, states = isentropic_data
-    grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
+    grid = (
+        domain.physical_grid
+        if grid_type == "physical"
+        else domain.numerical_grid
+    )
 
     # indices identifying the line to visualize
     y, z = int(grid.ny / 2), -1
@@ -85,7 +89,11 @@ def test_x(isentropic_data):
     )
 
     # figure and axes properties
-    figure_properties = {"fontsize": 16, "figsize": (7, 8), "tight_layout": True}
+    figure_properties = {
+        "fontsize": 16,
+        "figsize": (7, 8),
+        "tight_layout": True,
+    }
     axes_properties = {
         "fontsize": 16,
         "title_left": "$y$ = {} km".format(grid.y.to_units("km").values[y]),
@@ -128,7 +136,11 @@ def test_z(isentropic_data):
 
     # grab data from dataset
     domain, grid_type, states = isentropic_data
-    grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
+    grid = (
+        domain.physical_grid
+        if grid_type == "physical"
+        else domain.numerical_grid
+    )
 
     # indices identifying the line to visualize
     x, y = int(grid.nx / 2), int(grid.ny / 2)
@@ -159,7 +171,11 @@ def test_z(isentropic_data):
     )
 
     # figure and axes properties
-    figure_properties = {"fontsize": 16, "figsize": (7, 8), "tight_layout": True}
+    figure_properties = {
+        "fontsize": 16,
+        "figsize": (7, 8),
+        "tight_layout": True,
+    }
     axes_properties = {
         "fontsize": 16,
         "title_left": "$x$-velocity [m/s] at ($x$ = {} km, $y$ = {} km)".format(
@@ -204,7 +220,11 @@ def test_pressure(isentropic_data):
 
     # grab data from dataset
     domain, grid_type, states = isentropic_data
-    grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
+    grid = (
+        domain.physical_grid
+        if grid_type == "physical"
+        else domain.numerical_grid
+    )
 
     # indices identifying the line to visualize
     x, y = int(grid.nx / 2), int(grid.ny / 2)
@@ -236,7 +256,11 @@ def test_pressure(isentropic_data):
     )
 
     # figure and axes properties
-    figure_properties = {"fontsize": 16, "figsize": (7, 8), "tight_layout": True}
+    figure_properties = {
+        "fontsize": 16,
+        "figsize": (7, 8),
+        "tight_layout": True,
+    }
     axes_properties = {
         "fontsize": 16,
         "title_left": "$x$-velocity [m/s] at ($x$ = {} km, $y$ = {} km)".format(
@@ -282,7 +306,11 @@ def test_height(isentropic_data):
 
     # grab data from dataset
     domain, grid_type, states = isentropic_data
-    grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
+    grid = (
+        domain.physical_grid
+        if grid_type == "physical"
+        else domain.numerical_grid
+    )
 
     # indices identifying the line to visualize
     x, y = int(grid.nx / 2), int(grid.ny / 2)
@@ -314,7 +342,11 @@ def test_height(isentropic_data):
     )
 
     # figure and axes properties
-    figure_properties = {"fontsize": 16, "figsize": (7, 8), "tight_layout": True}
+    figure_properties = {
+        "fontsize": 16,
+        "figsize": (7, 8),
+        "tight_layout": True,
+    }
     axes_properties = {
         "fontsize": 16,
         "title_left": "$x$-velocity [m/s] at ($x$ = {} km, $y$ = {} km)".format(

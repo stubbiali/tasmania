@@ -2,7 +2,7 @@
 #
 # Tasmania
 #
-# Copyright (c) 2018-2019, ETH Zurich
+# Copyright (c) 2018-2021, ETH Zurich
 # All rights reserved.
 #
 # This file is part of the Tasmania project. Tasmania is free software:
@@ -224,7 +224,9 @@ if __name__ == "__main__":
             np.array([2, 11, 46, 199], dtype=np.float32),
         ]
 
-    fig, ax1 = pu.get_figure_and_axes(ncols=2, nrows=1, index=1, **figure_properties)
+    fig, ax1 = pu.get_figure_and_axes(
+        ncols=2, nrows=1, index=1, **figure_properties
+    )
 
     for i in range(len(err)):
         pu.make_lineplot(
@@ -242,7 +244,12 @@ if __name__ == "__main__":
         )
 
     pu.make_lineplot(
-        dx, 1e-1 * dx ** 2, ax1, linecolor="black", linestyle="--", linewidth=1.5
+        dx,
+        1e-1 * dx ** 2,
+        ax1,
+        linecolor="black",
+        linestyle="--",
+        linewidth=1.5,
     )
     pu.make_lineplot(
         dx,
@@ -268,7 +275,9 @@ if __name__ == "__main__":
         verticalalignment="center",
     )
 
-    _, ax2 = pu.get_figure_and_axes(fig, ncols=2, nrows=1, index=2, **figure_properties)
+    _, ax2 = pu.get_figure_and_axes(
+        fig, ncols=2, nrows=1, index=2, **figure_properties
+    )
 
     for i in range(len(time)):
         pu.make_lineplot(

@@ -1,7 +1,7 @@
 /*
  * Tasmania
  *
- * Copyright (c) 2018-2019, ETH Zurich
+ * Copyright (c) 2018-2021, ETH Zurich
  * All rights reserved.
  *
  * This file is part of the Tasmania project. Tasmania is free software:
@@ -40,14 +40,14 @@ class parser_1d_cpp
 		vector<double> eval_points;
 
 	public:
-		/*! Constructor. 
+		/*! Constructor.
 			\param expr	The expression to parse. It must satisfy two requirements:
 						- the independent variable is \f$ x \f$;
 						- fully C++-compliant.
 			\param x	Evaluation points, i.e., where the expression should be evaluated. */
 		parser_1d_cpp(const char * expr, const vector<double> & x);
 
-		/*! Parse and evaluate the expression. 
+		/*! Parse and evaluate the expression.
 			\return		Expression value at the evaluation points. */
 		vector<double> evaluate() const;
 };

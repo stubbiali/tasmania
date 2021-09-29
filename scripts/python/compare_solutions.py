@@ -2,7 +2,7 @@
 #
 # Tasmania
 #
-# Copyright (c) 2018-2019, ETH Zurich
+# Copyright (c) 2018-2021, ETH Zurich
 # All rights reserved.
 #
 # This file is part of the Tasmania project. Tasmania is free software:
@@ -104,7 +104,9 @@ if __name__ == "__main__":
         help="Time levels to be considered from the second data set.",
         dest="t2",
     )
-    parser.add_argument("-v", help="Verbose output.", dest="verbose", action="store_true")
+    parser.add_argument(
+        "-v", help="Verbose output.", dest="verbose", action="store_true"
+    )
 
     args = parser.parse_args()
     fname1 = args.filename1

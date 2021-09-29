@@ -2,7 +2,7 @@
 #
 # Tasmania
 #
-# Copyright (c) 2018-2019, ETH Zurich
+# Copyright (c) 2018-2021, ETH Zurich
 # All rights reserved.
 #
 # This file is part of the Tasmania project. Tasmania is free software:
@@ -47,13 +47,19 @@ def test_contour_xy_velocity(isentropic_data, drawer_topography_2d):
         os.makedirs(baseline_dir)
 
     # make sure the baseline image will exist at the end of this run
-    save_dest = os.path.join(baseline_dir, "test_contour_xy_velocity_nompl.eps")
+    save_dest = os.path.join(
+        baseline_dir, "test_contour_xy_velocity_nompl.eps"
+    )
     if os.path.exists(save_dest):
         os.remove(save_dest)
 
     # grab data from dataset
     domain, grid_type, states = isentropic_data
-    grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
+    grid = (
+        domain.physical_grid
+        if grid_type == "physical"
+        else domain.numerical_grid
+    )
     grid.update_topography(states[-1]["time"] - states[0]["time"])
     state = states[-1]
 
@@ -75,10 +81,16 @@ def test_contour_xy_velocity(isentropic_data, drawer_topography_2d):
     )
 
     # instantiate the drawer plotting the topography
-    topo_drawer = drawer_topography_2d(grid, xaxis_units="km", yaxis_units="km")
+    topo_drawer = drawer_topography_2d(
+        grid, xaxis_units="km", yaxis_units="km"
+    )
 
     # figure and axes properties
-    figure_properties = {"fontsize": 16, "figsize": (7, 7), "tight_layout": True}
+    figure_properties = {
+        "fontsize": 16,
+        "figsize": (7, 7),
+        "tight_layout": True,
+    }
     axes_properties = {
         "fontsize": 16,
         "title_left": "Surface horizontal velocity [m s$^{-1}$]",
@@ -117,13 +129,19 @@ def test_contour_xy_pressure(isentropic_data, drawer_topography_2d):
         os.makedirs(baseline_dir)
 
     # make sure the baseline image will exist at the end of this run
-    save_dest = os.path.join(baseline_dir, "test_contour_xy_pressure_nompl.eps")
+    save_dest = os.path.join(
+        baseline_dir, "test_contour_xy_pressure_nompl.eps"
+    )
     if os.path.exists(save_dest):
         os.remove(save_dest)
 
     # grab data from dataset
     domain, grid_type, states = isentropic_data
-    grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
+    grid = (
+        domain.physical_grid
+        if grid_type == "physical"
+        else domain.numerical_grid
+    )
     grid.update_topography(states[-1]["time"] - states[0]["time"])
     state = states[-1]
 
@@ -145,10 +163,16 @@ def test_contour_xy_pressure(isentropic_data, drawer_topography_2d):
     )
 
     # instantiate the drawer plotting the topography
-    topo_drawer = drawer_topography_2d(grid, xaxis_units="km", yaxis_units="km")
+    topo_drawer = drawer_topography_2d(
+        grid, xaxis_units="km", yaxis_units="km"
+    )
 
     # figure and axes properties
-    figure_properties = {"fontsize": 16, "figsize": (7, 7), "tight_layout": True}
+    figure_properties = {
+        "fontsize": 16,
+        "figsize": (7, 7),
+        "tight_layout": True,
+    }
     axes_properties = {
         "fontsize": 16,
         "title_left": "Surface pressure [hPa]",
@@ -187,13 +211,19 @@ def test_contour_xz_velocity(isentropic_data, drawer_topography_1d):
         os.makedirs(baseline_dir)
 
     # make sure the baseline image will exist at the end of this run
-    save_dest = os.path.join(baseline_dir, "test_contour_xz_velocity_nompl.eps")
+    save_dest = os.path.join(
+        baseline_dir, "test_contour_xz_velocity_nompl.eps"
+    )
     if os.path.exists(save_dest):
         os.remove(save_dest)
 
     # grab data from dataset
     domain, grid_type, states = isentropic_data
-    grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
+    grid = (
+        domain.physical_grid
+        if grid_type == "physical"
+        else domain.numerical_grid
+    )
     grid.update_topography(states[-1]["time"] - states[0]["time"])
     state = states[-1]
 
@@ -226,7 +256,11 @@ def test_contour_xz_velocity(isentropic_data, drawer_topography_1d):
     )
 
     # figure and axes properties
-    figure_properties = {"fontsize": 16, "figsize": (7, 7), "tight_layout": True}
+    figure_properties = {
+        "fontsize": 16,
+        "figsize": (7, 7),
+        "tight_layout": True,
+    }
     axes_properties = {
         "fontsize": 16,
         "title_left": "$x$-velocity [m s$^{-1}$]",
@@ -265,13 +299,19 @@ def test_contour_yz_velocity(isentropic_data, drawer_topography_1d):
         os.makedirs(baseline_dir)
 
     # make sure the baseline image will exist at the end of this run
-    save_dest = os.path.join(baseline_dir, "test_contour_yz_velocity_nompl.eps")
+    save_dest = os.path.join(
+        baseline_dir, "test_contour_yz_velocity_nompl.eps"
+    )
     if os.path.exists(save_dest):
         os.remove(save_dest)
 
     # grab data from dataset
     domain, grid_type, states = isentropic_data
-    grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
+    grid = (
+        domain.physical_grid
+        if grid_type == "physical"
+        else domain.numerical_grid
+    )
     grid.update_topography(states[-1]["time"] - states[0]["time"])
     state = states[-1]
 
@@ -304,7 +344,11 @@ def test_contour_yz_velocity(isentropic_data, drawer_topography_1d):
     )
 
     # figure and axes properties
-    figure_properties = {"fontsize": 16, "figsize": (7, 7), "tight_layout": True}
+    figure_properties = {
+        "fontsize": 16,
+        "figsize": (7, 7),
+        "tight_layout": True,
+    }
     axes_properties = {
         "fontsize": 16,
         "title_left": "$y$-velocity [km h$^{-1}$]",

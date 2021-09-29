@@ -2,7 +2,7 @@
 #
 # Tasmania
 #
-# Copyright (c) 2018-2019, ETH Zurich
+# Copyright (c) 2018-2021, ETH Zurich
 # All rights reserved.
 #
 # This file is part of the Tasmania project. Tasmania is free software:
@@ -56,7 +56,11 @@ def test_profile(isentropic_data):
 
     # load data
     domain, grid_type, states = isentropic_data
-    grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
+    grid = (
+        domain.physical_grid
+        if grid_type == "physical"
+        else domain.numerical_grid
+    )
     grid.update_topography(states[-1]["time"] - states[0]["time"])
     state = states[-1]
 
@@ -67,7 +71,11 @@ def test_profile(isentropic_data):
     y, z = int(grid.ny / 2), -1
 
     # drawer properties
-    drawer_properties = {"linecolor": "blue", "linestyle": "-", "linewidth": 1.5}
+    drawer_properties = {
+        "linecolor": "blue",
+        "linestyle": "-",
+        "linewidth": 1.5,
+    }
 
     # instantiate the drawer
     drawer = LineProfile(
@@ -102,7 +110,11 @@ def test_profile(isentropic_data):
     y, z = int(grid.ny / 2), -1
 
     # drawer properties
-    drawer_properties = {"linecolor": "red", "linestyle": "--", "linewidth": 1.5}
+    drawer_properties = {
+        "linecolor": "red",
+        "linestyle": "--",
+        "linewidth": 1.5,
+    }
 
     # instantiate the drawer
     drawer = LineProfile(
@@ -134,7 +146,11 @@ def test_profile(isentropic_data):
     # PlotComposite
     #
     # figure properties
-    figure_properties = {"fontsize": 16, "figsize": (16, 7), "tight_layout": True}
+    figure_properties = {
+        "fontsize": 16,
+        "figsize": (16, 7),
+        "tight_layout": True,
+    }
 
     # instantiate the monitor
     monitor = PlotComposite(
@@ -161,7 +177,9 @@ def test_profile_share_yaxis(isentropic_data):
         os.makedirs(baseline_dir)
 
     # make sure the baseline image will exist at the end of this run
-    save_dest = os.path.join(baseline_dir, "test_profile_share_yaxis_nompl.eps")
+    save_dest = os.path.join(
+        baseline_dir, "test_profile_share_yaxis_nompl.eps"
+    )
     if os.path.exists(save_dest):
         os.remove(save_dest)
 
@@ -171,7 +189,11 @@ def test_profile_share_yaxis(isentropic_data):
 
     # load data
     domain, grid_type, states = isentropic_data
-    grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
+    grid = (
+        domain.physical_grid
+        if grid_type == "physical"
+        else domain.numerical_grid
+    )
     grid.update_topography(states[-1]["time"] - states[0]["time"])
     state = states[-1]
 
@@ -182,7 +204,11 @@ def test_profile_share_yaxis(isentropic_data):
     y, z = int(0.25 * grid.ny), -1
 
     # drawer properties
-    drawer_properties = {"linecolor": "blue", "linestyle": "-", "linewidth": 1.5}
+    drawer_properties = {
+        "linecolor": "blue",
+        "linestyle": "-",
+        "linewidth": 1.5,
+    }
 
     # instantiate the drawer
     drawer = LineProfile(
@@ -217,7 +243,11 @@ def test_profile_share_yaxis(isentropic_data):
     y, z = int(0.75 * grid.ny), -1
 
     # drawer properties
-    drawer_properties = {"linecolor": "red", "linestyle": "--", "linewidth": 1.5}
+    drawer_properties = {
+        "linecolor": "red",
+        "linestyle": "--",
+        "linewidth": 1.5,
+    }
 
     # instantiate the drawer
     drawer = LineProfile(
@@ -249,7 +279,11 @@ def test_profile_share_yaxis(isentropic_data):
     # PlotComposite
     #
     # figure properties
-    figure_properties = {"fontsize": 16, "figsize": (13, 7), "tight_layout": True}
+    figure_properties = {
+        "fontsize": 16,
+        "figsize": (13, 7),
+        "tight_layout": True,
+    }
 
     # instantiate the monitor
     monitor = PlotComposite(
@@ -276,7 +310,9 @@ def test_profile_share_xaxis(isentropic_data):
         os.makedirs(baseline_dir)
 
     # make sure the baseline image will exist at the end of this run
-    save_dest = os.path.join(baseline_dir, "test_profile_share_xaxis_nompl.eps")
+    save_dest = os.path.join(
+        baseline_dir, "test_profile_share_xaxis_nompl.eps"
+    )
     if os.path.exists(save_dest):
         os.remove(save_dest)
 
@@ -288,7 +324,11 @@ def test_profile_share_xaxis(isentropic_data):
 
     # load data
     domain, grid_type, states = isentropic_data
-    grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
+    grid = (
+        domain.physical_grid
+        if grid_type == "physical"
+        else domain.numerical_grid
+    )
     grid.update_topography(states[-1]["time"] - states[0]["time"])
     state = states[-1]
 
@@ -299,7 +339,11 @@ def test_profile_share_xaxis(isentropic_data):
     # Plot#1
     #
     # drawer properties
-    drawer_properties = {"linecolor": "blue", "linestyle": "-", "linewidth": 1.5}
+    drawer_properties = {
+        "linecolor": "blue",
+        "linestyle": "-",
+        "linewidth": 1.5,
+    }
 
     # instantiate the drawer
     drawer = LineProfile(
@@ -333,7 +377,11 @@ def test_profile_share_xaxis(isentropic_data):
     # Plot#2
     #
     # drawer properties
-    drawer_properties = {"linecolor": "red", "linestyle": "--", "linewidth": 1.5}
+    drawer_properties = {
+        "linecolor": "red",
+        "linestyle": "--",
+        "linewidth": 1.5,
+    }
 
     # instantiate the drawer
     drawer = LineProfile(
@@ -364,7 +412,11 @@ def test_profile_share_xaxis(isentropic_data):
     # PlotComposite
     #
     # figure properties
-    figure_properties = {"fontsize": 16, "figsize": (6, 9), "tight_layout": True}
+    figure_properties = {
+        "fontsize": 16,
+        "figsize": (6, 9),
+        "tight_layout": True,
+    }
 
     # instantiate the monitor
     monitor = PlotComposite(
@@ -403,7 +455,11 @@ def test_plot2d_r1c2(isentropic_data, drawer_topography_1d):
 
     # load data
     domain, grid_type, states = isentropic_data
-    grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
+    grid = (
+        domain.physical_grid
+        if grid_type == "physical"
+        else domain.numerical_grid
+    )
     grid.update_topography(states[-1]["time"] - states[0]["time"])
     state = states[-1]
 
@@ -456,7 +512,10 @@ def test_plot2d_r1c2(isentropic_data, drawer_topography_1d):
 
     # instantiate the left collaborator
     plot1 = Plot(
-        drawer, topo_drawer1, interactive=False, axes_properties=axes_properties
+        drawer,
+        topo_drawer1,
+        interactive=False,
+        axes_properties=axes_properties,
     )
 
     #
@@ -506,14 +565,21 @@ def test_plot2d_r1c2(isentropic_data, drawer_topography_1d):
 
     # instantiate the right collaborator
     plot2 = Plot(
-        drawer, topo_drawer2, interactive=False, axes_properties=axes_properties
+        drawer,
+        topo_drawer2,
+        interactive=False,
+        axes_properties=axes_properties,
     )
 
     #
     # PlotComposite
     #
     # figure properties
-    figure_properties = {"fontsize": 14, "figsize": (9, 6), "tight_layout": False}
+    figure_properties = {
+        "fontsize": 14,
+        "figsize": (9, 6),
+        "tight_layout": False,
+    }
 
     # instantiate the monitor
     monitor = PlotComposite(
@@ -552,7 +618,11 @@ def test_plot2d_r2c2(isentropic_data, drawer_topography_1d):
 
     # load data
     domain, grid_type, states = isentropic_data
-    grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
+    grid = (
+        domain.physical_grid
+        if grid_type == "physical"
+        else domain.numerical_grid
+    )
     grid.update_topography(states[-1]["time"] - states[0]["time"])
     state = states[-1]
 
@@ -605,7 +675,10 @@ def test_plot2d_r2c2(isentropic_data, drawer_topography_1d):
 
     # instantiate the left collaborator
     plot1 = Plot(
-        drawer, topo_drawer1, interactive=False, axes_properties=axes_properties
+        drawer,
+        topo_drawer1,
+        interactive=False,
+        axes_properties=axes_properties,
     )
 
     #
@@ -654,7 +727,10 @@ def test_plot2d_r2c2(isentropic_data, drawer_topography_1d):
 
     # instantiate the right collaborator
     plot2 = Plot(
-        drawer, topo_drawer2, interactive=False, axes_properties=axes_properties
+        drawer,
+        topo_drawer2,
+        interactive=False,
+        axes_properties=axes_properties,
     )
 
     #
@@ -703,7 +779,10 @@ def test_plot2d_r2c2(isentropic_data, drawer_topography_1d):
 
     # instantiate the left collaborator
     plot3 = Plot(
-        drawer, topo_drawer3, interactive=False, axes_properties=axes_properties
+        drawer,
+        topo_drawer3,
+        interactive=False,
+        axes_properties=axes_properties,
     )
 
     #
@@ -753,14 +832,21 @@ def test_plot2d_r2c2(isentropic_data, drawer_topography_1d):
 
     # instantiate the right collaborator
     plot4 = Plot(
-        drawer, topo_drawer4, interactive=False, axes_properties=axes_properties
+        drawer,
+        topo_drawer4,
+        interactive=False,
+        axes_properties=axes_properties,
     )
 
     #
     # PlotComposite
     #
     # figure properties
-    figure_properties = {"fontsize": 14, "figsize": (9, 12), "tight_layout": False}
+    figure_properties = {
+        "fontsize": 14,
+        "figsize": (9, 12),
+        "tight_layout": False,
+    }
 
     # instantiate the monitor
     monitor = PlotComposite(

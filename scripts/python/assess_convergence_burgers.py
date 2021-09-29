@@ -2,7 +2,7 @@
 #
 # Tasmania
 #
-# Copyright (c) 2018-2019, ETH Zurich
+# Copyright (c) 2018-2021, ETH Zurich
 # All rights reserved.
 #
 # This file is part of the Tasmania project. Tasmania is free software:
@@ -82,17 +82,29 @@ datasets = (
 if __name__ == "__main__":
     for ds in datasets:
         # load the numerical solution
-        domain, grid_type, states = taz.load_netcdf_dataset(prefix + ds["filename"])
+        domain, grid_type, states = taz.load_netcdf_dataset(
+            prefix + ds["filename"]
+        )
         state = states[ds["tlevel"]]
         raw_field = np.asarray(state[field_name].to_units(field_units).values)
         sol = raw_field[ds["xslice"], ds["yslice"], 0]
 
         # compute the analytical solution
-        grid = domain.numerical_grid if grid_type == "numerical" else domain.physical_grid
+        grid = (
+            domain.numerical_grid
+            if grid_type == "numerical"
+            else domain.physical_grid
+        )
         zsf = taz.ZhaoSolutionFactory(ds["init_time"], ds["eps"])
         rsol = zsf(
             datetime(
-                year=1992, month=2, day=20, hour=0, minute=0, second=0, microsecond=768000
+                year=1992,
+                month=2,
+                day=20,
+                hour=0,
+                minute=0,
+                second=0,
+                microsecond=768000,
             ),
             # state["time"],
             grid,

@@ -2,7 +2,7 @@
 #
 # Tasmania
 #
-# Copyright (c) 2018-2019, ETH Zurich
+# Copyright (c) 2018-2021, ETH Zurich
 # All rights reserved.
 #
 # This file is part of the Tasmania project. Tasmania is free software:
@@ -870,10 +870,24 @@ class TestMultiregister:
             self.zeros_numpy, reg, ("function", "zeros", "backend", "numpy")
         )
         multiregister(
-            self.ones_numpy, reg, ("function", "ones", "backend", "numpy",),
+            self.ones_numpy,
+            reg,
+            (
+                "function",
+                "ones",
+                "backend",
+                "numpy",
+            ),
         )
         multiregister(
-            self.ones_numpy, reg, ("function", "ones", "backend", "numba",),
+            self.ones_numpy,
+            reg,
+            (
+                "function",
+                "ones",
+                "backend",
+                "numba",
+            ),
         )
         self.check_register(reg)
 

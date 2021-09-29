@@ -2,7 +2,7 @@
 #
 # Tasmania
 #
-# Copyright (c) 2018-2019, ETH Zurich
+# Copyright (c) 2018-2021, ETH Zurich
 # All rights reserved.
 #
 # This file is part of the Tasmania project. Tasmania is free software:
@@ -21,7 +21,9 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 def print_info(dt, i, nl, pgrid, state):
-    if (nl.print_dry_frequency > 0) and ((i + 1) % nl.print_dry_frequency == 0):
+    if (nl.print_dry_frequency > 0) and (
+        (i + 1) % nl.print_dry_frequency == 0
+    ):
         u = (
             state["x_momentum_isentropic"]
             .to_units("kg m^-1 K^-1 s^-1")
@@ -54,7 +56,9 @@ def print_info(dt, i, nl, pgrid, state):
             )
         )
 
-    if (nl.print_moist_frequency > 0) and ((i + 1) % nl.print_moist_frequency == 0):
+    if (nl.print_moist_frequency > 0) and (
+        (i + 1) % nl.print_moist_frequency == 0
+    ):
         qv_max = (
             state["mass_fraction_of_water_vapor_in_air"]
             .data[3:-4, 3:-4, :-1]
@@ -77,7 +81,12 @@ def print_info(dt, i, nl, pgrid, state):
             * 1e3
         )
         if "precipitation" in state:
-            prec_max = state["precipitation"].to_units("mm hr^-1").data[3:-4, 3:-4].max()
+            prec_max = (
+                state["precipitation"]
+                .to_units("mm hr^-1")
+                .data[3:-4, 3:-4]
+                .max()
+            )
             accprec_max = (
                 state["accumulated_precipitation"]
                 .to_units("mm")

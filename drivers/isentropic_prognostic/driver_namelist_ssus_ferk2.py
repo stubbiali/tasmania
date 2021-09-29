@@ -2,7 +2,7 @@
 #
 # Tasmania
 #
-# Copyright (c) 2018-2019, ETH Zurich
+# Copyright (c) 2018-2021, ETH Zurich
 # All rights reserved.
 #
 # This file is part of the Tasmania project. Tasmania is free software:
@@ -242,7 +242,10 @@ if nl.diff:
 if nl.turbulence:
     # component implementing the Smagorinsky turbulence model
     turb = taz.IsentropicSmagorinsky(
-        domain, nl.smagorinsky_constant, gt_powered=nl.gt_powered, **nl.gt_kwargs
+        domain,
+        nl.smagorinsky_constant,
+        gt_powered=nl.gt_powered,
+        **nl.gt_kwargs
     )
     args_before_dynamics.append(
         {
@@ -434,7 +437,9 @@ if nl.vertical_advection:
             gt_powered=nl.gt_powered,
             **nl.gt_kwargs
         )
-        args_before_dynamics.append({"component": taz.DiagnosticComponentComposite(vf)})
+        args_before_dynamics.append(
+            {"component": taz.DiagnosticComponentComposite(vf)}
+        )
         args_before_dynamics.append(
             {
                 "component": taz.ConcurrentCoupling(
@@ -450,7 +455,9 @@ if nl.vertical_advection:
                 "substeps": 1,
             }
         )
-        args_after_dynamics.append({"component": taz.DiagnosticComponentComposite(vf)})
+        args_after_dynamics.append(
+            {"component": taz.DiagnosticComponentComposite(vf)}
+        )
     else:
         # component integrating the vertical flux
         vf = taz.IsentropicVerticalAdvection(
@@ -527,7 +534,9 @@ if nl.sedimentation:
 
 if nl.sedimentation:
     # component calculating the accumulated precipitation
-    ap = taz.Precipitation(domain, "numerical", gt_powered=nl.gt_powered, **nl.gt_kwargs)
+    ap = taz.Precipitation(
+        domain, "numerical", gt_powered=nl.gt_powered, **nl.gt_kwargs
+    )
     args_before_dynamics.append({"component": ap})
     args_after_dynamics.append(
         {

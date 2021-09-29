@@ -1,7 +1,7 @@
 /*
  * Tasmania
  *
- * Copyright (c) 2018-2019, ETH Zurich
+ * Copyright (c) 2018-2021, ETH Zurich
  * All rights reserved.
  *
  * This file is part of the Tasmania project. Tasmania is free software:
@@ -793,7 +793,7 @@ struct __pyx_obj_9parser_1d_Parser1d;
 
 /* "parser_1d.pyx":17
  * 		vector[double] evaluate()
- * 
+ *
  * cdef class Parser1d:             # <<<<<<<<<<<<<<
  * 	"""
  * 	Cython wrapper for the C++ class :obj:`parser_1d_cpp`.
@@ -1163,7 +1163,7 @@ static PyObject *__pyx_tuple__2;
 
 /* "parser_1d.pyx":26
  * 	cdef parser_1d_cpp * parser
- * 
+ *
  * 	def __cinit__(self, char * expr, vector[double] x):             # <<<<<<<<<<<<<<
  * 		"""
  * 		Constructor.
@@ -1240,7 +1240,7 @@ static int __pyx_pf_9parser_1d_8Parser1d___cinit__(struct __pyx_obj_9parser_1d_P
  * 			x (array_like): :class:`numpy.ndarray` storing the evaluation points.
  * 		"""
  * 		self.parser = new parser_1d_cpp(expr, x)             # <<<<<<<<<<<<<<
- * 
+ *
  * 	def __dealloc(self):
  */
   try {
@@ -1253,7 +1253,7 @@ static int __pyx_pf_9parser_1d_8Parser1d___cinit__(struct __pyx_obj_9parser_1d_P
 
   /* "parser_1d.pyx":26
  * 	cdef parser_1d_cpp * parser
- * 
+ *
  * 	def __cinit__(self, char * expr, vector[double] x):             # <<<<<<<<<<<<<<
  * 		"""
  * 		Constructor.
@@ -1272,7 +1272,7 @@ static int __pyx_pf_9parser_1d_8Parser1d___cinit__(struct __pyx_obj_9parser_1d_P
 
 /* "parser_1d.pyx":36
  * 		self.parser = new parser_1d_cpp(expr, x)
- * 
+ *
  * 	def __dealloc(self):             # <<<<<<<<<<<<<<
  * 		"""
  * 		Deallocator.
@@ -1301,14 +1301,14 @@ static PyObject *__pyx_pf_9parser_1d_8Parser1d_2__dealloc(struct __pyx_obj_9pars
  * 		Deallocator.
  * 		"""
  * 		del self.parser             # <<<<<<<<<<<<<<
- * 
+ *
  * 	def evaluate(self):
  */
   delete __pyx_v_self->parser;
 
   /* "parser_1d.pyx":36
  * 		self.parser = new parser_1d_cpp(expr, x)
- * 
+ *
  * 	def __dealloc(self):             # <<<<<<<<<<<<<<
  * 		"""
  * 		Deallocator.
@@ -1323,7 +1323,7 @@ static PyObject *__pyx_pf_9parser_1d_8Parser1d_2__dealloc(struct __pyx_obj_9pars
 
 /* "parser_1d.pyx":42
  * 		del self.parser
- * 
+ *
  * 	def evaluate(self):             # <<<<<<<<<<<<<<
  * 		"""
  * 		Evaluate the expression.
@@ -1359,7 +1359,7 @@ static PyObject *__pyx_pf_9parser_1d_8Parser1d_4evaluate(struct __pyx_obj_9parse
  * 		"""
  * 		values = self.parser.evaluate()             # <<<<<<<<<<<<<<
  * 		return np.asarray(values)
- * 
+ *
  */
   __pyx_v_values = __pyx_v_self->parser->evaluate();
 
@@ -1367,7 +1367,7 @@ static PyObject *__pyx_pf_9parser_1d_8Parser1d_4evaluate(struct __pyx_obj_9parse
  * 		"""
  * 		values = self.parser.evaluate()
  * 		return np.asarray(values)             # <<<<<<<<<<<<<<
- * 
+ *
  */
   __Pyx_XDECREF(__pyx_r);
   __pyx_t_2 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_2)) __PYX_ERR(1, 50, __pyx_L1_error)
@@ -1429,7 +1429,7 @@ static PyObject *__pyx_pf_9parser_1d_8Parser1d_4evaluate(struct __pyx_obj_9parse
 
   /* "parser_1d.pyx":42
  * 		del self.parser
- * 
+ *
  * 	def evaluate(self):             # <<<<<<<<<<<<<<
  * 		"""
  * 		Evaluate the expression.
@@ -1558,7 +1558,7 @@ static PyObject *__pyx_pf_9parser_1d_8Parser1d_8__setstate_cython__(CYTHON_UNUSE
 }
 
 /* "vector.from_py":45
- * 
+ *
  * @cname("__pyx_convert_vector_from_py_double")
  * cdef vector[X] __pyx_convert_vector_from_py_double(object o) except *:             # <<<<<<<<<<<<<<
  *     cdef vector[X] v
@@ -1631,7 +1631,7 @@ static std::vector<double>  __pyx_convert_vector_from_py_double(PyObject *__pyx_
  *     for item in o:
  *         v.push_back(<X>item)             # <<<<<<<<<<<<<<
  *     return v
- * 
+ *
  */
     __pyx_t_5 = __pyx_PyFloat_AsDouble(__pyx_v_item); if (unlikely((__pyx_t_5 == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 48, __pyx_L1_error)
     __pyx_v_v.push_back(((double)__pyx_t_5));
@@ -1650,14 +1650,14 @@ static std::vector<double>  __pyx_convert_vector_from_py_double(PyObject *__pyx_
  *     for item in o:
  *         v.push_back(<X>item)
  *     return v             # <<<<<<<<<<<<<<
- * 
- * 
+ *
+ *
  */
   __pyx_r = __pyx_v_v;
   goto __pyx_L0;
 
   /* "vector.from_py":45
- * 
+ *
  * @cname("__pyx_convert_vector_from_py_double")
  * cdef vector[X] __pyx_convert_vector_from_py_double(object o) except *:             # <<<<<<<<<<<<<<
  *     cdef vector[X] v
@@ -1677,11 +1677,11 @@ static std::vector<double>  __pyx_convert_vector_from_py_double(PyObject *__pyx_
 }
 
 /* "vector.to_py":60
- * 
+ *
  * @cname("__pyx_convert_vector_to_py_double")
  * cdef object __pyx_convert_vector_to_py_double(vector[X]& v):             # <<<<<<<<<<<<<<
  *     return [v[i] for i in range(v.size())]
- * 
+ *
  */
 
 static PyObject *__pyx_convert_vector_to_py_double(const std::vector<double>  &__pyx_v_v) {
@@ -1698,8 +1698,8 @@ static PyObject *__pyx_convert_vector_to_py_double(const std::vector<double>  &_
  * @cname("__pyx_convert_vector_to_py_double")
  * cdef object __pyx_convert_vector_to_py_double(vector[X]& v):
  *     return [v[i] for i in range(v.size())]             # <<<<<<<<<<<<<<
- * 
- * 
+ *
+ *
  */
   __Pyx_XDECREF(__pyx_r);
   __pyx_t_1 = PyList_New(0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 61, __pyx_L1_error)
@@ -1717,11 +1717,11 @@ static PyObject *__pyx_convert_vector_to_py_double(const std::vector<double>  &_
   goto __pyx_L0;
 
   /* "vector.to_py":60
- * 
+ *
  * @cname("__pyx_convert_vector_to_py_double")
  * cdef object __pyx_convert_vector_to_py_double(vector[X]& v):             # <<<<<<<<<<<<<<
  *     return [v[i] for i in range(v.size())]
- * 
+ *
  */
 
   /* function exit code */
@@ -2082,7 +2082,7 @@ static int __pyx_pymod_exec_parser_1d(PyObject *__pyx_pyinit_module)
  * from libcpp.vector cimport vector
  * from libcpp.string cimport string
  * import numpy as np             # <<<<<<<<<<<<<<
- * 
+ *
  * # Expose C++ class parser_1d_cpp to Python
  */
   __pyx_t_1 = __Pyx_Import(__pyx_n_s_numpy, 0, -1); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 9, __pyx_L1_error)
@@ -2093,7 +2093,7 @@ static int __pyx_pymod_exec_parser_1d(PyObject *__pyx_pyinit_module)
   /* "parser_1d.pyx":1
  * # distutils: language = c++             # <<<<<<<<<<<<<<
  * # distutils: sources = parser_1d_cpp.cpp
- * 
+ *
  */
   __pyx_t_1 = __Pyx_PyDict_NewPresized(0); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 1, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
@@ -2101,11 +2101,11 @@ static int __pyx_pymod_exec_parser_1d(PyObject *__pyx_pyinit_module)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
   /* "vector.to_py":60
- * 
+ *
  * @cname("__pyx_convert_vector_to_py_double")
  * cdef object __pyx_convert_vector_to_py_double(vector[X]& v):             # <<<<<<<<<<<<<<
  *     return [v[i] for i in range(v.size())]
- * 
+ *
  */
 
   /*--- Wrapped vars code ---*/

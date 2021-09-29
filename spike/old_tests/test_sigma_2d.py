@@ -2,13 +2,13 @@
 #
 # Tasmania
 #
-# Copyright (c) 2018-2019, ETH Zurich
+# Copyright (c) 2018-2021, ETH Zurich
 # All rights reserved.
 #
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -28,8 +28,8 @@ import namelist as nl
 from python.grids.sigma import Sigma2d as Grid
 
 # Define zonal and vertical domain
-domain_x, nx = [0., 500.e3], 51
-domain_z, nz = [0.1, 1.] , 50
+domain_x, nx = [0.0, 500.0e3], 51
+domain_z, nz = [0.1, 1.0], 50
 
 # Specify the interfacial height separating the terrain-following part of
 # the domain from the z-system
@@ -37,15 +37,22 @@ pf = 220e2
 zf = pf / nl.p_sl
 
 # Define terrain-surface height
-#hs = 3000. * np.exp(- (np.linspace(domain_x[0], domain_x[1], n_x) - 5.)**2. / (20.*20.))
-hs = '3000. * exp(- (x - 40.)*(x - 40.) / (15.*15.))'
+# hs = 3000. * np.exp(- (np.linspace(domain_x[0], domain_x[1], n_x) - 5.)**2. / (20.*20.))
+hs = "3000. * exp(- (x - 40.)*(x - 40.) / (15.*15.))"
 
 # Instantiate a grid object
-g = Grid(domain_x, nx, domain_z, nz, #interface_z = zf, 
-		 topo_type = 'gaussian', topo_max_height = 1000., topo_width_x = 50.e3)
-		 #topo_type = 'user_defined', topo_str = hs)
+g = Grid(
+    domain_x,
+    nx,
+    domain_z,
+    nz,  # interface_z = zf,
+    topo_type="gaussian",
+    topo_max_height=1000.0,
+    topo_width_x=50.0e3,
+)
+# topo_type = 'user_defined', topo_str = hs)
 
 # Plot
 g.plot()
 
-print('Test passed!')
+print("Test passed!")

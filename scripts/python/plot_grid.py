@@ -2,7 +2,7 @@
 #
 # Tasmania
 #
-# Copyright (c) 2018-2019, ETH Zurich
+# Copyright (c) 2018-2021, ETH Zurich
 # All rights reserved.
 #
 # This file is part of the Tasmania project. Tasmania is free software:
@@ -25,11 +25,15 @@ from sympl import DataArray
 import tasmania as taz
 from python.grids.sigma import Sigma3d
 
-domain_x = DataArray([-200, 200], dims="x", attrs={"units": "km"}).to_units("m")
+domain_x = DataArray([-200, 200], dims="x", attrs={"units": "km"}).to_units(
+    "m"
+)
 nx = 101
 domain_y = DataArray([-1, 1], dims="y", attrs={"units": "km"}).to_units("m")
 ny = 1
-domain_z = DataArray([0.1, 1], dims="potential_temperature", attrs={"units": "1"})
+domain_z = DataArray(
+    [0.1, 1], dims="potential_temperature", attrs={"units": "1"}
+)
 nz = 40
 
 z_interface = None  # DataArray(0.3, attrs={'units': '1'})

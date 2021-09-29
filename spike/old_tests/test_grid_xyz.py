@@ -2,13 +2,13 @@
 #
 # Tasmania
 #
-# Copyright (c) 2018-2019, ETH Zurich
+# Copyright (c) 2018-2021, ETH Zurich
 # All rights reserved.
 #
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -25,16 +25,27 @@ Test GridXYZ.
 """
 from python.grids.grid import GridXYZ
 
-domain_x, nx = [-5., 5,], 101
-domain_y, ny = [-5., 5.], 101
-domain_z, nz = [300., 300. + 50.], 20
+domain_x, nx = [
+    -5.0,
+    5,
+], 101
+domain_y, ny = [-5.0, 5.0], 101
+domain_z, nz = [300.0, 300.0 + 50.0], 20
 
-topo_str = '1. / (x*x + 1.)'
+topo_str = "1. / (x*x + 1.)"
 
-xyz_grid = GridXYZ(domain_x, nx, domain_y, ny, domain_z, nz,
-				   #topo_type = 'schaer', topo_width_x = 1., topo_width_y = 2.)
-				   topo_type = 'user_defined', topo_str = topo_str)
+xyz_grid = GridXYZ(
+    domain_x,
+    nx,
+    domain_y,
+    ny,
+    domain_z,
+    nz,
+    # topo_type = 'schaer', topo_width_x = 1., topo_width_y = 2.)
+    topo_type="user_defined",
+    topo_str=topo_str,
+)
 
 xyz_grid._topography.plot(xyz_grid.xy_grid)
 
-print('Test passed!')
+print("Test passed!")
