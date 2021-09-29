@@ -23,21 +23,21 @@
 
 MODULES=( )
 # MODULES=( daint-gpu cray-python/3.6.5.7 cudatoolkit )
-PYTHON=python3.8
+PYTHON=python3.9
 PIP_UPGRADE=1
 DISABLE_CEXT=1
 GT4PY_EXTRAS=
 VENV=venv
-FRESH_INSTALL=1
+FRESH_INSTALL=0
 
 function install()
 {
   # activate environment
   source $VENV/bin/activate
 
-  # upgrade pip
+  # upgrade pip and setuptools
   if [ "$PIP_UPGRADE" -gt 0 ]; then
-    pip install --upgrade pip
+    pip install --upgrade pip setuptools
   fi
 
   # install tasmania and required dependencies
@@ -59,7 +59,7 @@ function install()
   pip install -r requirements_dev.txt
 
   # deactivate environment
-	deactivate
+  deactivate
 
   # On OSX only: change matplotlib backend from macosx to TkAgg
   if [[ "$OSTYPE" == "darwin"* ]]; then
