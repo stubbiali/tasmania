@@ -36,7 +36,7 @@ from tasmania.framework.options import StorageOptions
 from tasmania.framework.stencil import StencilFactory
 from tasmania.domain.domain import Domain
 from tasmania.utils.storage import deepcopy_dataarray_dict, get_physical_state, get_numerical_state
-from tasmania.utils.time import convert_datetime64_to_datetime
+from tasmania.utils.timex import convert_datetime64_to_datetime
 
 if TYPE_CHECKING:
     from typing import Optional, Sequence
