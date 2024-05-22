@@ -94,3 +94,6 @@ platforms = ['Linux', 'Mac']
 
 [tool.setuptools.package-data]
 'tasmania' = ['py.typed']
+
+[tool.setuptools.packages]
+find = {namespaces = false, where = ['src']}
