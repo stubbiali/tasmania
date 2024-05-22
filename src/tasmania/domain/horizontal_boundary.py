@@ -20,22 +20,25 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+
+from __future__ import annotations
 import abc
 from copy import deepcopy
-from sympl import DataArray
-from typing import Any, Dict, Optional, Sequence, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
-from tasmania.python.domain.grid import Grid, NumericalGrid
-from tasmania.python.framework.register import factorize
-from tasmania.python.framework.stencil import StencilFactory
-from tasmania.python.utils import typingx as ty
-from tasmania.python.utils.storage import deepcopy_dataarray
+from sympl import DataArray
+
+from tasmania.domain.grid import Grid, NumericalGrid
+from tasmania.framework.register import factorize
+from tasmania.framework.stencil import StencilFactory
+from tasmania.utils.storage import deepcopy_dataarray
 
 if TYPE_CHECKING:
-    from tasmania.python.framework.options import (
-        BackendOptions,
-        StorageOptions,
-    )
+    from collections.abc import Sequence
+    from typing import Any, Optional
+
+    from tasmania.framework.options import BackendOptions, StorageOptions
+    from tasmania.utils.typingx import DataArrayDict, Datetime, NDArray, NDArrayDict, PropertyDict
 
 
 class HorizontalBoundary(StencilFactory, abc.ABC):
@@ -44,14 +47,14 @@ class HorizontalBoundary(StencilFactory, abc.ABC):
     registry = {}
 
     def __init__(
-        self: "HorizontalBoundary",
+        self,
         grid: Grid,
         nb: int,
         *,
         backend: str = "numpy",
-        backend_options: Optional["BackendOptions"] = None,
+        backend_options: Optional[BackendOptions] = None,
         storage_shape: Optional[Sequence[int]] = None,
-        storage_options: Optional["StorageOptions"] = None,
+        storage_options: Optional[StorageOptions] = None,
     ) -> None:
         """
         Parameters
@@ -82,22 +85,22 @@ class HorizontalBoundary(StencilFactory, abc.ABC):
         self._ref_state = None
 
     @property
-    def kwargs(self: "HorizontalBoundary") -> Dict[str, Any]:
+    def kwargs(self) -> dict[str, Any]:
         """The keyword arguments used to initialize the derived class."""
         return self._kwargs
 
     @property
-    def nb(self: "HorizontalBoundary") -> int:
+    def nb(self) -> int:
         """Number of boundary layers."""
         return self._nb
 
     @property
-    def numerical_grid(self: "HorizontalBoundary") -> NumericalGrid:
+    def numerical_grid(self) -> NumericalGrid:
         """The underlying numerical grid."""
         return self._ngrid
 
     @property
-    def nx(self: "HorizontalBoundary") -> int:
+    def nx(self) -> int:
         """
         Number of mass points featured by the physical grid
         along the first dimension.
@@ -105,7 +108,7 @@ class HorizontalBoundary(StencilFactory, abc.ABC):
         return self._pgrid.nx
 
     @property
-    def ny(self: "HorizontalBoundary") -> int:
+    def ny(self) -> int:
         """
         Number of mass points featured by the physical grid
         along the second dimension.
@@ -113,12 +116,12 @@ class HorizontalBoundary(StencilFactory, abc.ABC):
         return self._pgrid.ny
 
     @property
-    def physical_grid(self: "HorizontalBoundary") -> Grid:
+    def physical_grid(self) -> Grid:
         """The underlying physical grid."""
         return self._pgrid
 
     @property
-    def reference_state(self: "HorizontalBoundary") -> ty.DataArrayDict:
+    def reference_state(self) -> DataArrayDict:
         """
         The reference model state dictionary, defined over the
         numerical grid.
@@ -126,7 +129,7 @@ class HorizontalBoundary(StencilFactory, abc.ABC):
         return self._ref_state if self._ref_state is not None else {}
 
     @reference_state.setter
-    def reference_state(self: "HorizontalBoundary", ref_state: ty.DataArrayDict) -> None:
+    def reference_state(self, ref_state: DataArrayDict) -> None:
         for name in ref_state:
             if name != "time":
                 assert (
@@ -141,7 +144,7 @@ class HorizontalBoundary(StencilFactory, abc.ABC):
                 self._ref_state[name] = deepcopy_dataarray(ref_state[name])
 
     @property
-    def type(self: "HorizontalBoundary") -> str:
+    def type(self) -> str:
         """
         The string passed to :meth:`tasmania.HorizontalBoundary.factory`
         as ``boundary_type`` argument.
@@ -149,12 +152,12 @@ class HorizontalBoundary(StencilFactory, abc.ABC):
         return self._type
 
     @type.setter
-    def type(self: "HorizontalBoundary", value: str) -> None:
+    def type(self, value: str) -> None:
         self._type = value
 
     @property
     @abc.abstractmethod
-    def ni(self: "HorizontalBoundary") -> int:
+    def ni(self) -> int:
         """
         Number of mass points featured by the numerical grid
         along the first dimension.
@@ -162,14 +165,14 @@ class HorizontalBoundary(StencilFactory, abc.ABC):
 
     @property
     @abc.abstractmethod
-    def nj(self: "HorizontalBoundary") -> int:
+    def nj(self) -> int:
         """
         Number of mass points featured by the numerical grid
         along the second dimension.
         """
 
     @abc.abstractmethod
-    def get_numerical_xaxis(self: "HorizontalBoundary", dims: Optional[str] = None) -> DataArray:
+    def get_numerical_xaxis(self, dims: Optional[str] = None) -> DataArray:
         """
         Parameters
         ----------
@@ -186,9 +189,7 @@ class HorizontalBoundary(StencilFactory, abc.ABC):
         """
 
     @abc.abstractmethod
-    def get_numerical_xaxis_staggered(
-        self: "HorizontalBoundary", dims: Optional[str] = None
-    ) -> DataArray:
+    def get_numerical_xaxis_staggered(self, dims: Optional[str] = None) -> DataArray:
         """
         Parameters
         ----------
@@ -205,7 +206,7 @@ class HorizontalBoundary(StencilFactory, abc.ABC):
         """
 
     @abc.abstractmethod
-    def get_numerical_yaxis(self: "HorizontalBoundary", dims: Optional[str] = None) -> DataArray:
+    def get_numerical_yaxis(self, dims: Optional[str] = None) -> DataArray:
         """
         Parameters
         ----------
@@ -222,9 +223,7 @@ class HorizontalBoundary(StencilFactory, abc.ABC):
         """
 
     @abc.abstractmethod
-    def get_numerical_yaxis_staggered(
-        self: "HorizontalBoundary", dims: Optional[str] = None
-    ) -> DataArray:
+    def get_numerical_yaxis_staggered(self, dims: Optional[str] = None) -> DataArray:
         """
         Parameters
         ----------
@@ -241,11 +240,7 @@ class HorizontalBoundary(StencilFactory, abc.ABC):
         """
 
     @abc.abstractmethod
-    def get_numerical_field(
-        self: "HorizontalBoundary",
-        field: ty.Storage,
-        field_name: Optional[str] = None,
-    ) -> ty.Storage:
+    def get_numerical_field(self, field: NDArray, field_name: Optional[str] = None) -> NDArray:
         """
         Parameters
         ----------
@@ -261,11 +256,7 @@ class HorizontalBoundary(StencilFactory, abc.ABC):
         """
 
     @abc.abstractmethod
-    def get_physical_field(
-        self: "HorizontalBoundary",
-        field: ty.Storage,
-        field_name: Optional[str] = None,
-    ) -> ty.Storage:
+    def get_physical_field(self, field: NDArray, field_name: Optional[str] = None) -> NDArray:
         """
         Parameters
         ----------
@@ -282,11 +273,11 @@ class HorizontalBoundary(StencilFactory, abc.ABC):
 
     @abc.abstractmethod
     def enforce_field(
-        self: "HorizontalBoundary",
-        field: ty.Storage,
+        self,
+        field: NDArray,
         field_name: Optional[str] = None,
         field_units: Optional[str] = None,
-        time: Optional[ty.Datetime] = None,
+        time: Optional[Datetime] = None,
     ) -> None:
         """Enforce the boundary conditions on a raw field.
 
@@ -306,9 +297,9 @@ class HorizontalBoundary(StencilFactory, abc.ABC):
         """
 
     def enforce_raw(
-        self: "HorizontalBoundary",
-        state: ty.StorageDict,
-        field_properties: Optional[ty.properties_mapping_t] = None,
+        self,
+        state: NDArrayDict,
+        field_properties: Optional[PropertyDict] = None,
     ) -> None:
         """Enforce the boundary conditions on a raw state.
 
@@ -352,11 +343,7 @@ class HorizontalBoundary(StencilFactory, abc.ABC):
                 time=time,
             )
 
-    def enforce(
-        self: "HorizontalBoundary",
-        state: ty.DataArrayDict,
-        field_names: Optional[Sequence[str]] = None,
-    ) -> None:
+    def enforce(self, state: DataArrayDict, field_names: Optional[Sequence[str]] = None) -> None:
         """Enforce the boundary conditions on a state.
 
         The state must be defined on the numerical grid, and gets modified
@@ -398,11 +385,11 @@ class HorizontalBoundary(StencilFactory, abc.ABC):
 
     @abc.abstractmethod
     def set_outermost_layers_x(
-        self: "HorizontalBoundary",
-        field: ty.Storage,
+        self,
+        field: NDArray,
         field_name: Optional[str] = None,
         field_units: Optional[str] = None,
-        time: Optional[ty.Datetime] = None,
+        time: Optional[Datetime] = None,
     ) -> None:
         """Set the outermost layers along the first dimension.
 
@@ -424,10 +411,10 @@ class HorizontalBoundary(StencilFactory, abc.ABC):
     @abc.abstractmethod
     def set_outermost_layers_y(
         self,
-        field: ty.Storage,
+        field: NDArray,
         field_name: Optional[str] = None,
         field_units: Optional[str] = None,
-        time: Optional[ty.Datetime] = None,
+        time: Optional[Datetime] = None,
     ) -> None:
         """Set the outermost layers along the first dimension.
 
@@ -453,11 +440,11 @@ class HorizontalBoundary(StencilFactory, abc.ABC):
         nb: int,
         *,
         backend: str = "numpy",
-        backend_options: Optional["BackendOptions"] = None,
+        backend_options: Optional[BackendOptions] = None,
         storage_shape: Optional[Sequence[int]] = None,
-        storage_options: Optional["StorageOptions"] = None,
+        storage_options: Optional[StorageOptions] = None,
         **kwargs,
-    ) -> "HorizontalBoundary":
+    ) -> HorizontalBoundary:
         """Get an instance of a derived class.
 
         Parameters

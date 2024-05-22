@@ -20,20 +20,22 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from sympl import DataArray
-from typing import Any, Dict, Optional, Sequence, TYPE_CHECKING
 
-from tasmania.python.domain.grid import PhysicalGrid
-from tasmania.python.domain.horizontal_boundary import HorizontalBoundary
-from tasmania.python.framework.allocators import as_storage
-from tasmania.python.utils import typingx as ty
+from __future__ import annotations
+from sympl import DataArray
+from typing import TYPE_CHECKING
+
+from tasmania.domain.grid import PhysicalGrid
+from tasmania.domain.horizontal_boundary import HorizontalBoundary
+from tasmania.framework.allocators import as_storage
 
 if TYPE_CHECKING:
-    from tasmania.python.domain.grid import NumericalGrid
-    from tasmania.python.framework.options import (
-        BackendOptions,
-        StorageOptions,
-    )
+    from collections.abc import Sequence
+    from typing import Any, Optional
+
+    from tasmania.domain.grid import NumericalGrid
+    from tasmania.framework.options import BackendOptions, StorageOptions
+    from tasmania.utils.typingx import Datetime
 
 
 class Domain:
@@ -48,7 +50,7 @@ class Domain:
     """
 
     def __init__(
-        self: "Domain",
+        self,
         domain_x: DataArray,
         nx: int,
         domain_y: DataArray,
@@ -58,14 +60,14 @@ class Domain:
         z_interface: Optional[DataArray] = None,
         horizontal_boundary_type: str = "periodic",
         nb: int = 3,
-        horizontal_boundary_kwargs: Optional[Dict[str, Any]] = None,
+        horizontal_boundary_kwargs: Optional[dict[str, Any]] = None,
         topography_type: str = "flat",
-        topography_kwargs: Optional[Dict[str, Any]] = None,
+        topography_kwargs: Optional[dict[str, Any]] = None,
         *,
         backend: str = "numpy",
-        backend_options: Optional["BackendOptions"] = None,
+        backend_options: Optional[BackendOptions] = None,
         storage_shape: Optional[Sequence[int]] = None,
-        storage_options: Optional["StorageOptions"] = None,
+        storage_options: Optional[StorageOptions] = None,
     ) -> None:
         """
         Parameters
@@ -159,7 +161,7 @@ class Domain:
         )
 
     @property
-    def horizontal_boundary(self: "Domain") -> HorizontalBoundary:
+    def horizontal_boundary(self) -> HorizontalBoundary:
         """
         Instance of :class:`~tasmania.HorizontalBoundary` handling the
         boundary conditions.
@@ -167,16 +169,16 @@ class Domain:
         return self._hb
 
     @property
-    def numerical_grid(self: "Domain") -> "NumericalGrid":
+    def numerical_grid(self) -> NumericalGrid:
         """The :class:`~tasmania.NumericalGrid`."""
         return self._hb.numerical_grid
 
     @property
-    def physical_grid(self: "Domain") -> PhysicalGrid:
+    def physical_grid(self) -> PhysicalGrid:
         """The :class:`~tasmania.PhysicalGrid`."""
         return self._pgrid
 
-    def update_topography(self: "Domain", time: ty.Datetime) -> None:
+    def update_topography(self, time: Datetime) -> None:
         """Update the (time-dependent) :class:`~tasmania.Topography`.
 
         Parameters
@@ -191,9 +193,9 @@ class Domain:
         self,
         *,
         backend: Optional[str] = None,
-        backend_options: Optional["BackendOptions"] = None,
-        storage_options: Optional["StorageOptions"] = None,
-    ) -> "Domain":
+        backend_options: Optional[BackendOptions] = None,
+        storage_options: Optional[StorageOptions] = None,
+    ) -> Domain:
         nx = self.physical_grid.nx
         x0 = self.physical_grid.x.values[0]
         x1 = self.physical_grid.x.values[int(nx > 1)]

@@ -22,20 +22,23 @@
 #
 import abc
 from copy import deepcopy
-import numpy as np
 from pandas import Timedelta
-from sympl import DataArray
-from typing import Any, Dict, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
-from tasmania.python.domain.horizontal_grid import NumericalHorizontalGrid
-from tasmania.python.framework.register import factorize
-from tasmania.python.utils import typingx as ty
-from tasmania.python.utils.storage import get_dataarray_2d
-from tasmania.python.utils.utils import smaller_than as lt
+from sympl import DataArray
+
+from tasmania.domain.horizontal_grid import NumericalHorizontalGrid
+from tasmania.framework.register import factorize
+from tasmania.utils.storage import get_dataarray_2d
+from tasmania.utils.utils import smaller_than as lt
 
 if TYPE_CHECKING:
-    from tasmania.python.domain.horizontal_boundary import HorizontalBoundary
-    from tasmania.python.domain.horizontal_grid import PhysicalHorizontalGrid
+    from numpy.typing import NDArray
+    from typing import Any, Optional
+
+    from tasmania.domain.horizontal_boundary import HorizontalBoundary
+    from tasmania.domain.horizontal_grid import PhysicalHorizontalGrid
+    from tasmania.utils.typingx import Datetime, TimeDelta
 
 
 class Topography:
@@ -47,10 +50,10 @@ class Topography:
     """
 
     def __init__(
-        self: "Topography",
+        self,
         steady_profile: DataArray,
         profile: Optional[DataArray] = None,
-        time: Optional[ty.TimeDelta] = None,
+        time: Optional[TimeDelta] = None,
     ) -> None:
         """
         Parameters
@@ -76,14 +79,14 @@ class Topography:
         self._profile.values[...] = self._fact * self._steady_profile.values[...]
 
     @property
-    def profile(self: "Topography") -> DataArray:
+    def profile(self) -> DataArray:
         """
         2-D :class:`~sympl.DataArray` storing the current topography profile.
         """
         return self._profile
 
     @property
-    def steady_profile(self: "Topography") -> DataArray:
+    def steady_profile(self) -> DataArray:
         """
         2-D :class:`~sympl.DataArray` storing the steady-state
         topography profile.
@@ -91,14 +94,14 @@ class Topography:
         return self._steady_profile
 
     @property
-    def time(self: "Topography") -> ty.Datetime:
+    def time(self) -> Datetime:
         """
         The elapsed simulation time after which the topography
         stops increasing.
         """
         return self._time
 
-    def update(self: "Topography", time: ty.Datetime) -> None:
+    def update(self, time: Datetime) -> None:
         """Update the topography at current simulation time.
 
         Parameters
@@ -117,7 +120,7 @@ class PhysicalTopography(abc.ABC, Topography):
     registry = {}
 
     def __init__(
-        self, grid: "PhysicalHorizontalGrid", time: ty.TimeDelta, smooth: bool, **kwargs
+        self, grid: PhysicalHorizontalGrid, time: TimeDelta, smooth: bool, **kwargs
     ) -> None:
         """
         Parameters
@@ -162,22 +165,22 @@ class PhysicalTopography(abc.ABC, Topography):
         super().__init__(topo_steady, time=time)
 
     @property
-    def kwargs(self: "PhysicalTopography") -> Dict[str, Any]:
+    def kwargs(self) -> dict[str, Any]:
         """Keyword arguments used to initialize the object."""
         return self._kwargs
 
     @property
-    def type(self: "PhysicalTopography") -> str:
+    def type(self) -> str:
         """String used to register the subclass."""
         assert self._type is not None
         return self._type
 
     @type.setter
-    def type(self: "PhysicalTopography", topography_type: str) -> None:
+    def type(self, topography_type: str) -> None:
         self._type = topography_type
 
     @abc.abstractmethod
-    def compute_steady_profile(self, grid: "PhysicalHorizontalGrid", **kwargs) -> np.ndarray:
+    def compute_steady_profile(self, grid: PhysicalHorizontalGrid, **kwargs) -> NDArray:
         """Compute the steady topography profile.
 
         Parameters
@@ -196,8 +199,8 @@ class PhysicalTopography(abc.ABC, Topography):
     @staticmethod
     def factory(
         topography_type: str,
-        grid: "PhysicalHorizontalGrid",
-        time: Optional[ty.TimeDelta] = None,
+        grid: PhysicalHorizontalGrid,
+        time: Optional[TimeDelta] = None,
         smooth: bool = False,
         **kwargs,
     ):
@@ -241,7 +244,7 @@ class PhysicalTopography(abc.ABC, Topography):
 class NumericalTopography(Topography):
     """A time-dependent topography defined over a numerical grid."""
 
-    def __init__(self: "NumericalTopography", boundary: "HorizontalBoundary") -> None:
+    def __init__(self, boundary: HorizontalBoundary) -> None:
         """
         Parameters
         ----------
@@ -266,7 +269,7 @@ class NumericalTopography(Topography):
         super().__init__(ctopo_steady, ctopo, topo_time)
 
     @property
-    def kwargs(self: "NumericalTopography") -> Dict[str, Any]:
+    def kwargs(self) -> dict[str, Any]:
         """
         The keyword arguments used to initialize the corresponding
         physical topography.
@@ -274,6 +277,6 @@ class NumericalTopography(Topography):
         return self._kwargs
 
     @property
-    def type(self: "NumericalTopography") -> str:
+    def type(self) -> str:
         """The topography type."""
         return self._type

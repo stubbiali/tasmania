@@ -20,17 +20,14 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+
 from datetime import timedelta
 import numpy as np
 import sympl
 
-from tasmania.python.domain.grid import Grid
-from tasmania.python.utils.data import get_physical_constants
-from tasmania.python.utils.utils import (
-    equal_to as eq,
-    smaller_than as lt,
-    greater_or_equal_than as gt,
-)
+from tasmania.domain.grid import Grid
+from tasmania.utils.constants import get_physical_constants
+from tasmania.utils.utils import equal_to as eq, smaller_than as lt, greater_or_equal_than as gt
 
 
 # Default numerical settings

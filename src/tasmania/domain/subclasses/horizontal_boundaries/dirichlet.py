@@ -20,21 +20,14 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+
 import inspect
 import numpy as np
 
-try:
-    import cupy as cp
-except (ImportError, ModuleNotFoundError):
-    cp = np
-
-from tasmania.python.domain.horizontal_boundary import HorizontalBoundary
-from tasmania.python.domain.subclasses.horizontal_boundaries.utils import (
-    change_dims,
-    repeat_axis,
-)
-from tasmania.python.framework.generic_functions import to_numpy
-from tasmania.python.framework.register import register
+from tasmania.domain.horizontal_boundary import HorizontalBoundary
+from tasmania.domain.subclasses.horizontal_boundaries.utils import change_dims, repeat_axis
+from tasmania.framework.generic_functions import to_numpy
+from tasmania.framework.register import register
 
 
 def placeholder(time, grid, slice_x, slice_y, field_name, field_units):
@@ -60,8 +53,8 @@ class Dirichlet(HorizontalBoundary):
             Callable object providing the boundary layers values.
         """
         nx, ny = grid.nx, grid.ny
-        assert nx > 1, "Number of grid points along first dimension should be larger " "than 1."
-        assert ny > 1, "Number of grid points along second dimension should be larger " "than 1."
+        assert nx > 1, "Number of grid points along first dimension should be larger than 1."
+        assert ny > 1, "Number of grid points along second dimension should be larger than 1."
         assert nb <= nx / 2, "Number of boundary layers cannot exceed ny/2."
         assert nb <= ny / 2, "Number of boundary layers cannot exceed ny/2."
 
@@ -245,7 +238,7 @@ class Dirichlet1DX(HorizontalBoundary):
             Callable object providing the boundary layers values.
         """
         nx, ny = grid.nx, grid.ny
-        assert nx > 1, "Number of grid points along first dimension should be larger " "than 1."
+        assert nx > 1, "Number of grid points along first dimension should be larger than 1."
         assert ny == 1, "Number of grid points along second dimension must be 1."
         assert nb <= nx / 2, "Number of boundary layers cannot exceed nx/2."
 
@@ -425,7 +418,7 @@ class Dirichlet1DY(HorizontalBoundary):
         """
         nx, ny = grid.nx, grid.ny
         assert nx == 1, "Number of grid points along first dimension must be 1."
-        assert ny > 1, "Number of grid points along second dimension should be larger " "than 1."
+        assert ny > 1, "Number of grid points along second dimension should be larger than 1."
         assert nb <= ny / 2, "Number of boundary layers cannot exceed ny/2."
 
         signature = inspect.signature(core)

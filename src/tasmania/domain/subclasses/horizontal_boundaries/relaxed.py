@@ -22,21 +22,13 @@
 #
 import numpy as np
 
-try:
-    import cupy as cp
-except (ImportError, ModuleNotFoundError):
-    cp = np
-
 from sympl._core.time import Timer
 
-from tasmania.python.domain.horizontal_boundary import HorizontalBoundary
-from tasmania.python.domain.subclasses.horizontal_boundaries.utils import (
-    change_dims,
-    repeat_axis,
-)
-from tasmania.python.framework.generic_functions import to_numpy
-from tasmania.python.framework.register import register
-from tasmania.python.utils.storage import get_storage_shape
+from tasmania.domain.horizontal_boundary import HorizontalBoundary
+from tasmania.domain.subclasses.horizontal_boundaries.utils import change_dims, repeat_axis
+from tasmania.framework.generic_functions import to_numpy
+from tasmania.framework.register import register
+from tasmania.utils.storage import get_storage_shape
 
 
 class Relaxed(HorizontalBoundary):
@@ -75,12 +67,12 @@ class Relaxed(HorizontalBoundary):
             horizontal boundaries. Minimum is ``nb``, maximum is 8 (default).
         """
         nx, ny = grid.nx, grid.ny
-        assert nx > 1, "Number of grid points along first dimension should be larger " "than 1."
-        assert ny > 1, "Number of grid points along second dimension should be larger " "than 1."
+        assert nx > 1, "Number of grid points along first dimension should be larger than 1."
+        assert ny > 1, "Number of grid points along second dimension should be larger than 1."
         assert nr <= nx / 2, "Depth of relaxation region cannot exceed nx/2."
         assert nr <= ny / 2, "Depth of relaxation region cannot exceed ny/2."
         assert nr <= 8, "Depth of relaxation region cannot exceed 8."
-        assert nb <= nr, "Number of boundary layers cannot exceed depth of relaxation " "region."
+        assert nb <= nr, "Number of boundary layers cannot exceed depth of relaxation region."
 
         super().__init__(
             grid,
@@ -291,11 +283,11 @@ class Relaxed1DX(HorizontalBoundary):
             horizontal boundaries. Minimum is ``nb``, maximum is 8 (default).
         """
         nx, ny = grid.nx, grid.ny
-        assert nx > 1, "Number of grid points along first dimension should be larger " "than 1."
+        assert nx > 1, "Number of grid points along first dimension should be larger than 1."
         assert ny == 1, "Number of grid points along second dimension must be 1."
         assert nr <= nx / 2, "Depth of relaxation region cannot exceed nx/2."
         assert nr <= 8, "Depth of relaxation region cannot exceed 8."
-        assert nb <= nr, "Number of boundary layers cannot exceed depth of relaxation " "region."
+        assert nb <= nr, "Number of boundary layers cannot exceed depth of relaxation region."
 
         super().__init__(
             grid,
@@ -509,10 +501,10 @@ class Relaxed1DY(HorizontalBoundary):
         """
         nx, ny = grid.nx, grid.ny
         assert nx == 1, "Number of grid points along first dimension must be 1."
-        assert ny > 1, "Number of grid points along second dimension should be larger " "than 1."
+        assert ny > 1, "Number of grid points along second dimension should be larger than 1."
         assert nr <= ny / 2, "Depth of relaxation region cannot exceed ny/2."
         assert nr <= 8, "Depth of relaxation region cannot exceed 8."
-        assert nb <= nr, "Number of boundary layers cannot exceed depth of relaxation " "region."
+        assert nb <= nr, "Number of boundary layers cannot exceed depth of relaxation region."
 
         super().__init__(
             grid,

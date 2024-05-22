@@ -20,10 +20,11 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+
 import numpy as np
 
-from tasmania.python.domain.topography import PhysicalTopography
-from tasmania.python.framework.register import register
+from tasmania.domain.topography import PhysicalTopography
+from tasmania.framework.register import register
 
 
 @register(name="flat")

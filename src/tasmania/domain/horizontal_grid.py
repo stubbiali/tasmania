@@ -20,14 +20,19 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-import numpy as np
-from sympl import DataArray
-from typing import Optional, TYPE_CHECKING
 
-from tasmania.python.framework.options import StorageOptions
+from __future__ import annotations
+import numpy as np
+from typing import TYPE_CHECKING
+
+from sympl import DataArray
+
+from tasmania.framework.options import StorageOptions
 
 if TYPE_CHECKING:
-    from tasmania.python.domain.horizontal_boundary import HorizontalBoundary
+    from typing import Optional
+
+    from tasmania.domain.horizontal_boundary import HorizontalBoundary
 
 
 class HorizontalGrid:
@@ -41,7 +46,7 @@ class HorizontalGrid:
     """
 
     def __init__(
-        self: "HorizontalGrid",
+        self,
         x: DataArray,
         y: DataArray,
         x_at_u_locations: Optional[DataArray] = None,
@@ -134,7 +139,7 @@ class HorizontalGrid:
             )
 
     @property
-    def dx(self: "HorizontalGrid") -> DataArray:
+    def dx(self) -> DataArray:
         """
         1-item :class:`~sympl.DataArray` representing the grid spacing
         along the first horizontal dimension. In case of a non-uniform
@@ -143,7 +148,7 @@ class HorizontalGrid:
         return self._dx
 
     @property
-    def dy(self: "HorizontalGrid") -> DataArray:
+    def dy(self) -> DataArray:
         """
         1-item :class:`~sympl.DataArray` representing the grid spacing
         along the second horizontal dimension. In case of a non-uniform
@@ -152,17 +157,17 @@ class HorizontalGrid:
         return self._dy
 
     @property
-    def nx(self: "HorizontalGrid") -> int:
+    def nx(self) -> int:
         """Number of mass grid points along the first horizontal dimension."""
         return self._nx
 
     @property
-    def ny(self: "HorizontalGrid") -> int:
+    def ny(self) -> int:
         """Number of mass grid points along the second horizontal dimension."""
         return self._ny
 
     @property
-    def x(self: "HorizontalGrid") -> DataArray:
+    def x(self) -> DataArray:
         """
         1-D :class:`~sympl.DataArray` collecting the coordinates of the mass
         grid points along the first horizontal dimension.
@@ -170,7 +175,7 @@ class HorizontalGrid:
         return self._x
 
     @property
-    def x_at_u_locations(self: "HorizontalGrid") -> DataArray:
+    def x_at_u_locations(self) -> DataArray:
         """
         1-D :class:`~sympl.DataArray` collecting the coordinates of the
         staggered grid points along the first horizontal dimension.
@@ -178,7 +183,7 @@ class HorizontalGrid:
         return self._xu
 
     @property
-    def y(self: "HorizontalGrid") -> DataArray:
+    def y(self) -> DataArray:
         """
         1-D :class:`~sympl.DataArray` collecting the coordinates of the mass
         grid points along the second horizontal dimension.
@@ -186,7 +191,7 @@ class HorizontalGrid:
         return self._y
 
     @property
-    def y_at_v_locations(self: "HorizontalGrid") -> DataArray:
+    def y_at_v_locations(self) -> DataArray:
         """
         1-D :class:`~sympl.DataArray` collecting the coordinates of the
         staggered grid points along the second horizontal dimension.
@@ -198,7 +203,7 @@ class PhysicalHorizontalGrid(HorizontalGrid):
     """A two-dimensional regular grid covering a physical domain."""
 
     def __init__(
-        self: "PhysicalHorizontalGrid",
+        self,
         domain_x: DataArray,
         nx: int,
         domain_y: DataArray,
@@ -277,7 +282,7 @@ class PhysicalHorizontalGrid(HorizontalGrid):
 class NumericalHorizontalGrid(HorizontalGrid):
     """A two-dimensional regular grid covering a numerical domain."""
 
-    def __init__(self: "NumericalHorizontalGrid", boundary: "HorizontalBoundary") -> None:
+    def __init__(self, boundary: HorizontalBoundary) -> None:
         """
         Parameters
         ----------

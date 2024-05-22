@@ -20,30 +20,25 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+
+from __future__ import annotations
 import math
 import numpy as np
 from sympl import DataArray
-from typing import Any, Dict, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
-from tasmania.python.domain.horizontal_grid import (
-    PhysicalHorizontalGrid,
-    NumericalHorizontalGrid,
-)
-from tasmania.python.domain.topography import (
-    PhysicalTopography,
-    NumericalTopography,
-)
-from tasmania.python.framework.options import StorageOptions
-from tasmania.python.utils import typingx as ty
-from tasmania.python.utils.utils import (
-    smaller_than as lt,
-    smaller_or_equal_than as le,
-)
+from tasmania.domain.horizontal_grid import PhysicalHorizontalGrid, NumericalHorizontalGrid
+from tasmania.domain.topography import PhysicalTopography, NumericalTopography
+from tasmania.framework.options import StorageOptions
+from tasmania.utils.utils import smaller_than as lt, smaller_or_equal_than as le
 
 if TYPE_CHECKING:
-    from tasmania.python.domain.horizontal_boundary import HorizontalBoundary
-    from tasmania.python.domain.horizontal_grid import HorizontalGrid
-    from tasmania.python.domain.topography import Topography
+    from typing import Any, Optional
+
+    from tasmania.domain.horizontal_boundary import HorizontalBoundary
+    from tasmania.domain.horizontal_grid import HorizontalGrid
+    from tasmania.domain.topography import Topography
+    from tasmania.utils.typingx import Datetime
 
 
 class Grid:
@@ -75,12 +70,12 @@ class Grid:
     """
 
     def __init__(
-        self: "Grid",
-        grid_xy: "HorizontalGrid",
+        self: Grid,
+        grid_xy: HorizontalGrid,
         z: DataArray,
         z_on_interface_levels: DataArray,
         z_interface: DataArray,
-        topography: "Topography",
+        topography: Topography,
     ) -> None:
         """
         Parameters
@@ -111,7 +106,7 @@ class Grid:
         self._dz = DataArray(dz_v, name="dz", attrs={"units": z.attrs["units"]})
 
     @property
-    def dx(self: "Grid") -> DataArray:
+    def dx(self) -> DataArray:
         """
         1-item :class:`~sympl.DataArray` representing the grid spacing
         along the first horizontal dimension.
@@ -119,7 +114,7 @@ class Grid:
         return self._grid_xy.dx
 
     @property
-    def dy(self: "Grid") -> DataArray:
+    def dy(self) -> DataArray:
         """
         1-item :class:`~sympl.DataArray` representing the grid spacing
         along the second horizontal dimension.
@@ -127,7 +122,7 @@ class Grid:
         return self._grid_xy.dy
 
     @property
-    def dz(self: "Grid") -> DataArray:
+    def dz(self) -> DataArray:
         """
         1-item :class:`~sympl.DataArray` representing the vertical
         grid spacing.
@@ -135,12 +130,12 @@ class Grid:
         return self._dz
 
     @property
-    def grid_xy(self: "Grid") -> "HorizontalGrid":
+    def grid_xy(self) -> HorizontalGrid:
         """The underlying :class:`~tasmania.HorizontalGrid`."""
         return self._grid_xy
 
     @property
-    def nx(self: "Grid") -> int:
+    def nx(self) -> int:
         """
         Number of mass grid points featured by the grid along
         the first horizontal dimension.
@@ -148,7 +143,7 @@ class Grid:
         return self._grid_xy.nx
 
     @property
-    def ny(self: "Grid") -> int:
+    def ny(self) -> int:
         """
         Number of mass grid points featured by the grid along
         the second horizontal dimension.
@@ -156,12 +151,12 @@ class Grid:
         return self._grid_xy.ny
 
     @property
-    def nz(self: "Grid") -> int:
+    def nz(self) -> int:
         """Number of vertical main levels."""
         return self._nz
 
     @property
-    def topography(self: "Grid") -> "Topography":
+    def topography(self) -> Topography:
         """
         The :class:`~tasmania.Topography` defined over the underlying
         :class:`~tasmania.HorizontalGrid`.
@@ -169,7 +164,7 @@ class Grid:
         return self._topo
 
     @property
-    def x(self: "Grid") -> DataArray:
+    def x(self) -> DataArray:
         """
         1-D :class:`~sympl.DataArray` collecting the coordinates of the mass
         grid points along the first horizontal dimension.
@@ -177,7 +172,7 @@ class Grid:
         return self._grid_xy.x
 
     @property
-    def x_at_u_locations(self: "Grid") -> DataArray:
+    def x_at_u_locations(self) -> DataArray:
         """
         1-D :class:`~sympl.DataArray` collecting the coordinates of the
         staggered grid points along the first horizontal dimension.
@@ -185,7 +180,7 @@ class Grid:
         return self._grid_xy.x_at_u_locations
 
     @property
-    def y(self: "Grid") -> DataArray:
+    def y(self) -> DataArray:
         """
         1-D :class:`~sympl.DataArray` collecting the coordinates of the mass
         grid points along the second horizontal dimension.
@@ -193,7 +188,7 @@ class Grid:
         return self._grid_xy.y
 
     @property
-    def y_at_v_locations(self: "Grid") -> DataArray:
+    def y_at_v_locations(self) -> DataArray:
         """
         1-D :class:`~sympl.DataArray` collecting the coordinates of the
         staggered grid points along the second horizontal dimension.
@@ -201,7 +196,7 @@ class Grid:
         return self._grid_xy.y_at_v_locations
 
     @property
-    def z(self: "Grid") -> DataArray:
+    def z(self) -> DataArray:
         """
         1-D :class:`~sympl.DataArray` collecting the vertical coordinates of the
         vertical main levels.
@@ -209,7 +204,7 @@ class Grid:
         return self._z
 
     @property
-    def z_on_interface_levels(self: "Grid") -> DataArray:
+    def z_on_interface_levels(self) -> DataArray:
         """
         1-D :class:`~sympl.DataArray` collecting the vertical coordinates of the
         vertical interface levels.
@@ -217,7 +212,7 @@ class Grid:
         return self._zhl
 
     @property
-    def z_interface(self: "Grid") -> DataArray:
+    def z_interface(self) -> DataArray:
         """
         1-item :class:`~sympl.DataArray` representing the interface
         altitude where the terrain-following coordinate surfaces
@@ -225,7 +220,7 @@ class Grid:
         """
         return self._zi
 
-    def update_topography(self: "Grid", time: ty.Datetime) -> None:
+    def update_topography(self, time: Datetime) -> None:
         """Update the underlying (time-dependent) :class:`~tasmania.Topography`.
 
         Parameters
@@ -240,7 +235,7 @@ class PhysicalGrid(Grid):
     """Three-dimensional rectilinear grid covering a physical domain."""
 
     def __init__(
-        self: "PhysicalGrid",
+        self: PhysicalGrid,
         domain_x: DataArray,
         nx: int,
         domain_y: DataArray,
@@ -249,7 +244,7 @@ class PhysicalGrid(Grid):
         nz: int,
         z_interface: Optional[DataArray] = None,
         topography_type: str = "flat",
-        topography_kwargs: Dict[str, Any] = None,
+        topography_kwargs: dict[str, Any] = None,
         *,
         storage_options: Optional[StorageOptions] = None,
     ) -> None:
@@ -356,7 +351,7 @@ class PhysicalGrid(Grid):
 class NumericalGrid(Grid):
     """Three-dimensional rectilinear grid covering a numerical domain."""
 
-    def __init__(self: "NumericalGrid", boundary: "HorizontalBoundary") -> None:
+    def __init__(self, boundary: HorizontalBoundary) -> None:
         """
         Parameters
         ----------

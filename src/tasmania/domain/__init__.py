@@ -20,4 +20,5 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from tasmania.python.domain import subclasses
+
+from tasmania.domain import subclasses

@@ -20,7 +20,5 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from .flat import Flat
-from .gaussian import Gaussian
-from .schaer import Schaer
-from .user_defined import UserDefined
+
+from tasmania.domain.subclasses.topographies import flat, gaussian, schaer

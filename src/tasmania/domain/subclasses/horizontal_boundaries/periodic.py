@@ -20,20 +20,13 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+
 import numpy as np
 
-try:
-    import cupy as cp
-except (ImportError, ModuleNotFoundError):
-    cp = np
-
-from tasmania.python.domain.horizontal_boundary import HorizontalBoundary
-from tasmania.python.domain.subclasses.horizontal_boundaries.utils import (
-    extend_axis,
-    repeat_axis,
-)
-from tasmania.python.framework.generic_functions import to_numpy
-from tasmania.python.framework.register import register
+from tasmania.domain.horizontal_boundary import HorizontalBoundary
+from tasmania.domain.subclasses.horizontal_boundaries.utils import extend_axis, repeat_axis
+from tasmania.framework.generic_functions import to_numpy
+from tasmania.framework.register import register
 
 
 class Periodic(HorizontalBoundary):
@@ -41,8 +34,8 @@ class Periodic(HorizontalBoundary):
 
     def __init__(self, grid, nb, backend, storage_options):
         nx, ny = grid.nx, grid.ny
-        assert nx > 1, "Number of grid points along first dimension should be larger " "than 1."
-        assert ny > 1, "Number of grid points along second dimension should be larger " "than 1."
+        assert nx > 1, "Number of grid points along first dimension should be larger than 1."
+        assert ny > 1, "Number of grid points along second dimension should be larger than 1."
         assert nb <= nx / 2, "Number of boundary layers cannot exceed ny/2."
         assert nb <= ny / 2, "Number of boundary layers cannot exceed ny/2."
 
@@ -134,7 +127,7 @@ class Periodic1DX(HorizontalBoundary):
 
     def __init__(self, grid, nb, backend, storage_options):
         nx, ny = grid.nx, grid.ny
-        assert nx > 1, "Number of grid points along first dimension should be larger " "than 1."
+        assert nx > 1, "Number of grid points along first dimension should be larger than 1."
         assert ny == 1, "Number of grid points along second dimension must be 1."
         assert nb <= nx / 2, "Number of boundary layers cannot exceed nx/2."
 
@@ -227,7 +220,7 @@ class Periodic1DY(HorizontalBoundary):
     def __init__(self, grid, nb, backend, storage_options):
         nx, ny = grid.nx, grid.ny
         assert nx == 1, "Number of grid points along first dimension must be 1."
-        assert ny > 1, "Number of grid points along second dimension should be larger " "than 1."
+        assert ny > 1, "Number of grid points along second dimension should be larger than 1."
         assert nb <= ny / 2, "Number of boundary layers cannot exceed ny/2."
 
         super().__init__(grid, nb, backend=backend, storage_options=storage_options)

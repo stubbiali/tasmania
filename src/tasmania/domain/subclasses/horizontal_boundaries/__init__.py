@@ -20,7 +20,4 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from .dirichlet import dispatch
-from .identity import dispatch
-from .periodic import dispatch
-from .relaxed import dispatch
+from tasmania.domain.subclasses.horizontal_boundaries import dirichlet, identity, periodic, relaxed
