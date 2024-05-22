@@ -35,7 +35,7 @@ license = {file = 'LICENSE.md', content-type = 'text/markdown'}
 name = 'tasmania'
 readme = {file = 'README.md', content-type = 'text/markdown'}
 requires-python = '>=3.9'
-version = '0.0'
+version = '0.1.0'
 
 [project.optional-dependencies]
 dev = ['black==24.4.0', 'flake8', 'ipdb', 'ipython<8.23.0', 'mypy', 'pre-commit']
