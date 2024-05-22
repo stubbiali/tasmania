@@ -20,18 +20,12 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+
 import inspect
 import math
 
-try:
-    import cupy as cp
-except (ImportError, ModuleNotFoundError):
-    cp = None
 
-try:
-    from tasmania.conf import tol as d_tol
-except (ImportError, ModuleNotFoundError):
-    d_tol = 1e-10
+d_tol = 1e-10
 
 
 def equal_to(a, b, tol=d_tol):

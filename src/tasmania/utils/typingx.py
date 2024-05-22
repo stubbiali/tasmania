@@ -22,18 +22,9 @@
 #
 import datetime as dt
 import numpy as np
+from numpy.typing import NDArray
 import pandas as pd
-from typing import (
-    Any,
-    Dict,
-    Mapping,
-    MutableMapping,
-    Sequence,
-    TYPE_CHECKING,
-    Tuple,
-    TypeVar,
-    Union,
-)
+from typing import Any, Sequence, Union
 
 try:
     import cupy as cp
@@ -49,50 +40,23 @@ from sympl import (
     TendencyComponent,
     TendencyComponentComposite,
 )
-from sympl._core.typingx import Component as SymplComponent
 
-from gt4py import gtscript, storage as gt_storage
+from gt4py.cartesian import gtscript
 
-if TYPE_CHECKING:
-    from tasmania.python.framework._base import (
-        BaseConcurrentCoupling,
-        BaseFromDiagnosticToTendency,
-        BaseDiagnosticComponentComposite,
-        BaseFromTendencyToDiagnostic,
-    )
-    from tasmania.python.framework.dycore import DynamicalCore
-    from tasmania.python.framework.sts_tendency_stepper import (
-        STSTendencyStepper,
-    )
 
-Datatype = TypeVar("Datatype")
 Datetime = Union[dt.datetime, pd.Timestamp]
-Storage = TypeVar("Storage")
-StorageDict = Dict[str, Union[Datetime, Storage]]
-DataArrayDict = Dict[str, Union[Datetime, DataArray]]
 TimeDelta = Union[dt.timedelta, pd.Timedelta]
-PropertiesDict = Dict[str, Dict[str, Any]]
-
-array_t = Union[np.ndarray, cp.ndarray, gt_storage.Storage]
-dataarray_t = DataArray
-gtstorage_t = gt_storage.Storage
+NDArray = Union[NDArray, cp.ndarray]
+NDArrayDict = dict[str, Union[Datetime, NDArray]]
+DataArrayDict = dict[str, Union[Datetime, DataArray]]
+PropertyDict = dict[str, dict[str, Any]]
 
 DiagnosticComponent = Union[
     DiagnosticComponent,
     DiagnosticComponentComposite,
     "BaseDiagnosticComponentComposite",
 ]
-dtype_t = type
-GTField = gtscript.Field["dtype"]
-gtstorage_dict_t = Dict[str, Union[TimeDelta, gtstorage_t]]
-mutable_array_dict_t = Dict[str, Union[TimeDelta, array_t]]
-mutable_dataarray_dict_t = Dict[str, Union[TimeDelta, dataarray_t]]
-mutable_gtstorage_dict_t = Dict[str, Union[TimeDelta, gtstorage_t]]
-mutable_options_dict_t = Dict[str, Any]
-options_dict_t = Dict[str, Any]
-PairInt = Tuple[int, int]
 PromoterComponent = Union["BaseFromDiagnosticToTendency", "BaseFromTendencyToDiagnostic"]
-properties_mapping_t = Union[Mapping[str, Any], MutableMapping[str, Any]]
 TendencyComponent = Union[
     ImplicitTendencyComponent,
     ImplicitTendencyComponentComposite,
@@ -100,7 +64,10 @@ TendencyComponent = Union[
     TendencyComponentComposite,
     "BaseConcurrentCoupling",
 ]
-TripletBool = Union[Tuple[bool, bool, bool], Sequence[bool]]
-TripletInt = Union[Tuple[int, int, int], Sequence[int]]
-
 Component = Union["DynamicalCore", PromoterComponent, "STSTendencyStepper", "SymplComponent"]
+
+PairInt = tuple[int, int]
+TripletBool = Union[tuple[bool, bool, bool], Sequence[bool]]
+TripletInt = Union[tuple[int, int, int], Sequence[int]]
+
+GTField = gtscript.Field["dtype"]

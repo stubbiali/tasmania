@@ -20,37 +20,32 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-import sympl
+
+from __future__ import annotations
+from typing import TYPE_CHECKING, TypeVar
+
 from sympl._core.combine_properties import (
     combine_dims,
     units_are_compatible,
     InvalidPropertyDictError,
 )
 from sympl._core.units import clean_units
-from typing import (
-    Any,
-    Dict,
-    Mapping,
-    Optional,
-    Sequence,
-    TYPE_CHECKING,
-    Tuple,
-    Type,
-    TypeVar,
-)
-
-from tasmania.python.utils import typingx
 
 if TYPE_CHECKING:
-    from tasmania.python.framework._base import BaseFromTendencyToDiagnostic
+    from typing import Any, Optional, Sequence
+
+    from sympl._core.core_components import TendencyComponent
+
+    from tasmania.framework._base import BaseFromTendencyToDiagnostic
+    from tasmania.utils.typingx import Component, DataArrayDict, PropertyDict, TimeDelta
 
 
 T = TypeVar("T")
 
 
 def check_properties_compatibility(
-    properties1: typingx.PropertiesDict,
-    properties2: typingx.PropertiesDict,
+    properties1: PropertyDict,
+    properties2: PropertyDict,
     to_append: Optional[str] = None,
     properties1_name: Optional[str] = None,
     properties2_name: Optional[str] = None,
@@ -81,8 +76,8 @@ def check_properties_compatibility(
 
 
 def check_property_compatibility(
-    property1: Mapping[str, Any],
-    property2: Mapping[str, Any],
+    property1: dict[str, Any],
+    property2: dict[str, Any],
     property_name: Optional[str] = None,
     origin1_name: Optional[str] = None,
     origin2_name: Optional[str] = None,
@@ -121,8 +116,8 @@ def check_property_compatibility(
 
 
 def check_missing_properties(
-    properties1: typingx.PropertiesDict,
-    properties2: typingx.PropertiesDict,
+    properties1: PropertyDict,
+    properties2: PropertyDict,
     properties1_name: Optional[str] = None,
     properties2_name: Optional[str] = None,
 ) -> None:
@@ -138,16 +133,14 @@ def check_missing_properties(
         )
 
 
-def resolve_aliases(
-    data_dict: typingx.DataArrayDict, properties_dict: typingx.PropertiesDict
-) -> typingx.DataArrayDict:
+def resolve_aliases(data_dict: DataArrayDict, properties_dict: PropertyDict) -> DataArrayDict:
     name_to_alias = _get_name_to_alias_map(data_dict, properties_dict)
     return _replace_aliases(data_dict, name_to_alias)
 
 
 def _get_name_to_alias_map(
-    data_dict: typingx.DataArrayDict, properties_dict: typingx.PropertiesDict
-) -> Dict[str, str]:
+    data_dict: DataArrayDict, properties_dict: PropertyDict
+) -> dict[str, str]:
     return_dict = {}
 
     for name in properties_dict:
@@ -167,9 +160,7 @@ def _get_name_to_alias_map(
     return return_dict
 
 
-def _replace_aliases(
-    data_dict: typingx.DataArrayDict, name_to_alias: Mapping[str, str]
-) -> typingx.DataArrayDict:
+def _replace_aliases(data_dict: DataArrayDict, name_to_alias: dict[str, str]) -> DataArrayDict:
     return_dict = {}
 
     for name in name_to_alias:
@@ -180,9 +171,9 @@ def _replace_aliases(
 
 
 def get_input_properties(
-    components_list: Sequence[Dict[str, Any]],
-    return_dict: Optional[typingx.PropertiesDict] = None,
-) -> typingx.PropertiesDict:
+    components_list: Sequence[dict[str, Any]],
+    return_dict: Optional[PropertyDict] = None,
+) -> PropertyDict:
     # Initialize the return dictionary, i.e., the list of requirements
     return_dict = return_dict or {}
 
@@ -251,9 +242,9 @@ def get_input_properties(
 
 
 def get_tendency_properties(
-    components_list: Sequence[typingx.Component],
-    t2d_type: "Type[BaseFromTendencyToDiagnostic]",
-) -> typingx.PropertiesDict:
+    components_list: Sequence[Component],
+    t2d_type: type[BaseFromTendencyToDiagnostic],
+) -> PropertyDict:
     """Combine the tendency_properties dictionaries from multiple components."""
     return_dict = {}
 
@@ -281,9 +272,9 @@ def get_tendency_properties(
 
 
 def get_output_properties(
-    components_list: Sequence[Dict[str, Any]],
-    return_dict: Optional[typingx.PropertiesDict] = None,
-) -> typingx.PropertiesDict:
+    components_list: Sequence[dict[str, Any]],
+    return_dict: Optional[PropertyDict] = None,
+) -> PropertyDict:
     """
     Ansatz: the output property dictionary of a :class:`sympl.TendencyStepper`
     component is a subset of its input property component.
@@ -348,10 +339,7 @@ def get_output_properties(
     return return_dict
 
 
-def check_t2d(
-    components_list: Sequence[typingx.Component],
-    t2d_type: "Type[BaseFromTendencyToDiagnostic]",
-):
+def check_t2d(components_list: Sequence[Component], t2d_type: type[BaseFromTendencyToDiagnostic]):
     """Ensure that a tendency is actually computed before moving it around."""
     tendencies = {}
 
@@ -369,10 +357,10 @@ def check_t2d(
 
 
 def get_increment(
-    state: typingx.DataArrayDict,
-    timestep: typingx.TimeDelta,
-    prognostic: sympl._core.core_components.TendencyComponent,
-) -> Tuple[typingx.DataArrayDict, typingx.DataArrayDict]:
+    state: DataArrayDict,
+    timestep: TimeDelta,
+    prognostic: TendencyComponent,
+) -> tuple[DataArrayDict, DataArrayDict]:
     # calculate tendencies and retrieve diagnostics
     tendencies, diagnostics = prognostic(state, timestep)
 
@@ -384,9 +372,7 @@ def get_increment(
     return tendencies, diagnostics
 
 
-def restore_tendency_units(
-    tendencies: typingx.mutable_dataarray_dict_t,
-) -> None:
+def restore_tendency_units(tendencies: DataArrayDict) -> None:
     for name in tendencies:
         if name != "time":
             tendencies[name].attrs["units"] = clean_units(tendencies[name].attrs["units"] + " s^-1")

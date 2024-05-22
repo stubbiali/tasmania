@@ -20,15 +20,21 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from typing import Callable
+from __future__ import annotations
+from typing import TYPE_CHECKING
 
-from gt4py import gtscript
-from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval
+from gt4py.cartesian import gtscript
 
-from tasmania.python.utils import typingx
+if TYPE_CHECKING:
+    from collections.abc import Callable
+    from numpy.typing import DTypeLike
+
+    from gt4py.cartesian.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval
+
+    from tasmania.utils.typingx import GTField
 
 
-def set_annotations(func_handle: Callable, dtype: typingx.dtype_t) -> Callable:
+def set_annotations(func_handle: Callable, dtype: DTypeLike) -> Callable:
     annotations = getattr(func_handle, "__annotations__", {})
     for arg in annotations:
         if isinstance(annotations[arg], gtscript._FieldDescriptor):
@@ -37,17 +43,17 @@ def set_annotations(func_handle: Callable, dtype: typingx.dtype_t) -> Callable:
 
 
 @gtscript.function
-def absolute(phi: typingx.GTField) -> typingx.GTField:
+def absolute(phi: GTField) -> GTField:
     return phi if phi > 0 else -phi
 
 
 @gtscript.function
-def positive(phi: typingx.GTField) -> typingx.GTField:
+def positive(phi: GTField) -> GTField:
     return phi if phi > 0 else 0
 
 
 @gtscript.function
-def negative(phi: typingx.GTField) -> typingx.GTField:
+def negative(phi: GTField) -> GTField:
     return -phi if phi < 0 else 0
 
 

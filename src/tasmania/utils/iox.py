@@ -20,29 +20,28 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+
+from __future__ import annotations
 from datetime import timedelta
 import netCDF4 as nc4
 import numpy as np
 from pandas import Timedelta
 import sympl
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import TYPE_CHECKING
 import xarray as xr
 
-from tasmania.python.burgers.state import ZhaoSolutionFactory
-from tasmania.python.framework.base_components import (
-    DomainComponent,
-    GridComponent,
-)
-from tasmania.python.framework.options import StorageOptions
-from tasmania.python.framework.stencil import StencilFactory
-from tasmania.python.domain.domain import Domain
-from tasmania.python.utils import typingx
-from tasmania.python.utils.storage import (
-    deepcopy_dataarray_dict,
-    get_physical_state,
-    get_numerical_state,
-)
-from tasmania.python.utils.time import convert_datetime64_to_datetime
+from tasmania.burgers.state import ZhaoSolutionFactory
+from tasmania.framework.base_components import DomainComponent, GridComponent
+from tasmania.framework.options import StorageOptions
+from tasmania.framework.stencil import StencilFactory
+from tasmania.domain.domain import Domain
+from tasmania.utils.storage import deepcopy_dataarray_dict, get_physical_state, get_numerical_state
+from tasmania.utils.time import convert_datetime64_to_datetime
+
+if TYPE_CHECKING:
+    from typing import Optional, Sequence
+
+    from tasmania.utils.typingx import DataArrayDict
 
 
 class NetCDFMonitor(DomainComponent, StencilFactory, sympl.NetCDFMonitor):
@@ -60,10 +59,10 @@ class NetCDFMonitor(DomainComponent, StencilFactory, sympl.NetCDFMonitor):
         time_units: str = "seconds",
         store_names: Optional[Sequence[str]] = None,
         write_on_store: bool = False,
-        aliases: Optional[Dict[str, str]] = None,
+        aliases: Optional[dict[str, str]] = None,
         *,
         backend: str = "numpy",
-        storage_options: Optional["StorageOptions"] = None,
+        storage_options: Optional[StorageOptions] = None,
     ) -> None:
         """
         Parameters
@@ -99,7 +98,7 @@ class NetCDFMonitor(DomainComponent, StencilFactory, sympl.NetCDFMonitor):
             filename, time_units, store_names, write_on_store, aliases
         )
 
-    def store(self, state: typingx.DataArrayDict) -> None:
+    def store(self, state: DataArrayDict) -> None:
         """
         If the state is defined over the numerical (respectively physical)
         grid but should be saved over the physical (resp. numerical) grid:
@@ -297,9 +296,7 @@ class NetCDFMonitor(DomainComponent, StencilFactory, sympl.NetCDFMonitor):
             topo_kwargs[:] = np.array(keys, dtype="object")
 
 
-def load_netcdf_dataset(
-    filename: str,
-) -> Tuple[Domain, str, List[typingx.DataArrayDict]]:
+def load_netcdf_dataset(filename: str) -> tuple[Domain, str, list[DataArrayDict]]:
     """
     Load the sequence of states stored in a NetCDF dataset,
     and build the underlying domain.
@@ -426,7 +423,7 @@ def load_grid_type(dataset: xr.Dataset) -> str:
     return dataset.data_vars["grid_type"].values.item()
 
 
-def load_states(dataset: xr.Dataset) -> List[typingx.DataArrayDict]:
+def load_states(dataset: xr.Dataset) -> list[DataArrayDict]:
     names = dataset.data_vars["state_variable_names"].values
     nt = dataset.data_vars[names[0]].shape[0]
 

@@ -20,41 +20,8 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-# >>> cupy
+
 try:
-    import cupy
+    import cupy as cp
 except (ImportError, ModuleNotFoundError):
-    cupy = None
-
-
-# >>> dawn4py
-try:
-    import dawn4py
-except (ImportError, ModuleNotFoundError):
-    dawn4py = None
-
-# >>> gt4py
-try:
-    import gt4py
-except (ImportError, ModuleNotFoundError):
-    gt4py = None
-
-# >>> numba
-try:
-    import numba
-except (ImportError, ModuleNotFoundError):
-    numba = None
-
-# >>> taichi
-# try:
-#     from contextlib import redirect_stdout
-#
-#     with open("/dev/null", "w") as f:
-#         with redirect_stdout(f):
-#             import taichi
-# except (ImportError, ModuleNotFoundError):
-#     taichi = None
-taichi = None
-
-# >>> extra
-GPU_AVAILABLE = cupy is not None
+    cp = None

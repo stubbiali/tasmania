@@ -20,19 +20,12 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-def is_gt(backend: str):
+
+
+def is_gt(backend: str) -> bool:
     return len(backend) > 6 and backend[:6] == "gt4py:"
 
 
-def get_gt_backend(backend):
+def get_gt_backend(backend: str) -> str:
     assert is_gt(backend), f"{backend} is not a GT4Py backend."
     return backend[6:]
-
-
-def is_ti(backend):
-    return len(backend) > 7 and backend[:7] == "taichi:"
-
-
-def get_ti_arch(backend):
-    assert is_ti(backend), f"{backend} is not a Taichi backend."
-    return backend[7:]

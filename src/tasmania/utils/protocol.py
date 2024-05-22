@@ -20,19 +20,24 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+
+from __future__ import annotations
 from collections import UserDict, abc
 import itertools
 import re
-from typing import Any, Callable, List, Mapping, Optional, Sequence, Union
+from typing import TYPE_CHECKING
 
-from tasmania.python.framework import protocol as prt
-from tasmania.python.utils.exceptions import ProtocolError
+from tasmania.framework import protocol as prt
+from tasmania.utils.exceptions import ProtocolError
+
+if TYPE_CHECKING:
+    from typing import Any, Callable, Optional, Sequence, Union
 
 
 class Registry(UserDict):
     """A dict-like registry."""
 
-    def find_key(self: "Registry", target: str) -> str:
+    def find_key(self, target: str) -> str:
         if target in self.keys():
             return target
         for key in self.keys():
@@ -44,7 +49,7 @@ class Registry(UserDict):
 
         raise KeyError(f"Key '{target}' not found.")
 
-    def __getitem__(self: "Registry", key: Union[str, Sequence[str]]) -> Any:
+    def __getitem__(self, key: Union[str, Sequence[str]]) -> Any:
         if not (isinstance(key, str) or isinstance(key, abc.Sequence)):
             raise TypeError("key must be either a str or a sequence of str.")
 
@@ -56,7 +61,7 @@ class Registry(UserDict):
         else:
             return super().__getitem__(self.find_key(target)).__getitem__(key[1:])
 
-    def __setitem__(self: "Registry", key: Union[str, Sequence[str]], value: Any) -> None:
+    def __setitem__(self, key: Union[str, Sequence[str]], value: Any) -> None:
         if isinstance(key, str) or (isinstance(key, abc.Sequence) and len(key) == 1):
             key = key if isinstance(key, str) else key[0]
             return super().__setitem__(key, value)
@@ -67,7 +72,7 @@ class Registry(UserDict):
             raise TypeError("key must be either a str or a sequence of str.")
 
 
-def filter_args_list(args: Sequence[str]) -> List[str]:
+def filter_args_list(args: Sequence[str]) -> list[str]:
     out = []
     unset_keys = set(prt.keys)
 
@@ -113,10 +118,10 @@ def set_attribute(handle: Callable, *args: str) -> Callable:
         d = handle.__dict__.get(prt.attribute, None)
 
     if d is not None:
-        if not isinstance(d, Mapping):
+        if not isinstance(d, dict):
             raise ProtocolError(
-                f"The object '{handle.__name__}' already defines "
-                f"the attribute '{prt.attribute}' as a non-mapping object."
+                f"The object '{handle.__name__}' already defines the attribute '{prt.attribute}' "
+                f"as a non-dict object."
             )
     else:
         d = {}
@@ -149,11 +154,10 @@ def set_runtime_attribute(handle: Callable, *args: str) -> Callable:
         d = handle.__dict__.get(prt.runtime_attribute, None)
 
     if d is not None:
-        if not isinstance(d, Mapping):
+        if not isinstance(d, dict):
             raise ProtocolError(
-                f"The object '{handle.__name__}' already defines "
-                f"the attribute '{prt.runtime_attribute}' as a non-mapping "
-                f"object."
+                f"The object '{handle.__name__}' already defines the attribute "
+                f"'{prt.runtime_attribute}' as a non-dict object."
             )
     else:
         d = {}

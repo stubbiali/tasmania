@@ -20,15 +20,20 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+
+from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
 import functools
 import numpy as np
 from sympl import DataArray
 import timeit
-from typing import Dict, List, Optional
+from typing import TYPE_CHECKING
 
-from tasmania.third_party import cupy as cp
+from tasmania.externals import cp
+
+if TYPE_CHECKING:
+    from typing import Optional
 
 
 def convert_datetime64_to_datetime(time):
@@ -89,8 +94,8 @@ def get_time_string(seconds, print_milliseconds=False):
 @dataclass
 class Node:
     label: str
-    parent: "Node" = None
-    children: Dict[str, "Node"] = field(default_factory=dict)
+    parent: Node = None
+    children: dict[str, Node] = field(default_factory=dict)
     level: int = 0
     tic: float = 0
     total_calls: int = 0
@@ -98,9 +103,9 @@ class Node:
 
 
 class Timer:
-    active: List[str] = []
+    active: list[str] = []
     head: Optional[Node] = None
-    tree: Dict[str, Node] = {}
+    tree: dict[str, Node] = {}
 
     @classmethod
     def start(cls, label: str) -> None:
@@ -167,7 +172,7 @@ class Timer:
             cls.traverse(cb, root)
 
     @classmethod
-    def get_time(cls, label, units="ms") -> None:
+    def get_time(cls, label, units="ms") -> DataArray:
         nodes = cls.get_nodes_from_label(label)
         assert len(nodes) > 0, f"{label} is not a valid timer identifier."
 
@@ -217,7 +222,7 @@ class Timer:
             Timer.traverse(cb, child, **kwargs)
 
     @classmethod
-    def get_nodes_from_label(cls, label) -> List[Node]:
+    def get_nodes_from_label(cls, label) -> list[Node]:
         out = []
 
         def cb(node, out):

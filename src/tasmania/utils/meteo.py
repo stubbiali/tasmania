@@ -20,23 +20,22 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+
+from __future__ import annotations
 import numpy as np
+from typing import TYPE_CHECKING
+
 from sympl import DataArray
-from typing import Mapping, Optional, TYPE_CHECKING, Tuple
 
-try:
-    import cupy as cp
-except (ImportError, ModuleNotFoundError):
-    cp = np
-
-
-from tasmania.python.framework.generic_functions import to_numpy
-from tasmania.python.utils import typingx
-from tasmania.python.utils.data import get_physical_constants
-from tasmania.python.utils.storage import get_dataarray_3d
+from tasmania.framework.generic_functions import to_numpy
+from tasmania.utils.constants import get_physical_constants
+from tasmania.utils.storage import get_dataarray_3d
 
 if TYPE_CHECKING:
-    from tasmania.python.domain.grid import Grid
+    from typing import Optional
+
+    from tasmania.domain.grid import Grid
+    from tasmania.utils.typingx import NDArray
 
 
 _d_physical_constants = {
@@ -57,8 +56,8 @@ def get_isothermal_isentropic_analytical_solution(
     mountain_width: DataArray,
     x_staggered: bool = True,
     z_staggered: bool = False,
-    physical_constants: Optional[Mapping[str, DataArray]] = None,
-) -> Tuple[DataArray, DataArray]:
+    physical_constants: Optional[dict[str, DataArray]] = None,
+) -> tuple[DataArray, DataArray]:
     """
     Get the analytical expression of a two-dimensional, hydrostatic, isentropic
     and isothermal flow over an isolated 'Switch of Agnesi' mountain.
@@ -192,7 +191,7 @@ def get_isothermal_isentropic_analytical_solution(
 
 def convert_relative_humidity_to_water_vapor(
     method: str, p: DataArray, t: DataArray, rh: DataArray
-) -> typingx.array_t:
+) -> NDArray:
     """
     Convert relative humidity to water vapor mixing ratio.
 
@@ -207,7 +206,7 @@ def convert_relative_humidity_to_water_vapor(
 
     p : sympl.DataArray
         The pressure.
-    T : sympl.DataArray
+    t : sympl.DataArray
         The temperature.
     rh : sympl.DataArray
         The relative humidity.
@@ -249,7 +248,7 @@ def convert_relative_humidity_to_water_vapor(
     return qv
 
 
-def tetens_formula(t: np.ndarray) -> np.ndarray:
+def tetens_formula(t: NDArray) -> NDArray:
     """
     Compute the saturation vapor pressure over water at a given temperature,
     according to the Tetens formula.
@@ -274,7 +273,7 @@ def tetens_formula(t: np.ndarray) -> np.ndarray:
     return e
 
 
-def goff_gratch_formula(t: np.ndarray) -> np.ndarray:
+def goff_gratch_formula(t: NDArray) -> NDArray:
     """
     Compute the saturation vapor pressure over water at a given temperature,
     according to the Goff-Gratch formula.

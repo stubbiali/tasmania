@@ -20,8 +20,16 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from sympl import DataArray
-from typing import Dict, Mapping, Optional
+
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
+from sympl import DataArray, get_constant as sympl_get_constant, set_constant as sympl_set_constant
+
+from tasmania.utils.exceptions import ConstantNotFoundError
+
+if TYPE_CHECKING:
+    from typing import Optional
 
 
 def get_constant(name: str, units: str, default_value: Optional[DataArray] = None) -> float:
@@ -59,28 +67,21 @@ def get_constant(name: str, units: str, default_value: Optional[DataArray] = Non
         return locals()["var"].to_units(units).values.item()
     except (ImportError, AttributeError):
         try:
-            from sympl import get_constant as sympl_get_constant
-
             return sympl_get_constant(name, units)
         except KeyError:
             if default_value is not None:
                 return_value = default_value.to_units(units).values.item()
-                from sympl import set_constant as sympl_set_constant
-
                 sympl_set_constant(name, return_value, units)
                 return return_value
             else:
-                from tasmania.python.utils.exceptions import (
-                    ConstantNotFoundError,
-                )
 
                 raise ConstantNotFoundError("{} not found".format(name))
 
 
 def get_physical_constants(
-    default_physical_constants: Mapping[str, DataArray],
-    physical_constants: Mapping[str, DataArray] = None,
-) -> Dict[str, float]:
+    default_physical_constants: dict[str, DataArray],
+    physical_constants: dict[str, DataArray] = None,
+) -> dict[str, float]:
     """
     Parameters
     ----------

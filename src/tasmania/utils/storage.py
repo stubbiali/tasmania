@@ -20,33 +20,39 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+
+from __future__ import annotations
 from copy import deepcopy
 import numpy as np
 from sympl import DataArray
-from typing import TYPE_CHECKING, Optional, Sequence, Union
+from typing import TYPE_CHECKING
 
-try:
-    import cupy as cp
-except ImportError:
-    cp = np
-
-from tasmania.python.framework.allocators import as_storage
-from tasmania.python.utils import typingx as ty
+from tasmania.framework.allocators import as_storage
 
 if TYPE_CHECKING:
-    from tasmania.python.domain.grid import Grid, NumericalGrid, PhysicalGrid
-    from tasmania.python.domain.horizontal_boundary import HorizontalBoundary
-    from tasmania.python.domain.horizontal_grid import HorizontalGrid
-    from tasmania.python.framework.options import StorageOptions
+    from typing import Optional, Sequence, Union
+
+    from tasmania.domain.grid import Grid, NumericalGrid, PhysicalGrid
+    from tasmania.domain.horizontal_boundary import HorizontalBoundary
+    from tasmania.domain.horizontal_grid import HorizontalGrid
+    from tasmania.framework.options import StorageOptions
+    from tasmania.utils.typingx import (
+        DataArrayDict,
+        NDArray,
+        NDArrayDict,
+        PairInt,
+        PropertyDict,
+        TripletInt,
+    )
 
 
 def get_dataarray_2d(
-    array: ty.Storage,
-    grid: "Union[Grid, HorizontalGrid]",
+    array: NDArray,
+    grid: Union[Grid, HorizontalGrid],
     units: str,
     name: Optional[str] = None,
-    grid_origin: Optional[ty.PairInt] = None,
-    grid_shape: Optional[ty.PairInt] = None,
+    grid_origin: Optional[PairInt] = None,
+    grid_shape: Optional[PairInt] = None,
     set_coordinates: bool = True,
 ) -> DataArray:
     """Create a DataArray out of a 2-D :class:`numpy.ndarray`-like storage.
@@ -126,12 +132,12 @@ def get_dataarray_2d(
 
 
 def get_dataarray_3d(
-    array: ty.Storage,
-    grid: "Grid",
+    array: NDArray,
+    grid: Grid,
     units: str,
     name: Optional[str] = None,
-    grid_origin: Optional[ty.TripletInt] = None,
-    grid_shape: Optional[ty.TripletInt] = None,
+    grid_origin: Optional[TripletInt] = None,
+    grid_shape: Optional[TripletInt] = None,
     set_coordinates: bool = True,
 ) -> DataArray:
     """Create a DataArray out of a 3-D ndarray-like storage.
@@ -253,12 +259,12 @@ def get_dataarray_3d(
 
 
 def get_dataarray_dict(
-    array_dict: ty.StorageDict, grid: "Grid", properties: ty.PropertiesDict
-) -> ty.DataArrayDict:
+    array_dict: NDArrayDict, grid: Grid, properties: PropertyDict
+) -> DataArrayDict:
     """
     Parameters
     ----------
-    array_dict[str, array_like] dict
+    array_dict: dict[str, array_like]
         Dictionary whose keys are strings indicating the variables
         included in the model state, and values are :class:`numpy.ndarray`-like
         arrays containing the data for those variables.
@@ -311,9 +317,7 @@ def get_dataarray_dict(
     return dataarray_dict
 
 
-def get_array_dict(
-    dataarray_dict: ty.DataArrayDict, properties: ty.PropertiesDict
-) -> ty.StorageDict:
+def get_array_dict(dataarray_dict: DataArrayDict, properties: PropertyDict) -> NDArrayDict:
     """
     Parameters
     ----------
@@ -348,11 +352,11 @@ def get_array_dict(
 
 
 def get_physical_state(
-    pgrid: "PhysicalGrid",
-    hb: "HorizontalBoundary",
-    cstate: ty.DataArrayDict,
+    pgrid: PhysicalGrid,
+    hb: HorizontalBoundary,
+    cstate: DataArrayDict,
     store_names: Optional[Sequence[str]] = None,
-) -> ty.DataArrayDict:
+) -> DataArrayDict:
     """
     Given a state dictionary defined over the numerical grid, transpose
     that state over the corresponding physical grid.
@@ -398,11 +402,11 @@ def get_physical_state(
 
 
 def get_numerical_state(
-    ngrid: "NumericalGrid",
-    hb: "HorizontalBoundary",
-    pstate: ty.DataArrayDict,
+    ngrid: NumericalGrid,
+    hb: HorizontalBoundary,
+    pstate: DataArrayDict,
     store_names: Optional[Sequence[str]] = None,
-) -> ty.DataArrayDict:
+) -> DataArrayDict:
     """
     Given a state defined over the physical grid, transpose that state
     over the corresponding numerical grid.
@@ -448,7 +452,7 @@ def get_numerical_state(
     return nstate
 
 
-def get_min_storage_shape(name, grid):
+def get_min_storage_shape(name: str, grid: Grid) -> TripletInt:
     out = (
         grid.nx + 1 if "at_u_locations" in name or "at_uv_locations" in name else grid.nx,
         grid.ny + 1 if "at_v_locations" in name or "at_uv_locations" in name else grid.ny,
@@ -477,11 +481,11 @@ def get_storage_shape(
 
 
 def get_aligned_index(
-    aligned_index: ty.TripletInt,
-    storage_shape: ty.TripletInt,
-    min_aligned_index: Optional[ty.TripletInt] = None,
-    max_aligned_index: Optional[ty.TripletInt] = None,
-) -> ty.TripletInt:
+    aligned_index: TripletInt,
+    storage_shape: TripletInt,
+    min_aligned_index: Optional[TripletInt] = None,
+    max_aligned_index: Optional[TripletInt] = None,
+) -> TripletInt:
     aligned_index = aligned_index or (0, 0, 0)
 
     max_aligned_index = max_aligned_index or aligned_index
@@ -512,11 +516,11 @@ def get_aligned_index(
 
 
 def deepcopy_array_dict(
-    src: ty.StorageDict,
+    src: NDArrayDict,
     *,
     backend: Optional[str] = None,
-    storage_options: Optional["StorageOptions"] = None,
-) -> ty.StorageDict:
+    storage_options: Optional[StorageOptions] = None,
+) -> NDArrayDict:
     dst = {"time": src["time"]} if "time" in src else {}
     for name in src:
         if name != "time":
@@ -531,7 +535,7 @@ def deepcopy_dataarray(
     src: DataArray,
     *,
     backend: Optional[str] = None,
-    storage_options: Optional["StorageOptions"] = None,
+    storage_options: Optional[StorageOptions] = None,
 ) -> DataArray:
     if backend is not None:
         raw_array = as_storage(backend, data=src.data, storage_options=storage_options)
@@ -548,11 +552,11 @@ def deepcopy_dataarray(
 
 
 def deepcopy_dataarray_dict(
-    src: ty.DataArrayDict,
+    src: DataArrayDict,
     *,
     backend: Optional[str] = None,
-    storage_options: Optional["StorageOptions"] = None,
-) -> ty.DataArrayDict:
+    storage_options: Optional[StorageOptions] = None,
+) -> DataArrayDict:
     dst = {"time": src["time"]} if "time" in src else {}
     for name in src:
         if name != "time":
