@@ -20,11 +20,13 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+
 import numpy as np
 
-from tasmania.third_party import cupy, gt4py, numba
+from gt4py.cartesian import gtscript
 
-from tasmania.python.framework.stencil import subroutine_definition
+from tasmania.externals import cupy, numba
+from tasmania.framework.stencil import subroutine_definition
 
 
 @subroutine_definition.register(backend="numpy", stencil="laplacian")
@@ -46,22 +48,19 @@ if cupy:
     subroutine_definition.register(laplacian_numpy, "cupy", "laplacian")
 
 
-if gt4py:
-    from gt4py import gtscript
-
-    @subroutine_definition.register(backend="gt4py*", stencil="laplacian")
-    @gtscript.function
-    def laplacian_gt4py(
-        in_field: gtscript.Field["dtype"],
-    ) -> gtscript.Field["dtype"]:
-        out_field = (
-            -4.0 * in_field[0, 0, 0]
-            + in_field[-1, 0, 0]
-            + in_field[+1, 0, 0]
-            + in_field[0, -1, 0]
-            + in_field[0, +1, 0]
-        )
-        return out_field
+@subroutine_definition.register(backend="gt4py*", stencil="laplacian")
+@gtscript.function
+def laplacian_gt4py(
+    in_field: gtscript.Field["dtype"],
+) -> gtscript.Field["dtype"]:
+    out_field = (
+        -4.0 * in_field[0, 0, 0]
+        + in_field[-1, 0, 0]
+        + in_field[+1, 0, 0]
+        + in_field[0, -1, 0]
+        + in_field[0, +1, 0]
+    )
+    return out_field
 
 
 if numba:

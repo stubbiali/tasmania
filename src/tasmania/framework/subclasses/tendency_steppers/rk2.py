@@ -20,7 +20,8 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from tasmania.python.framework.steppers import TendencyStepper
+
+from tasmania.framework.steppers import TendencyStepper
 
 
 class RK2(TendencyStepper):

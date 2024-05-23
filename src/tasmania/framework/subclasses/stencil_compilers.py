@@ -20,15 +20,18 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+
+from __future__ import annotations
 import collections
 import functools
 import inspect
 
-from tasmania.third_party import cupy as cp, gt4py as gt, numba
+from gt4py.cartesian import backend as gtc_backend, gtscript
 
-from tasmania.python.framework.options import BackendOptions
-from tasmania.python.framework.stencil import stencil_compiler
-from tasmania.python.utils.backend import get_gt_backend
+from tasmania.externals import cupy, numba
+from tasmania.framework.options import BackendOptions
+from tasmania.framework.stencil import stencil_compiler
+from tasmania.utils.gt4pyx import get_gt_backend
 
 
 def remove_annotation(parameter: str):
@@ -96,36 +99,29 @@ def compiler_numpy(definition, *, backend_options=None):
     return wrap(definition)
 
 
-if cp:
+if cupy:
     stencil_compiler.register(compiler_numpy, backend="cupy")
 
 
-if gt:
-
-    @stencil_compiler.register(backend="gt4py*")
-    def compiler_gt4py(definition, *, backend_options=None):
-        bo = backend_options or BackendOptions()
-        backend = compiler_gt4py.__tasmania_runtime__["backend"]
-        gt_backend = get_gt_backend(backend)
-        backend_opts = bo.backend_opts or {}
-        if gt_backend not in ("debug", "numpy"):
-            backend_opts.setdefault("verbose", bo.verbose)
-        # >>> old storage
-        if gt.backend.REGISTRY[gt_backend].storage_info["device"] == "gpu":
-            backend_opts.setdefault("device_sync", bo.device_sync)
-        # <<< new storage
-        # if gt.backend.REGISTRY[gt_backend].compute_device == "gpu":
-        #     backend_opts.setdefault("device_sync", bo.device_sync)
-        # <<<
-        return gt.gtscript.stencil(
-            gt_backend,
-            definition,
-            build_info=bo.build_info,
-            dtypes=bo.dtypes,
-            externals=bo.externals,
-            rebuild=bo.rebuild,
-            **backend_opts,
-        )
+@stencil_compiler.register(backend="gt4py*")
+def compiler_gt4py(definition, *, backend_options=None):
+    bo = backend_options or BackendOptions()
+    backend = compiler_gt4py.__tasmania_runtime__["backend"]
+    gt_backend = get_gt_backend(backend)
+    backend_opts = bo.backend_opts or {}
+    if gt_backend not in ("debug", "numpy"):
+        backend_opts.setdefault("verbose", bo.verbose)
+    if gtc_backend.REGISTRY[gt_backend].storage_info["device"] == "gpu":
+        backend_opts.setdefault("device_sync", bo.device_sync)
+    return gtscript.stencil(
+        gt_backend,
+        definition,
+        build_info=bo.build_info,
+        dtypes=bo.dtypes,
+        externals=bo.externals,
+        rebuild=bo.rebuild,
+        **backend_opts,
+    )
 
 
 if numba:
@@ -205,17 +201,3 @@ if numba:
             return core[__bpg__, __tpb__](*args, **kwargs)
 
         return functools.partial(wrapper, __bpg__=bo.blockspergrid, __tpb__=bo.threadsperblock)
-
-
-# if ti:
-#
-#     @stencil_compiler.register(backend="taichi:*")
-#     def compiler_taichi(definition, *, backend_options=None):
-#         bo = backend_options or BackendOptions()
-#
-#         # inject dtype and external symbols into definition scope
-#         definition.__globals__.update(bo.dtypes)
-#         definition.__globals__.update(bo.externals)
-#
-#         # return wrap(definition)
-#         return wrap(ti.kernel(definition))

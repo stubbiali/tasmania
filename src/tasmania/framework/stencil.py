@@ -20,26 +20,29 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+
+from __future__ import annotations
 import abc
 import inspect
-from typing import Callable, Optional, Sequence, Type, Union
+from typing import TYPE_CHECKING
 
-from tasmania.python.framework import protocol as prt
-from tasmania.python.framework.allocators import Allocator, AsStorage
-from tasmania.python.framework.options import BackendOptions, StorageOptions
-from tasmania.python.utils import typingx as ty
-from tasmania.python.utils.exceptions import FactoryRegistryError
-from tasmania.python.utils.protocol import (
-    Registry,
-    multiregister,
-    set_runtime_attribute,
-)
+from tasmania.framework import protocol as prt
+from tasmania.framework.allocators import Allocator, AsStorage
+from tasmania.framework.options import BackendOptions, StorageOptions
+from tasmania.utils.exceptions import FactoryRegistryError
+from tasmania.utils.protocol import Registry, multiregister, set_runtime_attribute
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Sequence
+    from typing import Optional, Union
+
+    from tasmania.utils.typingx import NDArray
 
 
 class SubroutineDefinition:
     registry = Registry()
 
-    def __new__(cls: Type["SubroutineDefinition"], backend: str, stencil: str) -> Callable:
+    def __new__(cls, backend: str, stencil: str) -> Callable:
         key = ("subroutine_definition", backend, stencil)
         try:
             obj = cls.registry[key]
@@ -60,7 +63,7 @@ class SubroutineDefinition:
 
     @classmethod
     def register(
-        cls: Type["SubroutineDefinition"],
+        cls,
         handle: Optional[Callable] = None,
         backend: Union[str, Sequence[str]] = prt.wildcard,
         stencil: Union[str, Sequence[str]] = prt.wildcard,
@@ -86,7 +89,7 @@ class SubroutineDefinition:
 class StencilDefinition:
     registry = Registry()
 
-    def __new__(cls: Type["StencilDefinition"], backend: str, stencil: str) -> Callable:
+    def __new__(cls, backend: str, stencil: str) -> Callable:
         key = ("stencil_definition", backend, stencil)
         try:
             obj = cls.registry[key]
@@ -108,7 +111,7 @@ class StencilDefinition:
 
     @classmethod
     def register(
-        cls: Type["StencilDefinition"],
+        cls,
         handle: Optional[Callable] = None,
         backend: Union[str, Sequence[str]] = prt.wildcard,
         stencil: Union[str, Sequence[str]] = prt.wildcard,
@@ -132,16 +135,12 @@ class StencilDefinition:
 
 
 class Compiler:
-    definition_factory: Type = None
+    definition_factory: type = None
     function: str = None
     registry: Registry = None
 
     def __new__(
-        cls: Type["StencilCompiler"],
-        stencil: str,
-        backend: str,
-        *,
-        backend_options: Optional[BackendOptions] = None,
+        cls, stencil: str, backend: str, *, backend_options: Optional[BackendOptions] = None
     ) -> Callable:
         definition = cls.definition_factory(backend, stencil)
         key = (cls.function, backend, stencil)
@@ -162,7 +161,7 @@ class Compiler:
 
     @classmethod
     def register(
-        cls: Type["StencilCompiler"],
+        cls,
         handle: Optional[Callable] = None,
         backend: Union[str, Sequence[str]] = prt.wildcard,
         stencil: Union[str, Sequence[str]] = prt.wildcard,
@@ -213,7 +212,7 @@ class StencilFactory(abc.ABC):
     _default_subroutine_compiler_registry = SubroutineCompiler.registry
 
     def __init__(
-        self: "StencilFactory",
+        self,
         backend: Optional[str] = None,
         backend_options: Optional[BackendOptions] = None,
         storage_options: Optional[StorageOptions] = None,
@@ -238,13 +237,13 @@ class StencilFactory(abc.ABC):
         return self._storage_options
 
     def as_storage(
-        self: "StencilFactory",
+        self,
         backend: Optional[str] = None,
         stencil: str = prt.wildcard,
         *,
-        data: ty.Storage,
+        data: NDArray,
         storage_options: Optional[StorageOptions] = None,
-    ) -> ty.Storage:
+    ) -> NDArray:
         backend = backend or self.backend
         key = ("as_storage", backend, stencil)
         try:
@@ -272,7 +271,7 @@ class StencilFactory(abc.ABC):
         return as_storage(data, storage_options=so)
 
     def compile_stencil(
-        self: "StencilFactory",
+        self,
         stencil: str,
         backend: Optional[str] = None,
         *,
@@ -285,7 +284,7 @@ class StencilFactory(abc.ABC):
         return compiler(definition, backend_options=bo)
 
     def compile_subroutine(
-        self: "StencilFactory",
+        self,
         stencil: str,
         backend: Optional[str] = None,
         *,
@@ -298,38 +297,36 @@ class StencilFactory(abc.ABC):
         return compiler(definition, backend_options=bo)
 
     def empty(
-        self: "StencilFactory",
+        self,
         backend: Optional[str] = None,
         stencil: str = prt.wildcard,
         *,
         shape: Sequence[int],
         storage_options: Optional[StorageOptions] = None,
-    ) -> ty.Storage:
+    ) -> NDArray:
         return self._allocate("empty", backend or self.backend, stencil, shape, storage_options)
 
     def ones(
-        self: "StencilFactory",
+        self,
         backend: Optional[str] = None,
         stencil: str = prt.wildcard,
         *,
         shape: Sequence[int],
         storage_options: Optional[StorageOptions] = None,
-    ) -> ty.Storage:
+    ) -> NDArray:
         return self._allocate("ones", backend or self.backend, stencil, shape, storage_options)
 
     def zeros(
-        self: "StencilFactory",
+        self,
         backend: Optional[str] = None,
         stencil: str = prt.wildcard,
         *,
         shape: Sequence[int],
         storage_options: Optional[StorageOptions] = None,
-    ) -> ty.Storage:
+    ) -> NDArray:
         return self._allocate("zeros", backend or self.backend, stencil, shape, storage_options)
 
-    def get_stencil_definition(
-        self: "StencilFactory", stencil: str, backend: Optional[str] = None
-    ) -> Callable:
+    def get_stencil_definition(self, stencil: str, backend: Optional[str] = None) -> Callable:
         backend = backend or self.backend
         key = ("stencil_definition", backend, stencil)
 
@@ -356,7 +353,7 @@ class StencilFactory(abc.ABC):
 
         return obj
 
-    def get_stencil_compiler(self: "StencilFactory", backend: str, stencil: Optional[str] = None):
+    def get_stencil_compiler(self, backend: str, stencil: Optional[str] = None):
         key = ("stencil_compiler", backend, stencil)
 
         try:
@@ -379,9 +376,7 @@ class StencilFactory(abc.ABC):
 
         return obj
 
-    def get_subroutine_definition(
-        self: "StencilFactory", stencil: str, backend: Optional[str] = None
-    ) -> Callable:
+    def get_subroutine_definition(self, stencil: str, backend: Optional[str] = None) -> Callable:
         backend = backend or self.backend
         key = ("subroutine_definition", backend, stencil)
 
@@ -408,9 +403,7 @@ class StencilFactory(abc.ABC):
 
         return obj
 
-    def get_subroutine_compiler(
-        self: "StencilFactory", backend: str, stencil: Optional[str] = None
-    ):
+    def get_subroutine_compiler(self, backend: str, stencil: Optional[str] = None):
         key = ("subroutine_compiler", backend, stencil)
 
         try:
@@ -434,13 +427,13 @@ class StencilFactory(abc.ABC):
         return obj
 
     def _allocate(
-        self: "StencilFactory",
+        self,
         function: str,
         backend: str,
         stencil: str,
         shape: Sequence[int],
         storage_options: StorageOptions,
-    ) -> ty.Storage:
+    ) -> NDArray:
         key = (function, backend, stencil)
         try:
             allocator = self._registry[key]
@@ -464,7 +457,7 @@ class StencilFactory(abc.ABC):
 
         return allocator(shape, storage_options=so)
 
-    def _fill_registry(self: "StencilFactory") -> None:
+    def _fill_registry(self) -> None:
         methods = inspect.getmembers(
             self,
             predicate=lambda x: inspect.isfunction(x) or inspect.ismethod(x),

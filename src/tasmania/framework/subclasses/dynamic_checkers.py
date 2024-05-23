@@ -20,10 +20,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from sympl._core.dynamic_checkers import (
-    InflowComponentChecker,
-    OutflowComponentChecker,
-)
+from sympl._core.dynamic_checkers import InflowComponentChecker, OutflowComponentChecker
 
 
 class StageInputComponentChecker(InflowComponentChecker):
@@ -39,9 +36,6 @@ class StageTendencyComponentChecker(InflowComponentChecker):
 class InputTendencyInflowComponentChecker(InflowComponentChecker):
     name = "input_tendency_properties"
     properties_name = "input_tendency_properties"
-
-    # def check(self, dataarray_dict, input_dataarray_dict=None) -> None:
-    #     self.check_missing_fields(dataarray_dict)
 
 
 class StageOutputOutflowComponentChecker(OutflowComponentChecker):

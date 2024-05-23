@@ -20,6 +20,5 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from .forward_euler import ForwardEuler
-from .rk2 import RK2
-from .rk3ws import RK3WS
+
+from tasmania.framework.subclasses.tendency_steppers import forward_euler, rk2, rk2sa, rk3ws

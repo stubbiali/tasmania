@@ -20,7 +20,5 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from .cla import *
-from .generics import *
-from .laplacian import *
-from .math import *
+
+from tasmania.framework.subclasses.subroutine_definitions import cla, generics, laplacian, math

@@ -20,21 +20,20 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from typing import Sequence, TYPE_CHECKING
+
+from __future__ import annotations
+from typing import TYPE_CHECKING
 
 from sympl._core.exceptions import InvalidPropertyDictError
 from sympl._core.static_operators import StaticComponentOperator
 from sympl._core.units import units_are_compatible
 
-from tasmania.python.framework.exceptions import (
-    IncompatibleDimensionsError,
-    IncompatibleUnitsError,
-)
+from tasmania.framework.exceptions import IncompatibleDimensionsError, IncompatibleUnitsError
 
 if TYPE_CHECKING:
-    from sympl._core.typingx import PropertyDict
+    from collections.abc import Sequence
 
-    from tasmania.python.utils.typingx import Component
+    from tasmania.utils.typingx import Component, PropertyDict
 
 
 def check_dims_are_compatible(dim1: Sequence[str], dim2: Sequence[str]) -> None:
@@ -60,7 +59,7 @@ def check_units_are_compatible(unit1: str, unit2: str) -> None:
 
 
 def _check_properties_are_compatible(
-    properties1: "PropertyDict", properties2: "PropertyDict", units_suffix: str
+    properties1: PropertyDict, properties2: PropertyDict, units_suffix: str
 ) -> None:
     shared_keys = set(properties1.keys()).intersection(properties2.keys())
     for key in shared_keys:
@@ -73,9 +72,9 @@ def _check_properties_are_compatible(
 
 
 def check_properties_are_compatible(
-    component: "Component",
+    component: Component,
     properties_name: str,
-    other_component: "Component",
+    other_component: Component,
     other_properties_name: str,
     units_suffix: str = "",
 ) -> None:
@@ -102,9 +101,9 @@ def check_properties_are_compatible(
 
 
 def check_missing_fields(
-    component: "Component",
+    component: Component,
     properties_name: str,
-    other_component: "Component",
+    other_component: Component,
     other_properties_name: str,
 ) -> None:
     operator = StaticComponentOperator.factory(properties_name)

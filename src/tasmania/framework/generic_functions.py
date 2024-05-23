@@ -20,15 +20,17 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+
+from __future__ import annotations
 from typing import TYPE_CHECKING
 
-from tasmania.python.framework.allocators import as_storage
+from tasmania.framework.allocators import as_storage
 
 if TYPE_CHECKING:
-    import numpy as np
+    import numpy.typing as npt
 
-    from tasmania.python.utils.typingx import Storage
+    from tasmania.utils.typingx import NDArray
 
 
-def to_numpy(data: "Storage") -> "np.ndarray":
+def to_numpy(data: NDArray) -> npt.NDArray:
     return as_storage("numpy", data=data)

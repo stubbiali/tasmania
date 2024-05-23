@@ -20,52 +20,52 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-import abc
-from typing import Any, Dict, Mapping, Optional, Sequence, TYPE_CHECKING
 
-from tasmania.python.utils.data import get_physical_constants
+from __future__ import annotations
+import abc
+from typing import TYPE_CHECKING
+
+from tasmania.utils.constants import get_physical_constants
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+    from typing import Any, Optional
+
     from sympl._core.typingx import DataArray
 
-    from tasmania.python.domain.domain import Domain
-    from tasmania.python.domain.grid import Grid
-    from tasmania.python.domain.horizontal_boundary import HorizontalBoundary
-    from tasmania.python.utils.typingx import TripletInt
+    from tasmania.domain.domain import Domain
+    from tasmania.domain.grid import Grid
+    from tasmania.domain.horizontal_boundary import HorizontalBoundary
+    from tasmania.utils.typingx import TripletInt
 
 
 class PhysicalConstantsComponent(abc.ABC):
     default_physical_constants = {}
 
-    def __init__(
-        self: "PhysicalConstantsComponent",
-        physical_constants: Mapping[str, "DataArray"],
-    ) -> None:
+    def __init__(self, physical_constants: dict[str, DataArray]) -> None:
         self.rpc = get_physical_constants(self.default_physical_constants, physical_constants)
 
     @property
-    def raw_physical_constants(
-        self: "PhysicalConstantsComponent",
-    ) -> Dict[str, float]:
+    def raw_physical_constants(self) -> dict[str, float]:
         return self.rpc.copy()
 
     @raw_physical_constants.setter
-    def raw_physical_constants(self: "PhysicalConstantsComponent", value: Any) -> None:
+    def raw_physical_constants(self, value: Any) -> None:
         raise RuntimeError()
 
 
 class GridComponent(abc.ABC):
     """A component built over a :class:`~tasmania.Grid`."""
 
-    def __init__(self: "GridComponent", grid: "Grid") -> None:
+    def __init__(self, grid: Grid) -> None:
         self._grid = grid
 
     @property
-    def grid(self: "GridComponent") -> "Grid":
+    def grid(self) -> Grid:
         """The underlying :class:`~tasmania.Grid`."""
         return self._grid
 
-    def get_field_grid_shape(self, name: str) -> "TripletInt":
+    def get_field_grid_shape(self, name: str) -> TripletInt:
         if "at_uv_locations" in name:
             ni = self.grid.nx + 1
             nj = self.grid.ny + 1
@@ -88,9 +88,7 @@ class GridComponent(abc.ABC):
 
         return ni, nj, nk
 
-    def get_field_storage_shape(
-        self, name: str, default_storage_shape: "TripletInt"
-    ) -> "TripletInt":
+    def get_field_storage_shape(self, name: str, default_storage_shape: TripletInt) -> TripletInt:
         grid_shape = self.get_field_grid_shape(name)
         return self.get_shape(default_storage_shape, min_shape=grid_shape)
 
@@ -147,7 +145,7 @@ class DomainComponent(GridComponent, abc.ABC):
 
     allowed_grid_types = ("numerical", "physical")
 
-    def __init__(self: "DomainComponent", domain: "Domain", grid_type: str) -> None:
+    def __init__(self, domain: Domain, grid_type: str) -> None:
         assert grid_type in self.allowed_grid_types, (
             f"grid_type is {grid_type}, but either "
             f"({', '.join(self.allowed_grid_types)}) was expected."
@@ -157,11 +155,11 @@ class DomainComponent(GridComponent, abc.ABC):
         self._hb = domain.horizontal_boundary
 
     @property
-    def grid_type(self: "DomainComponent") -> str:
+    def grid_type(self) -> str:
         """The grid type, either "physical" or "numerical"."""
         return self._grid_type
 
     @property
-    def horizontal_boundary(self: "DomainComponent") -> "HorizontalBoundary":
+    def horizontal_boundary(self) -> HorizontalBoundary:
         """The object handling the lateral boundary conditions."""
         return self._hb

@@ -20,6 +20,10 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
 from sympl import (
     DiagnosticComponent,
     TendencyComponent,
@@ -27,12 +31,11 @@ from sympl import (
     combine_component_properties,
 )
 
-from tasmania.python.framework._base import (
-    BaseConcurrentCoupling,
-    BaseDiagnosticComponentComposite,
-)
-from tasmania.python.utils import typingx
-from tasmania.python.utils.framework import get_input_properties
+from tasmania.framework._base import BaseConcurrentCoupling, BaseDiagnosticComponentComposite
+from tasmania.utils.framework import get_input_properties
+
+if TYPE_CHECKING:
+    from tasmania.utils.typingx import DataArrayDict, TimeDelta
 
 
 class DiagnosticComponentComposite(BaseDiagnosticComponentComposite):
@@ -117,7 +120,7 @@ class DiagnosticComponentComposite(BaseDiagnosticComponentComposite):
 
         self._call = self._call_serial if execution_policy == "serial" else self._call_asparallel
 
-    def __call__(self, state: typingx.DataArrayDict, timestep: typingx.TimeDelta):
+    def __call__(self, state: DataArrayDict, timestep: TimeDelta) -> DataArrayDict:
         """
         Retrieve diagnostics from the input state by sequentially calling
         the wrapped :class:`sympl.DiagnosticComponent`\s, and incrementally
@@ -141,7 +144,7 @@ class DiagnosticComponentComposite(BaseDiagnosticComponentComposite):
         """
         return self._call(state, timestep)
 
-    def _call_serial(self, state: typingx.DataArrayDict, timestep: typingx.TimeDelta):
+    def _call_serial(self, state: DataArrayDict, timestep: TimeDelta) -> DataArrayDict:
         return_dict = {}
 
         tmp_state = {}
@@ -161,7 +164,7 @@ class DiagnosticComponentComposite(BaseDiagnosticComponentComposite):
 
         return return_dict
 
-    def _call_asparallel(self, state, timestep):
+    def _call_asparallel(self, state: DataArrayDict, timestep: TimeDelta) -> DataArrayDict:
         return_dict = {}
 
         for component in self._components_list:

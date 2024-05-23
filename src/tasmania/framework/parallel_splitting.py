@@ -20,7 +20,9 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from typing import Optional, TYPE_CHECKING, Tuple, Union
+
+from __future__ import annotations
+from typing import TYPE_CHECKING
 
 from sympl._core.composite import (
     DiagnosticComponentComposite as SymplDiagnosticComponentComposite,
@@ -33,26 +35,20 @@ from sympl._core.core_components import (
     ImplicitTendencyComponent,
 )
 
-from tasmania.python.framework.composite import (
+from tasmania.framework.composite import (
     DiagnosticComponentComposite as TasmaniaDiagnosticComponentComposite,
 )
-from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
-from tasmania.python.framework.parallel_splitting_utils import StaticOperator
-from tasmania.python.framework.static_checkers import (
-    check_properties_are_compatible,
-)
-from tasmania.python.framework.steppers import TendencyStepper
-from tasmania.python.utils import typingx
-from tasmania.python.utils.dict import DataArrayDictOperator
+from tasmania.framework.concurrent_coupling import ConcurrentCoupling
+from tasmania.framework.parallel_splitting_utils import StaticOperator
+from tasmania.framework.static_checkers import check_properties_are_compatible
+from tasmania.framework.steppers import TendencyStepper
+from tasmania.utils.xarrayx import DataArrayDictOperator
 
 if TYPE_CHECKING:
-    from sympl._core.typingx import DataArrayDict
+    from typing import Optional, Union
 
-    from tasmania.python.framework.options import (
-        BackendOptions,
-        StorageOptions,
-        TimeIntegrationOptions,
-    )
+    from tasmania.framework.options import BackendOptions, StorageOptions, TimeIntegrationOptions
+    from tasmania.utils.typingx import DataArrayDict, TimeDelta
 
 
 class ParallelSplitting:
@@ -108,12 +104,12 @@ class ParallelSplitting:
 
     def __init__(
         self,
-        *args: "TimeIntegrationOptions",
+        *args: TimeIntegrationOptions,
         execution_policy: str = "serial",
         retrieve_diagnostics_from_provisional_state: bool = False,
         backend: str = "numpy",
-        backend_options: Optional["BackendOptions"] = None,
-        storage_options: Optional["StorageOptions"] = None,
+        backend_options: Optional[BackendOptions] = None,
+        storage_options: Optional[StorageOptions] = None,
     ) -> None:
         """
         Parameters
@@ -214,9 +210,7 @@ class ParallelSplitting:
         self._out_state = [None] * len(self.components)
 
     @property
-    def components(
-        self,
-    ) -> Tuple[Union[typingx.DiagnosticComponent, TendencyStepper], ...]:
+    def components(self) -> tuple[Union[DiagnosticComponent, TendencyStepper], ...]:
         """
         Return
         ------
@@ -225,12 +219,7 @@ class ParallelSplitting:
         """
         return tuple(self._component_list)
 
-    def __call__(
-        self,
-        state: "DataArrayDict",
-        state_prv: "DataArrayDict",
-        timestep: typingx.TimeDelta,
-    ) -> None:
+    def __call__(self, state: DataArrayDict, state_prv: DataArrayDict, timestep: TimeDelta) -> None:
         """
         Advance the model state one timestep forward in time by pursuing
         the parallel splitting method.
@@ -265,10 +254,7 @@ class ParallelSplitting:
         state_prv["time"] = state["time"] + timestep
 
     def _call_serial(
-        self,
-        state: "DataArrayDict",
-        state_prv: "DataArrayDict",
-        timestep: typingx.TimeDelta,
+        self, state: DataArrayDict, state_prv: DataArrayDict, timestep: TimeDelta
     ) -> None:
         """Process the components in 'serial' runtime mode."""
         for idx, component in enumerate(self.components):
@@ -304,10 +290,7 @@ class ParallelSplitting:
                 self._dict_op.update_swap(arg, self._out_diagnostics[idx])
 
     def _call_asparallel(
-        self,
-        state: "DataArrayDict",
-        state_prv: "DataArrayDict",
-        timestep: typingx.TimeDelta,
+        self, state: DataArrayDict, state_prv: DataArrayDict, timestep: TimeDelta
     ) -> None:
         """Process the components in 'as_parallel' runtime mode."""
         agg_diagnostics = {}

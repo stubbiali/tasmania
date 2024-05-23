@@ -20,7 +20,12 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from typing import Sequence
+
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 
 def merge_dims(dim1: Sequence[str], dim2: Sequence[str]) -> Sequence[str]:

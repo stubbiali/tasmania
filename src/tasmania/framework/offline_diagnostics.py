@@ -20,28 +20,30 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+
+from __future__ import annotations
 import abc
 import numpy as np
-from sympl._core.dynamic_checkers import (
-    InflowComponentChecker,
-    OutflowComponentChecker,
-)
-from sympl._core.storage import (
-    get_arrays_with_properties,
-    restore_data_arrays_with_properties,
-)
-from typing import Mapping, Optional, Sequence, Tuple, Union
 
-from tasmania.python.domain.grid import Grid
-from tasmania.python.utils import typingx
-from tasmania.python.utils.utils import assert_sequence
+from sympl._core.dynamic_checkers import InflowComponentChecker, OutflowComponentChecker
+from sympl._core.storage import get_arrays_with_properties, restore_data_arrays_with_properties
+from typing import TYPE_CHECKING
+
+from tasmania.domain.grid import Grid
+from tasmania.utils.utils import assert_sequence
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+    from typing import Optional, Union
+
+    from tasmania.utils.typingx import DataArrayDict, NDArrayDict, PropertyDict
 
 
 SequenceType = (tuple, list)
 
 
 class FakeComponent:
-    def __init__(self, properties: Mapping[str, typingx.PropertiesDict]) -> None:
+    def __init__(self, properties: dict[str, PropertyDict]) -> None:
         for name, value in properties.items():
             if name == "input_properties":
                 self.input_properties = value
@@ -95,7 +97,7 @@ class OfflineDiagnosticComponent(abc.ABC):
 
     @property
     @abc.abstractmethod
-    def input_properties(self) -> Sequence[typingx.PropertiesDict]:
+    def input_properties(self) -> Sequence[PropertyDict]:
         """
         Returns
         -------
@@ -108,7 +110,7 @@ class OfflineDiagnosticComponent(abc.ABC):
 
     @property
     @abc.abstractmethod
-    def diagnostic_properties(self) -> typingx.PropertiesDict:
+    def diagnostic_properties(self) -> PropertyDict:
         """
         Returns
         -------
@@ -118,7 +120,7 @@ class OfflineDiagnosticComponent(abc.ABC):
             properties (dims, units) for those diagnostics.
         """
 
-    def __call__(self, *states: typingx.DataArrayDict) -> typingx.DataArrayDict:
+    def __call__(self, *states: DataArrayDict) -> DataArrayDict:
         """
         Call operator retrieving the diagnostics.
 
@@ -165,7 +167,7 @@ class OfflineDiagnosticComponent(abc.ABC):
         return diagnostics
 
     @abc.abstractmethod
-    def array_call(self, *states: typingx.StorageDict) -> typingx.StorageDict:
+    def array_call(self, *states: NDArrayDict) -> NDArrayDict:
         """
         Retrieve the diagnostics.
 
@@ -194,7 +196,7 @@ class RMSD(OfflineDiagnosticComponent):
     def __init__(
         self,
         grid: Union[Grid, Sequence[Grid]],
-        fields: Mapping[str, typingx.PropertiesDict],
+        fields: dict[str, PropertyDict],
         x: Optional[slice] = None,
         y: Optional[slice] = None,
         z: Optional[slice] = None,
@@ -246,9 +248,7 @@ class RMSD(OfflineDiagnosticComponent):
         assert_sequence(self._zs, reflen=2, reftype=slice)
 
     @property
-    def input_properties(
-        self,
-    ) -> Tuple[typingx.PropertiesDict, typingx.PropertiesDict]:
+    def input_properties(self) -> tuple[PropertyDict, PropertyDict]:
         g1, g2 = self._grids
 
         return_list = ({}, {})
@@ -267,15 +267,13 @@ class RMSD(OfflineDiagnosticComponent):
         return return_list
 
     @property
-    def diagnostic_properties(self) -> typingx.PropertiesDict:
+    def diagnostic_properties(self) -> PropertyDict:
         return {
             "rmsd_of_" + name: {"dims": ("scalar",) * 3, "units": units}
             for name, units in self._fields.items()
         }
 
-    def array_call(
-        self, state1: typingx.StorageDict, state2: typingx.StorageDict
-    ) -> typingx.StorageDict:
+    def array_call(self, state1: NDArrayDict, state2: NDArrayDict) -> NDArrayDict:
         x1, y1, z1 = self._xs[0], self._ys[0], self._zs[0]
         x2, y2, z2 = self._xs[1], self._ys[1], self._zs[1]
 
@@ -299,7 +297,7 @@ class RRMSD(OfflineDiagnosticComponent):
     def __init__(
         self,
         grid: Union[Grid, Sequence[Grid]],
-        fields: Mapping[str, typingx.PropertiesDict],
+        fields: dict[str, PropertyDict],
         x: Optional[slice] = None,
         y: Optional[slice] = None,
         z: Optional[slice] = None,
@@ -351,9 +349,7 @@ class RRMSD(OfflineDiagnosticComponent):
         assert_sequence(self._zs, reflen=2, reftype=slice)
 
     @property
-    def input_properties(
-        self,
-    ) -> Tuple[typingx.PropertiesDict, typingx.PropertiesDict]:
+    def input_properties(self) -> tuple[PropertyDict, PropertyDict]:
         g1, g2 = self._grids
 
         return_list = ({}, {})
@@ -372,15 +368,13 @@ class RRMSD(OfflineDiagnosticComponent):
         return return_list
 
     @property
-    def diagnostic_properties(self) -> typingx.PropertiesDict:
+    def diagnostic_properties(self) -> PropertyDict:
         return {
             "rrmsd_of_" + name: {"dims": ("scalar",) * 3, "units": "1"}
             for name in self._fields.keys()
         }
 
-    def array_call(
-        self, state1: typingx.StorageDict, state2: typingx.StorageDict
-    ) -> typingx.StorageDict:
+    def array_call(self, state1: NDArrayDict, state2: NDArrayDict) -> NDArrayDict:
         x1, y1, z1 = self._xs[0], self._ys[0], self._zs[0]
         x2, y2, z2 = self._xs[1], self._ys[1], self._zs[1]
 
@@ -407,7 +401,7 @@ class ColumnSum(OfflineDiagnosticComponent):
         super().__init__()
 
     @property
-    def input_properties(self) -> Tuple[typingx.PropertiesDict]:
+    def input_properties(self) -> tuple[PropertyDict]:
         g = self._grid
         dimx = g.x_at_u_locations.dims[0] if "u_locations" in self._fname else g.x.dims[0]
         dimy = g.y_at_v_locations.dims[0] if "v_locations" in self._fname else g.y.dims[0]
@@ -418,7 +412,7 @@ class ColumnSum(OfflineDiagnosticComponent):
         return return_list
 
     @property
-    def diagnostic_properties(self) -> typingx.PropertiesDict:
+    def diagnostic_properties(self) -> PropertyDict:
         g = self._grid
         dimx = g.x_at_u_locations.dims[0] if "u_locations" in self._fname else g.x.dims[0]
         dimy = g.y_at_v_locations.dims[0] if "v_locations" in self._fname else g.y.dims[0]
@@ -426,7 +420,7 @@ class ColumnSum(OfflineDiagnosticComponent):
         dimz += "_at_surface_level"
         return {"dims": (dimx, dimy, dimz), "units": self._funits}
 
-    def array_call(self, state: typingx.StorageDict) -> typingx.StorageDict:
+    def array_call(self, state: NDArrayDict) -> NDArrayDict:
         field = state[self._fname]
         out = np.zeros((field.shape[0], field.shape[1], 1), dtype=field.dtype)
         np.sum(field, axis=2, out=out)

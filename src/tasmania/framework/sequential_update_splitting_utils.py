@@ -20,22 +20,18 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+
+from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from sympl._core.static_operators import StaticComponentOperator
 
-from tasmania.python.framework.static_checkers import (
-    check_dims_are_compatible,
-    check_units_are_compatible,
-)
-from tasmania.python.framework.static_operators import merge_dims
+from tasmania.framework.static_checkers import check_dims_are_compatible, check_units_are_compatible
+from tasmania.framework.static_operators import merge_dims
 
 if TYPE_CHECKING:
-    from sympl._core.typingx import PropertyDict
-
-    from tasmania.python.framework.sequential_update_splitting import (
-        SequentialUpdateSplitting,
-    )
+    from tasmania.framework.sequential_update_splitting import SequentialUpdateSplitting
+    from tasmania.utils.typingx import PropertyDict
 
 
 class StaticOperator:
@@ -44,7 +40,7 @@ class StaticOperator:
     output_operator = StaticComponentOperator.factory("output_properties")
 
     @classmethod
-    def get_input_properties(cls, splitter: "SequentialUpdateSplitting") -> "PropertyDict":
+    def get_input_properties(cls, splitter: SequentialUpdateSplitting) -> PropertyDict:
         available = set()
         out = {}
 
@@ -66,7 +62,7 @@ class StaticOperator:
         return out
 
     @classmethod
-    def get_output_properties(cls, splitter: "SequentialUpdateSplitting") -> "PropertyDict":
+    def get_output_properties(cls, splitter: SequentialUpdateSplitting) -> PropertyDict:
         out = cls.get_input_properties(splitter)
 
         for component in splitter.components:

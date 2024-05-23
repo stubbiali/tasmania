@@ -20,27 +20,21 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-import abc
-from typing import (
-    Any,
-    Callable,
-    Optional,
-    Sequence,
-    TYPE_CHECKING,
-    Type,
-    Union,
-)
 
-from tasmania.python.framework import protocol as prt
-from tasmania.python.utils.exceptions import FactoryRegistryError
-from tasmania.python.utils.protocol import (
-    Registry,
-    multiregister,
-    set_runtime_attribute,
-)
+from __future__ import annotations
+import abc
+from typing import TYPE_CHECKING
+
+from tasmania.framework import protocol as prt
+from tasmania.utils.exceptions import FactoryRegistryError
+from tasmania.utils.protocol import Registry, multiregister, set_runtime_attribute
 
 if TYPE_CHECKING:
-    from tasmania.python.framework.options import StorageOptions
+    from collections.abc import Callable, Sequence
+    from typing import Any, Optional, Union
+
+    from tasmania.framework.options import StorageOptions
+    from tasmania.utils.typingx import NDArray
 
 
 class Allocator(abc.ABC):
@@ -53,12 +47,12 @@ class Allocator(abc.ABC):
     registry = Registry()
 
     def __new__(
-        cls: Type["Allocator"],
+        cls,
         backend: str,
         stencil: str = prt.wildcard,
         *,
         shape: Sequence[int],
-        storage_options: Optional["StorageOptions"] = None,
+        storage_options: Optional[StorageOptions] = None,
     ) -> Any:
         """Dispatch the call to the proper registered object."""
         key = (cls.function, backend, stencil)
@@ -79,7 +73,7 @@ class Allocator(abc.ABC):
 
     @classmethod
     def register(
-        cls: Type["Allocator"],
+        cls,
         handle: Optional[Callable] = None,
         backend: Union[str, Sequence[str]] = prt.wildcard,
         stencil: Union[str, Sequence[str]] = prt.wildcard,
@@ -99,7 +93,7 @@ class Allocator(abc.ABC):
         )
 
     @staticmethod
-    def template(shape: Sequence[int], *, storage_options: Optional["StorageOptions"] = None):
+    def template(shape: Sequence[int], *, storage_options: Optional[StorageOptions] = None):
         """Signature template for any registered object."""
 
 
@@ -128,13 +122,13 @@ class AsStorage(abc.ABC):
     registry = Registry()
 
     def __new__(
-        cls: Type["AsStorage"],
+        cls,
         backend: str,
         stencil: str = prt.wildcard,
         *,
-        data: "Storage",
-        storage_options: Optional["StorageOptions"] = None,
-    ) -> "Storage":
+        data: NDArray,
+        storage_options: Optional[StorageOptions] = None,
+    ) -> NDArray:
         """Dispatch the call to the proper registered object."""
         key = ("as_storage", backend, stencil)
         try:
@@ -156,7 +150,7 @@ class AsStorage(abc.ABC):
 
     @classmethod
     def register(
-        cls: Type["Allocator"],
+        cls,
         handle: Optional[Callable] = None,
         backend: Union[str, Sequence[str]] = prt.wildcard,
         stencil: Union[str, Sequence[str]] = prt.wildcard,
@@ -176,7 +170,7 @@ class AsStorage(abc.ABC):
         )
 
     @staticmethod
-    def template(shape: Sequence[int], *, storage_options: Optional["StorageOptions"] = None):
+    def template(shape: Sequence[int], *, storage_options: Optional[StorageOptions] = None):
         """Signature template for any registered object."""
 
 

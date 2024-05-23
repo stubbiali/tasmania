@@ -20,6 +20,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+
 from sympl._core.static_operators import StaticComponentOperator
 
 

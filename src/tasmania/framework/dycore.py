@@ -20,8 +20,10 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+
+from __future__ import annotations
 import abc
-from typing import Optional, Sequence, TYPE_CHECKING, Union
+from typing import TYPE_CHECKING
 
 from sympl import (
     DiagnosticComponent,
@@ -31,49 +33,27 @@ from sympl import (
     ImplicitTendencyComponent,
     ImplicitTendencyComponentComposite,
 )
-from sympl._core.dynamic_checkers import (
-    InflowComponentChecker,
-    OutflowComponentChecker,
-)
-from sympl._core.dynamic_operators import (
-    InflowComponentOperator,
-    OutflowComponentOperator,
-)
+from sympl._core.dynamic_checkers import InflowComponentChecker, OutflowComponentChecker
+from sympl._core.dynamic_operators import InflowComponentOperator, OutflowComponentOperator
 from sympl._core.static_checkers import StaticComponentChecker
 from sympl._core.time import FakeTimer as Timer
 
-# from sympl._core.time import Timer
-
-from tasmania.python.framework.base_components import (
-    DomainComponent,
-    GridComponent,
-)
-from tasmania.python.framework.composite import (
+from tasmania.framework.base_components import DomainComponent, GridComponent
+from tasmania.framework.composite import (
     DiagnosticComponentComposite as TasmaniaDiagnosticComponentComposite,
 )
-from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
-from tasmania.python.framework.dycore_utils import (
-    DynamicOperator,
-    StaticChecker,
-    StaticOperator,
-)
-from tasmania.python.framework.stencil import StencilFactory
-from tasmania.python.utils import typingx
-from tasmania.python.utils.dict import DataArrayDictOperator
+from tasmania.framework.concurrent_coupling import ConcurrentCoupling
+from tasmania.framework.dycore_utils import DynamicOperator, StaticChecker, StaticOperator
+from tasmania.framework.stencil import StencilFactory
+from tasmania.utils.xarrayx import DataArrayDictOperator
 
 if TYPE_CHECKING:
-    from sympl._core.typingx import (
-        DataArrayDict,
-        NDArrayLike,
-        NDArrayLikeDict,
-        PropertyDict,
-    )
+    from collections.abc import Sequence
+    from typing import Optional, Union
 
-    from tasmania.python.domain.domain import Domain
-    from tasmania.python.framework.options import (
-        BackendOptions,
-        StorageOptions,
-    )
+    from tasmania.domain.domain import Domain
+    from tasmania.framework.options import BackendOptions, StorageOptions
+    from tasmania.utils.typingx import DataArrayDict, NDArray, NDArrayDict, PropertyDict, TimeDelta
 
 
 class DynamicalCore(DomainComponent, StencilFactory, abc.ABC):
@@ -96,7 +76,7 @@ class DynamicalCore(DomainComponent, StencilFactory, abc.ABC):
 
     def __init__(
         self,
-        domain: "Domain",
+        domain: Domain,
         fast_tendency_component: Optional[TendencyComponent] = None,
         fast_diagnostic_component: Optional[Union[DiagnosticComponent, TendencyComponent]] = None,
         substeps: int = 0,
@@ -105,9 +85,9 @@ class DynamicalCore(DomainComponent, StencilFactory, abc.ABC):
         *,
         enable_checks: bool = True,
         backend: str = "numpy",
-        backend_options: Optional["BackendOptions"] = None,
+        backend_options: Optional[BackendOptions] = None,
         storage_shape: Optional[Sequence[int]] = None,
-        storage_options: Optional["StorageOptions"] = None,
+        storage_options: Optional[StorageOptions] = None,
     ) -> None:
         """
         Parameters
@@ -253,10 +233,10 @@ class DynamicalCore(DomainComponent, StencilFactory, abc.ABC):
         )
 
         # auxiliary variables
-        self._fast_tendencies: Optional["DataArrayDict"] = None
-        self._fast_tendency_component_diagnostics: Optional[Sequence["DataArrayDict"]] = None
-        self._fast_diagnostic_component_diagnostics: Optional[Sequence["DataArrayDict"]] = None
-        self._raw_stage_states: Optional[Sequence["NDArrayLikeDict"]] = None
+        self._fast_tendencies: Optional[DataArrayDict] = None
+        self._fast_tendency_component_diagnostics: Optional[Sequence[DataArrayDict]] = None
+        self._fast_diagnostic_component_diagnostics: Optional[Sequence[DataArrayDict]] = None
+        self._raw_stage_states: Optional[Sequence[NDArrayDict]] = None
 
     @property
     def fast_tendency_component(self):
@@ -284,7 +264,7 @@ class DynamicalCore(DomainComponent, StencilFactory, abc.ABC):
 
     @property
     @abc.abstractmethod
-    def stage_input_properties(self) -> "PropertyDict":
+    def stage_input_properties(self) -> PropertyDict:
         """
         Dictionary whose keys are strings denoting variables which
         should be included in any state passed to the ``stage_array_call``, and
@@ -294,7 +274,7 @@ class DynamicalCore(DomainComponent, StencilFactory, abc.ABC):
 
     @property
     @abc.abstractmethod
-    def substep_input_properties(self) -> "PropertyDict":
+    def substep_input_properties(self) -> PropertyDict:
         """
         Dictionary whose keys are strings denoting variables which
         should be included in any state passed to the ``substep_array_call``
@@ -304,7 +284,7 @@ class DynamicalCore(DomainComponent, StencilFactory, abc.ABC):
 
     @property
     @abc.abstractmethod
-    def stage_tendency_properties(self) -> "PropertyDict":
+    def stage_tendency_properties(self) -> PropertyDict:
         """
         Dictionary whose keys are strings denoting (slow and intermediate)
         tendencies which may (or may not) be passed to ``stage_array_call``,
@@ -314,7 +294,7 @@ class DynamicalCore(DomainComponent, StencilFactory, abc.ABC):
 
     @property
     @abc.abstractmethod
-    def substep_tendency_properties(self) -> "PropertyDict":
+    def substep_tendency_properties(self) -> PropertyDict:
         """
         Dictionary whose keys are strings denoting (slow, intermediate and fast)
         tendencies which may (or may not) be passed to ``substep_array_call``,
@@ -324,7 +304,7 @@ class DynamicalCore(DomainComponent, StencilFactory, abc.ABC):
 
     @property
     @abc.abstractmethod
-    def stage_output_properties(self) -> "PropertyDict":
+    def stage_output_properties(self) -> PropertyDict:
         """
         Dictionary whose keys are strings denoting variables which are
         included in the output state returned by ``stage_array_call``,
@@ -334,7 +314,7 @@ class DynamicalCore(DomainComponent, StencilFactory, abc.ABC):
 
     @property
     @abc.abstractmethod
-    def substep_output_properties(self) -> "PropertyDict":
+    def substep_output_properties(self) -> PropertyDict:
         """
         Return
         ------
@@ -357,25 +337,25 @@ class DynamicalCore(DomainComponent, StencilFactory, abc.ABC):
         (specified at instantiation) to carry out.
         """
 
-    def allocate_stage_output(self, name) -> "NDArrayLike":
+    def allocate_stage_output(self, name) -> NDArray:
         """Allocate memory for an output field."""
         return self.zeros(shape=self.get_field_storage_shape(name, self.storage_shape))
 
-    def allocate_stage_outputs(self) -> "NDArrayLikeDict":
+    def allocate_stage_outputs(self) -> NDArrayDict:
         """Allocate memory for the return state."""
         out = {name: self.allocate_stage_output(name) for name in self.stage_output_properties}
         return out
 
-    def allocate_substep_output(self, name) -> "NDArrayLike":
+    def allocate_substep_output(self, name) -> NDArray:
         """Allocate memory for an output field."""
         return self.zeros(shape=self.get_field_storage_shape(name, self.storage_shape))
 
-    def allocate_substep_outputs(self) -> "NDArrayLikeDict":
+    def allocate_substep_outputs(self) -> NDArrayDict:
         """Allocate memory for the return state."""
         out = {name: self.allocate_substep_output(name) for name in self.substep_output_properties}
         return out
 
-    def allocate_fast_tendencies_and_diagnostics(self, state: "DataArrayDict") -> None:
+    def allocate_fast_tendencies_and_diagnostics(self, state: DataArrayDict) -> None:
         self._fast_tendencies = (
             self.fast_tendency_component.allocate_tendency_dict(state)
             if self.fast_tendency_component is not None
@@ -402,12 +382,12 @@ class DynamicalCore(DomainComponent, StencilFactory, abc.ABC):
 
     def __call__(
         self,
-        state: "DataArrayDict",
-        tendencies: "DataArrayDict",
-        timestep: typingx.TimeDelta,
+        state: DataArrayDict,
+        tendencies: DataArrayDict,
+        timestep: TimeDelta,
         *,
-        out_state: Optional["DataArrayDict"] = None,
-    ) -> "DataArrayDict":
+        out_state: Optional[DataArrayDict] = None,
+    ) -> DataArrayDict:
         """Advance the input state one timestep forward.
 
         Parameters
@@ -484,11 +464,11 @@ class DynamicalCore(DomainComponent, StencilFactory, abc.ABC):
     def call(
         self,
         stage: int,
-        timestep: typingx.TimeDelta,
-        state: "DataArrayDict",
-        slow_tendencies: "DataArrayDict",
-        tmp_state: "DataArrayDict",
-    ) -> "DataArrayDict":
+        timestep: TimeDelta,
+        state: DataArrayDict,
+        slow_tendencies: DataArrayDict,
+        tmp_state: DataArrayDict,
+    ) -> DataArrayDict:
         """Perform a single stage of the time integration algorithm.
 
         Parameters
@@ -743,10 +723,10 @@ class DynamicalCore(DomainComponent, StencilFactory, abc.ABC):
     def stage_array_call(
         self,
         stage: int,
-        state: "NDArrayLikeDict",
-        tendencies: "NDArrayLikeDict",
-        timestep: typingx.TimeDelta,
-        out_state: "NDArrayLikeDict",
+        state: NDArrayDict,
+        tendencies: NDArrayDict,
+        timestep: TimeDelta,
+        out_state: NDArrayDict,
     ) -> None:
         """Integrate the state over a stage.
 
@@ -772,12 +752,12 @@ class DynamicalCore(DomainComponent, StencilFactory, abc.ABC):
         self,
         stage: int,
         substep: int,
-        state: "NDArrayLikeDict",
-        stage_state: "NDArrayLikeDict",
-        tmp_state: "NDArrayLikeDict",
-        slow_tendencies: "NDArrayLikeDict",
-        timestep: typingx.TimeDelta,
-    ) -> "NDArrayLikeDict":
+        state: NDArrayDict,
+        stage_state: NDArrayDict,
+        tmp_state: NDArrayDict,
+        slow_tendencies: NDArrayDict,
+        timestep: TimeDelta,
+    ) -> NDArrayDict:
         """Integrate the state over a substep.
 
         Parameters
@@ -804,7 +784,7 @@ class DynamicalCore(DomainComponent, StencilFactory, abc.ABC):
             The substepped (raw) state.
         """
 
-    def update_topography(self, time: typingx.TimeDelta) -> None:
+    def update_topography(self, time: TimeDelta) -> None:
         """Update the underlying (time-dependent) topography.
 
         Parameters

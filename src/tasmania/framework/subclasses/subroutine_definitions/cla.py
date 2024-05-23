@@ -20,13 +20,20 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+
+from __future__ import annotations
 import numpy as np
-from typing import Optional, Tuple, Union
+from typing import TYPE_CHECKING
 
-from tasmania.third_party import cupy, gt4py, numba
+from gt4py.cartesian import gtscript
 
-from tasmania.python.framework.stencil import subroutine_definition
-from tasmania.python.utils import typingx
+from tasmania.externals import cupy, numba
+from tasmania.framework.stencil import subroutine_definition
+
+if TYPE_CHECKING:
+    from typing import Optional, Union
+
+    from tasmania.utils.typingx import GTField
 
 
 @subroutine_definition.register(backend="numpy", stencil="thomas")
@@ -109,28 +116,24 @@ if cupy:
     )
 
 
-if gt4py:
-    from gt4py import gtscript
+@subroutine_definition.register(backend="gt4py*", stencil="setup_thomas")
+@gtscript.function
+def setup_tridiagonal_system_gt4py(
+    gamma: float, w: GTField, phi: GTField
+) -> tuple[GTField, GTField, GTField]:
+    a = gamma * w[0, 0, -1]
+    c = -gamma * w[0, 0, 1]
+    d = phi[0, 0, 0] - gamma * (w[0, 0, -1] * phi[0, 0, -1] - w[0, 0, 1] * phi[0, 0, 1])
+    return a, c, d
 
-    @subroutine_definition.register(backend="gt4py*", stencil="setup_thomas")
-    @gtscript.function
-    def setup_tridiagonal_system_gt4py(
-        gamma: float, w: typingx.GTField, phi: typingx.GTField
-    ) -> "Tuple[typingx.GTField, typingx.GTField, typingx.GTField]":
-        a = gamma * w[0, 0, -1]
-        c = -gamma * w[0, 0, 1]
-        d = phi[0, 0, 0] - gamma * (w[0, 0, -1] * phi[0, 0, -1] - w[0, 0, 1] * phi[0, 0, 1])
-        return a, c, d
 
-    @subroutine_definition.register(backend="gt4py*", stencil="setup_thomas_bc")
-    @gtscript.function
-    def setup_tridiagonal_system_bc_gt4py(
-        phi: typingx.GTField,
-    ) -> "Tuple[typingx.GTField, typingx.GTField, typingx.GTField]":
-        a = 0.0
-        c = 0.0
-        d = phi[0, 0, 0]
-        return a, c, d
+@subroutine_definition.register(backend="gt4py*", stencil="setup_thomas_bc")
+@gtscript.function
+def setup_tridiagonal_system_bc_gt4py(phi: GTField) -> tuple[GTField, GTField, GTField]:
+    a = 0.0
+    c = 0.0
+    d = phi[0, 0, 0]
+    return a, c, d
 
 
 if numba:

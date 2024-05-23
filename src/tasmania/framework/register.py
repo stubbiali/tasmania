@@ -20,16 +20,19 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from typing import Callable, Optional, Type, TypeVar
 
+from __future__ import annotations
+from typing import TYPE_CHECKING
 
-T = TypeVar("T")
+if TYPE_CHECKING:
+    from collections.abc import Callable
+    from typing import Optional, TypeVar
+
+    T = TypeVar("T")
 
 
 def register(
-    name: str,
-    registry_class: Optional[Type[T]] = None,
-    registry_name: Optional[str] = None,
+    name: str, registry_class: Optional[type[T]] = None, registry_name: Optional[str] = None
 ) -> Callable:
     def core(cls):
         rcls = registry_class or cls
@@ -43,8 +46,8 @@ def register(
             import warnings
 
             warnings.warn(
-                f"Cannot register {cls.__name__} as '{name}' since this name "
-                f"has already been used to register {registry[name]}."
+                f"Cannot register {cls.__name__} as '{name}' since this name has already been used "
+                f"to register {registry[name]}."
             )
         else:
             registry[name] = cls
@@ -55,11 +58,7 @@ def register(
 
 
 def factorize(
-    name: str,
-    registry_class: Type[T],
-    args,
-    kwargs=None,
-    registry_name: Optional[str] = None,
+    name: str, registry_class: type[T], args, kwargs=None, registry_name: Optional[str] = None
 ) -> T:
     rcls = registry_class
     rname = registry_name or "registry"
@@ -74,7 +73,6 @@ def factorize(
         return obj
     else:
         raise RuntimeError(
-            f"No entity has been registered as '{name}'. "
-            f"Available options are: "
+            f"No entity has been registered as '{name}'. Available options are: "
             f"{', '.join(key for key in registry.keys())}."
         )

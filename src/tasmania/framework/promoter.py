@@ -20,45 +20,28 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-import abc
-from typing import Optional, Sequence, TYPE_CHECKING
 
-from sympl._core.dynamic_checkers import (
-    InflowComponentChecker,
-    OutflowComponentChecker,
-)
-from sympl._core.dynamic_operators import (
-    InflowComponentOperator,
-    OutflowComponentOperator,
-)
+from __future__ import annotations
+import abc
+from typing import TYPE_CHECKING
+
+from sympl._core.dynamic_checkers import InflowComponentChecker, OutflowComponentChecker
+from sympl._core.dynamic_operators import InflowComponentOperator, OutflowComponentOperator
 from sympl._core.static_checkers import StaticComponentChecker
 from sympl._core.time import Timer
 
-from tasmania.python.framework._base import (
-    BaseFromDiagnosticToTendency,
-    BaseFromTendencyToDiagnostic,
-)
-from tasmania.python.framework.base_components import (
-    DomainComponent,
-    GridComponent,
-)
-from tasmania.python.framework.promoter_utils import StaticOperator
-from tasmania.python.framework.stencil import StencilFactory
+from tasmania.framework._base import BaseFromDiagnosticToTendency, BaseFromTendencyToDiagnostic
+from tasmania.framework.base_components import DomainComponent, GridComponent
+from tasmania.framework.promoter_utils import StaticOperator
+from tasmania.framework.stencil import StencilFactory
 
 if TYPE_CHECKING:
-    from sympl._core.typingx import (
-        DataArrayDict,
-        NDArrayLike,
-        NDArrayLikeDict,
-        PropertyDict,
-    )
+    from collections.abc import Sequence
+    from typing import Optional
 
-    from tasmania.python.domain.domain import Domain
-    from tasmania.python.framework.options import (
-        BackendOptions,
-        StorageOptions,
-    )
-    from tasmania.python.utils.typingx import TripletInt
+    from tasmania.domain.domain import Domain
+    from tasmania.framework.options import BackendOptions, StorageOptions
+    from tasmania.utils.typingx import DataArrayDict, NDArray, NDArrayDict, PropertyDict, TripletInt
 
 
 allowed_grid_types = ("physical", "numerical")
@@ -72,14 +55,14 @@ class FromDiagnosticToTendency(BaseFromDiagnosticToTendency, DomainComponent, St
 
     def __init__(
         self,
-        domain: "Domain",
+        domain: Domain,
         grid_type: str,
         *,
         enable_checks: bool = True,
         backend: Optional[str] = None,
-        backend_options: Optional["BackendOptions"] = None,
+        backend_options: Optional[BackendOptions] = None,
         storage_shape: Optional[Sequence[int]] = None,
-        storage_options: Optional["StorageOptions"] = None,
+        storage_options: Optional[StorageOptions] = None,
     ) -> None:
         # initialize parent classes
         super().__init__()
@@ -121,12 +104,12 @@ class FromDiagnosticToTendency(BaseFromDiagnosticToTendency, DomainComponent, St
 
     @property
     @abc.abstractmethod
-    def input_properties(self) -> "PropertyDict":
+    def input_properties(self) -> PropertyDict:
         pass
 
     def __call__(
-        self, diagnostics: "DataArrayDict", *, out: Optional["DataArrayDict"] = None
-    ) -> "DataArrayDict":
+        self, diagnostics: DataArrayDict, *, out: Optional[DataArrayDict] = None
+    ) -> DataArrayDict:
         # inflow checks
         if self._enable_checks:
             self._input_checker.check(diagnostics)
@@ -167,15 +150,15 @@ class FromDiagnosticToTendency(BaseFromDiagnosticToTendency, DomainComponent, St
 
         return tendencies
 
-    def allocate_tendency(self, name: str) -> "NDArrayLike":
+    def allocate_tendency(self, name: str) -> NDArray:
         return self.zeros(shape=self.get_field_storage_shape(name))
 
     def get_field_storage_shape(
-        self, name: str, default_storage_shape: Optional["TripletInt"] = None
-    ) -> "TripletInt":
+        self, name: str, default_storage_shape: Optional[TripletInt] = None
+    ) -> TripletInt:
         return super().get_field_storage_shape(name, default_storage_shape or self.storage_shape)
 
-    def array_call(self, diagnostics: "NDArrayLikeDict", out: "NDArrayLikeDict") -> None:
+    def array_call(self, diagnostics: NDArrayDict, out: NDArrayDict) -> None:
         for name in self.input_properties:
             tendency_name = self.input_properties[name].get(
                 "tendency_name", name.replace("tendency_of_", "")
@@ -201,14 +184,14 @@ class FromTendencyToDiagnostic(BaseFromTendencyToDiagnostic, DomainComponent, St
 
     def __init__(
         self,
-        domain: "Domain",
+        domain: Domain,
         grid_type: str,
         *,
         enable_checks: bool = True,
         backend: Optional[str] = None,
-        backend_options: Optional["BackendOptions"] = None,
+        backend_options: Optional[BackendOptions] = None,
         storage_shape: Optional[Sequence[int]] = None,
-        storage_options: Optional["StorageOptions"] = None,
+        storage_options: Optional[StorageOptions] = None,
     ) -> None:
         # initialize parent classes
         super().__init__()
@@ -250,12 +233,12 @@ class FromTendencyToDiagnostic(BaseFromTendencyToDiagnostic, DomainComponent, St
 
     @property
     @abc.abstractmethod
-    def input_tendency_properties(self) -> "PropertyDict":
+    def input_tendency_properties(self) -> PropertyDict:
         pass
 
     def __call__(
-        self, tendencies: "DataArrayDict", *, out: Optional["DataArrayDict"] = None
-    ) -> "DataArrayDict":
+        self, tendencies: DataArrayDict, *, out: Optional[DataArrayDict] = None
+    ) -> DataArrayDict:
         # inflow checks
         if self._enable_checks:
             self._input_checker.check(tendencies)
@@ -296,15 +279,15 @@ class FromTendencyToDiagnostic(BaseFromTendencyToDiagnostic, DomainComponent, St
 
         return diagnostics
 
-    def allocate_diagnostic(self, name: str) -> "NDArrayLike":
+    def allocate_diagnostic(self, name: str) -> NDArray:
         return self.zeros(shape=self.get_field_storage_shape(name))
 
     def get_field_storage_shape(
-        self, name: str, default_storage_shape: Optional["TripletInt"] = None
-    ) -> "TripletInt":
+        self, name: str, default_storage_shape: Optional[TripletInt] = None
+    ) -> TripletInt:
         return super().get_field_storage_shape(name, default_storage_shape or self.storage_shape)
 
-    def array_call(self, tendencies: "NDArrayLikeDict", out: "NDArrayLikeDict") -> None:
+    def array_call(self, tendencies: NDArrayDict, out: NDArrayDict) -> None:
         for name in self.input_tendency_properties:
             diagnostic_name = self.input_tendency_properties[name].get(
                 "diagnostic_name", "tendency_of_" + name

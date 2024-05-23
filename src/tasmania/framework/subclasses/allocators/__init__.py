@@ -20,9 +20,12 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from .as_storage_cupy import *
-from .as_storage_gt4py import *
-from .as_storage_numpy import *
-from .empty import *
-from .ones import *
-from .zeros import *
+
+from tasmania.framework.subclasses.allocators import (
+    as_storage_cupy,
+    as_storage_gt4py,
+    as_storage_numpy,
+    empty,
+    ones,
+    zeros,
+)

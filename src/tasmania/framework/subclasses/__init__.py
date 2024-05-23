@@ -20,16 +20,16 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from tasmania.python.framework.subclasses import (
+from tasmania.framework.subclasses import (
     allocators,
+    dynamic_checkers,
+    dynamic_operators,
     sequential_tendency_steppers,
+    static_checkers,
+    static_operators,
+    stencil_compilers,
     stencil_definitions,
+    subroutine_compilers,
     subroutine_definitions,
     tendency_steppers,
 )
-from tasmania.python.framework.subclasses.dynamic_checkers import *
-from tasmania.python.framework.subclasses.dynamic_operators import *
-from tasmania.python.framework.subclasses.static_checkers import *
-from tasmania.python.framework.subclasses.static_operators import *
-from tasmania.python.framework.subclasses.stencil_compilers import *
-from tasmania.python.framework.subclasses.subroutine_compilers import *

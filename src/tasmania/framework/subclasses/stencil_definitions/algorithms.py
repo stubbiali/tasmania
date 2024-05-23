@@ -20,11 +20,13 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+
 import numpy as np
 
-from tasmania.third_party import gt4py, numba
+from gt4py.cartesian import gtscript
 
-from tasmania.python.framework.stencil import stencil_definition
+from tasmania.externals import cupy, numba
+from tasmania.framework.stencil import stencil_definition
 
 
 @stencil_definition.register(backend="numpy", stencil="irelax")
@@ -67,68 +69,68 @@ def sts_rk3ws_0_numpy(in_field, in_field_prv, in_tnd, out_field, *, dt, origin, 
     out_field[idx] = (2.0 * in_field[idx] + in_field_prv[idx] + dt * in_tnd[idx]) / 3.0
 
 
-if True:  # cupy:
+if cupy:
     stencil_definition.register(irelax_numpy, "cupy", "irelax")
     stencil_definition.register(relax_numpy, "cupy", "relax")
     stencil_definition.register(sts_rk2_0_numpy, "cupy", "sts_rk2_0")
     stencil_definition.register(sts_rk3ws_0_numpy, "cupy", "sts_rk3ws_0")
 
 
-if gt4py:
-    from gt4py import gtscript
+@stencil_definition.register(backend="gt4py*", stencil="irelax")
+def irelax_gt4py(
+    in_gamma: gtscript.Field["dtype"],
+    in_phi_ref: gtscript.Field["dtype"],
+    inout_phi: gtscript.Field["dtype"],
+) -> None:
+    with computation(PARALLEL), interval(...):
+        if in_gamma == 0.0:
+            inout_phi = inout_phi
+        elif in_gamma == 1.0:
+            inout_phi = in_phi_ref
+        else:
+            inout_phi = inout_phi - in_gamma * (inout_phi - in_phi_ref)
 
-    @stencil_definition.register(backend="gt4py*", stencil="irelax")
-    def irelax_gt4py(
-        in_gamma: gtscript.Field["dtype"],
-        in_phi_ref: gtscript.Field["dtype"],
-        inout_phi: gtscript.Field["dtype"],
-    ) -> None:
-        with computation(PARALLEL), interval(...):
-            if in_gamma == 0.0:
-                inout_phi = inout_phi
-            elif in_gamma == 1.0:
-                inout_phi = in_phi_ref
-            else:
-                inout_phi = inout_phi - in_gamma * (inout_phi - in_phi_ref)
 
-    @stencil_definition.register(backend="gt4py*", stencil="relax")
-    def relax_gt4py(
-        in_gamma: gtscript.Field["dtype"],
-        in_phi: gtscript.Field["dtype"],
-        in_phi_ref: gtscript.Field["dtype"],
-        out_phi: gtscript.Field["dtype"],
-    ) -> None:
-        with computation(PARALLEL), interval(...):
-            if in_gamma == 0.0:
-                out_phi = in_phi
-            elif in_gamma == 1.0:
-                out_phi = in_phi_ref
-            else:
-                out_phi = in_phi - in_gamma * (in_phi - in_phi_ref)
+@stencil_definition.register(backend="gt4py*", stencil="relax")
+def relax_gt4py(
+    in_gamma: gtscript.Field["dtype"],
+    in_phi: gtscript.Field["dtype"],
+    in_phi_ref: gtscript.Field["dtype"],
+    out_phi: gtscript.Field["dtype"],
+) -> None:
+    with computation(PARALLEL), interval(...):
+        if in_gamma == 0.0:
+            out_phi = in_phi
+        elif in_gamma == 1.0:
+            out_phi = in_phi_ref
+        else:
+            out_phi = in_phi - in_gamma * (in_phi - in_phi_ref)
 
-    @stencil_definition.register(backend="gt4py*", stencil="sts_rk2_0")
-    def sts_rk2_0_gt4py(
-        in_field: gtscript.Field["dtype"],
-        in_field_prv: gtscript.Field["dtype"],
-        in_tnd: gtscript.Field["dtype"],
-        out_field: gtscript.Field["dtype"],
-        *,
-        dt: float,
-    ) -> None:
-        with computation(PARALLEL), interval(...):
-            out_field = 0.5 * (in_field + in_field_prv + dt * in_tnd)
 
-    @stencil_definition.register(backend="gt4py*", stencil="sts_rk3ws_0")
-    def sts_rk3ws_0_gt4py(
-        in_field: gtscript.Field["dtype"],
-        in_field_prv: gtscript.Field["dtype"],
-        in_tnd: gtscript.Field["dtype"],
-        out_field: gtscript.Field["dtype"],
-        *,
-        dt: float,
-    ) -> None:
-        with computation(PARALLEL), interval(...):
-            out_field = (2.0 * in_field + in_field_prv + dt * in_tnd) / 3.0
+@stencil_definition.register(backend="gt4py*", stencil="sts_rk2_0")
+def sts_rk2_0_gt4py(
+    in_field: gtscript.Field["dtype"],
+    in_field_prv: gtscript.Field["dtype"],
+    in_tnd: gtscript.Field["dtype"],
+    out_field: gtscript.Field["dtype"],
+    *,
+    dt: float,
+) -> None:
+    with computation(PARALLEL), interval(...):
+        out_field = 0.5 * (in_field + in_field_prv + dt * in_tnd)
+
+
+@stencil_definition.register(backend="gt4py*", stencil="sts_rk3ws_0")
+def sts_rk3ws_0_gt4py(
+    in_field: gtscript.Field["dtype"],
+    in_field_prv: gtscript.Field["dtype"],
+    in_tnd: gtscript.Field["dtype"],
+    out_field: gtscript.Field["dtype"],
+    *,
+    dt: float,
+) -> None:
+    with computation(PARALLEL), interval(...):
+        out_field = (2.0 * in_field + in_field_prv + dt * in_tnd) / 3.0
 
 
 if numba:

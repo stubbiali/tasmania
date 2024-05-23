@@ -20,8 +20,5 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from .algorithms import *
-from .cla import *
-from .copy import *
-from .diffusion import *
-from .math import *
+
+from tasmania.framework.subclasses.stencil_definitions import algorithms, cla, copy, diffusion, math

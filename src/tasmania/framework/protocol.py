@@ -20,6 +20,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+
 # magic string which can be assigned to a key of the protocol dict to indicate
 # that the value of that key is the same irrespective of the value
 # assumed by the other keys

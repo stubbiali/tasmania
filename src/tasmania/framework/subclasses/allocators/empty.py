@@ -20,12 +20,15 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+
 import numpy as np
 
-from tasmania.third_party import cupy as cp, gt4py as gt, numba
+from gt4py import storage as gt_storage
 
-from tasmania.python.framework.allocators import empty
-from tasmania.python.framework.options import StorageOptions
+from tasmania.externals import cupy as cp, numba
+from tasmania.framework.allocators import empty
+from tasmania.framework.options import StorageOptions
+from tasmania.utils.gt4pyx import get_gt_backend
 
 
 @empty.register(backend="numpy")
@@ -49,28 +52,11 @@ if cp:
         empty.register(empty_cupy, backend="numba:gpu")
 
 
-if gt:
-    from tasmania.python.utils.backend import get_gt_backend
-
-    @empty.register(backend="gt4py*")
-    def empty_gt4py(shape, *, storage_options=None):
-        backend = empty_gt4py.__tasmania_runtime__["backend"]
-        defaults = get_gt_backend(backend)
-        so = storage_options or StorageOptions()
-        # >>> old storage
-        return gt.storage.empty(
-            defaults,
-            so.aligned_index,
-            shape,
-            dtype=so.dtype,
-        )
-        # <<< new storage
-        # return gt.storage.empty(
-        #     shape,
-        #     dtype=so.dtype,
-        #     aligned_index=so.aligned_index,
-        #     defaults=defaults,
-        #     halo=so.halo,
-        #     managed=so.managed,
-        # )
-        # <<<
+@empty.register(backend="gt4py*")
+def empty_gt4py(shape, *, storage_options=None):
+    backend = empty_gt4py.__tasmania_runtime__["backend"]
+    gt_backend = get_gt_backend(backend)
+    so = storage_options or StorageOptions()
+    return gt_storage.empty(
+        shape, dtype=so.dtype, backend=gt_backend, aligned_index=so.aligned_index
+    )

@@ -20,10 +20,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from sympl._core.dynamic_operators import (
-    InflowComponentOperator,
-    OutflowComponentOperator,
-)
+from sympl._core.dynamic_operators import InflowComponentOperator, OutflowComponentOperator
 
 
 class StageInputInflowComponentOperator(InflowComponentOperator):

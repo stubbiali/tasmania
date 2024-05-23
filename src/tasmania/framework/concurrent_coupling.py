@@ -20,7 +20,9 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from typing import Dict, Optional, TYPE_CHECKING, Tuple, Union
+
+from __future__ import annotations
+from typing import TYPE_CHECKING
 
 from sympl._core.composite import (
     DiagnosticComponentComposite as SymplDiagnosticComponentComposite,
@@ -39,30 +41,23 @@ from sympl._core.dynamic_checkers import (
 from sympl._core.static_checkers import StaticComponentChecker
 from sympl._core.static_operators import StaticComponentOperator
 
-from tasmania.python.framework._base import (
-    BaseConcurrentCoupling,
-    BaseDiagnosticComponentComposite,
-)
-from tasmania.python.framework.concurrent_coupling_utils import (
+from tasmania.framework._base import BaseConcurrentCoupling, BaseDiagnosticComponentComposite
+from tasmania.framework.concurrent_coupling_utils import (
     DynamicOperator,
     StaticChecker,
     StaticOperator,
 )
-from tasmania.python.framework.promoter import (
-    FromDiagnosticToTendency,
-    FromTendencyToDiagnostic,
-)
-from tasmania.python.utils import typingx
-from tasmania.python.utils.dict import DataArrayDictOperator
+from tasmania.framework.promoter import FromDiagnosticToTendency, FromTendencyToDiagnostic
+from tasmania.utils.xarrayx import DataArrayDictOperator
 
 if TYPE_CHECKING:
-    from sympl._core.typingx import DataArrayDict, NDArrayLike
+    from typing import Optional, Union
 
-    from tasmania.python.framework.options import (
+    from tasmania.framework.options import (
         BackendOptions,
         StorageOptions,
     )
-    from tasmania.python.utils.typingx import PromoterComponent
+    from tasmania.utils.typingx import DataArrayDict, NDArray, PromoterComponent, TimeDelta
 
 
 class ConcurrentCoupling(BaseConcurrentCoupling):
@@ -123,13 +118,13 @@ class ConcurrentCoupling(BaseConcurrentCoupling):
         *args: Union[
             DiagnosticComponent,
             TendencyComponent,
-            "PromoterComponent",
+            PromoterComponent,
         ],
         execution_policy: str = "serial",
         enable_checks: bool = True,
         backend: str = "numpy",
-        backend_options: Optional["BackendOptions"] = None,
-        storage_options: Optional["StorageOptions"] = None,
+        backend_options: Optional[BackendOptions] = None,
+        storage_options: Optional[StorageOptions] = None,
     ) -> None:
         """
         Parameters
@@ -236,7 +231,7 @@ class ConcurrentCoupling(BaseConcurrentCoupling):
     @property
     def components(
         self,
-    ) -> Tuple[Union[DiagnosticComponent, TendencyComponent, typingx.PromoterComponent]]:
+    ) -> tuple[Union[DiagnosticComponent, TendencyComponent, PromoterComponent]]:
         """
         Return
         ------
@@ -249,27 +244,27 @@ class ConcurrentCoupling(BaseConcurrentCoupling):
     def execution_policy(self) -> str:
         return self._policy
 
-    def allocate_tendency(self, name: str) -> "NDArrayLike":
+    def allocate_tendency(self, name: str) -> NDArray:
         return self._cc_operator.allocate_tendency(name)
 
-    def allocate_tendency_dict(self, state: "DataArrayDict") -> "DataArrayDict":
+    def allocate_tendency_dict(self, state: DataArrayDict) -> DataArrayDict:
         return self._cc_operator.allocate_tendencies(state)
 
-    def allocate_diagnostic(self, name: str) -> "NDArrayLike":
+    def allocate_diagnostic(self, name: str) -> NDArray:
         return self._cc_operator.allocate_diagnostic(name)
 
-    def allocate_diagnostic_dict(self, state: "DataArrayDict") -> "DataArrayDict":
+    def allocate_diagnostic_dict(self, state: DataArrayDict) -> DataArrayDict:
         return self._cc_operator.allocate_diagnostics(state)
 
     def __call__(
         self,
-        state: "DataArrayDict",
-        timestep: typingx.TimeDelta,
+        state: DataArrayDict,
+        timestep: TimeDelta,
         *,
-        out_tendencies: Optional["DataArrayDict"] = None,
-        out_diagnostics: Optional["DataArrayDict"] = None,
-        overwrite_tendencies: Optional[Dict[str, bool]] = None,
-    ) -> Tuple["DataArrayDict", "DataArrayDict"]:
+        out_tendencies: Optional[DataArrayDict] = None,
+        out_diagnostics: Optional[DataArrayDict] = None,
+        overwrite_tendencies: Optional[dict[str, bool]] = None,
+    ) -> tuple[DataArrayDict, DataArrayDict]:
         """
         Execute the wrapped components to calculate tendencies and retrieve
         diagnostics with the help of the input state.
@@ -320,11 +315,11 @@ class ConcurrentCoupling(BaseConcurrentCoupling):
 
     def _call_serial(
         self,
-        state: "DataArrayDict",
-        timestep: typingx.TimeDelta,
-        out_tendencies: "DataArrayDict",
-        out_diagnostics: "DataArrayDict",
-        overwrite_tendencies: Dict[str, bool],
+        state: DataArrayDict,
+        timestep: TimeDelta,
+        out_tendencies: DataArrayDict,
+        out_diagnostics: DataArrayDict,
+        overwrite_tendencies: dict[str, bool],
     ) -> None:
         """Process the components in 'serial' runtime mode."""
         sco = StaticComponentOperator.factory("diagnostic_properties")
@@ -385,11 +380,11 @@ class ConcurrentCoupling(BaseConcurrentCoupling):
 
     def _call_asparallel(
         self,
-        state: "DataArrayDict",
-        timestep: typingx.TimeDelta,
-        out_tendencies: "DataArrayDict",
-        out_diagnostics: "DataArrayDict",
-        overwrite_tendencies: Dict[str, bool],
+        state: DataArrayDict,
+        timestep: TimeDelta,
+        out_tendencies: DataArrayDict,
+        out_diagnostics: DataArrayDict,
+        overwrite_tendencies: dict[str, bool],
     ) -> None:
         """Process the components in 'as_parallel' runtime mode."""
         for component, self_overwrite_tendencies in zip(self.components, self.overwrite_tendencies):

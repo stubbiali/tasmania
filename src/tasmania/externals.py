@@ -22,6 +22,11 @@
 #
 
 try:
-    import cupy as cp
+    import cupy
 except (ImportError, ModuleNotFoundError):
-    cp = None
+    cupy = None
+
+try:
+    import numba
+except (ImportError, ModuleNotFoundError):
+    numba = None

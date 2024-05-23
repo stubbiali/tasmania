@@ -20,17 +20,20 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+
+from __future__ import annotations
 from functools import singledispatch
 import numpy as np
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
-from tasmania.third_party import cupy as cp, gt4py as gt, numba
-
-from tasmania.python.framework.allocators import as_storage
-from tasmania.python.framework.options import StorageOptions
+from tasmania.externals import cupy as cp, numba
+from tasmania.framework.allocators import as_storage
+from tasmania.framework.options import StorageOptions
 
 if TYPE_CHECKING:
-    from tasmania.python.utils.typingx import Storage
+    from typing import Optional
+
+    from tasmania.utils.typingx import NDArray
 
 
 if cp:
@@ -38,7 +41,7 @@ if cp:
     @as_storage.register(backend="cupy")
     @singledispatch
     def as_storage_cupy(
-        data: "Storage", *, storage_options: Optional[StorageOptions] = None
+        data: NDArray, *, storage_options: Optional[StorageOptions] = None
     ) -> cp.ndarray:
         pass
 
@@ -52,11 +55,3 @@ if cp:
 
     if numba:
         as_storage.register(as_storage_cupy, backend="numba:gpu")
-
-    if gt:
-
-        @as_storage_cupy.register
-        def _(
-            data: gt.storage.Storage, *, storage_options: Optional[StorageOptions] = None
-        ) -> cp.ndarray:
-            return data.to_cupy()

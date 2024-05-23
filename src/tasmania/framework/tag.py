@@ -20,36 +20,38 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from typing import Callable, Sequence, Union
 
-from tasmania.python.framework import protocol as prt
-from tasmania.python.utils.protocol import multiregister
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
+from tasmania.framework import protocol as prt
+from tasmania.utils.protocol import multiregister
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Sequence
+    from typing import Union
 
 
 def asarray(
-    backend: Union[str, Sequence[str]],
-    stencil: Union[str, Sequence[str]] = prt.wildcard,
+    backend: Union[str, Sequence[str]], stencil: Union[str, Sequence[str]] = prt.wildcard
 ) -> Callable:
     return multiregister(args=("function", "asarray", "backend", backend, "stencil", stencil))
 
 
 def empty(
-    backend: Union[str, Sequence[str]],
-    stencil: Union[str, Sequence[str]] = prt.wildcard,
+    backend: Union[str, Sequence[str]], stencil: Union[str, Sequence[str]] = prt.wildcard
 ) -> Callable:
     return multiregister(args=("function", "empty", "backend", backend, "stencil", stencil))
 
 
 def ones(
-    backend: Union[str, Sequence[str]],
-    stencil: Union[str, Sequence[str]] = prt.wildcard,
+    backend: Union[str, Sequence[str]], stencil: Union[str, Sequence[str]] = prt.wildcard
 ) -> Callable:
     return multiregister(args=("function", "ones", "backend", backend, "stencil", stencil))
 
 
 def stencil_compiler(
-    backend: Union[str, Sequence[str]],
-    stencil: Union[str, Sequence[str]] = prt.wildcard,
+    backend: Union[str, Sequence[str]], stencil: Union[str, Sequence[str]] = prt.wildcard
 ) -> Callable:
     return multiregister(
         args=(
@@ -64,8 +66,7 @@ def stencil_compiler(
 
 
 def stencil_definition(
-    backend: Union[str, Sequence[str]],
-    stencil: Union[str, Sequence[str]],
+    backend: Union[str, Sequence[str]], stencil: Union[str, Sequence[str]]
 ) -> Callable:
     return multiregister(
         args=(
@@ -80,8 +81,7 @@ def stencil_definition(
 
 
 def subroutine_definition(
-    backend: Union[str, Sequence[str]],
-    stencil: Union[str, Sequence[str]],
+    backend: Union[str, Sequence[str]], stencil: Union[str, Sequence[str]]
 ) -> Callable:
     return multiregister(
         args=(
@@ -96,7 +96,6 @@ def subroutine_definition(
 
 
 def zeros(
-    backend: Union[str, Sequence[str]],
-    stencil: Union[str, Sequence[str]] = prt.wildcard,
+    backend: Union[str, Sequence[str]], stencil: Union[str, Sequence[str]] = prt.wildcard
 ) -> Callable:
     return multiregister(args=("function", "zeros", "backend", backend, "stencil", stencil))

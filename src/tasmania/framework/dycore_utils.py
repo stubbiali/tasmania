@@ -20,29 +20,26 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from typing import Dict, List, Optional, TYPE_CHECKING
+
+from __future__ import annotations
+from typing import TYPE_CHECKING
 
 from sympl._core.static_operators import StaticComponentOperator
 
-from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
-from tasmania.python.framework.static_checkers import (
-    check_missing_fields,
-    check_properties_are_compatible,
-)
+from tasmania.framework.concurrent_coupling import ConcurrentCoupling
+from tasmania.framework.static_checkers import check_missing_fields, check_properties_are_compatible
 
 if TYPE_CHECKING:
-    from sympl._core.typingx import (
-        DataArrayDict,
-        PropertyDict,
-    )
+    from typing import Optional
 
-    from tasmania.python.framework.dycore import DynamicalCore
-    from tasmania.python.utils.typingx import Component
+    from tasmania.framework.dycore import DynamicalCore
+    from tasmania.utils.typingx import Component
+    from tasmania.utils.typingx import DataArrayDict, PropertyDict
 
 
 class StaticOperator:
     @classmethod
-    def get_input_properties(cls, dycore: "DynamicalCore") -> "PropertyDict":
+    def get_input_properties(cls, dycore: DynamicalCore) -> PropertyDict:
         return_dict = {}
 
         if dycore.fast_tendency_component is None:
@@ -107,7 +104,7 @@ class StaticOperator:
         return return_dict
 
     @classmethod
-    def get_input_tendency_properties(cls, dycore: "DynamicalCore") -> "PropertyDict":
+    def get_input_tendency_properties(cls, dycore: DynamicalCore) -> PropertyDict:
         return_dict = {}
 
         if dycore.fast_tendency_component is None:
@@ -132,7 +129,7 @@ class StaticOperator:
         return return_dict
 
     @classmethod
-    def get_output_properties(cls, dycore: "DynamicalCore") -> "PropertyDict":
+    def get_output_properties(cls, dycore: DynamicalCore) -> PropertyDict:
         return_dict = {}
 
         if dycore.substeps == 0:
@@ -173,7 +170,7 @@ class StaticOperator:
 
     @classmethod
     def wrap_component(
-        cls, dycore: "DynamicalCore", component: Optional["Component"]
+        cls, dycore: DynamicalCore, component: Optional[Component]
     ) -> Optional[ConcurrentCoupling]:
         if component is None:
             return component
@@ -187,7 +184,7 @@ class StaticOperator:
             )
 
     @classmethod
-    def get_ovewrite_tendencies(cls, dycore: "DynamicalCore") -> Dict[str, bool]:
+    def get_ovewrite_tendencies(cls, dycore: DynamicalCore) -> dict[str, bool]:
         fast_tc = dycore.fast_tendency_component
         fast_dc = dycore.fast_diagnostic_component
         if fast_tc is not None and fast_dc is not None:
@@ -199,7 +196,7 @@ class StaticOperator:
 
 class StaticChecker:
     @classmethod
-    def check_fast_tendency_component(cls, dycore: "DynamicalCore") -> None:
+    def check_fast_tendency_component(cls, dycore: DynamicalCore) -> None:
         if dycore.fast_tendency_component is not None and not isinstance(
             dycore.fast_tendency_component, dycore.allowed_tendency_type
         ):
@@ -212,7 +209,7 @@ class StaticChecker:
             )
 
     @classmethod
-    def check_fast_diagnostic_component(cls, dycore: "DynamicalCore") -> None:
+    def check_fast_diagnostic_component(cls, dycore: DynamicalCore) -> None:
         if dycore.fast_diagnostic_component is not None and not isinstance(
             dycore.fast_diagnostic_component, dycore.allowed_diagnostic_type
         ):
@@ -225,7 +222,7 @@ class StaticChecker:
             )
 
     @classmethod
-    def check_superfast_tendency_component(cls, dycore: "DynamicalCore") -> None:
+    def check_superfast_tendency_component(cls, dycore: DynamicalCore) -> None:
         if dycore.substeps > 0:
             if dycore.superfast_tendency_component is not None and not isinstance(
                 dycore.superfast_tendency_component,
@@ -240,7 +237,7 @@ class StaticChecker:
                 )
 
     @classmethod
-    def check_superfast_diagnostic_component(cls, dycore: "DynamicalCore") -> None:
+    def check_superfast_diagnostic_component(cls, dycore: DynamicalCore) -> None:
         if dycore.substeps > 0:
             if dycore.superfast_diagnostic_component is not None and not isinstance(
                 dycore.superfast_diagnostic_component,
@@ -255,7 +252,7 @@ class StaticChecker:
                 )
 
     @classmethod
-    def check01(cls, dycore: "DynamicalCore") -> None:
+    def check01(cls, dycore: DynamicalCore) -> None:
         """
         Variables contained in both ``stage_input_properties`` and
         ``stage_output_properties`` should have compatible properties
@@ -266,7 +263,7 @@ class StaticChecker:
         )
 
     @classmethod
-    def check02(cls, dycore: "DynamicalCore") -> None:
+    def check02(cls, dycore: DynamicalCore) -> None:
         """
         Variables contained in both ``substep_input_properties`` and
         ``substep_output_properties`` should have compatible properties
@@ -280,7 +277,7 @@ class StaticChecker:
         )
 
     @classmethod
-    def check03(cls, dycore: "DynamicalCore") -> None:
+    def check03(cls, dycore: DynamicalCore) -> None:
         """
         Variables contained in both ``stage_input_properties`` and the
         ``input_properties`` dictionary of ``fast_tendency_component``
@@ -295,7 +292,7 @@ class StaticChecker:
             )
 
     @classmethod
-    def check04(cls, dycore: "DynamicalCore") -> None:
+    def check04(cls, dycore: DynamicalCore) -> None:
         """
         Dimensions and units of the variables diagnosed by
         ``fast_tendency_component`` should be compatible with
@@ -310,7 +307,7 @@ class StaticChecker:
             )
 
     @classmethod
-    def check05(cls, dycore: "DynamicalCore") -> None:
+    def check05(cls, dycore: DynamicalCore) -> None:
         """
         Any intermediate tendency calculated by
         ``fast_tendency_component`` should be present in the
@@ -332,7 +329,7 @@ class StaticChecker:
             # )
 
     @classmethod
-    def check06(cls, dycore: "DynamicalCore") -> None:
+    def check06(cls, dycore: DynamicalCore) -> None:
         """
         Dimensions and units of the variables diagnosed by
         ``fast_tendency_component`` should be compatible with
@@ -358,7 +355,7 @@ class StaticChecker:
                 )
 
     @classmethod
-    def check07(cls, dycore: "DynamicalCore") -> None:
+    def check07(cls, dycore: DynamicalCore) -> None:
         """
         Variables diagnosed by ``superfast_tendency_component`` should have
         dimensions and units compatible with those specified in the
@@ -373,7 +370,7 @@ class StaticChecker:
             )
 
     @classmethod
-    def check08(cls, dycore: "DynamicalCore") -> None:
+    def check08(cls, dycore: DynamicalCore) -> None:
         """
         Variables contained in ``stage_output_properties`` for which
         ``superfast_tendency_component`` prescribes a (fast) tendency should
@@ -391,7 +388,7 @@ class StaticChecker:
             )
 
     @classmethod
-    def check09(cls, dycore: "DynamicalCore") -> None:
+    def check09(cls, dycore: DynamicalCore) -> None:
         """
         Any fast tendency calculated by ``superfast_tendency_component``
         should be present in the ``substep_tendency_properties``
@@ -412,7 +409,7 @@ class StaticChecker:
             )
 
     @classmethod
-    def check10(cls, dycore: "DynamicalCore") -> None:
+    def check10(cls, dycore: DynamicalCore) -> None:
         """
         Any variable for which``superfast_tendency_component``
         prescribes a (fast) tendency should be present both in
@@ -448,7 +445,7 @@ class StaticChecker:
             )
 
     @classmethod
-    def check11(cls, dycore: "DynamicalCore") -> None:
+    def check11(cls, dycore: DynamicalCore) -> None:
         """
         Any variable being expected by ``superfast_diagnostic_component``
         should be present in ``substep_output_properties``, with compatible
@@ -469,7 +466,7 @@ class StaticChecker:
             )
 
     @classmethod
-    def check12(cls, dycore: "DynamicalCore") -> None:
+    def check12(cls, dycore: DynamicalCore) -> None:
         """
         Any variable being expected by ``fast_diagnostic_component``
         should be present either in ``stage_output_properties`` or
@@ -490,7 +487,7 @@ class StaticChecker:
             )
 
     @classmethod
-    def check13(cls, dycore: "DynamicalCore") -> None:
+    def check13(cls, dycore: DynamicalCore) -> None:
         """
         ``stage_array_call`` should be able to handle any tendency
         prescribed by ``fast_tendency_component``.
@@ -510,7 +507,7 @@ class StaticChecker:
             )
 
     @classmethod
-    def check(cls, dycore: "DynamicalCore") -> None:
+    def check(cls, dycore: DynamicalCore) -> None:
         cls.check_fast_tendency_component(dycore)
         cls.check_fast_diagnostic_component(dycore)
         cls.check_superfast_tendency_component(dycore)
@@ -531,20 +528,20 @@ class StaticChecker:
 
 
 class DynamicOperator:
-    def __init__(self, dycore: "DynamicalCore"):
+    def __init__(self, dycore: DynamicalCore):
         self.sco = StaticComponentOperator.factory("tendency_properties")
         self.ftc_tp = self.sco.get_properties(dycore.fast_tendency_component)
         self.fdc_tp = self.sco.get_properties(dycore.fast_diagnostic_component)
 
-    def get_ovewrite_tendencies(self, slow_tendencies: "DataArrayDict") -> Dict[str, bool]:
+    def get_ovewrite_tendencies(self, slow_tendencies: DataArrayDict) -> dict[str, bool]:
         out = {
             name: False for name in self.ftc_tp if name in self.fdc_tp or name in slow_tendencies
         }
         return out
 
     def get_fast_and_slow_tendencies(
-        self, coupler: "ConcurrentCoupling", slow_tendencies: "DataArrayDict"
-    ) -> List[str]:
+        self, coupler: ConcurrentCoupling, slow_tendencies: DataArrayDict
+    ) -> list[str]:
         tendency_properties = self.sco.get_properties(coupler)
         out = [key for key in tendency_properties if key in slow_tendencies]
         return out

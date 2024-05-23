@@ -20,11 +20,17 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+
+from __future__ import annotations
 from dataclasses import dataclass, field
 import numpy as np
-from typing import Any, Mapping, Sequence, TYPE_CHECKING, Type, Union
+from numpy.typing import DTypeLike
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+    from typing import Any, Union
+
     from sympl._core.core_components import (
         DiagnosticComponent,
         ImplicitTendencyComponent,
@@ -36,20 +42,18 @@ if TYPE_CHECKING:
         TendencyComponentComposite,
     )
 
-    from tasmania.python.framework.concurrent_coupling import (
-        ConcurrentCoupling,
-    )
+    from tasmania.framework.concurrent_coupling import ConcurrentCoupling
 
 
 @dataclass
 class BackendOptions:
     # gt4py
-    backend_opts: Mapping[str, Any] = None
-    build_info: Mapping[str, Any] = None
+    backend_opts: dict[str, Any] = None
+    build_info: dict[str, Any] = None
     device_sync: bool = True
-    dtypes: Mapping[str, Type] = field(default_factory=dict)
-    exec_info: Mapping[str, Any] = None
-    externals: Mapping[str, Any] = field(default_factory=dict)
+    dtypes: dict[str, DTypeLike] = field(default_factory=dict)
+    exec_info: dict[str, Any] = None
+    externals: dict[str, Any] = field(default_factory=dict)
     rebuild: bool = False
     validate_args: bool = False
     verbose: bool = True
@@ -70,7 +74,7 @@ class BackendOptions:
 @dataclass
 class StorageOptions:
     # generic
-    dtype: Type = np.float64
+    dtype: DTypeLike = np.float64
 
     # gt4py
     aligned_index: Sequence[int] = (0, 0, 0)
@@ -82,13 +86,13 @@ class StorageOptions:
 class TimeIntegrationOptions:
     # mandatory
     component: Union[
-        "DiagnosticComponent",
-        "DiagnosticComponentComposite",
-        "ImplicitTendencyComponent",
-        "ImplicitTendencyComponentComposite",
-        "TendencyComponent",
-        "TendencyComponentComposite",
-        "ConcurrentCoupling",
+        DiagnosticComponent,
+        DiagnosticComponentComposite,
+        ImplicitTendencyComponent,
+        ImplicitTendencyComponentComposite,
+        TendencyComponent,
+        TendencyComponentComposite,
+        ConcurrentCoupling,
     ] = None
 
     # optional
@@ -99,4 +103,4 @@ class TimeIntegrationOptions:
     backend: str = "numpy"
     backend_options: BackendOptions = field(default_factory=BackendOptions)
     storage_options: StorageOptions = field(default_factory=StorageOptions)
-    kwargs: Mapping[str, Any] = field(default_factory=dict)
+    kwargs: dict[str, Any] = field(default_factory=dict)

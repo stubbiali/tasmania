@@ -20,11 +20,13 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+
 import numpy as np
 
-from tasmania.third_party import cupy as cp, gt4py, numba
+from gt4py.cartesian import gtscript
 
-from tasmania.python.framework.stencil import subroutine_definition
+from tasmania.externals import cupy as cp, numba
+from tasmania.framework.stencil import subroutine_definition
 
 
 @subroutine_definition.register(backend="numpy", stencil="absolute")
@@ -57,23 +59,22 @@ if cp:
         return cp.where(phi < 0, -phi, 0)
 
 
-if gt4py:
-    from gt4py import gtscript
+@subroutine_definition.register(backend="gt4py*", stencil="absolute")
+@gtscript.function
+def absolute_gt4py(phi):
+    return phi if phi > 0 else -phi
 
-    @subroutine_definition.register(backend="gt4py*", stencil="absolute")
-    @gtscript.function
-    def absolute_gt4py(phi):
-        return phi if phi > 0 else -phi
 
-    @subroutine_definition.register(backend="gt4py*", stencil="positive")
-    @gtscript.function
-    def positive_gt4py(phi):
-        return phi if phi > 0 else 0
+@subroutine_definition.register(backend="gt4py*", stencil="positive")
+@gtscript.function
+def positive_gt4py(phi):
+    return phi if phi > 0 else 0
 
-    @subroutine_definition.register(backend="gt4py*", stencil="negative")
-    @gtscript.function
-    def negative_gt4py(phi):
-        return -phi if phi < 0 else 0
+
+@subroutine_definition.register(backend="gt4py*", stencil="negative")
+@gtscript.function
+def negative_gt4py(phi):
+    return -phi if phi < 0 else 0
 
 
 if numba:

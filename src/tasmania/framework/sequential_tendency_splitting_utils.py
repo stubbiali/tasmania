@@ -20,22 +20,18 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+
+from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from sympl._core.static_operators import StaticComponentOperator
 
-from tasmania.python.framework.static_checkers import (
-    check_dims_are_compatible,
-    check_units_are_compatible,
-)
-from tasmania.python.framework.static_operators import merge_dims
+from tasmania.framework.static_checkers import check_dims_are_compatible, check_units_are_compatible
+from tasmania.framework.static_operators import merge_dims
 
 if TYPE_CHECKING:
-    from sympl._core.typingx import PropertyDict
-
-    from tasmania.python.framework.sequential_tendency_splitting import (
-        SequentialTendencySplitting,
-    )
+    from tasmania.framework.sequential_tendency_splitting import SequentialTendencySplitting
+    from tasmania.utils.typingx import PropertyDict
 
 
 class StaticOperator:
@@ -50,7 +46,7 @@ class StaticOperator:
         return output_properties is None or len(output_properties) == 0
 
     @classmethod
-    def get_input_properties(cls, splitter: "SequentialTendencySplitting") -> "PropertyDict":
+    def get_input_properties(cls, splitter: SequentialTendencySplitting) -> PropertyDict:
         available = set()
         out = {}
 
@@ -74,8 +70,8 @@ class StaticOperator:
 
     @classmethod
     def get_provisional_input_properties(
-        cls, splitter: "SequentialTendencySplitting"
-    ) -> "PropertyDict":
+        cls, splitter: SequentialTendencySplitting
+    ) -> PropertyDict:
         available = set()
         out = {}
 
@@ -100,7 +96,7 @@ class StaticOperator:
         return out
 
     @classmethod
-    def get_output_properties(cls, splitter: "SequentialTendencySplitting") -> "PropertyDict":
+    def get_output_properties(cls, splitter: SequentialTendencySplitting) -> PropertyDict:
         out = cls.get_input_properties(splitter)
 
         for component in splitter.components:
@@ -118,8 +114,8 @@ class StaticOperator:
 
     @classmethod
     def get_provisional_output_properties(
-        cls, splitter: "SequentialTendencySplitting"
-    ) -> "PropertyDict":
+        cls, splitter: SequentialTendencySplitting
+    ) -> PropertyDict:
         out = cls.get_provisional_input_properties(splitter)
 
         for component in splitter.components:

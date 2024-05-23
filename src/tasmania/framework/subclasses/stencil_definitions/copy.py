@@ -20,9 +20,11 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from tasmania.third_party import gt4py, numba
 
-from tasmania.python.framework.stencil import stencil_definition
+from gt4py.cartesian import gtscript
+
+from tasmania.externals import cupy, numba
+from tasmania.framework.stencil import stencil_definition
 
 
 @stencil_definition.register(backend="numpy", stencil="copy")
@@ -39,23 +41,21 @@ def copychange_numpy(src, dst, *, origin, domain):
     dst[ib:ie, jb:je, kb:ke] = -src[ib:ie, jb:je, kb:ke]
 
 
-if True:  # cupy:
+if cupy:
     stencil_definition.register(copy_numpy, "cupy", "copy")
     stencil_definition.register(copychange_numpy, "cupy", "copychange")
 
 
-if gt4py:
-    from gt4py import gtscript
+@stencil_definition.register(backend="gt4py*", stencil="copy")
+def copy_gt4py(src: gtscript.Field["dtype"], dst: gtscript.Field["dtype"]) -> None:
+    with computation(PARALLEL), interval(...):
+        dst = src
 
-    @stencil_definition.register(backend="gt4py*", stencil="copy")
-    def copy_gt4py(src: gtscript.Field["dtype"], dst: gtscript.Field["dtype"]) -> None:
-        with computation(PARALLEL), interval(...):
-            dst = src
 
-    @stencil_definition.register(backend="gt4py*", stencil="copychange")
-    def copychange_gt4py(src: gtscript.Field["dtype"], dst: gtscript.Field["dtype"]) -> None:
-        with computation(PARALLEL), interval(...):
-            dst = -src
+@stencil_definition.register(backend="gt4py*", stencil="copychange")
+def copychange_gt4py(src: gtscript.Field["dtype"], dst: gtscript.Field["dtype"]) -> None:
+    with computation(PARALLEL), interval(...):
+        dst = -src
 
 
 if numba:

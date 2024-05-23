@@ -20,31 +20,26 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from typing import Optional, TYPE_CHECKING
 
-from sympl._core.composite import (
-    ImplicitTendencyComponentComposite,
-    TendencyComponentComposite,
-)
-from sympl._core.core_components import (
-    ImplicitTendencyComponent,
-    TendencyComponent,
-)
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
+from sympl._core.composite import ImplicitTendencyComponentComposite, TendencyComponentComposite
+from sympl._core.core_components import ImplicitTendencyComponent, TendencyComponent
 from sympl._core.factory import AbstractFactory
 from sympl._core.steppers import (
     SequentialTendencyStepper as SymplSequentialTendencyStepper,
     TendencyStepper as SymplTendencyStepper,
 )
 
-from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
-from tasmania.python.utils import typingx as ty
-from tasmania.python.utils.dict import DataArrayDictOperator
+from tasmania.framework.concurrent_coupling import ConcurrentCoupling
+from tasmania.utils.xarrayx import DataArrayDictOperator
 
 if TYPE_CHECKING:
-    from tasmania.python.framework.options import (
-        BackendOptions,
-        StorageOptions,
-    )
+    from typing import Optional
+
+    from tasmania.framework.options import BackendOptions, StorageOptions
+    from tasmania.utils.typingx import TendencyComponent
 
 
 class TendencyStepper(AbstractFactory, SymplTendencyStepper):
@@ -63,13 +58,13 @@ class TendencyStepper(AbstractFactory, SymplTendencyStepper):
 
     def __init__(
         self,
-        *args: ty.TendencyComponent,
+        *args: TendencyComponent,
         execution_policy: str = "serial",
         enforce_horizontal_boundary: bool = False,
         enable_checks: bool = True,
         backend: str = "numpy",
-        backend_options: Optional["BackendOptions"] = None,
-        storage_options: Optional["StorageOptions"] = None,
+        backend_options: Optional[BackendOptions] = None,
+        storage_options: Optional[StorageOptions] = None,
     ) -> None:
         """
         Parameters
@@ -140,9 +135,7 @@ class TendencyStepper(AbstractFactory, SymplTendencyStepper):
             self._enforce_hb = False
 
         self._dict_op = DataArrayDictOperator(
-            backend=backend,
-            backend_options=backend_options,
-            storage_options=storage_options,
+            backend=backend, backend_options=backend_options, storage_options=storage_options
         )
 
 
@@ -162,13 +155,13 @@ class SequentialTendencyStepper(AbstractFactory, SymplSequentialTendencyStepper)
 
     def __init__(
         self,
-        *args: ty.TendencyComponent,
+        *args: TendencyComponent,
         execution_policy: str = "serial",
         enforce_horizontal_boundary: bool = False,
         enable_checks: bool = True,
         backend: str = "numpy",
-        backend_options: Optional["BackendOptions"] = None,
-        storage_options: Optional["StorageOptions"] = None,
+        backend_options: Optional[BackendOptions] = None,
+        storage_options: Optional[StorageOptions] = None,
     ) -> None:
         """
         Parameters
@@ -239,7 +232,5 @@ class SequentialTendencyStepper(AbstractFactory, SymplSequentialTendencyStepper)
             self._enforce_hb = False
 
         self._dict_op = DataArrayDictOperator(
-            backend=backend,
-            backend_options=backend_options,
-            storage_options=storage_options,
+            backend=backend, backend_options=backend_options, storage_options=storage_options
         )

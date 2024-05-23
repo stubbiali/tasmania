@@ -20,29 +20,25 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+
 import collections
 
-from tasmania.third_party import cupy as cp, gt4py as gt, numba
-
-from tasmania.python.framework.options import BackendOptions
-from tasmania.python.framework.stencil import subroutine_compiler
-from tasmania.python.framework.subclasses.stencil_compilers import (
-    compiler_numpy,
-)
+from tasmania.externals import cupy, numba
+from tasmania.framework.options import BackendOptions
+from tasmania.framework.stencil import subroutine_compiler
+from tasmania.framework.subclasses.stencil_compilers import compiler_numpy
 
 
 subroutine_compiler.register(compiler_numpy, backend="numpy")
 
 
-if cp:
+if cupy:
     subroutine_compiler.register(compiler_numpy, backend="cupy")
 
 
-if gt:
-
-    @subroutine_compiler.register(backend="gt4py*")
-    def compiler_gt4py(definition, *, backend_options=None):
-        return definition
+@subroutine_compiler.register(backend="gt4py*")
+def compiler_gt4py(definition, *, backend_options=None):
+    return definition
 
 
 if numba:

@@ -20,38 +20,33 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from typing import Dict, Mapping, Optional, Sequence, TYPE_CHECKING, Tuple
+
+from __future__ import annotations
+from typing import TYPE_CHECKING
 
 import sympl
 from sympl._core.time import FakeTimer as Timer
 
-# from sympl._core.time import Timer
-
-from tasmania.python.framework.base_components import (
+from tasmania.framework.base_components import (
     DomainComponent,
     PhysicalConstantsComponent,
     GridComponent,
 )
-
-from tasmania.python.framework.stencil import StencilFactory
+from tasmania.framework.stencil import StencilFactory
 
 if TYPE_CHECKING:
-    from sympl._core.typingx import DataArrayDict, NDArrayLike
-    from xarray import DataArray
+    from collections.abc import Sequence
+    from typing import Optional
 
-    from tasmania.python.domain.domain import Domain
-    from tasmania.python.framework.options import (
-        BackendOptions,
-        StorageOptions,
-    )
-    from tasmania.python.utils.typingx import TimeDelta, TripletInt
+    from sympl._core.typingx import DataArray
+
+    from tasmania.domain.domain import Domain
+    from tasmania.framework.options import BackendOptions, StorageOptions
+    from tasmania.utils.typingx import DataArrayDict, NDArray, TimeDelta, TripletInt
 
 
 class DiagnosticComponent(
-    DomainComponent,
-    PhysicalConstantsComponent,
-    StencilFactory,
-    sympl.DiagnosticComponent,
+    DomainComponent, PhysicalConstantsComponent, StencilFactory, sympl.DiagnosticComponent
 ):
     """
     Custom version of :class:`sympl.DiagnosticComponent` which is aware
@@ -59,16 +54,16 @@ class DiagnosticComponent(
     """
 
     def __init__(
-        self: "DiagnosticComponent",
-        domain: "Domain",
+        self,
+        domain: Domain,
         grid_type: str = "numerical",
-        physical_constants: Optional[Mapping[str, "DataArray"]] = None,
+        physical_constants: Optional[dict[str, DataArray]] = None,
         *,
         enable_checks: bool = True,
         backend: Optional[str] = None,
-        backend_options: Optional["BackendOptions"] = None,
+        backend_options: Optional[BackendOptions] = None,
         storage_shape: Optional[Sequence[int]] = None,
-        storage_options: Optional["StorageOptions"] = None,
+        storage_options: Optional[StorageOptions] = None,
     ) -> None:
         """
         Parameters
@@ -98,30 +93,24 @@ class DiagnosticComponent(
         self.storage_shape = self.get_storage_shape(storage_shape)
 
     def __call__(
-        self: "DiagnosticComponent",
-        state: "DataArrayDict",
-        *,
-        out: Optional["DataArrayDict"] = None,
-    ) -> "DataArrayDict":
+        self, state: DataArrayDict, *, out: Optional[DataArrayDict] = None
+    ) -> DataArrayDict:
         Timer.start(label=self.__class__.__name__)
         out = super().__call__(state, out=out)
         Timer.stop()
         return out
 
-    def allocate_diagnostic(self, name: str) -> "NDArrayLike":
+    def allocate_diagnostic(self, name: str) -> NDArray:
         return self.zeros(shape=self.get_field_storage_shape(name))
 
     def get_field_storage_shape(
-        self, name: str, default_storage_shape: Optional["TripletInt"] = None
-    ) -> "TripletInt":
+        self, name: str, default_storage_shape: Optional[TripletInt] = None
+    ) -> TripletInt:
         return super().get_field_storage_shape(name, default_storage_shape or self.storage_shape)
 
 
 class ImplicitTendencyComponent(
-    DomainComponent,
-    PhysicalConstantsComponent,
-    StencilFactory,
-    sympl.ImplicitTendencyComponent,
+    DomainComponent, PhysicalConstantsComponent, StencilFactory, sympl.ImplicitTendencyComponent
 ):
     """
     Customized version of :class:`sympl.ImplicitTendencyComponent` which is
@@ -129,18 +118,18 @@ class ImplicitTendencyComponent(
     """
 
     def __init__(
-        self: "ImplicitTendencyComponent",
-        domain: "Domain",
+        self,
+        domain: Domain,
         grid_type: str = "numerical",
-        physical_constants: Optional[Mapping[str, "DataArray"]] = None,
+        physical_constants: Optional[dict[str, DataArray]] = None,
         tendencies_in_diagnostics: bool = False,
         name: Optional[str] = None,
         *,
         enable_checks: bool = True,
         backend: Optional[str] = None,
-        backend_options: Optional["BackendOptions"] = None,
+        backend_options: Optional[BackendOptions] = None,
         storage_shape: Optional[Sequence[int]] = None,
-        storage_options: Optional["StorageOptions"] = None,
+        storage_options: Optional[StorageOptions] = None,
     ) -> None:
         """
         Parameters
@@ -179,14 +168,14 @@ class ImplicitTendencyComponent(
         self.storage_shape = self.get_storage_shape(storage_shape)
 
     def __call__(
-        self: "ImplicitTendencyComponent",
-        state: "DataArrayDict",
-        timestep: "TimeDelta",
+        self,
+        state: DataArrayDict,
+        timestep: TimeDelta,
         *,
-        out_tendencies: Optional["DataArrayDict"] = None,
-        out_diagnostics: Optional["DataArrayDict"] = None,
-        overwrite_tendencies: Optional[Dict[str, bool]] = None,
-    ) -> Tuple["DataArrayDict", "DataArrayDict"]:
+        out_tendencies: Optional[DataArrayDict] = None,
+        out_diagnostics: Optional[DataArrayDict] = None,
+        overwrite_tendencies: Optional[dict[str, bool]] = None,
+    ) -> tuple[DataArrayDict, DataArrayDict]:
         Timer.start(label=self.__class__.__name__)
         tendencies, diagnostics = super().__call__(
             state,
@@ -198,15 +187,15 @@ class ImplicitTendencyComponent(
         Timer.stop()
         return tendencies, diagnostics
 
-    def allocate_tendency(self, name: str) -> "NDArrayLike":
+    def allocate_tendency(self, name: str) -> NDArray:
         return self.zeros(shape=self.get_field_storage_shape(name))
 
-    def allocate_diagnostic(self, name: str) -> "NDArrayLike":
+    def allocate_diagnostic(self, name: str) -> NDArray:
         return self.zeros(shape=self.get_field_storage_shape(name))
 
     def get_field_storage_shape(
-        self, name: str, default_storage_shape: Optional["TripletInt"] = None
-    ) -> "TripletInt":
+        self, name: str, default_storage_shape: Optional[TripletInt] = None
+    ) -> TripletInt:
         return super().get_field_storage_shape(name, default_storage_shape or self.storage_shape)
 
 
@@ -217,18 +206,18 @@ class Stepper(DomainComponent, PhysicalConstantsComponent, StencilFactory, sympl
     """
 
     def __init__(
-        self: "Stepper",
-        domain: "Domain",
+        self,
+        domain: Domain,
         grid_type: str = "numerical",
-        physical_constants: Optional[Mapping[str, "DataArray"]] = None,
+        physical_constants: Optional[dict[str, DataArray]] = None,
         tendencies_in_diagnostics: bool = False,
         name: Optional[str] = None,
         *,
         enable_checks: bool = True,
         backend: Optional[str] = None,
-        backend_options: Optional["BackendOptions"] = None,
+        backend_options: Optional[BackendOptions] = None,
         storage_shape: Optional[Sequence[int]] = None,
-        storage_options: Optional["StorageOptions"] = None,
+        storage_options: Optional[StorageOptions] = None,
     ) -> None:
         """
         Parameters
@@ -268,10 +257,7 @@ class Stepper(DomainComponent, PhysicalConstantsComponent, StencilFactory, sympl
 
 
 class TendencyComponent(
-    DomainComponent,
-    PhysicalConstantsComponent,
-    StencilFactory,
-    sympl.TendencyComponent,
+    DomainComponent, PhysicalConstantsComponent, StencilFactory, sympl.TendencyComponent
 ):
     """
     Customized version of :class:`sympl.TendencyComponent` which is aware
@@ -279,18 +265,18 @@ class TendencyComponent(
     """
 
     def __init__(
-        self: "TendencyComponent",
-        domain: "Domain",
+        self,
+        domain: Domain,
         grid_type: str = "numerical",
-        physical_constants: Optional[Mapping[str, "DataArray"]] = None,
+        physical_constants: Optional[dict[str, DataArray]] = None,
         tendencies_in_diagnostics: bool = False,
         name: Optional[str] = None,
         *,
         enable_checks: bool = True,
         backend: Optional[str] = None,
-        backend_options: Optional["BackendOptions"] = None,
+        backend_options: Optional[BackendOptions] = None,
         storage_shape: Optional[Sequence[int]] = None,
-        storage_options: Optional["StorageOptions"] = None,
+        storage_options: Optional[StorageOptions] = None,
     ) -> None:
         """
         Parameters
@@ -329,13 +315,13 @@ class TendencyComponent(
         self.storage_shape = self.get_storage_shape(storage_shape)
 
     def __call__(
-        self: "TendencyComponent",
-        state: "DataArrayDict",
+        self,
+        state: DataArrayDict,
         *,
-        out_tendencies: Optional["DataArrayDict"] = None,
-        out_diagnostics: Optional["DataArrayDict"] = None,
-        overwrite_tendencies: Optional[Dict[str, bool]] = None,
-    ) -> Tuple["DataArrayDict", "DataArrayDict"]:
+        out_tendencies: Optional[DataArrayDict] = None,
+        out_diagnostics: Optional[DataArrayDict] = None,
+        overwrite_tendencies: Optional[dict[str, bool]] = None,
+    ) -> tuple[DataArrayDict, DataArrayDict]:
         Timer.start(label=self.__class__.__name__)
         tendencies, diagnostics = super().__call__(
             state,
@@ -346,13 +332,13 @@ class TendencyComponent(
         Timer.stop()
         return tendencies, diagnostics
 
-    def allocate_tendency(self, name: str) -> "NDArrayLike":
+    def allocate_tendency(self, name: str) -> NDArray:
         return self.zeros(shape=self.get_field_storage_shape(name))
 
-    def allocate_diagnostic(self, name: str) -> "NDArrayLike":
+    def allocate_diagnostic(self, name: str) -> NDArray:
         return self.zeros(shape=self.get_field_storage_shape(name))
 
     def get_field_storage_shape(
-        self, name: str, default_storage_shape: Optional["TripletInt"] = None
-    ) -> "TripletInt":
+        self, name: str, default_storage_shape: Optional[TripletInt] = None
+    ) -> TripletInt:
         return super().get_field_storage_shape(name, default_storage_shape or self.storage_shape)

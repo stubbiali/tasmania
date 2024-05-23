@@ -20,37 +20,29 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from typing import Dict, List, Optional, Sequence, TYPE_CHECKING
+
+from __future__ import annotations
+from typing import TYPE_CHECKING
 
 from sympl._core.dynamic_operators import OutflowComponentOperator
 from sympl._core.static_operators import StaticComponentOperator
 
-from tasmania.python.framework._base import (
-    BaseFromTendencyToDiagnostic,
-)
-from tasmania.python.framework.exceptions import (
+from tasmania.framework._base import BaseFromTendencyToDiagnostic
+from tasmania.framework.exceptions import (
     CouplingError,
     IncompatibleDimensionsError,
     IncompatibleUnitsError,
 )
-from tasmania.python.framework.static_checkers import (
-    check_dims_are_compatible,
-    check_units_are_compatible,
-)
-from tasmania.python.framework.static_operators import merge_dims
+from tasmania.framework.static_checkers import check_dims_are_compatible, check_units_are_compatible
+from tasmania.framework.static_operators import merge_dims
 
 if TYPE_CHECKING:
-    from sympl._core.typingx import (
-        DataArrayDict,
-        NDArrayLike,
-        PropertyDict,
-    )
+    from collections.abc import Sequence
+    from typing import Optional
 
-    from tasmania.python.domain.domain import Domain
-    from tasmania.python.framework.concurrent_coupling import (
-        ConcurrentCoupling,
-    )
-    from tasmania.python.utils.typingx import Component
+    from tasmania.domain.domain import Domain
+    from tasmania.framework.concurrent_coupling import ConcurrentCoupling
+    from tasmania.utils.typingx import Component, DataArrayDict, NDArray, PropertyDict
 
 
 class StaticOperator:
@@ -64,21 +56,21 @@ class StaticOperator:
     }
 
     @classmethod
-    def get_input_properties(cls, coupler: "ConcurrentCoupling") -> "PropertyDict":
+    def get_input_properties(cls, coupler: ConcurrentCoupling) -> PropertyDict:
         components = coupler.components
         ignore_diagnostics = coupler.execution_policy == "as_parallel"
         return cls._get_input_properties(components, ignore_diagnostics)
 
     @classmethod
-    def get_diagnostic_properties(cls, coupler: "ConcurrentCoupling") -> "PropertyDict":
+    def get_diagnostic_properties(cls, coupler: ConcurrentCoupling) -> PropertyDict:
         return cls._get_diagnostic_properties(coupler.components)
 
     @classmethod
-    def get_tendency_properties(cls, coupler: "ConcurrentCoupling") -> "PropertyDict":
+    def get_tendency_properties(cls, coupler: ConcurrentCoupling) -> PropertyDict:
         return cls._get_tendency_properties(coupler.components)
 
     @classmethod
-    def get_overwrite_tendencies(cls, coupler: "ConcurrentCoupling") -> List[Dict[str, bool]]:
+    def get_overwrite_tendencies(cls, coupler: ConcurrentCoupling) -> list[dict[str, bool]]:
         tendencies = set()
         out = []
         for component in coupler.components:
@@ -91,7 +83,7 @@ class StaticOperator:
         return out
 
     @classmethod
-    def get_horizontal_boundary(cls, coupler: "ConcurrentCoupling") -> Optional["Domain"]:
+    def get_horizontal_boundary(cls, coupler: ConcurrentCoupling) -> Optional[Domain]:
         for component in coupler.components:
             if hasattr(component, "horizontal_boundary"):
                 return component.horizontal_boundary
@@ -99,8 +91,8 @@ class StaticOperator:
 
     @classmethod
     def _get_input_properties(
-        cls, components: Sequence["Component"], ignore_diagnostics: bool
-    ) -> "PropertyDict":
+        cls, components: Sequence[Component], ignore_diagnostics: bool
+    ) -> PropertyDict:
         available_inputs = set()
         out = {}
 
@@ -128,7 +120,7 @@ class StaticOperator:
         return out
 
     @classmethod
-    def _get_diagnostic_properties(cls, components: Sequence["Component"]) -> "PropertyDict":
+    def _get_diagnostic_properties(cls, components: Sequence[Component]) -> PropertyDict:
         out = {}
 
         for component in components:
@@ -149,7 +141,7 @@ class StaticOperator:
         return out
 
     @classmethod
-    def _get_tendency_properties(cls, components: Sequence["Component"]) -> "PropertyDict":
+    def _get_tendency_properties(cls, components: Sequence[Component]) -> PropertyDict:
         out = {}
 
         for component in components:
@@ -179,7 +171,7 @@ class StaticChecker:
 
     @classmethod
     def check_components_type(
-        cls, coupler: "ConcurrentCoupling", components: Sequence["Component"]
+        cls, coupler: ConcurrentCoupling, components: Sequence[Component]
     ) -> None:
         allowed_types = getattr(coupler, "allowed_component_type", object)
         for component in components:
@@ -190,7 +182,7 @@ class StaticChecker:
                 )
 
     @classmethod
-    def check_input_dims(cls, components: Sequence["Component"], ignore_diagnostics: bool) -> None:
+    def check_input_dims(cls, components: Sequence[Component], ignore_diagnostics: bool) -> None:
         dims = {}
         for component in components:
             input_dims = cls.so.input_operator.get_dims(component)
@@ -223,7 +215,7 @@ class StaticChecker:
                         dims[name] = diagnostic_dims[name]
 
     @classmethod
-    def check_input_units(cls, components: Sequence["Component"], ignore_diagnostics: bool) -> None:
+    def check_input_units(cls, components: Sequence[Component], ignore_diagnostics: bool) -> None:
         units = {}
         for component in components:
             input_properties = cls.so.input_operator.get_properties(component)
@@ -256,7 +248,7 @@ class StaticChecker:
 
     @classmethod
     def check_diagnostic_dims(
-        cls, components: Sequence["Component"], ignore_diagnostics: bool
+        cls, components: Sequence[Component], ignore_diagnostics: bool
     ) -> None:
         input_properties = cls.so._get_input_properties(
             components, ignore_diagnostics=ignore_diagnostics
@@ -290,7 +282,7 @@ class StaticChecker:
 
     @classmethod
     def check_diagnostic_units(
-        cls, components: Sequence["Component"], ignore_diagnostics: bool
+        cls, components: Sequence[Component], ignore_diagnostics: bool
     ) -> None:
         input_properties = cls.so._get_input_properties(
             components, ignore_diagnostics=ignore_diagnostics
@@ -321,9 +313,7 @@ class StaticChecker:
                         )
 
     @classmethod
-    def check_tendency_dims(
-        cls, components: Sequence["Component"], ignore_diagnostics: bool
-    ) -> None:
+    def check_tendency_dims(cls, components: Sequence[Component], ignore_diagnostics: bool) -> None:
         input_properties = cls.so._get_input_properties(components, ignore_diagnostics)
         diagnostic_properties = cls.so._get_diagnostic_properties(components)
         dims = {}
@@ -365,7 +355,7 @@ class StaticChecker:
 
     @classmethod
     def check_tendency_units(
-        cls, components: Sequence["Component"], ignore_diagnostics: bool
+        cls, components: Sequence[Component], ignore_diagnostics: bool
     ) -> None:
         input_properties = cls.so._get_input_properties(
             components, ignore_diagnostics=ignore_diagnostics
@@ -409,7 +399,7 @@ class StaticChecker:
                         )
 
     @classmethod
-    def check_t2d(cls, components: Sequence["Component"]) -> None:
+    def check_t2d(cls, components: Sequence[Component]) -> None:
         tendencies = set()
         for component in components:
             if isinstance(component, BaseFromTendencyToDiagnostic):
@@ -422,7 +412,7 @@ class StaticChecker:
                 tendencies.update(cls.so.tendency_operator.get_properties(component).keys())
 
     @classmethod
-    def check(cls, coupler: "ConcurrentCoupling") -> None:
+    def check(cls, coupler: ConcurrentCoupling) -> None:
         components = coupler.components
         ignore_diagnostics = coupler.execution_policy == "as_parallel"
 
@@ -438,14 +428,14 @@ class StaticChecker:
 class DynamicOperator:
     properties_name: str = None
 
-    def __init__(self, coupler: "ConcurrentCoupling") -> None:
+    def __init__(self, coupler: ConcurrentCoupling) -> None:
         self.coupler = coupler
         self.sco_tendencies = StaticComponentOperator.factory("tendency_properties")
         self.sco_diagnostics = StaticComponentOperator.factory("diagnostic_properties")
         self.dco_tendencies = OutflowComponentOperator.factory("tendency_properties", coupler)
         self.dco_diagnostics = OutflowComponentOperator.factory("diagnostic_properties", coupler)
 
-    def allocate_tendency(self, name: str) -> "NDArrayLike":
+    def allocate_tendency(self, name: str) -> NDArray:
         for component in self.coupler.components:
             tendency_properties = self.sco_tendencies.get_properties(component)
             if name in tendency_properties:
@@ -453,7 +443,7 @@ class DynamicOperator:
                 if allocate_tendency is not None:
                     return allocate_tendency(name)
 
-    def allocate_tendencies(self, state: "DataArrayDict") -> "DataArrayDict":
+    def allocate_tendencies(self, state: DataArrayDict) -> DataArrayDict:
         raw_tendencies = {}
 
         for component in self.coupler.components:
@@ -469,7 +459,7 @@ class DynamicOperator:
 
         return tendencies
 
-    def allocate_diagnostic(self, name: str) -> "NDArrayLike":
+    def allocate_diagnostic(self, name: str) -> NDArray:
         for component in self.coupler.components:
             diagnostic_properties = self.sco_diagnostics.get_properties(component)
             if name in diagnostic_properties:
@@ -477,7 +467,7 @@ class DynamicOperator:
                 if allocate_diagnostic is not None:
                     return allocate_diagnostic(name)
 
-    def allocate_diagnostics(self, state: "DataArrayDict") -> "DataArrayDict":
+    def allocate_diagnostics(self, state: DataArrayDict) -> DataArrayDict:
         raw_diagnostics = {}
 
         for component in self.coupler.components:
@@ -493,7 +483,7 @@ class DynamicOperator:
 
         return diagnostics
 
-    def allocate_internal_diagnostics(self, state: "DataArrayDict") -> "DataArrayDict":
+    def allocate_internal_diagnostics(self, state: DataArrayDict) -> DataArrayDict:
         occurrences = {}
         raw_internal_diagnostics = {}
 
@@ -521,8 +511,8 @@ class DynamicOperator:
 
     def set_out_diagnostics(
         self,
-        state: "DataArrayDict",
-        out_diagnostics: "DataArrayDict",
-        internal_diagnostics: Optional["DataArrayDict"],
-    ) -> Sequence["DataArrayDict"]:
+        state: DataArrayDict,
+        out_diagnostics: DataArrayDict,
+        internal_diagnostics: Optional[DataArrayDict],
+    ) -> Sequence[DataArrayDict]:
         pass

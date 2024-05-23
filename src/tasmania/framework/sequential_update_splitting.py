@@ -20,6 +20,8 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+
+from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from sympl._core.composite import (
@@ -33,23 +35,18 @@ from sympl._core.core_components import (
     TendencyComponent,
 )
 
-from tasmania.python.framework.composite import (
+from tasmania.framework.composite import (
     DiagnosticComponentComposite as TasmaniaDiagnosticComponentComposite,
 )
-from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
-from tasmania.python.framework.sequential_update_splitting_utils import (
-    StaticOperator,
-)
-from tasmania.python.framework.static_checkers import (
-    check_properties_are_compatible,
-)
-from tasmania.python.framework.steppers import TendencyStepper
-from tasmania.python.utils import typingx
-from tasmania.python.utils.dict import DataArrayDictOperator
+from tasmania.framework.concurrent_coupling import ConcurrentCoupling
+from tasmania.framework.sequential_update_splitting_utils import StaticOperator
+from tasmania.framework.static_checkers import check_properties_are_compatible
+from tasmania.framework.steppers import TendencyStepper
+from tasmania.utils.xarrayx import DataArrayDictOperator
 
 if TYPE_CHECKING:
-    from sympl._core.typingx import DataArrayDict
-    from tasmania.python.framework.options import TimeIntegrationOptions
+    from tasmania.framework.options import TimeIntegrationOptions
+    from tasmania.utils.typingx import DataArrayDict, TimeDelta
 
 
 class SequentialUpdateSplitting:
@@ -91,7 +88,7 @@ class SequentialUpdateSplitting:
     )
     allowed_component_type = allowed_diagnostic_type + allowed_tendency_type
 
-    def __init__(self, *args: "TimeIntegrationOptions") -> None:
+    def __init__(self, *args: TimeIntegrationOptions) -> None:
         """
         Parameters
         ----------
@@ -144,11 +141,7 @@ class SequentialUpdateSplitting:
     def components(self):
         return tuple(self._component_list)
 
-    def __call__(
-        self,
-        state: "DataArrayDict",
-        timestep: typingx.TimeDelta,
-    ) -> None:
+    def __call__(self, state: DataArrayDict, timestep: TimeDelta) -> None:
         """
         Advance the model state one timestep forward in time by pursuing
         the parallel splitting method.

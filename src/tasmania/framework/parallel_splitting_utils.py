@@ -20,20 +20,21 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from typing import Callable, Optional, TYPE_CHECKING
+
+from __future__ import annotations
+from typing import TYPE_CHECKING
 
 from sympl._core.static_operators import StaticComponentOperator
 
-from tasmania.python.framework.static_checkers import (
-    check_dims_are_compatible,
-    check_units_are_compatible,
-)
-from tasmania.python.framework.static_operators import merge_dims
+from tasmania.framework.static_checkers import check_dims_are_compatible, check_units_are_compatible
+from tasmania.framework.static_operators import merge_dims
 
 if TYPE_CHECKING:
-    from sympl._core.typingx import Component, PropertyDict
+    from collections.abc import Callable
+    from typing import Optional
 
-    from tasmania.python.framework.parallel_splitting import ParallelSplitting
+    from tasmania.framework.parallel_splitting import ParallelSplitting
+    from tasmania.utils.typingx import Component, PropertyDict
 
 
 class StaticOperator:
@@ -42,7 +43,7 @@ class StaticOperator:
     output_operator = StaticComponentOperator.factory("output_properties")
 
     @classmethod
-    def get_input_properties(cls, splitter: "ParallelSplitting") -> "PropertyDict":
+    def get_input_properties(cls, splitter: ParallelSplitting) -> PropertyDict:
         available = set()
         out = {}
 
@@ -80,7 +81,7 @@ class StaticOperator:
         return out
 
     @classmethod
-    def get_provisional_input_properties(cls, splitter: "ParallelSplitting") -> "PropertyDict":
+    def get_provisional_input_properties(cls, splitter: ParallelSplitting) -> PropertyDict:
         available = set()
         out = {}
 
@@ -118,7 +119,7 @@ class StaticOperator:
         return out
 
     @classmethod
-    def get_output_properties(cls, splitter: "ParallelSplitting") -> "PropertyDict":
+    def get_output_properties(cls, splitter: ParallelSplitting) -> PropertyDict:
         out = cls.get_input_properties(splitter)
 
         for component in splitter.components:
@@ -132,7 +133,7 @@ class StaticOperator:
         return out
 
     @classmethod
-    def get_provisional_output_properties(cls, splitter: "ParallelSplitting") -> "PropertyDict":
+    def get_provisional_output_properties(cls, splitter: ParallelSplitting) -> PropertyDict:
         out = cls.get_provisional_input_properties(splitter)
 
         for component in splitter.components:
@@ -153,7 +154,7 @@ class ProvisionalInputStaticComponentOperator(StaticComponentOperator):
     properties_name = "provisional_input_properties"
 
     @classmethod
-    def get_allocator(cls, component: "Component") -> Optional[Callable]:
+    def get_allocator(cls, component: Component) -> Optional[Callable]:
         return None
 
 
@@ -162,5 +163,5 @@ class ProvisionalOutputStaticComponentOperator(StaticComponentOperator):
     properties_name = "provisional_output_properties"
 
     @classmethod
-    def get_allocator(cls, component: "Component") -> Optional[Callable]:
+    def get_allocator(cls, component: Component) -> Optional[Callable]:
         return None
