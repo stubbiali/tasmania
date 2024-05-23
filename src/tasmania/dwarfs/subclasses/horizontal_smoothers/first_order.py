@@ -20,12 +20,12 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+
+from gt4py.cartesian import gtscript
 from sympl._core.time import Timer
 
-from gt4py import gtscript
-
-from tasmania.python.framework.tag import stencil_definition
-from tasmania.python.dwarfs.horizontal_smoothing import HorizontalSmoothing
+from tasmania.framework.tag import stencil_definition
+from tasmania.dwarfs.horizontal_smoothing import HorizontalSmoothing
 
 
 class FirstOrder(HorizontalSmoothing):

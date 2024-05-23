@@ -20,27 +20,25 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-import numpy as np
-from typing import Optional, TYPE_CHECKING
 
+from __future__ import annotations
+import numpy as np
+from typing import TYPE_CHECKING
+
+from gt4py.cartesian import gtscript
 from sympl._core.time import Timer
 
-from gt4py import gtscript
-
-from tasmania.python.framework.base_components import GridComponent
-from tasmania.python.framework.stencil import StencilFactory
-from tasmania.python.framework.tag import stencil_definition
-from tasmania.python.utils.gtscript import positive
+from tasmania.framework.base_components import GridComponent
+from tasmania.framework.stencil import StencilFactory
+from tasmania.framework.tag import stencil_definition
+from tasmania.utils.gtscriptx import positive
 
 if TYPE_CHECKING:
-    from sympl._core.typingx import NDArrayLike
+    from typing import Optional
 
-    from tasmania.python.domain.grid import Grid
-    from tasmania.python.framework.options import (
-        BackendOptions,
-        StorageOptions,
-    )
-    from tasmania.python.utils.typingx import TripletInt
+    from tasmania.domain.grid import Grid
+    from tasmania.framework.options import BackendOptions, StorageOptions
+    from tasmania.utils.typingx import NDArray, TripletInt
 
 
 class HorizontalVelocity(GridComponent, StencilFactory):
@@ -51,13 +49,13 @@ class HorizontalVelocity(GridComponent, StencilFactory):
     """
 
     def __init__(
-        self: "HorizontalVelocity",
-        grid: "Grid",
+        self,
+        grid: Grid,
         staggering: bool = True,
         *,
         backend: str = "numpy",
-        backend_options: Optional["BackendOptions"] = None,
-        storage_options: Optional["StorageOptions"] = None,
+        backend_options: Optional[BackendOptions] = None,
+        storage_options: Optional[StorageOptions] = None,
     ) -> None:
         """
         Parameters
@@ -89,14 +87,7 @@ class HorizontalVelocity(GridComponent, StencilFactory):
         self._stencil_diagnosing_velocity_x = self.compile_stencil("velocity_x")
         self._stencil_diagnosing_velocity_y = self.compile_stencil("velocity_y")
 
-    def get_momenta(
-        self: "HorizontalVelocity",
-        d: "NDArrayLike",
-        u: "NDArrayLike",
-        v: "NDArrayLike",
-        du: "NDArrayLike",
-        dv: "NDArrayLike",
-    ) -> None:
+    def get_momenta(self, d: NDArray, u: NDArray, v: NDArray, du: NDArray, dv: NDArray) -> None:
         """
         Diagnose the horizontal momenta.
 
@@ -132,12 +123,7 @@ class HorizontalVelocity(GridComponent, StencilFactory):
         Timer.stop()
 
     def get_velocity_components(
-        self: "HorizontalVelocity",
-        d: "NDArrayLike",
-        du: "NDArrayLike",
-        dv: "NDArrayLike",
-        u: "NDArrayLike",
-        v: "NDArrayLike",
+        self, d: NDArray, du: NDArray, dv: NDArray, u: NDArray, v: NDArray
     ) -> None:
         """
         Diagnose the horizontal velocity components.
@@ -195,8 +181,8 @@ class HorizontalVelocity(GridComponent, StencilFactory):
         out_du: np.ndarray,
         out_dv: np.ndarray,
         *,
-        origin: "TripletInt",
-        domain: "TripletInt",
+        origin: TripletInt,
+        domain: TripletInt,
     ) -> None:
         i = slice(origin[0], origin[0] + domain[0])
         ip1 = slice(origin[0] + 1, origin[0] + domain[0] + 1)
@@ -223,7 +209,7 @@ class HorizontalVelocity(GridComponent, StencilFactory):
         from __externals__ import staggering
 
         with computation(PARALLEL), interval(...):
-            if __INLINED(staggering):  # compile-time if
+            if staggering:
                 out_du = 0.5 * in_d[0, 0, 0] * (in_u[0, 0, 0] + in_u[1, 0, 0])
                 out_dv = 0.5 * in_d[0, 0, 0] * (in_v[0, 0, 0] + in_v[0, 1, 0])
             else:
@@ -237,8 +223,8 @@ class HorizontalVelocity(GridComponent, StencilFactory):
         in_du: np.ndarray,
         out_u: np.ndarray,
         *,
-        origin: "TripletInt",
-        domain: "TripletInt",
+        origin: TripletInt,
+        domain: TripletInt,
     ) -> None:
         i = slice(origin[0], origin[0] + domain[0])
         im1 = slice(origin[0] - 1, origin[0] + domain[0] - 1)
@@ -260,7 +246,7 @@ class HorizontalVelocity(GridComponent, StencilFactory):
         from __externals__ import staggering
 
         with computation(PARALLEL), interval(...):
-            if __INLINED(staggering):  # compile-time if
+            if staggering:
                 out_u = (in_du[-1, 0, 0] + in_du[0, 0, 0]) / (in_d[-1, 0, 0] + in_d[0, 0, 0])
             else:
                 out_u = in_du / in_d
@@ -272,8 +258,8 @@ class HorizontalVelocity(GridComponent, StencilFactory):
         in_dv: np.ndarray,
         out_v: np.ndarray,
         *,
-        origin: "TripletInt",
-        domain: "TripletInt",
+        origin: TripletInt,
+        domain: TripletInt,
     ) -> None:
         i = slice(origin[0], origin[0] + domain[0])
         j = slice(origin[1], origin[1] + domain[1])
@@ -295,7 +281,7 @@ class HorizontalVelocity(GridComponent, StencilFactory):
         from __externals__ import staggering
 
         with computation(PARALLEL), interval(...):
-            if __INLINED(staggering):  # compile-time if
+            if staggering:
                 out_v = (in_dv[0, -1, 0] + in_dv[0, 0, 0]) / (in_d[0, -1, 0] + in_d[0, 0, 0])
             else:
                 out_v = in_dv / in_d
@@ -309,13 +295,13 @@ class WaterConstituent(GridComponent, StencilFactory):
     """
 
     def __init__(
-        self: "WaterConstituent",
-        grid: "Grid",
+        self,
+        grid: Grid,
         clipping: bool = False,
         *,
         backend: str = "numpy",
-        backend_options: Optional["BackendOptions"] = None,
-        storage_options: Optional["StorageOptions"] = None,
+        backend_options: Optional[BackendOptions] = None,
+        storage_options: Optional[StorageOptions] = None,
     ) -> None:
         """
         Parameters
@@ -348,12 +334,7 @@ class WaterConstituent(GridComponent, StencilFactory):
         self._stencil_diagnosing_density = self.compile_stencil("density")
         self._stencil_diagnosing_mass_fraction = self.compile_stencil("mass_fraction")
 
-    def get_density_of_water_constituent(
-        self: "WaterConstituent",
-        d: "NDArrayLike",
-        q: "NDArrayLike",
-        dq: "NDArrayLike",
-    ) -> None:
+    def get_density_of_water_constituent(self, d: NDArray, q: NDArray, dq: NDArray) -> None:
         """
         Diagnose the density of a water constituent.
 
@@ -384,10 +365,7 @@ class WaterConstituent(GridComponent, StencilFactory):
         Timer.stop()
 
     def get_mass_fraction_of_water_constituent_in_air(
-        self: "WaterConstituent",
-        d: "NDArrayLike",
-        dq: "NDArrayLike",
-        q: "NDArrayLike",
+        self, d: NDArray, dq: NDArray, q: NDArray
     ) -> None:
         """
         Diagnose the mass fraction of a water constituent.
@@ -426,8 +404,8 @@ class WaterConstituent(GridComponent, StencilFactory):
         in_q: np.ndarray,
         out_dq: np.ndarray,
         *,
-        origin: "TripletInt",
-        domain: "TripletInt",
+        origin: TripletInt,
+        domain: TripletInt,
     ) -> None:
         i = slice(origin[0], origin[0] + domain[0])
         j = slice(origin[1], origin[1] + domain[1])
@@ -447,7 +425,7 @@ class WaterConstituent(GridComponent, StencilFactory):
         from __externals__ import clipping, positive
 
         with computation(PARALLEL), interval(...):
-            if __INLINED(clipping):  # compile-time if
+            if clipping:
                 tmp_dq = in_d * in_q
                 out_dq = positive(tmp_dq)
             else:
@@ -460,8 +438,8 @@ class WaterConstituent(GridComponent, StencilFactory):
         in_dq: np.ndarray,
         out_q: np.ndarray,
         *,
-        origin: "TripletInt",
-        domain: "TripletInt",
+        origin: TripletInt,
+        domain: TripletInt,
     ) -> None:
         i = slice(origin[0], origin[0] + domain[0])
         j = slice(origin[1], origin[1] + domain[1])
@@ -481,7 +459,7 @@ class WaterConstituent(GridComponent, StencilFactory):
         from __externals__ import clipping, positive
 
         with computation(PARALLEL), interval(...):
-            if __INLINED(clipping):  # compile-time if
+            if clipping:
                 tmp_q = in_dq / in_d
                 out_q = positive(tmp_q)
             else:

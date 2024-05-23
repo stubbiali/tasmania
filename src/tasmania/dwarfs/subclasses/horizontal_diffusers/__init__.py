@@ -20,5 +20,5 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from .second_order import SecondOrder, SecondOrder1DX, SecondOrder1DY
-from .fourth_order import FourthOrder, FourthOrder1DX, FourthOrder1DY
+
+from tasmania.dwarfs.subclasses.horizontal_diffusers import fourth_order, second_order

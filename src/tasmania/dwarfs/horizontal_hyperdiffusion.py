@@ -20,26 +20,24 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+
+from __future__ import annotations
 import abc
 import math
 import numpy as np
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
-from gt4py import gtscript
+from gt4py.cartesian import gtscript
 
-from tasmania.python.framework.register import factorize
-from tasmania.python.framework.stencil import StencilFactory
-from tasmania.python.framework.tag import (
-    stencil_definition,
-    subroutine_definition,
-)
-from tasmania.python.utils import typingx as ty
+from tasmania.framework.register import factorize
+from tasmania.framework.stencil import StencilFactory
+from tasmania.framework.tag import stencil_definition, subroutine_definition
 
 if TYPE_CHECKING:
-    from tasmania.python.framework.options import (
-        BackendOptions,
-        StorageOptions,
-    )
+    from typing import Optional
+
+    from tasmania.framework.options import BackendOptions, StorageOptions
+    from tasmania.utils.typingx import GTField, NDArray, TripletInt
 
 
 class HorizontalHyperDiffusion(StencilFactory, abc.ABC):
@@ -48,8 +46,8 @@ class HorizontalHyperDiffusion(StencilFactory, abc.ABC):
     registry = {}
 
     def __init__(
-        self: "HorizontalHyperDiffusion",
-        shape: ty.TripletInt,
+        self,
+        shape: TripletInt,
         dx: float,
         dy: float,
         diffusion_coeff: float,
@@ -57,8 +55,8 @@ class HorizontalHyperDiffusion(StencilFactory, abc.ABC):
         diffusion_damp_depth: int,
         nb: int,
         backend: str,
-        backend_options: "BackendOptions",
-        storage_options: "StorageOptions",
+        backend_options: BackendOptions,
+        storage_options: StorageOptions,
     ) -> None:
         """
         Parameters
@@ -117,7 +115,7 @@ class HorizontalHyperDiffusion(StencilFactory, abc.ABC):
         self._stencil = self.compile_stencil("hyperdiffusion")
 
     @abc.abstractmethod
-    def __call__(self, phi: ty.Storage, phi_tnd: ty.Storage) -> None:
+    def __call__(self, phi: NDArray, phi_tnd: NDArray) -> None:
         """Calculate the tendency.
 
         Parameters
@@ -131,7 +129,7 @@ class HorizontalHyperDiffusion(StencilFactory, abc.ABC):
     @staticmethod
     def factory(
         diffusion_type: str,
-        shape: ty.TripletInt,
+        shape: TripletInt,
         dx: float,
         dy: float,
         diffusion_coeff: float,
@@ -140,9 +138,9 @@ class HorizontalHyperDiffusion(StencilFactory, abc.ABC):
         nb: Optional[int] = None,
         *,
         backend: str = "numpy",
-        backend_options: Optional["BackendOptions"] = None,
-        storage_options: Optional["StorageOptions"] = None,
-    ) -> "HorizontalHyperDiffusion":
+        backend_options: Optional[BackendOptions] = None,
+        storage_options: Optional[StorageOptions] = None,
+    ) -> HorizontalHyperDiffusion:
         """
         Static method returning an instance of the derived class
         calculating the tendency due to horizontal hyper-diffusion of type
@@ -215,8 +213,8 @@ class HorizontalHyperDiffusion(StencilFactory, abc.ABC):
         *,
         dx: float,
         dy: float,
-        origin: ty.TripletInt,
-        domain: ty.TripletInt,
+        origin: TripletInt,
+        domain: TripletInt,
     ) -> None:
         pass
 
@@ -256,21 +254,21 @@ class HorizontalHyperDiffusion(StencilFactory, abc.ABC):
     @staticmethod
     @subroutine_definition(backend="gt4py*", stencil="laplacian_x")
     @gtscript.function
-    def stage_laplacian_x(dx: float, phi: ty.GTField) -> ty.GTField:
+    def stage_laplacian_x(dx: float, phi: GTField) -> GTField:
         lap = (phi[-1, 0, 0] - 2.0 * phi[0, 0, 0] + phi[1, 0, 0]) / (dx * dx)
         return lap
 
     @staticmethod
     @subroutine_definition(backend="gt4py*", stencil="laplacian_y")
     @gtscript.function
-    def stage_laplacian_y(dy: float, phi: ty.GTField) -> ty.GTField:
+    def stage_laplacian_y(dy: float, phi: GTField) -> GTField:
         lap = (phi[0, -1, 0] - 2.0 * phi[0, 0, 0] + phi[0, 1, 0]) / (dy * dy)
         return lap
 
     @staticmethod
     @subroutine_definition(backend="gt4py*", stencil="laplacian")
     @gtscript.function
-    def stage_laplacian(dx: float, dy: float, phi: ty.GTField) -> ty.GTField:
+    def stage_laplacian(dx: float, dy: float, phi: GTField) -> GTField:
         lap = (phi[-1, 0, 0] - 2.0 * phi[0, 0, 0] + phi[1, 0, 0]) / (dx * dx) + (
             phi[0, -1, 0] - 2.0 * phi[0, 0, 0] + phi[0, 1, 0]
         ) / (dy * dy)

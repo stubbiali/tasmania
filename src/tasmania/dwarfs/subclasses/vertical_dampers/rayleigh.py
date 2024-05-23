@@ -20,13 +20,13 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+
+from gt4py.cartesian import gtscript
 from sympl._core.data_array import DataArray
 from sympl._core.time import Timer
 
-from gt4py import gtscript
-
-from tasmania.python.dwarfs.vertical_damping import VerticalDamping
-from tasmania.python.framework.tag import stencil_definition
+from tasmania.dwarfs.vertical_damping import VerticalDamping
+from tasmania.framework.tag import stencil_definition
 
 
 class Rayleigh(VerticalDamping):

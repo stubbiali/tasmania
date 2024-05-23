@@ -20,41 +20,37 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+
+from __future__ import annotations
 import abc
 import math
 import numpy as np
 from typing import TYPE_CHECKING
 
+from gt4py.cartesian import gtscript
 from sympl._core.factory import AbstractFactory
 
-from gt4py import gtscript
-
-from tasmania.python.framework.stencil import StencilFactory
-from tasmania.python.framework.tag import stencil_definition
+from tasmania.framework.stencil import StencilFactory
+from tasmania.framework.tag import stencil_definition
 
 if TYPE_CHECKING:
-    from sympl._core.typingx import NDArrayLike
-
-    from tasmania.python.framework.options import (
-        BackendOptions,
-        StorageOptions,
-    )
-    from tasmania.python.utils.typingx import TripletInt
+    from tasmania.framework.options import BackendOptions, StorageOptions
+    from tasmania.utils.typingx import NDArray, TripletInt
 
 
 class HorizontalSmoothing(AbstractFactory, StencilFactory):
     """Apply horizontal numerical smoothing to a generic (prognostic) field."""
 
     def __init__(
-        self: "HorizontalSmoothing",
-        shape: "TripletInt",
+        self,
+        shape: TripletInt,
         smooth_coeff: float,
         smooth_coeff_max: float,
         smooth_damp_depth: int,
         nb: int,
         backend: str,
-        backend_options: "BackendOptions",
-        storage_options: "StorageOptions",
+        backend_options: BackendOptions,
+        storage_options: StorageOptions,
     ) -> None:
         """
         Parameters
@@ -103,7 +99,7 @@ class HorizontalSmoothing(AbstractFactory, StencilFactory):
         self._stencil_copy = self.compile_stencil("copy")
 
     @abc.abstractmethod
-    def __call__(self, phi: "NDArrayLike", phi_out: "NDArrayLike") -> None:
+    def __call__(self, phi: NDArray, phi_out: NDArray) -> None:
         """Apply horizontal smoothing to a prognostic field.
 
         Parameters
@@ -122,8 +118,8 @@ class HorizontalSmoothing(AbstractFactory, StencilFactory):
         in_gamma: np.ndarray,
         out_phi: np.ndarray,
         *,
-        origin: "TripletInt",
-        domain: "TripletInt",
+        origin: TripletInt,
+        domain: TripletInt,
     ) -> None:
         pass
 

@@ -20,34 +20,30 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+
+from __future__ import annotations
 import abc
 import math
 import numpy as np
 from typing import TYPE_CHECKING
 
+from gt4py.cartesian import gtscript
 from sympl._core.factory import AbstractFactory
 
-from gt4py import gtscript
-
-from tasmania.python.framework.stencil import StencilFactory
-from tasmania.python.framework.tag import stencil_definition
+from tasmania.framework.stencil import StencilFactory
+from tasmania.framework.tag import stencil_definition
 
 if TYPE_CHECKING:
-    from sympl._core.typingx import NDArrayLike
-
-    from tasmania.python.framework.options import (
-        BackendOptions,
-        StorageOptions,
-    )
-    from tasmania.python.utils.typingx import TripletInt
+    from tasmania.framework.options import BackendOptions, StorageOptions
+    from tasmania.utils.typingx import NDArray, TripletInt
 
 
 class HorizontalDiffusion(AbstractFactory, StencilFactory):
     """Calculate the tendency due to horizontal diffusion."""
 
     def __init__(
-        self: "HorizontalDiffusion",
-        shape: "TripletInt",
+        self,
+        shape: TripletInt,
         dx: float,
         dy: float,
         diffusion_coeff: float,
@@ -55,8 +51,8 @@ class HorizontalDiffusion(AbstractFactory, StencilFactory):
         diffusion_damp_depth: int,
         nb: int,
         backend: str,
-        backend_options: "BackendOptions",
-        storage_options: "StorageOptions",
+        backend_options: BackendOptions,
+        storage_options: StorageOptions,
     ) -> None:
         """
         Parameters
@@ -114,9 +110,9 @@ class HorizontalDiffusion(AbstractFactory, StencilFactory):
 
     @abc.abstractmethod
     def __call__(
-        self: "HorizontalDiffusion",
-        phi: "NDArrayLike",
-        phi_tnd: "NDArrayLike",
+        self,
+        phi: NDArray,
+        phi_tnd: NDArray,
         *,
         overwrite_output: bool = True,
     ) -> None:
@@ -143,8 +139,8 @@ class HorizontalDiffusion(AbstractFactory, StencilFactory):
         dx: float,
         dy: float,
         ow_out_phi: bool,
-        origin: "TripletInt",
-        domain: "TripletInt",
+        origin: TripletInt,
+        domain: TripletInt,
     ) -> None:
         pass
 
@@ -173,21 +169,7 @@ class HorizontalDiffusion(AbstractFactory, StencilFactory):
         dx: float,
         dy: float,
         ow_out_phi: bool,
-        origin: "TripletInt",
-        domain: "TripletInt",
+        origin: TripletInt,
+        domain: TripletInt,
     ) -> None:
         pass
-
-    # @staticmethod
-    # @stencil_definition(backend="taichi:*", stencil="diffusion")
-    # @abc.abstractmethod
-    # def _diffusion_taichi(
-    #     in_phi: "taichi.template()",
-    #     in_gamma: "taichi.template()",
-    #     out_phi: "taichi.template()",
-    #     dx: float,
-    #     dy: float,
-    #     origin: taz_types.triplet_int_t,
-    #     domain: taz_types.triplet_int_t,
-    # ) -> None:
-    #     pass

@@ -20,4 +20,5 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from tasmania.python.dwarfs import subclasses
+
+from tasmania.dwarfs import subclasses

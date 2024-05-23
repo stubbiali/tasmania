@@ -20,7 +20,8 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from tasmania.python.dwarfs.subclasses import (
+
+from tasmania.dwarfs.subclasses import (
     horizontal_diffusers,
     horizontal_hyperdiffusers,
     horizontal_smoothers,

@@ -20,6 +20,5 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from .first_order import FirstOrder, FirstOrder1DX, FirstOrder1DY
-from .second_order import SecondOrder, SecondOrder1DX, SecondOrder1DY
-from .third_order import ThirdOrder, ThirdOrder1DX, ThirdOrder1DY
+
+from tasmania.dwarfs.subclasses.horizontal_smoothers import first_order, second_order, third_order

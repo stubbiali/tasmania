@@ -20,29 +20,27 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+
+from __future__ import annotations
 import abc
 import math
 import numpy as np
-from typing import Sequence, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
+from gt4py.cartesian import gtscript
 from sympl._core.factory import AbstractFactory
 
-from gt4py import gtscript
-
-from tasmania.python.framework.base_components import GridComponent
-from tasmania.python.framework.stencil import StencilFactory
-from tasmania.python.framework.tag import stencil_definition
-from tasmania.python.utils.utils import greater_or_equal_than as ge
+from tasmania.framework.base_components import GridComponent
+from tasmania.framework.stencil import StencilFactory
+from tasmania.framework.tag import stencil_definition
+from tasmania.utils.utils import greater_or_equal_than as ge
 
 if TYPE_CHECKING:
-    from sympl._core.typingx import NDArrayLike
+    from collections.abc import Sequence
 
-    from tasmania.python.domain.grid import Grid
-    from tasmania.python.framework.options import (
-        BackendOptions,
-        StorageOptions,
-    )
-    from tasmania.python.utils.typingx import TimeDelta, TripletInt
+    from tasmania.domain.grid import Grid
+    from tasmania.framework.options import BackendOptions, StorageOptions
+    from tasmania.utils.typingx import NDArray, TimeDelta, TripletInt
 
 
 class VerticalDamping(AbstractFactory, GridComponent, StencilFactory):
@@ -52,15 +50,15 @@ class VerticalDamping(AbstractFactory, GridComponent, StencilFactory):
     """
 
     def __init__(
-        self: "VerticalDamping",
-        grid: "Grid",
+        self,
+        grid: Grid,
         damp_depth: int,
         damp_coeff_max: float,
         time_units: str,
         backend: str,
-        backend_options: "BackendOptions",
+        backend_options: BackendOptions,
         storage_shape: Sequence[int],
-        storage_options: "StorageOptions",
+        storage_options: StorageOptions,
     ) -> None:
         """
         Parameters
@@ -119,12 +117,12 @@ class VerticalDamping(AbstractFactory, GridComponent, StencilFactory):
 
     @abc.abstractmethod
     def __call__(
-        self: "VerticalDamping",
-        dt: "TimeDelta",
-        field_now: "NDArrayLike",
-        field_new: "NDArrayLike",
-        field_ref: "NDArrayLike",
-        field_out: "NDArrayLike",
+        self,
+        dt: TimeDelta,
+        field_now: NDArray,
+        field_new: NDArray,
+        field_ref: NDArray,
+        field_out: NDArray,
     ) -> None:
         """Apply vertical damping to a generic field.
 
@@ -157,8 +155,8 @@ class VerticalDamping(AbstractFactory, GridComponent, StencilFactory):
         out_phi: np.ndarray,
         *,
         dt: float,
-        origin: "TripletInt",
-        domain: "TripletInt",
+        origin: TripletInt,
+        domain: TripletInt,
     ) -> None:
         pass
 

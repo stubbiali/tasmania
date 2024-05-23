@@ -20,14 +20,13 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-import numba
 
+from gt4py.cartesian import gtscript
 from sympl._core.time import Timer
 
-from gt4py import gtscript
-
-from tasmania.python.dwarfs.horizontal_diffusion import HorizontalDiffusion
-from tasmania.python.framework.tag import stencil_definition
+from tasmania.dwarfs.horizontal_diffusion import HorizontalDiffusion
+from tasmania.externals import numba
+from tasmania.framework.tag import stencil_definition
 
 
 class SecondOrder(HorizontalDiffusion):
@@ -146,31 +145,6 @@ class SecondOrder(HorizontalDiffusion):
             dy,
         )
         set_output(out_phi[ib:ie, jb:je, kb:ke], tmp, ow_out_phi)
-
-    # @staticmethod
-    # @stencil_definition(backend="taichi:*", stencil="diffusion")
-    # def _diffusion_taichi(
-    #     in_phi: "taichi.template()",
-    #     in_gamma: "taichi.template()",
-    #     out_phi: "taichi.template()",
-    #     dx: float,
-    #     dy: float,
-    # ) -> None:
-    #     with computation(PARALLEL), interval(...):
-    #         out_phi = in_gamma[0, 0, 0] * (
-    #             (
-    #                 in_phi[-1, 0, 0]
-    #                 - 2.0 * in_phi[0, 0, 0]
-    #                 + in_phi[1, 0, 0]
-    #             )
-    #             / (dx * dx)
-    #             + (
-    #                 in_phi[0, -1, 0]
-    #                 - 2.0 * in_phi[0, 0, 0]
-    #                 + in_phi[0, 1, 0]
-    #             )
-    #             / (dy * dy)
-    #         )
 
 
 class SecondOrder1DX(HorizontalDiffusion):
