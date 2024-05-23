@@ -50,7 +50,6 @@ class BackendOptions:
     # gt4py
     backend_opts: dict[str, Any] = None
     build_info: dict[str, Any] = None
-    device_sync: bool = True
     dtypes: dict[str, DTypeLike] = field(default_factory=dict)
     exec_info: dict[str, Any] = None
     externals: dict[str, Any] = field(default_factory=dict)
