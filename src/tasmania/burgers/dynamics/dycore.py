@@ -20,36 +20,35 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from typing import Optional, TYPE_CHECKING
 
-from tasmania.python.burgers.dynamics.stepper import BurgersStepper
-from tasmania.python.framework.dycore import DynamicalCore
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
+from tasmania.burgers.dynamics.stepper import BurgersStepper
+from tasmania.framework.dycore import DynamicalCore
 
 if TYPE_CHECKING:
-    from sympl._core.typingx import Component, NDArrayLikeDict, PropertyDict
+    from typing import Optional
 
-    from tasmania.python.framework.options import (
-        BackendOptions,
-        StorageOptions,
-    )
-    from tasmania.python.domain.domain import Domain
-    from tasmania.python.utils.typingx import TimeDelta
+    from tasmania.framework.options import BackendOptions, StorageOptions
+    from tasmania.domain.domain import Domain
+    from tasmania.utils.typingx import Component, NDArrayDict, PropertyDict, TimeDelta
 
 
 class BurgersDynamicalCore(DynamicalCore):
     """The dynamical core for the inviscid 2-D Burgers equations."""
 
     def __init__(
-        self: "BurgersDynamicalCore",
-        domain: "Domain",
-        fast_tendency_component: Optional["Component"] = None,
+        self,
+        domain: Domain,
+        fast_tendency_component: Optional[Component] = None,
         time_integration_scheme: str = "forward_euler",
         flux_scheme: str = "upwind",
         *,
         enable_checks: bool = True,
         backend: str = "numpy",
-        backend_options: Optional["BackendOptions"] = None,
-        storage_options: Optional["StorageOptions"] = None,
+        backend_options: Optional[BackendOptions] = None,
+        storage_options: Optional[StorageOptions] = None,
     ) -> None:
         """
         Parameters
@@ -111,7 +110,7 @@ class BurgersDynamicalCore(DynamicalCore):
         )
 
     @property
-    def stage_input_properties(self) -> "PropertyDict":
+    def stage_input_properties(self) -> PropertyDict:
         g = self.grid
         dims = (g.grid_xy.x.dims[0], g.grid_xy.y.dims[0], g.z.dims[0])
         return {
@@ -120,11 +119,11 @@ class BurgersDynamicalCore(DynamicalCore):
         }
 
     @property
-    def substep_input_properties(self) -> "PropertyDict":
+    def substep_input_properties(self) -> PropertyDict:
         return {}
 
     @property
-    def stage_tendency_properties(self) -> "PropertyDict":
+    def stage_tendency_properties(self) -> PropertyDict:
         g = self.grid
         dims = (g.grid_xy.x.dims[0], g.grid_xy.y.dims[0], g.z.dims[0])
         return {
@@ -133,11 +132,11 @@ class BurgersDynamicalCore(DynamicalCore):
         }
 
     @property
-    def substep_tendency_properties(self) -> "PropertyDict":
+    def substep_tendency_properties(self) -> PropertyDict:
         return {}
 
     @property
-    def stage_output_properties(self) -> "PropertyDict":
+    def stage_output_properties(self) -> PropertyDict:
         g = self.grid
         dims = (g.grid_xy.x.dims[0], g.grid_xy.y.dims[0], g.z.dims[0])
         return {
@@ -146,7 +145,7 @@ class BurgersDynamicalCore(DynamicalCore):
         }
 
     @property
-    def substep_output_properties(self) -> "PropertyDict":
+    def substep_output_properties(self) -> PropertyDict:
         return {}
 
     @property
@@ -159,10 +158,10 @@ class BurgersDynamicalCore(DynamicalCore):
     def stage_array_call(
         self,
         stage: int,
-        state: "NDArrayLikeDict",
-        tendencies: "NDArrayLikeDict",
-        timestep: "TimeDelta",
-        out_state: "NDArrayLikeDict",
+        state: NDArrayDict,
+        tendencies: NDArrayDict,
+        timestep: TimeDelta,
+        out_state: NDArrayDict,
     ) -> None:
         self._stepper(stage, state, tendencies, timestep, out_state)
         self.horizontal_boundary.enforce_raw(
@@ -177,10 +176,10 @@ class BurgersDynamicalCore(DynamicalCore):
         self,
         stage: int,
         substep: int,
-        raw_state: "NDArrayLikeDict",
-        raw_stage_state: "NDArrayLikeDict",
-        raw_tmp_state: "NDArrayLikeDict",
-        raw_tendencies: "NDArrayLikeDict",
-        timestep: "TimeDelta",
+        raw_state: NDArrayDict,
+        raw_stage_state: NDArrayDict,
+        raw_tmp_state: NDArrayDict,
+        raw_tendencies: NDArrayDict,
+        timestep: TimeDelta,
     ):
         raise NotImplementedError()

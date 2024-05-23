@@ -20,16 +20,20 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+
+from __future__ import annotations
 import abc
 import numpy as np
-from typing import Tuple
+from typing import TYPE_CHECKING
 
-from gt4py import gtscript
+from gt4py.cartesian import gtscript
 
-from tasmania.python.framework.register import factorize
-from tasmania.python.framework.stencil import StencilFactory
-from tasmania.python.framework.tag import subroutine_definition
-from tasmania.python.utils import typingx
+from tasmania.framework.register import factorize
+from tasmania.framework.stencil import StencilFactory
+from tasmania.framework.tag import subroutine_definition
+
+if TYPE_CHECKING:
+    from tasmania.utils.typingx import GTField
 
 
 class BurgersAdvection(StencilFactory, abc.ABC):
@@ -44,7 +48,7 @@ class BurgersAdvection(StencilFactory, abc.ABC):
     @abc.abstractmethod
     def call_numpy(
         dx: float, dy: float, u: np.ndarray, v: np.ndarray
-    ) -> "Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]":
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Compute the accelerations due to advection.
 
         Vanilla NumPy implementation.
@@ -77,8 +81,8 @@ class BurgersAdvection(StencilFactory, abc.ABC):
     @gtscript.function
     @abc.abstractmethod
     def call_gt4py(
-        dx: float, dy: float, u: typingx.GTField, v: typingx.GTField
-    ) -> "Tuple[typingx.GTField, typingx.GTField, typingx.GTField, typingx.GTField]":
+        dx: float, dy: float, u: GTField, v: GTField
+    ) -> tuple[GTField, GTField, GTField, GTField]:
         """
         Compute the accelerations due to advection. GT4Py-based implementation.
 
@@ -110,9 +114,9 @@ class BurgersAdvection(StencilFactory, abc.ABC):
     @abc.abstractmethod
     def call_numba_cpu(
         dx: float, dy: float, u: np.ndarray, v: np.ndarray
-    ) -> "Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]":
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         pass
 
     @staticmethod
-    def factory(flux_scheme: str, backend: str) -> "BurgersAdvection":
+    def factory(flux_scheme: str, backend: str) -> BurgersAdvection:
         return factorize(flux_scheme, BurgersAdvection, (backend,))

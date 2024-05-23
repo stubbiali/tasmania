@@ -20,28 +20,26 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+
+from __future__ import annotations
 import abc
-import numba
 import numpy as np
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
-from gt4py import gtscript
+from gt4py.cartesian import gtscript
 
-from tasmania.python.burgers.dynamics.advection import BurgersAdvection
-from tasmania.python.framework.register import factorize
-from tasmania.python.framework.stencil import StencilFactory
-from tasmania.python.framework.tag import stencil_definition
-from tasmania.python.utils import typingx as ty
+from tasmania.burgers.dynamics.advection import BurgersAdvection
+from tasmania.externals import numba
+from tasmania.framework.register import factorize
+from tasmania.framework.stencil import StencilFactory
+from tasmania.framework.tag import stencil_definition
 
 if TYPE_CHECKING:
-    from sympl._core.typingx import NDArrayLikeDict
+    from typing import Optional
 
-    from tasmania.python.domain.horizontal_grid import HorizontalGrid
-    from tasmania.python.framework.options import (
-        BackendOptions,
-        StorageOptions,
-    )
-    from tasmania.python.utils.typingx import TimeDelta
+    from tasmania.domain.horizontal_grid import HorizontalGrid
+    from tasmania.framework.options import BackendOptions, StorageOptions
+    from tasmania.utils.typingx import NDArrayDict, TimeDelta, TripletInt
 
 
 class BurgersStepper(StencilFactory, abc.ABC):
@@ -53,13 +51,13 @@ class BurgersStepper(StencilFactory, abc.ABC):
     registry = {}
 
     def __init__(
-        self: "BurgersStepper",
-        grid_xy: "HorizontalGrid",
+        self,
+        grid_xy: HorizontalGrid,
         nb: int,
         flux_scheme: str,
         backend: str,
-        backend_options: "BackendOptions",
-        storage_options: "StorageOptions",
+        backend_options: BackendOptions,
+        storage_options: StorageOptions,
     ) -> None:
         """
         Parameters
@@ -87,7 +85,7 @@ class BurgersStepper(StencilFactory, abc.ABC):
 
     @property
     @abc.abstractmethod
-    def stages(self: "BurgersStepper") -> int:
+    def stages(self) -> int:
         """
         Returns
         -------
@@ -97,12 +95,12 @@ class BurgersStepper(StencilFactory, abc.ABC):
 
     @abc.abstractmethod
     def __call__(
-        self: "BurgersStepper",
+        self,
         stage: int,
-        state: "NDArrayLikeDict",
-        tendencies: "NDArrayLikeDict",
-        timestep: "TimeDelta",
-        out_state: "NDArrayLikeDict",
+        state: NDArrayDict,
+        tendencies: NDArrayDict,
+        timestep: TimeDelta,
+        out_state: NDArrayDict,
     ) -> None:
         """
         Performing a stage of the time integrator.
@@ -133,13 +131,13 @@ class BurgersStepper(StencilFactory, abc.ABC):
     @staticmethod
     def factory(
         time_integration_scheme: str,
-        grid_xy: "HorizontalGrid",
+        grid_xy: HorizontalGrid,
         nb: int,
         flux_scheme: str,
         *,
         backend: str = "numpy",
-        backend_options: Optional["BackendOptions"] = None,
-        storage_options: Optional["StorageOptions"] = None,
+        backend_options: Optional[BackendOptions] = None,
+        storage_options: Optional[StorageOptions] = None,
     ) -> "BurgersStepper":
         """
         Parameters
@@ -175,7 +173,7 @@ class BurgersStepper(StencilFactory, abc.ABC):
         )
         return factorize(time_integration_scheme, BurgersStepper, args)
 
-    def _stencil_initialize(self: "BurgersStepper", tendencies: ty.StorageDict) -> None:
+    def _stencil_initialize(self, tendencies: NDArrayDict) -> None:
         self._stencil_args = {}
         dtype = self.storage_options.dtype
         self.backend_options.dtypes = {"dtype": dtype}
@@ -202,8 +200,8 @@ class BurgersStepper(StencilFactory, abc.ABC):
         dt: float,
         dx: float,
         dy: float,
-        origin: ty.TripletInt,
-        domain: ty.TripletInt,
+        origin: TripletInt,
+        domain: TripletInt,
     ) -> None:
         istart, istop = origin[0], origin[0] + domain[0]
         i = slice(istart, istop)
@@ -218,12 +216,12 @@ class BurgersStepper(StencilFactory, abc.ABC):
             dx=dx, dy=dy, u=in_u_tmp[iext, jext, k], v=in_v_tmp[iext, jext, k]
         )
 
-        if tnd_u:
+        if in_u_tnd:
             out_u[i, j, k] = in_u[i, j, k] - dt * (adv_u_x + adv_u_y - in_u_tnd[i, j, k])
         else:
             out_u[i, j, k] = in_u[i, j, k] - dt * (adv_u_x + adv_u_y)
 
-        if tnd_v:
+        if in_v_tnd:
             out_v[i, j, k] = in_v[i, j, k] - dt * (adv_v_x + adv_v_y - in_v_tnd[i, j, k])
         else:
             out_v[i, j, k] = in_v[i, j, k] - dt * (adv_v_x + adv_v_y)
@@ -249,87 +247,89 @@ class BurgersStepper(StencilFactory, abc.ABC):
         with computation(PARALLEL), interval(...):
             adv_u_x, adv_u_y, adv_v_x, adv_v_y = advection(dx=dx, dy=dy, u=in_u_tmp, v=in_v_tmp)
 
-            if __INLINED(tnd_u):
+            if tnd_u:
                 out_u = in_u[0, 0, 0] - dt * (
                     adv_u_x[0, 0, 0] + adv_u_y[0, 0, 0] - in_u_tnd[0, 0, 0]
                 )
             else:
                 out_u = in_u[0, 0, 0] - dt * (adv_u_x[0, 0, 0] + adv_u_y[0, 0, 0])
 
-            if __INLINED(tnd_v):
+            if tnd_v:
                 out_v = in_v[0, 0, 0] - dt * (
                     adv_v_x[0, 0, 0] + adv_v_y[0, 0, 0] - in_v_tnd[0, 0, 0]
                 )
             else:
                 out_v = in_v[0, 0, 0] - dt * (adv_v_x[0, 0, 0] + adv_v_y[0, 0, 0])
 
-    @staticmethod
-    @stencil_definition(backend="numba:cpu:stencil", stencil="forward_euler")
-    def _forward_euler_numba_cpu(
-        in_u: np.ndarray,
-        in_v: np.ndarray,
-        in_u_tmp: np.ndarray,
-        in_v_tmp: np.ndarray,
-        out_u: np.ndarray,
-        out_v: np.ndarray,
-        in_u_tnd: Optional[np.ndarray] = None,
-        in_v_tnd: Optional[np.ndarray] = None,
-        *,
-        dt: float,
-        dx: float,
-        dy: float,
-        origin: ty.TripletInt,
-        domain: ty.TripletInt,
-    ) -> None:
-        # >>> stencil definitions
-        def step_def(phi, adv_x, adv_y, dt):
-            return phi[0, 0, 0] - dt * (adv_x[0, 0, 0] + adv_y[0, 0, 0])
+    if numba:
 
-        def step_tnd_def(phi, adv_x, adv_y, tnd, dt):
-            return phi[0, 0, 0] - dt * (adv_x[0, 0, 0] + adv_y[0, 0, 0] - tnd[0, 0, 0])
+        @staticmethod
+        @stencil_definition(backend="numba:cpu:stencil", stencil="forward_euler")
+        def _forward_euler_numba_cpu(
+            in_u: np.ndarray,
+            in_v: np.ndarray,
+            in_u_tmp: np.ndarray,
+            in_v_tmp: np.ndarray,
+            out_u: np.ndarray,
+            out_v: np.ndarray,
+            in_u_tnd: Optional[np.ndarray] = None,
+            in_v_tnd: Optional[np.ndarray] = None,
+            *,
+            dt: float,
+            dx: float,
+            dy: float,
+            origin: TripletInt,
+            domain: TripletInt,
+        ) -> None:
+            # >>> stencil definitions
+            def step_def(phi, adv_x, adv_y, dt):
+                return phi[0, 0, 0] - dt * (adv_x[0, 0, 0] + adv_y[0, 0, 0])
 
-        # >>> stencil compilations
-        step = numba.stencil(step_def)
-        step_tnd = numba.stencil(step_tnd_def)
+            def step_tnd_def(phi, adv_x, adv_y, tnd, dt):
+                return phi[0, 0, 0] - dt * (adv_x[0, 0, 0] + adv_y[0, 0, 0] - tnd[0, 0, 0])
 
-        # >>> calculations
-        ib, jb, kb = origin
-        ie, je, ke = ib + domain[0], jb + domain[1], kb + domain[2]
+            # >>> stencil compilations
+            step = numba.stencil(step_def)
+            step_tnd = numba.stencil(step_tnd_def)
 
-        adv_u_x, adv_u_y, adv_v_x, adv_v_y = advection(dx=dx, dy=dy, u=in_u_tmp, v=in_v_tmp)
+            # >>> calculations
+            ib, jb, kb = origin
+            ie, je, ke = ib + domain[0], jb + domain[1], kb + domain[2]
 
-        if tnd_u:
-            step_tnd(
-                in_u[ib:ie, jb:je, kb:ke],
-                adv_u_x[ib:ie, jb:je, kb:ke],
-                adv_u_y[ib:ie, jb:je, kb:ke],
-                in_u_tnd[ib:ie, jb:je, kb:ke],
-                dt,
-                out=out_u[ib:ie, jb:je, kb:ke],
-            )
-        else:
-            step(
-                in_u[ib:ie, jb:je, kb:ke],
-                adv_u_x[ib:ie, jb:je, kb:ke],
-                adv_u_y[ib:ie, jb:je, kb:ke],
-                dt,
-                out=out_u[ib:ie, jb:je, kb:ke],
-            )
+            adv_u_x, adv_u_y, adv_v_x, adv_v_y = advection(dx=dx, dy=dy, u=in_u_tmp, v=in_v_tmp)
 
-        if tnd_v:
-            step_tnd(
-                in_v[ib:ie, jb:je, kb:ke],
-                adv_v_x[ib:ie, jb:je, kb:ke],
-                adv_v_y[ib:ie, jb:je, kb:ke],
-                in_v_tnd[ib:ie, jb:je, kb:ke],
-                dt,
-                out=out_v[ib:ie, jb:je, kb:ke],
-            )
-        else:
-            step(
-                in_v[ib:ie, jb:je, kb:ke],
-                adv_v_x[ib:ie, jb:je, kb:ke],
-                adv_v_y[ib:ie, jb:je, kb:ke],
-                dt,
-                out=out_v[ib:ie, jb:je, kb:ke],
-            )
+            if in_u_tnd:
+                step_tnd(
+                    in_u[ib:ie, jb:je, kb:ke],
+                    adv_u_x[ib:ie, jb:je, kb:ke],
+                    adv_u_y[ib:ie, jb:je, kb:ke],
+                    in_u_tnd[ib:ie, jb:je, kb:ke],
+                    dt,
+                    out=out_u[ib:ie, jb:je, kb:ke],
+                )
+            else:
+                step(
+                    in_u[ib:ie, jb:je, kb:ke],
+                    adv_u_x[ib:ie, jb:je, kb:ke],
+                    adv_u_y[ib:ie, jb:je, kb:ke],
+                    dt,
+                    out=out_u[ib:ie, jb:je, kb:ke],
+                )
+
+            if in_v_tnd:
+                step_tnd(
+                    in_v[ib:ie, jb:je, kb:ke],
+                    adv_v_x[ib:ie, jb:je, kb:ke],
+                    adv_v_y[ib:ie, jb:je, kb:ke],
+                    in_v_tnd[ib:ie, jb:je, kb:ke],
+                    dt,
+                    out=out_v[ib:ie, jb:je, kb:ke],
+                )
+            else:
+                step(
+                    in_v[ib:ie, jb:je, kb:ke],
+                    adv_v_x[ib:ie, jb:je, kb:ke],
+                    adv_v_y[ib:ie, jb:je, kb:ke],
+                    dt,
+                    out=out_v[ib:ie, jb:je, kb:ke],
+                )

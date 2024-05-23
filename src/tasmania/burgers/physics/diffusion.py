@@ -20,21 +20,21 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from typing import Dict, Optional, TYPE_CHECKING
+
+from __future__ import annotations
+from typing import TYPE_CHECKING
 
 from sympl import DataArray
 
-from tasmania.python.dwarfs.horizontal_diffusion import HorizontalDiffusion
-from tasmania.python.framework.core_components import TendencyComponent
+from tasmania.dwarfs.horizontal_diffusion import HorizontalDiffusion
+from tasmania.framework.core_components import TendencyComponent
 
 if TYPE_CHECKING:
-    from sympl._core.typingx import NDArrayLikeDict, PropertyDict
+    from typing import Optional
 
-    from tasmania.python.domain.domain import Domain
-    from tasmania.python.framework.options import (
-        BackendOptions,
-        StorageOptions,
-    )
+    from tasmania.domain.domain import Domain
+    from tasmania.framework.options import BackendOptions, StorageOptions
+    from tasmania.utils.typingx import NDArrayDict, PropertyDict
 
 
 class BurgersHorizontalDiffusion(TendencyComponent):
@@ -45,15 +45,15 @@ class BurgersHorizontalDiffusion(TendencyComponent):
 
     def __init__(
         self,
-        domain: "Domain",
+        domain: Domain,
         grid_type: str,
         diffusion_type: str,
         diffusion_coeff: DataArray,
         *,
         enable_checks: bool = True,
         backend: str = "numpy",
-        backend_options: Optional["BackendOptions"] = None,
-        storage_options: Optional["StorageOptions"] = None,
+        backend_options: Optional[BackendOptions] = None,
+        storage_options: Optional[StorageOptions] = None,
         **kwargs,
     ) -> None:
         """
@@ -110,7 +110,7 @@ class BurgersHorizontalDiffusion(TendencyComponent):
         )
 
     @property
-    def input_properties(self) -> "PropertyDict":
+    def input_properties(self) -> PropertyDict:
         g = self.grid
         dims = (g.grid_xy.x.dims[0], g.grid_xy.y.dims[0], g.z.dims[0])
         return {
@@ -119,7 +119,7 @@ class BurgersHorizontalDiffusion(TendencyComponent):
         }
 
     @property
-    def tendency_properties(self) -> "PropertyDict":
+    def tendency_properties(self) -> PropertyDict:
         g = self.grid
         dims = (g.grid_xy.x.dims[0], g.grid_xy.y.dims[0], g.z.dims[0])
         return {
@@ -128,15 +128,15 @@ class BurgersHorizontalDiffusion(TendencyComponent):
         }
 
     @property
-    def diagnostic_properties(self) -> "PropertyDict":
+    def diagnostic_properties(self) -> PropertyDict:
         return {}
 
     def array_call(
         self,
-        state: "NDArrayLikeDict",
-        out_tendencies: "NDArrayLikeDict",
-        out_diagnostics: "NDArrayLikeDict",
-        overwrite_tendencies: Dict[str, bool],
+        state: NDArrayDict,
+        out_tendencies: NDArrayDict,
+        out_diagnostics: NDArrayDict,
+        overwrite_tendencies: dict[str, bool],
     ) -> None:
         self._diffuser(
             state["x_velocity"],

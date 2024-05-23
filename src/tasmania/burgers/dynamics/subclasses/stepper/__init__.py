@@ -20,6 +20,5 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from .forward_euler import *
-from .rk2 import *
-from .rk3ws import *
+
+from tasmania.burgers.dynamics.subclasses.stepper import forward_euler, rk2, rk3ws

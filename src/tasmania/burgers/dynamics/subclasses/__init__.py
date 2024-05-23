@@ -20,4 +20,4 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from tasmania.python.burgers.dynamics.subclasses import advection, stepper
+from tasmania.burgers.dynamics.subclasses import advection, stepper

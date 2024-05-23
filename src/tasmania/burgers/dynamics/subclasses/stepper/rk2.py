@@ -20,26 +20,16 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+
 from sympl._core.time import Timer
 
-from tasmania.python.burgers.dynamics.stepper import BurgersStepper
-from tasmania.python.framework.register import register
+from tasmania.burgers.dynamics.stepper import BurgersStepper
+from tasmania.framework.register import register
 
 
 @register("rk2")
 class RK2(BurgersStepper):
     """A two-stages Runge-Kutta time integrator."""
-
-    def __init__(
-        self,
-        grid_xy,
-        nb,
-        flux_scheme,
-        backend,
-        backend_options,
-        storage_options,
-    ):
-        super().__init__(grid_xy, nb, flux_scheme, backend, backend_options, storage_options)
 
     @property
     def stages(self):

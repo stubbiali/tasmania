@@ -20,24 +20,29 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+
+from __future__ import annotations
 import numpy as np
 import pint
-from sympl import DataArray
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
-from tasmania.python.framework.options import StorageOptions
-from tasmania.python.framework.stencil import StencilFactory
-from tasmania.python.utils import typingx as ty
-from tasmania.python.utils.storage import get_dataarray_3d
+from tasmania.framework.stencil import StencilFactory
+from tasmania.utils.storage import get_dataarray_3d
 
 if TYPE_CHECKING:
-    from tasmania.python.domain.grid import Grid
+    from typing import Optional
+
+    from sympl import DataArray
+
+    from tasmania.domain.grid import Grid
+    from tasmania.framework.options import StorageOptions
+    from tasmania.utils.typingx import DataArrayDict, Datetime, NDArray
 
 
 class ZhaoSolutionFactory:
     """Factory of valid velocity fields for the Zhao test case."""
 
-    def __init__(self, initial_time: ty.Datetime, eps: DataArray) -> None:
+    def __init__(self, initial_time: Datetime, eps: DataArray) -> None:
         """
         Parameters
         ----------
@@ -53,13 +58,13 @@ class ZhaoSolutionFactory:
 
     def __call__(
         self,
-        time: ty.Datetime,
-        grid: "Grid",
+        time: Datetime,
+        grid: Grid,
         slice_x: Optional[slice] = None,
         slice_y: Optional[slice] = None,
         field_name: str = "x_velocity",
         field_units: Optional[str] = None,
-    ) -> np.ndarray:
+    ) -> NDArray:
         """
         Parameters
         ----------
@@ -152,11 +157,11 @@ class ZhaoStateFactory(StencilFactory):
 
     def __init__(
         self,
-        initial_time: ty.Datetime,
+        initial_time: Datetime,
         eps: DataArray,
         *,
         backend: str = "numpy",
-        storage_options: Optional["StorageOptions"] = None,
+        storage_options: Optional[StorageOptions] = None,
     ) -> None:
         """
         Parameters
@@ -174,7 +179,7 @@ class ZhaoStateFactory(StencilFactory):
         super().__init__(backend=backend, storage_options=storage_options)
         self._solution_factory = ZhaoSolutionFactory(initial_time, eps)
 
-    def __call__(self, time: ty.Datetime, grid: "Grid") -> ty.DataArrayDict:
+    def __call__(self, time: Datetime, grid: Grid) -> DataArrayDict:
         """
         Parameters
         ----------

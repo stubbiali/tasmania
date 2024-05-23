@@ -20,9 +20,12 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from .fifth_order import *
-from .first_order import *
-from .fourth_order import *
-from .second_order import *
-from .sixth_order import *
-from .third_order import *
+
+from tasmania.burgers.dynamics.subclasses.advection import (
+    fifth_order,
+    first_order,
+    fourth_order,
+    second_order,
+    sixth_order,
+    third_order,
+)

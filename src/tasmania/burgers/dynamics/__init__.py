@@ -20,4 +20,5 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from tasmania.python.burgers.dynamics import subclasses
+
+from tasmania.burgers.dynamics import subclasses
