@@ -23,6 +23,7 @@
 
 from __future__ import annotations
 from collections import UserDict, abc
+from collections.abc import Sequence
 import itertools
 import re
 from typing import TYPE_CHECKING
@@ -31,7 +32,8 @@ from tasmania.framework import protocol as prt
 from tasmania.utils.exceptions import ProtocolError
 
 if TYPE_CHECKING:
-    from typing import Any, Callable, Optional, Sequence, Union
+    from collections.abc import Callable
+    from typing import Any, Optional, Union
 
 
 class Registry(UserDict):

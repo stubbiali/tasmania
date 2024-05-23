@@ -24,16 +24,12 @@
 from __future__ import annotations
 from functools import singledispatch
 import numpy as np
-from typing import TYPE_CHECKING
+from typing import Optional
 
 from tasmania.externals import cupy as cp, numba
 from tasmania.framework.allocators import as_storage
 from tasmania.framework.options import StorageOptions
-
-if TYPE_CHECKING:
-    from typing import Optional
-
-    from tasmania.utils.typingx import NDArray
+from tasmania.utils.typingx import NDArray
 
 
 @as_storage.register(backend="numpy")

@@ -24,7 +24,7 @@
 from __future__ import annotations
 from functools import singledispatch
 import numpy as np
-from typing import TYPE_CHECKING
+from typing import Optional
 
 from gt4py import storage as gt_storage
 
@@ -32,11 +32,7 @@ from tasmania.externals import cupy as cp
 from tasmania.framework.allocators import as_storage
 from tasmania.framework.options import StorageOptions
 from tasmania.utils.gt4pyx import get_gt_backend
-
-if TYPE_CHECKING:
-    from typing import Optional
-
-    from tasmania.utils.typingx import NDArray
+from tasmania.utils.typingx import NDArray
 
 
 @as_storage.register(backend="gt4py*")
