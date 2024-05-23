@@ -1,5 +1,0 @@
-stencil: 0.000 s
-copy: 0.000 s
-compute_time: 6.946 s
-|- stencil: 4.743 s
-|- copy: 0.003 s

@@ -1,4 +1,0 @@
-{
-  "config_coarse": "config/isentropic_prognostic/rmsd_precipitation/ssus_diag_1.json",
-  "config_fine": "config/isentropic_prognostic/rmsd_precipitation/ssus_diag_2.json"
-}
