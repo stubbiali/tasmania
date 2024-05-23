@@ -94,46 +94,44 @@ class ThirdOrder(BurgersAdvection):
 
         return adv_u_x, adv_u_y, adv_v_x, adv_v_y
 
-    if numba:
+    @staticmethod
+    @subroutine_definition(backend="numba:cpu:stencil", stencil="advection")
+    def call_numba_cpu(dx, dy, u, v):
+        # >>> stencil definitions
+        def absolute_def(phi):
+            return phi[0, 0, 0] if phi[0, 0, 0] > 0 else -phi[0, 0, 0]
 
-        @staticmethod
-        @subroutine_definition(backend="numba:cpu:stencil", stencil="advection")
-        def call_numba_cpu(dx, dy, u, v):
-            # >>> stencil definitions
-            def absolute_def(phi):
-                return phi[0, 0, 0] if phi[0, 0, 0] > 0 else -phi[0, 0, 0]
+        def advection_x_def(u, abs_u, phi, dx):
+            return u[0, 0, 0] / (12.0 * dx) * (
+                8.0 * (phi[+1, 0, 0] - phi[-1, 0, 0]) - (phi[+2, 0, 0] - phi[-2, 0, 0])
+            ) + abs_u[0, 0, 0] / (12.0 * dx) * (
+                phi[+2, 0, 0]
+                + phi[-2, 0, 0]
+                - 4.0 * (phi[+1, 0, 0] + phi[-1, 0, 0])
+                + 6.0 * phi[0, 0, 0]
+            )
 
-            def advection_x_def(u, abs_u, phi, dx):
-                return u[0, 0, 0] / (12.0 * dx) * (
-                    8.0 * (phi[+1, 0, 0] - phi[-1, 0, 0]) - (phi[+2, 0, 0] - phi[-2, 0, 0])
-                ) + abs_u[0, 0, 0] / (12.0 * dx) * (
-                    phi[+2, 0, 0]
-                    + phi[-2, 0, 0]
-                    - 4.0 * (phi[+1, 0, 0] + phi[-1, 0, 0])
-                    + 6.0 * phi[0, 0, 0]
-                )
+        def advection_y_def(v, abs_v, phi, dy):
+            return v[0, 0, 0] / (12.0 * dy) * (
+                8.0 * (phi[0, +1, 0] - phi[0, -1, 0]) - (phi[0, +2, 0] - phi[0, -2, 0])
+            ) + abs_v[0, 0, 0] / (12.0 * dy) * (
+                phi[0, +2, 0]
+                + phi[0, -2, 0]
+                - 4.0 * (phi[0, +1, 0] + phi[0, -1, 0])
+                + 6.0 * phi[0, 0, 0]
+            )
 
-            def advection_y_def(v, abs_v, phi, dy):
-                return v[0, 0, 0] / (12.0 * dy) * (
-                    8.0 * (phi[0, +1, 0] - phi[0, -1, 0]) - (phi[0, +2, 0] - phi[0, -2, 0])
-                ) + abs_v[0, 0, 0] / (12.0 * dy) * (
-                    phi[0, +2, 0]
-                    + phi[0, -2, 0]
-                    - 4.0 * (phi[0, +1, 0] + phi[0, -1, 0])
-                    + 6.0 * phi[0, 0, 0]
-                )
+        # >>> stencil compilations
+        absolute = numba.stencil(absolute_def)
+        advection_x = numba.stencil(advection_x_def)
+        advection_y = numba.stencil(advection_y_def)
 
-            # >>> stencil compilations
-            absolute = numba.stencil(absolute_def)
-            advection_x = numba.stencil(advection_x_def)
-            advection_y = numba.stencil(advection_y_def)
+        # >>> calculations
+        abs_u = absolute(u)
+        abs_v = absolute(v)
+        adv_u_x = advection_x(u, abs_u, u, dx)
+        adv_u_y = advection_y(v, abs_v, u, dy)
+        adv_v_x = advection_x(u, abs_u, v, dx)
+        adv_v_y = advection_y(v, abs_v, v, dy)
 
-            # >>> calculations
-            abs_u = absolute(u)
-            abs_v = absolute(v)
-            adv_u_x = advection_x(u, abs_u, u, dx)
-            adv_u_y = advection_y(v, abs_v, u, dy)
-            adv_v_x = advection_x(u, abs_u, v, dx)
-            adv_v_y = advection_y(v, abs_v, v, dy)
-
-            return adv_u_x, adv_u_y, adv_v_x, adv_v_y
+        return adv_u_x, adv_u_y, adv_v_x, adv_v_y
