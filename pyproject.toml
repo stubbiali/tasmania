@@ -44,6 +44,7 @@ gpu = ['cupy']
 gpu-cuda11x = ['cupy-cuda11x']
 gpu-cuda12x = ['cupy-cuda12x']
 gpu-rocm = ['cython<3.0', 'cupy<13.0']
+numba = ['numba']
 
 [project.urls]
 Source = 'https://github.com/stubbiali/gt4py-dwarf-p-cloudsc2-tl-ad.git'
