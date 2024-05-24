@@ -190,6 +190,8 @@ class KesslerMicrophysics(TendencyComponent):
         }
         self._stencil = self.compile_stencil("kessler")
 
+        self._fake_field = self.zeros(shape=self.storage_shape)
+
     @property
     def input_properties(self) -> PropertyDict:
         grid = self.grid
@@ -266,10 +268,14 @@ class KesslerMicrophysics(TendencyComponent):
             "in_t": state["air_temperature"],
             "in_qc": state[mfcw],
             "in_qr": state[mfpw],
+            "in_qv": state[mfwv],
             "out_qc_tnd": out_tendencies[mfcw],
             "out_qr_tnd": out_tendencies[mfpw],
+            "out_qv_tnd": out_tendencies.get(mfwv, self._fake_field),
             "ow_out_qc_tnd": overwrite_tendencies[mfcw],
             "ow_out_qr_tnd": overwrite_tendencies[mfpw],
+            "ow_out_qv_tnd": overwrite_tendencies.get(mfwv, False),
+            "ow_out_theta_tnd": overwrite_tendencies.get("air_potential_temperature", False),
         }
         if self._air_pressure_on_interface_levels:
             stencil_args["in_p"] = state["air_pressure_on_interface_levels"]
@@ -278,16 +284,14 @@ class KesslerMicrophysics(TendencyComponent):
             stencil_args["in_p"] = state["air_pressure"]
             stencil_args["in_exn"] = state["exner_function"]
         if self._rain_evaporation:
-            stencil_args["in_qv"] = state[mfwv]
-            stencil_args["out_qv_tnd"] = out_tendencies[mfwv]
-            stencil_args["ow_out_qv_tnd"] = overwrite_tendencies[mfwv]
             if self._pttd:
                 stencil_args["out_theta_tnd"] = out_diagnostics[
                     "tendency_of_air_potential_temperature"
                 ]
             else:
                 stencil_args["out_theta_tnd"] = out_tendencies["air_potential_temperature"]
-                stencil_args["ow_out_theta_tnd"] = overwrite_tendencies["air_potential_temperature"]
+        else:
+            stencil_args["out_theta_tnd"] = self._fake_field
 
         # run the stencil
         Timer.start(label="stencil")
@@ -309,11 +313,11 @@ class KesslerMicrophysics(TendencyComponent):
         in_exn: NDArray,
         in_qc: NDArray,
         in_qr: NDArray,
+        in_qv: NDArray,
         out_qc_tnd: NDArray,
         out_qr_tnd: NDArray,
-        in_qv: Optional[NDArray] = None,
-        out_qv_tnd: Optional[NDArray] = None,
-        out_theta_tnd: Optional[NDArray] = None,
+        out_qv_tnd: NDArray,
+        out_theta_tnd: NDArray,
         *,
         a: float,
         k1: float,
@@ -380,19 +384,19 @@ class KesslerMicrophysics(TendencyComponent):
         in_exn: gtscript.Field["dtype"],
         in_qc: gtscript.Field["dtype"],
         in_qr: gtscript.Field["dtype"],
+        in_qv: gtscript.Field["dtype"],
         out_qc_tnd: gtscript.Field["dtype"],
         out_qr_tnd: gtscript.Field["dtype"],
-        in_qv: gtscript.Field["dtype"] = None,
-        out_qv_tnd: gtscript.Field["dtype"] = None,
-        out_theta_tnd: gtscript.Field["dtype"] = None,
+        out_qv_tnd: gtscript.Field["dtype"],
+        out_theta_tnd: gtscript.Field["dtype"],
         *,
         a: float,
         k1: float,
         k2: float,
         ow_out_qc_tnd: bool,
         ow_out_qr_tnd: bool,
-        ow_out_qv_tnd: bool = True,
-        ow_out_theta_tnd: bool = True,
+        ow_out_qv_tnd: bool,
+        ow_out_theta_tnd: bool,
     ) -> None:
         from __externals__ import (
             air_pressure_on_interface_levels,

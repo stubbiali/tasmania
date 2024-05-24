@@ -421,24 +421,15 @@ class IsentropicVerticalAdvection(TendencyComponent):
         )
 
         # interpolate the velocity on the interface levels
-        with computation(FORWARD), interval(0, 1):
-            w = 0.0
-        with computation(PARALLEL), interval(1, None):
-            if staggering:
-                w = in_w
-            else:
-                w = 0.5 * (in_w[0, 0, 0] + in_w[0, 0, -1])
+        with computation(FORWARD):
+            with interval(0, 1):
+                w = 0.0
+            with interval(1, None):
+                w = in_w if staggering else 0.5 * (in_w[0, 0, 0] + in_w[0, 0, -1])
 
-        # interpolate the velocity on the main levels
         with computation(PARALLEL), interval(0, None):
-            if staggering:
-                wc = 0.5 * (in_w[0, 0, 0] + in_w[0, 0, 1])
-            else:
-                wc = in_w
-
-        # compute the isentropic density of the water species
-        if moist:
-            with computation(PARALLEL), interval(0, None):
+            if moist:
+                # compute the isentropic density of the water species
                 sqv = in_s * in_qv
                 sqc = in_s * in_qc
                 sqr = in_s * in_qr
