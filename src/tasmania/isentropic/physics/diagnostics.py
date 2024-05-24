@@ -20,23 +20,25 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from sympl import DataArray
-from typing import Mapping, Optional, Sequence, TYPE_CHECKING
 
-from tasmania.python.dwarfs.diagnostics import HorizontalVelocity
-from tasmania.python.framework.core_components import DiagnosticComponent
-from tasmania.python.isentropic.dynamics.diagnostics import (
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
+from sympl import DataArray
+
+from tasmania.dwarfs.diagnostics import HorizontalVelocity
+from tasmania.framework.core_components import DiagnosticComponent
+from tasmania.isentropic.dynamics.diagnostics import (
     IsentropicDiagnostics as Core,
 )
 
 if TYPE_CHECKING:
-    from sympl._core.typingx import NDArrayLikeDict, PropertyDict
+    from collections.abc import Sequence
+    from typing import Optional
 
-    from tasmania.python.domain.domain import Domain
-    from tasmania.python.framework.options import (
-        BackendOptions,
-        StorageOptions,
-    )
+    from tasmania.domain.domain import Domain
+    from tasmania.framework.options import BackendOptions, StorageOptions
+    from tasmania.utils.typingx import NDArrayDict, PropertyDict
 
 
 class IsentropicDiagnostics(DiagnosticComponent):
@@ -68,17 +70,17 @@ class IsentropicDiagnostics(DiagnosticComponent):
 
     def __init__(
         self,
-        domain: "Domain",
+        domain: Domain,
         grid_type: str,
         moist: bool,
         pt: DataArray,
-        physical_constants: Optional[Mapping[str, DataArray]] = None,
+        physical_constants: Optional[dict[str, DataArray]] = None,
         *,
         enable_checks: bool = True,
         backend: str = "numpy",
-        backend_options: Optional["BackendOptions"] = None,
+        backend_options: Optional[BackendOptions] = None,
         storage_shape: Optional[Sequence[int]] = None,
-        storage_options: Optional["StorageOptions"] = None,
+        storage_options: Optional[StorageOptions] = None,
     ) -> None:
         """
         Parameters
@@ -150,7 +152,7 @@ class IsentropicDiagnostics(DiagnosticComponent):
         )
 
     @property
-    def input_properties(self) -> "PropertyDict":
+    def input_properties(self) -> PropertyDict:
         dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])
 
         return_dict = {"air_isentropic_density": {"dims": dims, "units": "kg m^-2 K^-1"}}
@@ -158,19 +160,13 @@ class IsentropicDiagnostics(DiagnosticComponent):
         return return_dict
 
     @property
-    def diagnostic_properties(self) -> "PropertyDict":
+    def diagnostic_properties(self) -> PropertyDict:
         dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])
         dims_stgz = (dims[0], dims[1], self.grid.z_on_interface_levels.dims[0])
 
         return_dict = {
-            "air_pressure_on_interface_levels": {
-                "dims": dims_stgz,
-                "units": "Pa",
-            },
-            "exner_function_on_interface_levels": {
-                "dims": dims_stgz,
-                "units": "J K^-1 kg^-1",
-            },
+            "air_pressure_on_interface_levels": {"dims": dims_stgz, "units": "Pa"},
+            "exner_function_on_interface_levels": {"dims": dims_stgz, "units": "J K^-1 kg^-1"},
             "height_on_interface_levels": {"dims": dims_stgz, "units": "m"},
             "montgomery_potential": {"dims": dims, "units": "m^2 s^-2"},
         }
@@ -181,7 +177,7 @@ class IsentropicDiagnostics(DiagnosticComponent):
 
         return return_dict
 
-    def array_call(self, state: "NDArrayLikeDict", out: "NDArrayLikeDict") -> None:
+    def array_call(self, state: NDArrayDict, out: NDArrayDict) -> None:
         self._core.get_diagnostic_variables(
             state["air_isentropic_density"],
             self._pt,
@@ -210,13 +206,13 @@ class IsentropicVelocityComponents(DiagnosticComponent):
 
     def __init__(
         self,
-        domain: "Domain",
+        domain: Domain,
         *,
         enable_checks: bool = True,
         backend: str = "numpy",
-        backend_options: Optional["BackendOptions"] = None,
+        backend_options: Optional[BackendOptions] = None,
         storage_shape: Optional[Sequence[int]] = None,
-        storage_options: Optional["StorageOptions"] = None,
+        storage_options: Optional[StorageOptions] = None,
     ) -> None:
         """
         Parameters
@@ -255,26 +251,20 @@ class IsentropicVelocityComponents(DiagnosticComponent):
         )
 
     @property
-    def input_properties(self) -> "PropertyDict":
+    def input_properties(self) -> PropertyDict:
         g = self.grid
         dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
 
         return_dict = {
             "air_isentropic_density": {"dims": dims, "units": "kg m^-2 K^-1"},
-            "x_momentum_isentropic": {
-                "dims": dims,
-                "units": "kg m^-1 K^-1 s^-1",
-            },
-            "y_momentum_isentropic": {
-                "dims": dims,
-                "units": "kg m^-1 K^-1 s^-1",
-            },
+            "x_momentum_isentropic": {"dims": dims, "units": "kg m^-1 K^-1 s^-1"},
+            "y_momentum_isentropic": {"dims": dims, "units": "kg m^-1 K^-1 s^-1"},
         }
 
         return return_dict
 
     @property
-    def diagnostic_properties(self) -> "PropertyDict":
+    def diagnostic_properties(self) -> PropertyDict:
         g = self.grid
         dims_x = (g.x_at_u_locations.dims[0], g.y.dims[0], g.z.dims[0])
         dims_y = (g.x.dims[0], g.y_at_v_locations.dims[0], g.z.dims[0])
@@ -286,7 +276,7 @@ class IsentropicVelocityComponents(DiagnosticComponent):
 
         return return_dict
 
-    def array_call(self, state: "NDArrayLikeDict", out: "NDArrayLikeDict") -> None:
+    def array_call(self, state: NDArrayDict, out: NDArrayDict) -> None:
         # diagnose the velocity components
         self._core.get_velocity_components(
             state["air_isentropic_density"],

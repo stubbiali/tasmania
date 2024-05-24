@@ -20,31 +20,30 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+
+from __future__ import annotations
 from copy import deepcopy
 import numpy as np
 from sympl import DataArray
-from typing import Mapping, Optional, Sequence, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
+from gt4py.cartesian import gtscript
 from sympl._core.time import Timer
 
-from gt4py import gtscript
-
-from tasmania.python.framework.base_components import (
+from tasmania.framework.base_components import (
     GridComponent,
     PhysicalConstantsComponent,
 )
-from tasmania.python.framework.stencil import StencilFactory
-from tasmania.python.framework.tag import stencil_definition
+from tasmania.framework.stencil import StencilFactory
+from tasmania.framework.tag import stencil_definition
 
 if TYPE_CHECKING:
-    from sympl._core.typingx import NDArrayLike
+    from collections.abc import Sequence
+    from typing import Optional
 
-    from tasmania.python.domain.grid import Grid
-    from tasmania.python.framework.options import (
-        BackendOptions,
-        StorageOptions,
-    )
-    from tasmania.python.utils.typingx import TripletInt
+    from tasmania.domain.grid import Grid
+    from tasmania.framework.options import BackendOptions, StorageOptions
+    from tasmania.utils.typingx import NDArray, TripletInt
 
 
 class IsentropicDiagnostics(GridComponent, PhysicalConstantsComponent, StencilFactory):
@@ -65,13 +64,13 @@ class IsentropicDiagnostics(GridComponent, PhysicalConstantsComponent, StencilFa
 
     def __init__(
         self,
-        grid: "Grid",
-        physical_constants: Optional[Mapping[str, DataArray]] = None,
+        grid: Grid,
+        physical_constants: Optional[dict[str, DataArray]] = None,
         *,
         backend: str = "numpy",
-        backend_options: Optional["BackendOptions"] = None,
+        backend_options: Optional[BackendOptions] = None,
         storage_shape: Optional[Sequence[int]] = None,
-        storage_options: Optional["StorageOptions"] = None,
+        storage_options: Optional[StorageOptions] = None,
     ) -> None:
         """
         Parameters
@@ -139,13 +138,7 @@ class IsentropicDiagnostics(GridComponent, PhysicalConstantsComponent, StencilFa
         self._stencil_height = self.compile_stencil("height")
 
     def get_diagnostic_variables(
-        self,
-        s: "NDArrayLike",
-        pt: float,
-        p: "NDArrayLike",
-        exn: "NDArrayLike",
-        mtg: "NDArrayLike",
-        h: "NDArrayLike",
+        self, s: NDArray, pt: float, p: NDArray, exn: NDArray, mtg: NDArray, h: NDArray
     ) -> None:
         """
         With the help of the isentropic density and the upper boundary
@@ -199,7 +192,7 @@ class IsentropicDiagnostics(GridComponent, PhysicalConstantsComponent, StencilFa
         )
         Timer.stop()
 
-    def get_montgomery_potential(self, s: "NDArrayLike", pt: float, mtg: "NDArrayLike") -> None:
+    def get_montgomery_potential(self, s: NDArray, pt: float, mtg: NDArray) -> None:
         """
         With the help of the isentropic density and the upper boundary
         condition on the pressure distribution, diagnose the Montgomery
@@ -241,7 +234,7 @@ class IsentropicDiagnostics(GridComponent, PhysicalConstantsComponent, StencilFa
         )
         Timer.stop()
 
-    def get_height(self, s: "NDArrayLike", pt: float, h: "NDArrayLike") -> None:
+    def get_height(self, s: NDArray, pt: float, h: NDArray) -> None:
         """
         With the help of the isentropic density and the upper boundary
         condition on the pressure distribution, diagnose the geometric
@@ -284,12 +277,7 @@ class IsentropicDiagnostics(GridComponent, PhysicalConstantsComponent, StencilFa
         Timer.stop()
 
     def get_density_and_temperature(
-        self,
-        s: "NDArrayLike",
-        exn: "NDArrayLike",
-        h: "NDArrayLike",
-        rho: "NDArrayLike",
-        t: "NDArrayLike",
+        self, s: NDArray, exn: NDArray, h: NDArray, rho: NDArray, t: NDArray
     ) -> None:
         """
         With the help of the isentropic density and the geometric height
@@ -331,18 +319,18 @@ class IsentropicDiagnostics(GridComponent, PhysicalConstantsComponent, StencilFa
     @staticmethod
     @stencil_definition(backend=("numpy", "cupy"), stencil="diagnostic_variables")
     def _diagnostic_variables_numpy(
-        in_theta: np.ndarray,
-        in_hs: np.ndarray,
-        in_s: np.ndarray,
-        inout_p: np.ndarray,
-        out_exn: np.ndarray,
-        inout_mtg: np.ndarray,
-        inout_h: np.ndarray,
+        in_theta: NDArray,
+        in_hs: NDArray,
+        in_s: NDArray,
+        inout_p: NDArray,
+        out_exn: NDArray,
+        inout_mtg: NDArray,
+        inout_h: NDArray,
         *,
         dz: float,
         pt: float,
-        origin: "TripletInt",
-        domain: "TripletInt",
+        origin: TripletInt,
+        domain: TripletInt,
     ) -> None:
         i = slice(origin[0], origin[0] + domain[0])
         j = slice(origin[1], origin[1] + domain[1])
@@ -420,15 +408,15 @@ class IsentropicDiagnostics(GridComponent, PhysicalConstantsComponent, StencilFa
     @staticmethod
     @stencil_definition(backend=("numpy", "cupy"), stencil="montgomery")
     def _montgomery_numpy(
-        in_hs: np.ndarray,
-        in_s: np.ndarray,
-        inout_mtg: np.ndarray,
+        in_hs: NDArray,
+        in_s: NDArray,
+        inout_mtg: NDArray,
         *,
         dz: float,
         pt: float,
         theta_s: float,
-        origin: "TripletInt",
-        domain: "TripletInt",
+        origin: TripletInt,
+        domain: TripletInt,
     ) -> None:
         i = slice(origin[0], origin[0] + domain[0])
         j = slice(origin[1], origin[1] + domain[1])
@@ -484,15 +472,15 @@ class IsentropicDiagnostics(GridComponent, PhysicalConstantsComponent, StencilFa
     @staticmethod
     @stencil_definition(backend=("numpy", "cupy"), stencil="height")
     def _height_numpy(
-        in_theta: np.ndarray,
-        in_hs: np.ndarray,
-        in_s: np.ndarray,
-        inout_h: np.ndarray,
+        in_theta: NDArray,
+        in_hs: NDArray,
+        in_s: NDArray,
+        inout_h: NDArray,
         *,
         dz: float,
         pt: float,
-        origin: "TripletInt",
-        domain: "TripletInt",
+        origin: TripletInt,
+        domain: TripletInt,
     ) -> None:
         i = slice(origin[0], origin[0] + domain[0])
         j = slice(origin[1], origin[1] + domain[1])
@@ -552,15 +540,15 @@ class IsentropicDiagnostics(GridComponent, PhysicalConstantsComponent, StencilFa
     @staticmethod
     @stencil_definition(backend=("numpy", "cupy"), stencil="density_and_temperature")
     def _density_and_temperature_numpy(
-        in_theta: np.ndarray,
-        in_s: np.ndarray,
-        in_exn: np.ndarray,
-        in_h: np.ndarray,
-        out_rho: np.ndarray,
-        out_t: np.ndarray,
+        in_theta: NDArray,
+        in_s: NDArray,
+        in_exn: NDArray,
+        in_h: NDArray,
+        out_rho: NDArray,
+        out_t: NDArray,
         *,
-        origin: "TripletInt",
-        domain: "TripletInt",
+        origin: TripletInt,
+        domain: TripletInt,
     ) -> None:
         i = slice(origin[0], origin[0] + domain[0])
         j = slice(origin[1], origin[1] + domain[1])

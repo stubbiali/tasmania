@@ -20,4 +20,5 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from tasmania.python.isentropic.dynamics import subclasses
+
+from tasmania.isentropic.dynamics import subclasses

@@ -20,27 +20,26 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+
+from __future__ import annotations
 import numpy as np
+from typing import TYPE_CHECKING
+
 from sympl import DataArray
-from typing import Mapping, Optional, Sequence, TYPE_CHECKING
 
-try:
-    import cupy
-except (ImportError, ModuleNotFoundError):
-    cupy = np
-
-from tasmania.python.framework.allocators import as_storage, zeros
-from tasmania.python.framework.generic_functions import to_numpy
-from tasmania.python.utils import typingx
-from tasmania.python.utils.data import get_physical_constants
-from tasmania.python.utils.meteo import (
-    convert_relative_humidity_to_water_vapor,
-)
-from tasmania.python.utils.storage import get_dataarray_3d, get_storage_shape
+from tasmania.framework.allocators import as_storage, zeros
+from tasmania.framework.generic_functions import to_numpy
+from tasmania.utils.constants import get_physical_constants
+from tasmania.utils.meteo import convert_relative_humidity_to_water_vapor
+from tasmania.utils.storage import get_dataarray_3d, get_storage_shape
 
 if TYPE_CHECKING:
-    from tasmania.python.domain.grid import Grid
-    from tasmania.python.framework.options import StorageOptions
+    from collections.abc import Sequence
+    from typing import Optional
+
+    from tasmania.domain.grid import Grid
+    from tasmania.framework.options import StorageOptions
+    from tasmania.utils.typingx import DataArrayDict, Datetime
 
 
 default_physical_constants = {
@@ -60,20 +59,20 @@ mfpw = "mass_fraction_of_precipitation_water_in_air"
 
 
 def get_isentropic_state_from_brunt_vaisala_frequency(
-    grid: "Grid",
-    time: typingx.Datetime,
+    grid: Grid,
+    time: Datetime,
     x_velocity: DataArray,
     y_velocity: DataArray,
     brunt_vaisala: DataArray,
     moist: bool = False,
     precipitation: bool = False,
     relative_humidity: float = 0.5,
-    physical_constants: Optional[Mapping[str, DataArray]] = None,
+    physical_constants: Optional[dict[str, DataArray]] = None,
     *,
     backend: str = "numpy",
     storage_shape: Optional[Sequence[int]] = None,
-    storage_options: Optional["StorageOptions"] = None,
-) -> typingx.DataArrayDict:
+    storage_options: Optional[StorageOptions] = None,
+) -> DataArrayDict:
     """
     Compute a valid state for the isentropic model given
     the Brunt-Vaisala frequency.
@@ -393,8 +392,8 @@ def get_isentropic_state_from_brunt_vaisala_frequency(
 
 
 def get_isentropic_state_from_temperature(
-    grid: "Grid",
-    time: typingx.Datetime,
+    grid: Grid,
+    time: Datetime,
     x_velocity: DataArray,
     y_velocity: DataArray,
     background_temperature: DataArray,
@@ -405,12 +404,12 @@ def get_isentropic_state_from_temperature(
     bubble_maximum_perturbation: Optional[DataArray] = None,
     moist: bool = False,
     precipitation: bool = False,
-    physical_constants: Optional[Mapping[str, DataArray]] = None,
+    physical_constants: Optional[dict[str, DataArray]] = None,
     *,
     backend: str = "numpy",
     storage_shape: Optional[Sequence[int]] = None,
-    storage_options: Optional["StorageOptions"] = None,
-) -> typingx.DataArrayDict:
+    storage_options: Optional[StorageOptions] = None,
+) -> DataArrayDict:
     """
     Compute a valid state for the isentropic model given
     the air temperature.

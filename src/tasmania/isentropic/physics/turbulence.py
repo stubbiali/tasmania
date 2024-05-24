@@ -20,18 +20,19 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-import numpy as np
-from typing import Dict, TYPE_CHECKING
+
+from __future__ import annotations
+from typing import TYPE_CHECKING
 
 from sympl._core.time import Timer
 
-from gt4py import gtscript
+from gt4py.cartesian import gtscript
 
-from tasmania.python.framework.tag import stencil_definition
-from tasmania.python.physics.turbulence import Smagorinsky2d
+from tasmania.framework.tag import stencil_definition
+from tasmania.physics.turbulence import Smagorinsky2d
 
 if TYPE_CHECKING:
-    from sympl._core.typingx import NDArrayLikeDict, PropertyDict
+    from tasmania.utils.typingx import NDArray, NDArrayDict, PropertyDict, TripletInt
 
 
 class IsentropicSmagorinsky(Smagorinsky2d):
@@ -44,44 +45,32 @@ class IsentropicSmagorinsky(Smagorinsky2d):
     """
 
     @property
-    def input_properties(self) -> "PropertyDict":
+    def input_properties(self) -> PropertyDict:
         dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])
         return {
             "air_isentropic_density": {"dims": dims, "units": "kg m^-2 K^-1"},
-            "x_momentum_isentropic": {
-                "dims": dims,
-                "units": "kg m^-1 K^-1 s^-1",
-            },
-            "y_momentum_isentropic": {
-                "dims": dims,
-                "units": "kg m^-1 K^-1 s^-1",
-            },
+            "x_momentum_isentropic": {"dims": dims, "units": "kg m^-1 K^-1 s^-1"},
+            "y_momentum_isentropic": {"dims": dims, "units": "kg m^-1 K^-1 s^-1"},
         }
 
     @property
-    def tendency_properties(self) -> "PropertyDict":
+    def tendency_properties(self) -> PropertyDict:
         dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])
         return {
-            "x_momentum_isentropic": {
-                "dims": dims,
-                "units": "kg m^-1 K^-1 s^-2",
-            },
-            "y_momentum_isentropic": {
-                "dims": dims,
-                "units": "kg m^-1 K^-1 s^-2",
-            },
+            "x_momentum_isentropic": {"dims": dims, "units": "kg m^-1 K^-1 s^-2"},
+            "y_momentum_isentropic": {"dims": dims, "units": "kg m^-1 K^-1 s^-2"},
         }
 
     @property
-    def diagnostic_properties(self) -> "PropertyDict":
+    def diagnostic_properties(self) -> PropertyDict:
         return {}
 
     def array_call(
         self,
-        state: "NDArrayLikeDict",
-        out_tendencies: "NDArrayLikeDict",
-        out_diagnostics: "NDArrayLikeDict",
-        overwrite_tendencies: Dict[str, bool],
+        state: NDArrayDict,
+        out_tendencies: NDArrayDict,
+        out_diagnostics: NDArrayDict,
+        overwrite_tendencies: dict[str, bool],
     ) -> None:
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
         nb = self._nb
@@ -109,19 +98,19 @@ class IsentropicSmagorinsky(Smagorinsky2d):
     @staticmethod
     @stencil_definition(backend=("numpy", "cupy"), stencil="smagorinsky")
     def _stencil_numpy(
-        in_s: np.ndarray,
-        in_su: np.ndarray,
-        in_sv: np.ndarray,
-        out_su_tnd: np.ndarray,
-        out_sv_tnd: np.ndarray,
+        in_s: NDArray,
+        in_su: NDArray,
+        in_sv: NDArray,
+        out_su_tnd: NDArray,
+        out_sv_tnd: NDArray,
         *,
         dx: float,
         dy: float,
         cs: float,
         ow_out_su_tnd: bool,
         ow_out_sv_tnd: bool,
-        origin: "TripletInt",
-        domain: "TripletInt",
+        origin: TripletInt,
+        domain: TripletInt,
     ) -> None:
         ib, ie = origin[0], origin[0] + domain[0]
         jb, je = origin[1], origin[1] + domain[1]

@@ -20,16 +20,21 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-import abc
-import numpy as np
-from typing import Any, Dict, List, Optional, Tuple
 
+from __future__ import annotations
+import abc
+from typing import TYPE_CHECKING
+
+from gt4py.cartesian import gtscript
 from sympl._core.factory import AbstractFactory
 
-from gt4py import gtscript
+from tasmania.framework.stencil import StencilFactory
+from tasmania.framework.tag import subroutine_definition
 
-from tasmania.python.framework.stencil import StencilFactory
-from tasmania.python.framework.tag import subroutine_definition
+if TYPE_CHECKING:
+    from typing import Any, Optional
+
+    from tasmania.utils.typingx import NDArray
 
 
 class IsentropicHorizontalFlux(AbstractFactory, StencilFactory):
@@ -41,9 +46,9 @@ class IsentropicHorizontalFlux(AbstractFactory, StencilFactory):
     """
 
     # class attributes
-    extent: int = None
-    order: int = None
-    external_names: List[str] = None
+    extent: Optional[int] = None
+    order: Optional[int] = None
+    external_names: Optional[list[str]] = None
 
     def __init__(self, *, backend: str) -> None:
         super().__init__(backend)
@@ -55,20 +60,20 @@ class IsentropicHorizontalFlux(AbstractFactory, StencilFactory):
         dt: float,
         dx: float,
         dy: float,
-        s: np.ndarray,
-        u: np.ndarray,
-        v: np.ndarray,
-        su: np.ndarray,
-        sv: np.ndarray,
-        mtg: np.ndarray,
-        s_tnd: Optional[np.ndarray] = None,
-        su_tnd: Optional[np.ndarray] = None,
-        sv_tnd: Optional[np.ndarray] = None,
+        s: NDArray,
+        u: NDArray,
+        v: NDArray,
+        su: NDArray,
+        sv: NDArray,
+        mtg: NDArray,
+        s_tnd: Optional[NDArray] = None,
+        su_tnd: Optional[NDArray] = None,
+        sv_tnd: Optional[NDArray] = None,
         *,
         compute_density_fluxes: bool = True,
         compute_momentum_fluxes: bool = True,
         compute_water_species_fluxes: bool = True,
-    ) -> List[np.ndarray]:
+    ) -> list[NDArray]:
         pass
 
     @staticmethod
@@ -78,18 +83,18 @@ class IsentropicHorizontalFlux(AbstractFactory, StencilFactory):
         dt: float,
         dx: float,
         dy: float,
-        s: np.ndarray,
-        u: np.ndarray,
-        v: np.ndarray,
-        sqv: np.ndarray,
-        sqc: np.ndarray,
-        sqr: np.ndarray,
-        qv_tnd: Optional[np.ndarray] = None,
-        qc_tnd: Optional[np.ndarray] = None,
-        qr_tnd: Optional[np.ndarray] = None,
+        s: NDArray,
+        u: NDArray,
+        v: NDArray,
+        sqv: NDArray,
+        sqc: NDArray,
+        sqr: NDArray,
+        qv_tnd: Optional[NDArray] = None,
+        qc_tnd: Optional[NDArray] = None,
+        qr_tnd: Optional[NDArray] = None,
         *,
         compute_water_species_fluxes: bool = True,
-    ) -> List[np.ndarray]:
+    ) -> list[NDArray]:
         pass
 
     @staticmethod
@@ -109,7 +114,7 @@ class IsentropicHorizontalFlux(AbstractFactory, StencilFactory):
         s_tnd: "Optional[gtscript.Field['dtype']]" = None,
         su_tnd: "Optional[gtscript.Field['dtype']]" = None,
         sv_tnd: "Optional[gtscript.Field['dtype']]" = None,
-    ) -> "Tuple[gtscript.Field['dtype'], ...]":
+    ) -> "tuple[gtscript.Field['dtype'], ...]":
         pass
 
     @staticmethod
@@ -126,10 +131,10 @@ class IsentropicHorizontalFlux(AbstractFactory, StencilFactory):
         sqv: gtscript.Field["dtype"],
         sqc: gtscript.Field["dtype"],
         sqr: gtscript.Field["dtype"],
-        qv_tnd: "Optional[gtscript.Field['dtype']]" = None,
-        qc_tnd: "Optional[gtscript.Field['dtype']]" = None,
-        qr_tnd: "Optional[gtscript.Field['dtype']]" = None,
-    ) -> "Tuple[gtscript.Field['dtype'], ...]":
+        qv_tnd: Optional[gtscript.Field["dtype"]] = None,
+        qc_tnd: Optional[gtscript.Field["dtype"]] = None,
+        qr_tnd: Optional[gtscript.Field["dtype"]] = None,
+    ) -> tuple[gtscript.Field["dtype"], ...]:
         pass
 
 
@@ -144,7 +149,7 @@ class IsentropicMinimalHorizontalFlux(AbstractFactory, StencilFactory):
     # class attributes
     extent: int = None
     order: int = None
-    externals: Dict[str, Any] = None
+    externals: dict[str, Any] = None
 
     def __init__(self, *, backend: str) -> None:
         super().__init__(backend)
@@ -156,19 +161,19 @@ class IsentropicMinimalHorizontalFlux(AbstractFactory, StencilFactory):
         dt: float,
         dx: float,
         dy: float,
-        s: np.ndarray,
-        u: np.ndarray,
-        v: np.ndarray,
-        su: np.ndarray,
-        sv: np.ndarray,
-        mtg: Optional[np.ndarray] = None,
-        s_tnd: Optional[np.ndarray] = None,
-        su_tnd: Optional[np.ndarray] = None,
-        sv_tnd: Optional[np.ndarray] = None,
+        s: NDArray,
+        u: NDArray,
+        v: NDArray,
+        su: NDArray,
+        sv: NDArray,
+        mtg: Optional[NDArray] = None,
+        s_tnd: Optional[NDArray] = None,
+        su_tnd: Optional[NDArray] = None,
+        sv_tnd: Optional[NDArray] = None,
         *,
         compute_density_fluxes: bool = True,
         compute_momentum_fluxes: bool = True,
-    ) -> List[np.ndarray]:
+    ) -> list[NDArray]:
         pass
 
     @staticmethod
@@ -178,16 +183,16 @@ class IsentropicMinimalHorizontalFlux(AbstractFactory, StencilFactory):
         dt: float,
         dx: float,
         dy: float,
-        s: np.ndarray,
-        u: np.ndarray,
-        v: np.ndarray,
-        sqv: np.ndarray,
-        sqc: np.ndarray,
-        sqr: np.ndarray,
-        qv_tnd: Optional[np.ndarray] = None,
-        qc_tnd: Optional[np.ndarray] = None,
-        qr_tnd: Optional[np.ndarray] = None,
-    ) -> List[np.ndarray]:
+        s: NDArray,
+        u: NDArray,
+        v: NDArray,
+        sqv: NDArray,
+        sqc: NDArray,
+        sqr: NDArray,
+        qv_tnd: Optional[NDArray] = None,
+        qc_tnd: Optional[NDArray] = None,
+        qr_tnd: Optional[NDArray] = None,
+    ) -> list[NDArray]:
         pass
 
     @staticmethod
@@ -203,11 +208,11 @@ class IsentropicMinimalHorizontalFlux(AbstractFactory, StencilFactory):
         v: gtscript.Field["dtype"],
         su: gtscript.Field["dtype"],
         sv: gtscript.Field["dtype"],
-        mtg: "Optional[gtscript.Field['dtype']]" = None,
-        s_tnd: "Optional[gtscript.Field['dtype']]" = None,
-        su_tnd: "Optional[gtscript.Field['dtype']]" = None,
-        sv_tnd: "Optional[gtscript.Field['dtype']]" = None,
-    ) -> "Tuple[gtscript.Field['dtype'], ...]":
+        mtg: Optional[gtscript.Field["dtype"]] = None,
+        s_tnd: Optional[gtscript.Field["dtype"]] = None,
+        su_tnd: Optional[gtscript.Field["dtype"]] = None,
+        sv_tnd: Optional[gtscript.Field["dtype"]] = None,
+    ) -> tuple[gtscript.Field["dtype"], ...]:
         pass
 
     @staticmethod
@@ -224,8 +229,8 @@ class IsentropicMinimalHorizontalFlux(AbstractFactory, StencilFactory):
         sqv: gtscript.Field["dtype"],
         sqc: gtscript.Field["dtype"],
         sqr: gtscript.Field["dtype"],
-        qv_tnd: "Optional[gtscript.Field['dtype']]" = None,
-        qc_tnd: "Optional[gtscript.Field['dtype']]" = None,
-        qr_tnd: "Optional[gtscript.Field['dtype']]" = None,
-    ) -> "Tuple[gtscript.Field['dtype'], ...]":
+        qv_tnd: Optional[gtscript.Field["dtype"]] = None,
+        qc_tnd: Optional[gtscript.Field["dtype"]] = None,
+        qr_tnd: Optional[gtscript.Field["dtype"]] = None,
+    ) -> tuple[gtscript.Field["dtype"], ...]:
         pass

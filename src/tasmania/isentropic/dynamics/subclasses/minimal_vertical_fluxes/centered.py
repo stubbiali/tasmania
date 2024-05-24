@@ -20,12 +20,11 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from gt4py import gtscript
 
-from tasmania.python.framework.tag import subroutine_definition
-from tasmania.python.isentropic.dynamics.vertical_fluxes import (
-    IsentropicMinimalVerticalFlux,
-)
+from gt4py.cartesian import gtscript
+
+from tasmania.framework.tag import subroutine_definition
+from tasmania.isentropic.dynamics.vertical_fluxes import IsentropicMinimalVerticalFlux
 
 
 def get_centered_flux_numpy(w, phi):

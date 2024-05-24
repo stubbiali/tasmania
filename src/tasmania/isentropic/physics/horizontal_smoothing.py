@@ -20,19 +20,20 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from typing import Optional, Sequence, TYPE_CHECKING
 
-from tasmania.python.dwarfs.horizontal_smoothing import HorizontalSmoothing
-from tasmania.python.framework.core_components import DiagnosticComponent
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
+from tasmania.dwarfs.horizontal_smoothing import HorizontalSmoothing
+from tasmania.framework.core_components import DiagnosticComponent
 
 if TYPE_CHECKING:
-    from sympl._core.typingx import NDArrayLikeDict, PropertyDict
+    from collections.abc import Sequence
+    from typing import Optional
 
-    from tasmania.python.domain.domain import Domain
-    from tasmania.python.framework.options import (
-        BackendOptions,
-        StorageOptions,
-    )
+    from tasmania.domain.domain import Domain
+    from tasmania.framework.options import BackendOptions, StorageOptions
+    from tasmania.utils.typingx import NDArrayDict, PropertyDict
 
 
 mfwv = "mass_fraction_of_water_vapor_in_air"
@@ -49,7 +50,7 @@ class IsentropicHorizontalSmoothing(DiagnosticComponent):
 
     def __init__(
         self,
-        domain: "Domain",
+        domain: Domain,
         smooth_type: str,
         smooth_coeff: float,
         smooth_coeff_max: float,
@@ -61,9 +62,9 @@ class IsentropicHorizontalSmoothing(DiagnosticComponent):
         *,
         enable_checks: bool = True,
         backend: str = "numpy",
-        backend_options: Optional["BackendOptions"] = None,
+        backend_options: Optional[BackendOptions] = None,
         storage_shape: Optional[Sequence[int]] = None,
-        storage_options: Optional["StorageOptions"] = None,
+        storage_options: Optional[StorageOptions] = None,
     ) -> None:
         """
         Parameters
@@ -148,19 +149,13 @@ class IsentropicHorizontalSmoothing(DiagnosticComponent):
             self._core_moist = None
 
     @property
-    def input_properties(self) -> "PropertyDict":
+    def input_properties(self) -> PropertyDict:
         dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])
 
         return_dict = {
             "air_isentropic_density": {"dims": dims, "units": "kg m^-2 K^-1"},
-            "x_momentum_isentropic": {
-                "dims": dims,
-                "units": "kg m^-1 K^-1 s^-1",
-            },
-            "y_momentum_isentropic": {
-                "dims": dims,
-                "units": "kg m^-1 K^-1 s^-1",
-            },
+            "x_momentum_isentropic": {"dims": dims, "units": "kg m^-1 K^-1 s^-1"},
+            "y_momentum_isentropic": {"dims": dims, "units": "kg m^-1 K^-1 s^-1"},
         }
 
         if self._moist:
@@ -171,10 +166,10 @@ class IsentropicHorizontalSmoothing(DiagnosticComponent):
         return return_dict
 
     @property
-    def diagnostic_properties(self) -> "PropertyDict":
+    def diagnostic_properties(self) -> PropertyDict:
         return self.input_properties
 
-    def array_call(self, state: "NDArrayLikeDict", out: "NDArrayLikeDict") -> None:
+    def array_call(self, state: NDArrayDict, out: NDArrayDict) -> None:
         self._core(state["air_isentropic_density"], out["air_isentropic_density"])
         self._core(state["x_momentum_isentropic"], out["x_momentum_isentropic"])
         self._core(state["y_momentum_isentropic"], out["y_momentum_isentropic"])

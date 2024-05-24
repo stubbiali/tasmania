@@ -20,30 +20,30 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+
+from __future__ import annotations
 import abc
-from typing import Sequence, TYPE_CHECKING, Type, Union
+from typing import TYPE_CHECKING
 
 from sympl._core.factory import AbstractFactory
 
-from tasmania.python.framework.base_components import (
+from tasmania.framework.base_components import (
     DomainComponent,
     GridComponent,
 )
-from tasmania.python.framework.stencil import StencilFactory
+from tasmania.framework.stencil import StencilFactory
 
 if TYPE_CHECKING:
-    from sympl._core.typingx import NDArrayLikeDict
+    from collections.abc import Sequence
+    from typing import Union
 
-    from tasmania.python.domain.domain import Domain
-    from tasmania.python.framework.options import (
-        BackendOptions,
-        StorageOptions,
-    )
-    from tasmania.python.isentropic.dynamics.horizontal_fluxes import (
+    from tasmania.domain.domain import Domain
+    from tasmania.framework.options import BackendOptions, StorageOptions
+    from tasmania.isentropic.dynamics.horizontal_fluxes import (
         IsentropicHorizontalFlux,
         IsentropicMinimalHorizontalFlux,
     )
-    from tasmania.python.utils.typingx import TimeDelta
+    from tasmania.utils.typingx import NDArrayDict, TimeDelta
 
 # convenient aliases
 mfwv = "mass_fraction_of_water_vapor_in_air"
@@ -65,16 +65,16 @@ class IsentropicPrognostic(AbstractFactory, DomainComponent, StencilFactory):
     def __init__(
         self,
         horizontal_flux_class: Union[
-            Type["IsentropicHorizontalFlux"],
-            Type["IsentropicMinimalHorizontalFlux"],
+            type[IsentropicHorizontalFlux],
+            type[IsentropicMinimalHorizontalFlux],
         ],
         horizontal_flux_scheme: str,
-        domain: "Domain",
+        domain: Domain,
         moist: bool,
         backend: str,
-        backend_options: "BackendOptions",
+        backend_options: BackendOptions,
         storage_shape: Sequence[int],
-        storage_options: "StorageOptions",
+        storage_options: StorageOptions,
     ) -> None:
         """
         Parameters
@@ -148,10 +148,10 @@ class IsentropicPrognostic(AbstractFactory, DomainComponent, StencilFactory):
     def stage_call(
         self,
         stage: int,
-        timestep: "TimeDelta",
-        state: "NDArrayLikeDict",
-        tendencies: "NDArrayLikeDict",
-        out_state: "NDArrayLikeDict",
+        timestep: TimeDelta,
+        state: NDArrayDict,
+        tendencies: NDArrayDict,
+        out_state: NDArrayDict,
     ) -> None:
         """
         Perform a stage.

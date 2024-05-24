@@ -20,10 +20,8 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from tasmania.python.framework.promoter import (
-    FromDiagnosticToTendency,
-    FromTendencyToDiagnostic,
-)
+
+from tasmania.framework.promoter import FromDiagnosticToTendency, FromTendencyToDiagnostic
 
 
 class AirPotentialTemperatureToDiagnostic(FromTendencyToDiagnostic):

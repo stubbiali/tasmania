@@ -20,24 +20,28 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+
+from __future__ import annotations
 import numpy as np
-from typing import Optional, Tuple, Union
+from typing import TYPE_CHECKING
 
 from sympl._core.time import Timer
 
-from gt4py import gtscript
+from gt4py.cartesian import gtscript
 
-from tasmania.python.framework.register import register
-from tasmania.python.framework.stencil import StencilFactory
-from tasmania.python.framework.steppers import SequentialTendencyStepper
-from tasmania.python.framework.subclasses.stencil_definitions.cla import (
-    thomas_numpy,
-)
-from tasmania.python.framework.tag import stencil_definition
-from tasmania.python.isentropic.physics.implicit_vertical_advection import (
+from tasmania.framework.register import register
+from tasmania.framework.stencil import StencilFactory
+from tasmania.framework.steppers import SequentialTendencyStepper
+from tasmania.framework.subclasses.stencil_definitions.cla import thomas_numpy
+from tasmania.framework.tag import stencil_definition
+from tasmania.isentropic.physics.implicit_vertical_advection import (
     IsentropicImplicitVerticalAdvectionDiagnostic,
 )
-from tasmania.python.utils import typingx as ty
+
+if TYPE_CHECKING:
+    from typing import Optional, Union
+
+    from tasmania.utils.typingx import GTField, NDArray, TripletInt
 
 
 mfwv = "mass_fraction_of_water_vapor_in_air"
@@ -47,12 +51,12 @@ mfpw = "mass_fraction_of_precipitation_water_in_air"
 
 def setup_tridiagonal_system_numpy(
     gamma: float,
-    w: np.ndarray,
-    phi: np.ndarray,
-    phi_prv: np.ndarray,
-    a: np.ndarray,
-    c: np.ndarray,
-    d: np.ndarray,
+    w: NDArray,
+    phi: NDArray,
+    phi_prv: NDArray,
+    a: NDArray,
+    c: NDArray,
+    d: NDArray,
     *,
     i: Union[int, slice],
     j: Union[int, slice],
@@ -75,8 +79,8 @@ def setup_tridiagonal_system_numpy(
 
 @gtscript.function
 def setup_tridiagonal_system(
-    gamma: float, w: ty.GTField, phi: ty.GTField, phi_prv: ty.GTField
-) -> "Tuple[ty.GTField, ty.GTField, ty.GTField]":
+    gamma: float, w: GTField, phi: GTField, phi_prv: GTField
+) -> tuple[GTField, GTField, GTField]:
     a = gamma * w[0, 0, -1]
     c = -gamma * w[0, 0, 1]
     d = phi_prv[0, 0, 0] - gamma * (w[0, 0, -1] * phi[0, 0, -1] - w[0, 0, 1] * phi[0, 0, 1])
@@ -84,9 +88,7 @@ def setup_tridiagonal_system(
 
 
 @gtscript.function
-def setup_tridiagonal_system_bc(
-    phi_prv: ty.GTField,
-) -> "Tuple[ty.GTField, ty.GTField, ty.GTField]":
+def setup_tridiagonal_system_bc(phi_prv: GTField) -> tuple[GTField, GTField, GTField]:
     a = 0.0
     c = 0.0
     d = phi_prv[0, 0, 0]
@@ -241,29 +243,29 @@ class IsentropicVerticalAdvection(SequentialTendencyStepper, StencilFactory):
     @stencil_definition(backend=("numpy", "cupy"), stencil="stencil")
     def _stencil_numpy(
         self,
-        in_w: np.ndarray,
-        in_s: np.ndarray,
-        in_s_prv: np.ndarray,
-        out_s: np.ndarray,
-        in_su: np.ndarray,
-        in_su_prv: np.ndarray,
-        out_su: np.ndarray,
-        in_sv: np.ndarray,
-        in_sv_prv: np.ndarray,
-        out_sv: np.ndarray,
-        in_qv: Optional[np.ndarray] = None,
-        in_qv_prv: Optional[np.ndarray] = None,
-        out_qv: Optional[np.ndarray] = None,
-        in_qc: Optional[np.ndarray] = None,
-        in_qc_prv: Optional[np.ndarray] = None,
-        out_qc: Optional[np.ndarray] = None,
-        in_qr: Optional[np.ndarray] = None,
-        in_qr_prv: Optional[np.ndarray] = None,
-        out_qr: Optional[np.ndarray] = None,
+        in_w: NDArray,
+        in_s: NDArray,
+        in_s_prv: NDArray,
+        out_s: NDArray,
+        in_su: NDArray,
+        in_su_prv: NDArray,
+        out_su: NDArray,
+        in_sv: NDArray,
+        in_sv_prv: NDArray,
+        out_sv: NDArray,
+        in_qv: Optional[NDArray] = None,
+        in_qv_prv: Optional[NDArray] = None,
+        out_qv: Optional[NDArray] = None,
+        in_qc: Optional[NDArray] = None,
+        in_qc_prv: Optional[NDArray] = None,
+        out_qc: Optional[NDArray] = None,
+        in_qr: Optional[NDArray] = None,
+        in_qr_prv: Optional[NDArray] = None,
+        out_qr: Optional[NDArray] = None,
         *,
         gamma: float,
-        origin: ty.TripletInt,
-        domain: ty.TripletInt,
+        origin: TripletInt,
+        domain: TripletInt,
     ) -> None:
         i = slice(origin[0], origin[0] + domain[0])
         j = slice(origin[1], origin[1] + domain[1])
@@ -477,13 +479,13 @@ class IsentropicVerticalAdvection(SequentialTendencyStepper, StencilFactory):
 
         # interpolate the velocity on the main levels
         with computation(PARALLEL), interval(0, None):
-            if __INLINED(vstaggering):  # compile-time if
+            if vstaggering:
                 w = 0.5 * (in_w[0, 0, 0] + in_w[0, 0, 1])
             else:
                 w = in_w
 
         # compute the isentropic density of the water species
-        if __INLINED(moist):  # compile-time if
+        if moist:
             with computation(PARALLEL), interval(0, None):
                 sqv = in_s * in_qv
                 sqv_prv = in_s_prv * in_qv_prv
@@ -593,7 +595,7 @@ class IsentropicVerticalAdvection(SequentialTendencyStepper, StencilFactory):
                 else (delta_sv[0, 0, 0] - c_sv[0, 0, 0] * out_sv[0, 0, 1])
             )
 
-        if __INLINED(moist):
+        if moist:
             #
             # isentropic density of water vapor
             #
@@ -706,7 +708,7 @@ class IsentropicVerticalAdvection(SequentialTendencyStepper, StencilFactory):
                 )
 
         # calculate the output mass fraction of the water species
-        if __INLINED(moist):
+        if moist:
             with computation(PARALLEL), interval(...):
                 out_qv = out_sqv / out_s
                 out_qc = out_sqc / out_s

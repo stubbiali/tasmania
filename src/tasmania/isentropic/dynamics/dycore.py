@@ -20,31 +20,27 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from typing import Optional, Sequence, TYPE_CHECKING, Tuple, Union
+
+from __future__ import annotations
+from typing import TYPE_CHECKING
 
 from sympl._core.time import FakeTimer as Timer
 
-# from sympl._core.time import Timer
-
-from tasmania.python.dwarfs.diagnostics import (
-    HorizontalVelocity,
-    WaterConstituent,
-)
-from tasmania.python.dwarfs.vertical_damping import VerticalDamping
-from tasmania.python.framework.dycore import DynamicalCore
-from tasmania.python.isentropic.dynamics.prognostic import IsentropicPrognostic
-from tasmania.python.utils import typingx as ty
+from tasmania.dwarfs.diagnostics import HorizontalVelocity, WaterConstituent
+from tasmania.dwarfs.vertical_damping import VerticalDamping
+from tasmania.framework.dycore import DynamicalCore
+from tasmania.isentropic.dynamics.prognostic import IsentropicPrognostic
 
 if TYPE_CHECKING:
-    from sympl._core.typingx import NDArrayLikeDict, PropertyDict
+    from collections.abc import Sequence
+    from typing import Any, Optional, Union
 
-    from tasmania.python.domain.domain import Domain
-    from tasmania.python.framework.options import (
-        BackendOptions,
-        StorageOptions,
-    )
-    from tasmania.python.utils.typingx import (
+    from tasmania.domain.domain import Domain
+    from tasmania.framework.options import BackendOptions, StorageOptions
+    from tasmania.utils.typingx import (
         DiagnosticComponent,
+        NDArrayDict,
+        PropertyDict,
         TendencyComponent,
         TimeDelta,
     )
@@ -67,18 +63,16 @@ class IsentropicDynamicalCore(DynamicalCore):
 
     def __init__(
         self,
-        domain: "Domain",
-        fast_tendency_component: Optional["TendencyComponent"] = None,
-        fast_diagnostic_component: Optional[
-            Union["DiagnosticComponent", "TendencyComponent"]
-        ] = None,
+        domain: Domain,
+        fast_tendency_component: Optional[TendencyComponent] = None,
+        fast_diagnostic_component: Optional[Union[DiagnosticComponent, TendencyComponent]] = None,
         substeps: int = 0,
-        superfast_tendency_component: Optional["TendencyComponent"] = None,
-        superfast_diagnostic_component: Optional["DiagnosticComponent"] = None,
+        superfast_tendency_component: Optional[TendencyComponent] = None,
+        superfast_diagnostic_component: Optional[DiagnosticComponent] = None,
         moist: bool = False,
         time_integration_scheme: str = "forward_euler_si",
         horizontal_flux_scheme: str = "upwind",
-        time_integration_properties: Optional[ty.options_dict_t] = None,
+        time_integration_properties: Optional[dict[str, Any]] = None,
         damp: bool = True,
         damp_at_every_stage: bool = True,
         damp_type: str = "rayleigh",
@@ -99,9 +93,9 @@ class IsentropicDynamicalCore(DynamicalCore):
         *,
         enable_checks: bool = True,
         backend: str = "numpy",
-        backend_options: Optional["BackendOptions"] = None,
+        backend_options: Optional[BackendOptions] = None,
         storage_shape: Optional[Sequence[int]] = None,
-        storage_options: Optional["StorageOptions"] = None,
+        storage_options: Optional[StorageOptions] = None,
     ) -> None:
         """
         Parameters
@@ -345,7 +339,7 @@ class IsentropicDynamicalCore(DynamicalCore):
             self._sv_ref = self.zeros(shape=storage_shape)
 
     @property
-    def stage_input_properties(self) -> "PropertyDict":
+    def stage_input_properties(self) -> PropertyDict:
         g = self.grid
         dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
         dims_stg_x = (g.x_at_u_locations.dims[0], g.y.dims[0], g.z.dims[0])
@@ -380,7 +374,7 @@ class IsentropicDynamicalCore(DynamicalCore):
         return return_dict
 
     @property
-    def substep_input_properties(self) -> "PropertyDict":
+    def substep_input_properties(self) -> PropertyDict:
         dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])
         ftends, fdiags = self._superfast_tc, self._superfast_dc
 
@@ -471,7 +465,7 @@ class IsentropicDynamicalCore(DynamicalCore):
         return return_dict
 
     @property
-    def stage_tendency_properties(self) -> "PropertyDict":
+    def stage_tendency_properties(self) -> PropertyDict:
         dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])
 
         return_dict = {
@@ -497,11 +491,11 @@ class IsentropicDynamicalCore(DynamicalCore):
         return return_dict
 
     @property
-    def substep_tendency_properties(self) -> "PropertyDict":
+    def substep_tendency_properties(self) -> PropertyDict:
         return self.stage_tendency_properties
 
     @property
-    def stage_output_properties(self) -> "PropertyDict":
+    def stage_output_properties(self) -> PropertyDict:
         g = self.grid
         dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
         dims_stg_x = (g.x_at_u_locations.dims[0], g.y.dims[0], g.z.dims[0])
@@ -558,7 +552,7 @@ class IsentropicDynamicalCore(DynamicalCore):
         return return_dict
 
     @property
-    def substep_output_properties(self) -> "PropertyDict":
+    def substep_output_properties(self) -> PropertyDict:
         if not hasattr(self, "__substep_output_properties"):
             dims = (
                 self.grid.x.dims[0],
@@ -628,16 +622,16 @@ class IsentropicDynamicalCore(DynamicalCore):
         return self._prognostic.stages
 
     @property
-    def substep_fractions(self) -> Union[float, Tuple[float, ...]]:
+    def substep_fractions(self) -> Union[float, tuple[float, ...]]:
         return self._prognostic.substep_fractions
 
     def stage_array_call(
         self,
         stage: int,
-        state: "NDArrayLikeDict",
-        tendencies: "NDArrayLikeDict",
-        timestep: "TimeDelta",
-        out_state: "NDArrayLikeDict",
+        state: NDArrayDict,
+        tendencies: NDArrayDict,
+        timestep: TimeDelta,
+        out_state: NDArrayDict,
     ) -> None:
         if self._moist:
             self.stage_array_call_moist(stage, state, tendencies, timestep, out_state)
@@ -647,10 +641,10 @@ class IsentropicDynamicalCore(DynamicalCore):
     def stage_array_call_dry(
         self,
         stage: int,
-        state: "NDArrayLikeDict",
-        tendencies: "NDArrayLikeDict",
-        timestep: "TimeDelta",
-        out_state: "NDArrayLikeDict",
+        state: NDArrayDict,
+        tendencies: NDArrayDict,
+        timestep: TimeDelta,
+        out_state: NDArrayDict,
     ) -> None:
         """Integrate the state over a stage of the dry dynamical core."""
         # shortcuts
@@ -729,10 +723,10 @@ class IsentropicDynamicalCore(DynamicalCore):
     def stage_array_call_moist(
         self,
         stage: int,
-        state: "NDArrayLikeDict",
-        tendencies: "NDArrayLikeDict",
-        timestep: "TimeDelta",
-        out_state: "NDArrayLikeDict",
+        state: NDArrayDict,
+        tendencies: NDArrayDict,
+        timestep: TimeDelta,
+        out_state: NDArrayDict,
     ) -> None:
         """Integrate the state over a stage of the moist dynamical core."""
         # shortcuts
@@ -852,10 +846,10 @@ class IsentropicDynamicalCore(DynamicalCore):
         self,
         stage: int,
         substep: int,
-        raw_state: "NDArrayLikeDict",
-        raw_stage_state: "NDArrayLikeDict",
-        raw_tmp_state: "NDArrayLikeDict",
-        raw_tendencies: "NDArrayLikeDict",
-        timestep: "TimeDelta",
-    ) -> "NDArrayLikeDict":
+        raw_state: NDArrayDict,
+        raw_stage_state: NDArrayDict,
+        raw_tmp_state: NDArrayDict,
+        raw_tendencies: NDArrayDict,
+        timestep: TimeDelta,
+    ) -> NDArrayDict:
         raise NotImplementedError()

@@ -20,4 +20,5 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from .sequential_tendency_stepper import IsentropicVerticalAdvection
+
+from tasmania.isentropic.physics import sequential_tendency_stepper

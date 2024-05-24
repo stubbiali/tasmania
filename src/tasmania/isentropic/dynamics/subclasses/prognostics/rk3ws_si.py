@@ -24,13 +24,9 @@
 
 from sympl._core.time import Timer
 
-from tasmania.python.isentropic.dynamics.diagnostics import (
-    IsentropicDiagnostics,
-)
-from tasmania.python.isentropic.dynamics.horizontal_fluxes import (
-    IsentropicMinimalHorizontalFlux,
-)
-from tasmania.python.isentropic.dynamics.prognostic import IsentropicPrognostic
+from tasmania.isentropic.dynamics.diagnostics import IsentropicDiagnostics
+from tasmania.isentropic.dynamics.horizontal_fluxes import IsentropicMinimalHorizontalFlux
+from tasmania.isentropic.dynamics.prognostic import IsentropicPrognostic
 
 
 # convenient aliases

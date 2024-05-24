@@ -20,7 +20,8 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from tasmania.python.isentropic.dynamics.prognostic import IsentropicPrognostic
+
+from tasmania.isentropic.dynamics.prognostic import IsentropicPrognostic
 
 
 class CenteredSI(IsentropicPrognostic):

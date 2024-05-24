@@ -20,7 +20,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from tasmania.python.isentropic.dynamics.subclasses import (
+from tasmania.isentropic.dynamics.subclasses import (
     horizontal_fluxes,
     minimal_horizontal_fluxes,
     minimal_vertical_fluxes,

@@ -20,26 +20,25 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-import numpy as np
-from typing import Dict, Optional, Sequence, TYPE_CHECKING
+
+from __future__ import annotations
+from typing import TYPE_CHECKING
 
 from sympl._core.data_array import DataArray
 from sympl._core.time import Timer
 
-from gt4py import gtscript
+from gt4py.cartesian import gtscript
 
-from tasmania.python.framework.core_components import TendencyComponent
-from tasmania.python.framework.tag import stencil_definition
+from tasmania.framework.core_components import TendencyComponent
+from tasmania.framework.tag import stencil_definition
 
 if TYPE_CHECKING:
-    from sympl._core.typingx import NDArrayLikeDict, PropertyDict
+    from collections.abc import Sequence
+    from typing import Optional
 
-    from tasmania.python.domain.domain import Domain
-    from tasmania.python.framework.options import (
-        BackendOptions,
-        StorageOptions,
-    )
-    from tasmania.python.utils.typingx import TripletInt
+    from tasmania.domain.domain import Domain
+    from tasmania.framework.options import BackendOptions, StorageOptions
+    from tasmania.utils.typingx import NDArray, NDArrayDict, PropertyDict, TripletInt
 
 
 class IsentropicConservativeCoriolis(TendencyComponent):
@@ -49,15 +48,15 @@ class IsentropicConservativeCoriolis(TendencyComponent):
 
     def __init__(
         self,
-        domain: "Domain",
+        domain: Domain,
         grid_type: str = "numerical",
         coriolis_parameter: Optional[DataArray] = None,
         *,
         enable_checks: bool = True,
         backend: str = "numpy",
-        backend_options: Optional["BackendOptions"] = None,
+        backend_options: Optional[BackendOptions] = None,
         storage_shape: Optional[Sequence[int]] = None,
-        storage_options: Optional["StorageOptions"] = None,
+        storage_options: Optional[StorageOptions] = None,
         **kwargs,
     ) -> None:
         """
@@ -111,51 +110,39 @@ class IsentropicConservativeCoriolis(TendencyComponent):
         self._stencil = self.compile_stencil("coriolis")
 
     @property
-    def input_properties(self) -> "PropertyDict":
+    def input_properties(self) -> PropertyDict:
         g = self.grid
         dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
 
         return_dict = {
-            "x_momentum_isentropic": {
-                "dims": dims,
-                "units": "kg m^-1 K^-1 s^-1",
-            },
-            "y_momentum_isentropic": {
-                "dims": dims,
-                "units": "kg m^-1 K^-1 s^-1",
-            },
+            "x_momentum_isentropic": {"dims": dims, "units": "kg m^-1 K^-1 s^-1"},
+            "y_momentum_isentropic": {"dims": dims, "units": "kg m^-1 K^-1 s^-1"},
         }
 
         return return_dict
 
     @property
-    def tendency_properties(self) -> "PropertyDict":
+    def tendency_properties(self) -> PropertyDict:
         g = self.grid
         dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
 
         return_dict = {
-            "x_momentum_isentropic": {
-                "dims": dims,
-                "units": "kg m^-1 K^-1 s^-2",
-            },
-            "y_momentum_isentropic": {
-                "dims": dims,
-                "units": "kg m^-1 K^-1 s^-2",
-            },
+            "x_momentum_isentropic": {"dims": dims, "units": "kg m^-1 K^-1 s^-2"},
+            "y_momentum_isentropic": {"dims": dims, "units": "kg m^-1 K^-1 s^-2"},
         }
 
         return return_dict
 
     @property
-    def diagnostic_properties(self) -> "PropertyDict":
+    def diagnostic_properties(self) -> PropertyDict:
         return {}
 
     def array_call(
         self,
-        state: "NDArrayLikeDict",
-        out_tendencies: "NDArrayLikeDict",
-        out_diagnostics: "NDArrayLikeDict",
-        overwrite_tendencies: Dict[str, bool],
+        state: NDArrayDict,
+        out_tendencies: NDArrayDict,
+        out_diagnostics: NDArrayDict,
+        overwrite_tendencies: dict[str, bool],
     ) -> None:
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
         nb = self._nb
@@ -178,16 +165,16 @@ class IsentropicConservativeCoriolis(TendencyComponent):
     @staticmethod
     @stencil_definition(backend=("numpy", "cupy"), stencil="coriolis")
     def _stencil_numpy(
-        in_su: np.ndarray,
-        in_sv: np.ndarray,
-        tnd_su: np.ndarray,
-        tnd_sv: np.ndarray,
+        in_su: NDArray,
+        in_sv: NDArray,
+        tnd_su: NDArray,
+        tnd_sv: NDArray,
         *,
         f: float,
         ow_tnd_su: bool,
         ow_tnd_sv: bool,
-        origin: "TripletInt",
-        domain: "TripletInt",
+        origin: TripletInt,
+        domain: TripletInt,
     ) -> None:
         i = slice(origin[0], origin[0] + domain[0])
         j = slice(origin[1], origin[1] + domain[1])

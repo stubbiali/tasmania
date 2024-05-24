@@ -20,7 +20,10 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from .centered import Centered
-from .fifth_order_upwind import FifthOrderUpwind
-from .third_order_upwind import ThirdOrderUpwind
-from .upwind import Upwind
+
+from tasmania.isentropic.dynamics.subclasses.minimal_horizontal_fluxes import (
+    centered,
+    fifth_order_upwind,
+    third_order_upwind,
+    upwind,
+)

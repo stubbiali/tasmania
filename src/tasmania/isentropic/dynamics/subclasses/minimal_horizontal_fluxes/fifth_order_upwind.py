@@ -20,13 +20,12 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from gt4py import gtscript
 
-from tasmania.python.framework.tag import subroutine_definition
-from tasmania.python.isentropic.dynamics.horizontal_fluxes import (
-    IsentropicMinimalHorizontalFlux,
-)
-from tasmania.python.isentropic.dynamics.subclasses.horizontal_fluxes.fifth_order_upwind import (
+from gt4py.cartesian import gtscript
+
+from tasmania.framework.tag import subroutine_definition
+from tasmania.isentropic.dynamics.horizontal_fluxes import IsentropicMinimalHorizontalFlux
+from tasmania.isentropic.dynamics.subclasses.horizontal_fluxes.fifth_order_upwind import (
     get_fifth_order_upwind_flux_x_gt4py,
     get_fifth_order_upwind_flux_x_numpy,
     get_fifth_order_upwind_flux_y_gt4py,

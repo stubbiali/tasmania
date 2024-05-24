@@ -20,7 +20,9 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from .centered_si import *
-from .forward_euler_si import *
-from .rk3ws_si import *
-from .utils import *
+
+from tasmania.isentropic.dynamics.subclasses.prognostics import (
+    centered_si,
+    forward_euler_si,
+    rk3ws_si,
+)

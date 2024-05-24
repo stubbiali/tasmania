@@ -20,16 +20,21 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-import abc
-import numpy as np
-from typing import Any, Dict, Tuple
 
+from __future__ import annotations
+import abc
+from typing import TYPE_CHECKING
+
+from gt4py.cartesian import gtscript
 from sympl._core.factory import AbstractFactory
 
-from gt4py import gtscript
+from tasmania.framework.stencil import StencilFactory
+from tasmania.framework.tag import subroutine_definition
 
-from tasmania.python.framework.stencil import StencilFactory
-from tasmania.python.framework.tag import subroutine_definition
+if TYPE_CHECKING:
+    from typing import Any
+
+    from tasmania.utils.typingx import NDArray
 
 
 class IsentropicMinimalVerticalFlux(AbstractFactory, StencilFactory):
@@ -43,7 +48,7 @@ class IsentropicMinimalVerticalFlux(AbstractFactory, StencilFactory):
     # class attributes
     extent: int = None
     order: int = None
-    externals: Dict[str, Any] = None
+    externals: dict[str, Any] = None
 
     def __init__(self, *, backend):
         super().__init__(backend)
@@ -54,11 +59,11 @@ class IsentropicMinimalVerticalFlux(AbstractFactory, StencilFactory):
     def flux_dry_numpy(
         dt: float,
         dz: float,
-        w: np.ndarray,
-        s: np.ndarray,
-        su: np.ndarray,
-        sv: np.ndarray,
-    ) -> Tuple[np.ndarray]:
+        w: NDArray,
+        s: NDArray,
+        su: NDArray,
+        sv: NDArray,
+    ) -> tuple[NDArray]:
         pass
 
     @staticmethod
@@ -67,11 +72,11 @@ class IsentropicMinimalVerticalFlux(AbstractFactory, StencilFactory):
     def flux_moist_numpy(
         dt: float,
         dz: float,
-        w: np.ndarray,
-        sqv: np.ndarray,
-        sqc: np.ndarray,
-        sqr: np.ndarray,
-    ) -> Tuple[np.ndarray]:
+        w: NDArray,
+        sqv: NDArray,
+        sqc: NDArray,
+        sqr: NDArray,
+    ) -> tuple[NDArray]:
         pass
 
     @staticmethod
@@ -85,7 +90,7 @@ class IsentropicMinimalVerticalFlux(AbstractFactory, StencilFactory):
         s: gtscript.Field["dtype"],
         su: gtscript.Field["dtype"],
         sv: gtscript.Field["dtype"],
-    ) -> "Tuple[gtscript.Field['dtype'], ...]":
+    ) -> tuple[gtscript.Field["dtype"], ...]:
         pass
 
     @staticmethod
@@ -99,5 +104,5 @@ class IsentropicMinimalVerticalFlux(AbstractFactory, StencilFactory):
         sqv: gtscript.Field["dtype"],
         sqc: gtscript.Field["dtype"],
         sqr: gtscript.Field["dtype"],
-    ) -> "Tuple[gtscript.Field['dtype'], ...]":
+    ) -> tuple[gtscript.Field["dtype"], ...]:
         pass

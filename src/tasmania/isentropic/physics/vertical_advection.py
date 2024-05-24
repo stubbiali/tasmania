@@ -20,30 +20,27 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-import numpy as np
-from sympl import DataArray
-from typing import Dict, Optional, Sequence, TYPE_CHECKING
 
+from __future__ import annotations
+import numpy as np
+from typing import TYPE_CHECKING
+
+from gt4py.cartesian import gtscript
+from sympl import DataArray
 from sympl._core.time import Timer
 
-from gt4py import gtscript
-
-from tasmania.python.framework.core_components import TendencyComponent
-from tasmania.python.framework.tag import stencil_definition
-from tasmania.python.isentropic.dynamics.vertical_fluxes import (
-    IsentropicMinimalVerticalFlux,
-)
-from tasmania.python.utils import typingx as ty
-from tasmania.python.utils.data import get_physical_constants
+from tasmania.framework.core_components import TendencyComponent
+from tasmania.framework.tag import stencil_definition
+from tasmania.isentropic.dynamics.vertical_fluxes import IsentropicMinimalVerticalFlux
+from tasmania.utils.constants import get_physical_constants
 
 if TYPE_CHECKING:
-    from sympl._core.typingx import NDArrayLikeDict, PropertyDict
+    from collections.abc import Sequence
+    from typing import Optional
 
-    from tasmania.python.domain.domain import Domain
-    from tasmania.python.framework.options import (
-        BackendOptions,
-        StorageOptions,
-    )
+    from tasmania.domain.domain import Domain
+    from tasmania.framework.options import BackendOptions, StorageOptions
+    from tasmania.utils.typingx import GTField, NDArray, NDArrayDict, PropertyDict, TripletInt
 
 
 mfwv = "mass_fraction_of_water_vapor_in_air"
@@ -52,13 +49,13 @@ mfpw = "mass_fraction_of_precipitation_water_in_air"
 
 
 @gtscript.function
-def first_order_boundary(dz: float, w: ty.GTField, phi: ty.GTField) -> ty.GTField:
+def first_order_boundary(dz: float, w: GTField, phi: GTField) -> GTField:
     out = (w[0, 0, -1] * phi[0, 0, -1] - w[0, 0, 0] * phi[0, 0, 0]) / dz
     return out
 
 
 @gtscript.function
-def second_order_boundary(dz: float, w: ty.GTField, phi: ty.GTField) -> ty.GTField:
+def second_order_boundary(dz: float, w: GTField, phi: GTField) -> GTField:
     out = (
         0.5
         * (
@@ -82,7 +79,7 @@ class IsentropicVerticalAdvection(TendencyComponent):
 
     def __init__(
         self,
-        domain: "Domain",
+        domain: Domain,
         grid_type: str = "numerical",
         flux_scheme: str = "upwind",
         moist: bool = False,
@@ -90,9 +87,9 @@ class IsentropicVerticalAdvection(TendencyComponent):
         *,
         enable_checks: bool = True,
         backend: str = "numpy",
-        backend_options: Optional["BackendOptions"] = None,
+        backend_options: Optional[BackendOptions] = None,
         storage_shape: Optional[Sequence[int]] = None,
-        storage_options: Optional["StorageOptions"] = None,
+        storage_options: Optional[StorageOptions] = None,
         **kwargs,
     ) -> None:
         """
@@ -165,20 +162,14 @@ class IsentropicVerticalAdvection(TendencyComponent):
         self._stencil = self.compile_stencil("stencil")
 
     @property
-    def input_properties(self) -> "PropertyDict":
+    def input_properties(self) -> PropertyDict:
         grid = self.grid
         dims = (grid.x.dims[0], grid.y.dims[0], grid.z.dims[0])
 
         return_dict = {
             "air_isentropic_density": {"dims": dims, "units": "kg m^-2 K^-1"},
-            "x_momentum_isentropic": {
-                "dims": dims,
-                "units": "kg m^-1 K^-1 s^-1",
-            },
-            "y_momentum_isentropic": {
-                "dims": dims,
-                "units": "kg m^-1 K^-1 s^-1",
-            },
+            "x_momentum_isentropic": {"dims": dims, "units": "kg m^-1 K^-1 s^-1"},
+            "y_momentum_isentropic": {"dims": dims, "units": "kg m^-1 K^-1 s^-1"},
         }
 
         if self._stgz:
@@ -192,10 +183,7 @@ class IsentropicVerticalAdvection(TendencyComponent):
                 "units": "K s^-1",
             }
         else:
-            return_dict["tendency_of_air_potential_temperature"] = {
-                "dims": dims,
-                "units": "K s^-1",
-            }
+            return_dict["tendency_of_air_potential_temperature"] = {"dims": dims, "units": "K s^-1"}
 
         if self._moist:
             return_dict[mfwv] = {"dims": dims, "units": "g g^-1"}
@@ -205,23 +193,14 @@ class IsentropicVerticalAdvection(TendencyComponent):
         return return_dict
 
     @property
-    def tendency_properties(self) -> "PropertyDict":
+    def tendency_properties(self) -> PropertyDict:
         grid = self.grid
         dims = (grid.x.dims[0], grid.y.dims[0], grid.z.dims[0])
 
         return_dict = {
-            "air_isentropic_density": {
-                "dims": dims,
-                "units": "kg m^-2 K^-1 s^-1",
-            },
-            "x_momentum_isentropic": {
-                "dims": dims,
-                "units": "kg m^-1 K^-1 s^-2",
-            },
-            "y_momentum_isentropic": {
-                "dims": dims,
-                "units": "kg m^-1 K^-1 s^-2",
-            },
+            "air_isentropic_density": {"dims": dims, "units": "kg m^-2 K^-1 s^-1"},
+            "x_momentum_isentropic": {"dims": dims, "units": "kg m^-1 K^-1 s^-2"},
+            "y_momentum_isentropic": {"dims": dims, "units": "kg m^-1 K^-1 s^-2"},
         }
         if self._moist:
             return_dict[mfwv] = {"dims": dims, "units": "g g^-1 s^-1"}
@@ -231,15 +210,15 @@ class IsentropicVerticalAdvection(TendencyComponent):
         return return_dict
 
     @property
-    def diagnostic_properties(self) -> "PropertyDict":
+    def diagnostic_properties(self) -> PropertyDict:
         return {}
 
     def array_call(
         self,
-        state: "NDArrayLikeDict",
-        out_tendencies: "NDArrayLikeDict",
-        out_diagnostics: "NDArrayLikeDict",
-        overwrite_tendencies: Dict[str, bool],
+        state: NDArrayDict,
+        out_tendencies: NDArrayDict,
+        out_diagnostics: NDArrayDict,
+        overwrite_tendencies: dict[str, bool],
     ) -> None:
         # shortcuts
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
@@ -292,19 +271,19 @@ class IsentropicVerticalAdvection(TendencyComponent):
     @stencil_definition(backend=("numpy", "cupy"), stencil="stencil")
     def _stencil_numpy(
         self,
-        in_w: np.ndarray,
-        in_s: np.ndarray,
-        in_su: np.ndarray,
-        in_sv: np.ndarray,
-        out_s: np.ndarray,
-        out_su: np.ndarray,
-        out_sv: np.ndarray,
-        in_qv: Optional[np.ndarray] = None,
-        in_qc: Optional[np.ndarray] = None,
-        in_qr: Optional[np.ndarray] = None,
-        out_qv: Optional[np.ndarray] = None,
-        out_qc: Optional[np.ndarray] = None,
-        out_qr: Optional[np.ndarray] = None,
+        in_w: NDArray,
+        in_s: NDArray,
+        in_su: NDArray,
+        in_sv: NDArray,
+        out_s: NDArray,
+        out_su: NDArray,
+        out_sv: NDArray,
+        in_qv: Optional[NDArray] = None,
+        in_qc: Optional[NDArray] = None,
+        in_qr: Optional[NDArray] = None,
+        out_qv: Optional[NDArray] = None,
+        out_qc: Optional[NDArray] = None,
+        out_qr: Optional[NDArray] = None,
         *,
         dt: float = 0.0,
         dz: float,
@@ -314,8 +293,8 @@ class IsentropicVerticalAdvection(TendencyComponent):
         ow_out_qv: bool = True,
         ow_out_qc: bool = True,
         ow_out_qr: bool = True,
-        origin: "TripletInt",
-        domain: "TripletInt",
+        origin: TripletInt,
+        domain: TripletInt,
     ) -> None:
         i = slice(origin[0], origin[0] + domain[0])
         j = slice(origin[1], origin[1] + domain[1])
@@ -445,20 +424,20 @@ class IsentropicVerticalAdvection(TendencyComponent):
         with computation(FORWARD), interval(0, 1):
             w = 0.0
         with computation(PARALLEL), interval(1, None):
-            if __INLINED(staggering):  # compile-time if
+            if staggering:
                 w = in_w
             else:
                 w = 0.5 * (in_w[0, 0, 0] + in_w[0, 0, -1])
 
         # interpolate the velocity on the main levels
         with computation(PARALLEL), interval(0, None):
-            if __INLINED(staggering):
+            if staggering:
                 wc = 0.5 * (in_w[0, 0, 0] + in_w[0, 0, 1])
             else:
                 wc = in_w
 
         # compute the isentropic density of the water species
-        if __INLINED(moist):  # compile-time if
+        if moist:
             with computation(PARALLEL), interval(0, None):
                 sqv = in_s * in_qv
                 sqc = in_s * in_qc
@@ -467,7 +446,7 @@ class IsentropicVerticalAdvection(TendencyComponent):
         # compute the fluxes
         with computation(PARALLEL), interval(flux_extent, flux_end):
             flux_s, flux_su, flux_sv = get_flux_dry(dt=dt, dz=dz, w=w, s=in_s, su=in_su, sv=in_sv)
-            if __INLINED(moist):  # compile-time if
+            if moist:
                 flux_sqv, flux_sqc, flux_sqr = get_flux_moist(
                     dt=dt, dz=dz, w=w, sqv=sqv, sqc=sqc, sqr=sqr
                 )
@@ -477,7 +456,7 @@ class IsentropicVerticalAdvection(TendencyComponent):
             out_s = set_output(out_s, 0.0, ow_out_s)
             out_su = set_output(out_su, 0.0, ow_out_su)
             out_sv = set_output(out_sv, 0.0, ow_out_sv)
-            if __INLINED(moist):  # compile-time if
+            if moist:
                 out_qv = set_output(out_qv, 0.0, ow_out_qv)
                 out_qc = set_output(out_qc, 0.0, ow_out_qc)
                 out_qr = set_output(out_qr, 0.0, ow_out_qr)
@@ -488,7 +467,7 @@ class IsentropicVerticalAdvection(TendencyComponent):
             out_su = set_output(out_su, tmp_out_su, ow_out_su)
             tmp_out_sv = (flux_sv[0, 0, 1] - flux_sv[0, 0, 0]) / dz
             out_sv = set_output(out_sv, tmp_out_sv, ow_out_sv)
-            if __INLINED(moist):  # compile-time if
+            if moist:
                 tmp_out_qv = (flux_sqv[0, 0, 1] - flux_sqv[0, 0, 0]) / (in_s[0, 0, 0] * dz)
                 out_qv = set_output(out_qv, tmp_out_qv, ow_out_qv)
                 tmp_out_qc = (flux_sqc[0, 0, 1] - flux_sqc[0, 0, 0]) / (in_s[0, 0, 0] * dz)
@@ -499,7 +478,7 @@ class IsentropicVerticalAdvection(TendencyComponent):
             out_s = set_output(out_s, 0.0, ow_out_s)
             out_su = set_output(out_su, 0.0, ow_out_su)
             out_sv = set_output(out_sv, 0.0, ow_out_sv)
-            if __INLINED(moist):  # compile-time if
+            if moist:
                 out_qv = set_output(out_qv, 0.0, ow_out_qv)
                 out_qc = set_output(out_qc, 0.0, ow_out_qc)
                 out_qr = set_output(out_qr, 0.0, ow_out_qr)
@@ -692,10 +671,7 @@ class PrescribedSurfaceHeating(TendencyComponent):
         return_dict = {"height_on_interface_levels": {"dims": dims_stgz, "units": "m"}}
 
         if self._apil:
-            return_dict["air_pressure_on_interface_levels"] = {
-                "dims": dims_stgz,
-                "units": "Pa",
-            }
+            return_dict["air_pressure_on_interface_levels"] = {"dims": dims_stgz, "units": "Pa"}
         else:
             return_dict["air_pressure"] = {"dims": dims, "units": "Pa"}
 
@@ -709,21 +685,14 @@ class PrescribedSurfaceHeating(TendencyComponent):
 
         if not self._tid:
             if self._aptil:
-                dims = (
-                    g.x.dims[0],
-                    g.y.dims[0],
-                    g.z_on_interface_levels.dims[0],
-                )
+                dims = (g.x.dims[0], g.y.dims[0], g.z_on_interface_levels.dims[0])
                 return_dict["air_potential_temperature_on_interface_levels"] = {
                     "dims": dims,
                     "units": "K s^-1",
                 }
             else:
                 dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
-                return_dict["air_potential_temperature"] = {
-                    "dims": dims,
-                    "units": "K s^-1",
-                }
+                return_dict["air_potential_temperature"] = {"dims": dims, "units": "K s^-1"}
 
         return return_dict
 
@@ -735,11 +704,7 @@ class PrescribedSurfaceHeating(TendencyComponent):
 
         if self._tid:
             if self._aptil:
-                dims = (
-                    g.x.dims[0],
-                    g.y.dims[0],
-                    g.z_on_interface_levels.dims[0],
-                )
+                dims = (g.x.dims[0], g.y.dims[0], g.z_on_interface_levels.dims[0])
                 return_dict["tendency_of_air_potential_temperature_on_interface_levels"] = {
                     "dims": dims,
                     "units": "K s^-1",

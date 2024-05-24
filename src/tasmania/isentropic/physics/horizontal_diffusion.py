@@ -20,20 +20,22 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from typing import Dict, Optional, Sequence, TYPE_CHECKING
 
-from tasmania.python.dwarfs.horizontal_diffusion import HorizontalDiffusion
-from tasmania.python.framework.core_components import TendencyComponent
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
+from tasmania.dwarfs.horizontal_diffusion import HorizontalDiffusion
+from tasmania.framework.core_components import TendencyComponent
 
 if TYPE_CHECKING:
-    from sympl import DataArray
-    from sympl._core.typingx import NDArrayLikeDict, PropertyDict
+    from collections.abc import Sequence
+    from typing import Optional
 
-    from tasmania.python.domain.domain import Domain
-    from tasmania.python.framework.options import (
-        BackendOptions,
-        StorageOptions,
-    )
+    from sympl import DataArray
+
+    from tasmania.domain.domain import Domain
+    from tasmania.framework.options import BackendOptions, StorageOptions
+    from tasmania.utils.typingx import NDArrayDict, PropertyDict
 
 
 mfwv = "mass_fraction_of_water_vapor_in_air"
@@ -51,21 +53,21 @@ class IsentropicHorizontalDiffusion(TendencyComponent):
 
     def __init__(
         self,
-        domain: "Domain",
+        domain: Domain,
         diffusion_type: str,
-        diffusion_coeff: "DataArray",
-        diffusion_coeff_max: "DataArray",
+        diffusion_coeff: DataArray,
+        diffusion_coeff_max: DataArray,
         diffusion_damp_depth: int,
         moist: bool = False,
-        diffusion_moist_coeff: Optional["DataArray"] = None,
-        diffusion_moist_coeff_max: Optional["DataArray"] = None,
+        diffusion_moist_coeff: Optional[DataArray] = None,
+        diffusion_moist_coeff_max: Optional[DataArray] = None,
         diffusion_moist_damp_depth: Optional[int] = None,
         *,
         enable_checks: bool = True,
         backend: str = "numpy",
-        backend_options: Optional["BackendOptions"] = None,
+        backend_options: Optional[BackendOptions] = None,
         storage_shape: Optional[Sequence[int]] = None,
-        storage_options: Optional["StorageOptions"] = None,
+        storage_options: Optional[StorageOptions] = None,
         **kwargs,
     ) -> None:
         """
@@ -173,19 +175,13 @@ class IsentropicHorizontalDiffusion(TendencyComponent):
             self._core_moist = None
 
     @property
-    def input_properties(self) -> "PropertyDict":
+    def input_properties(self) -> PropertyDict:
         dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])
 
         return_dict = {
             "air_isentropic_density": {"dims": dims, "units": "kg m^-2 K^-1"},
-            "x_momentum_isentropic": {
-                "dims": dims,
-                "units": "kg m^-1 K^-1 s^-1",
-            },
-            "y_momentum_isentropic": {
-                "dims": dims,
-                "units": "kg m^-1 K^-1 s^-1",
-            },
+            "x_momentum_isentropic": {"dims": dims, "units": "kg m^-1 K^-1 s^-1"},
+            "y_momentum_isentropic": {"dims": dims, "units": "kg m^-1 K^-1 s^-1"},
         }
 
         if self._moist:
@@ -196,22 +192,13 @@ class IsentropicHorizontalDiffusion(TendencyComponent):
         return return_dict
 
     @property
-    def tendency_properties(self) -> "PropertyDict":
+    def tendency_properties(self) -> PropertyDict:
         dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])
 
         return_dict = {
-            "air_isentropic_density": {
-                "dims": dims,
-                "units": "kg m^-2 K^-1 s^-1",
-            },
-            "x_momentum_isentropic": {
-                "dims": dims,
-                "units": "kg m^-1 K^-1 s^-2",
-            },
-            "y_momentum_isentropic": {
-                "dims": dims,
-                "units": "kg m^-1 K^-1 s^-2",
-            },
+            "air_isentropic_density": {"dims": dims, "units": "kg m^-2 K^-1 s^-1"},
+            "x_momentum_isentropic": {"dims": dims, "units": "kg m^-1 K^-1 s^-2"},
+            "y_momentum_isentropic": {"dims": dims, "units": "kg m^-1 K^-1 s^-2"},
         }
 
         if self._moist:
@@ -222,15 +209,15 @@ class IsentropicHorizontalDiffusion(TendencyComponent):
         return return_dict
 
     @property
-    def diagnostic_properties(self) -> "PropertyDict":
+    def diagnostic_properties(self) -> PropertyDict:
         return {}
 
     def array_call(
         self,
-        state: "NDArrayLikeDict",
-        out_tendencies: "NDArrayLikeDict",
-        out_diagnostics: "NDArrayLikeDict",
-        overwrite_tendencies: Dict[str, bool],
+        state: NDArrayDict,
+        out_tendencies: NDArrayDict,
+        out_diagnostics: NDArrayDict,
+        overwrite_tendencies: dict[str, bool],
     ) -> None:
         self._core(
             state["air_isentropic_density"],

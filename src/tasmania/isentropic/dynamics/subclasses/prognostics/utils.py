@@ -20,12 +20,18 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-import numpy as np
 
-from gt4py import gtscript
+from __future__ import annotations
+from typing import TYPE_CHECKING
 
-from tasmania.python.framework.stencil import stencil_definition
-from tasmania.python.utils import typingx
+from gt4py.cartesian import gtscript
+
+from tasmania.framework.stencil import stencil_definition
+
+if TYPE_CHECKING:
+    from typing import Optional
+
+    from tasmania.utils.typingx import NDArray, TripletInt
 
 
 # convenient aliases
@@ -36,33 +42,33 @@ mfpw = "mass_fraction_of_precipitation_water_in_air"
 
 @stencil_definition.register(backend=("numpy", "cupy"), stencil="step_forward_euler")
 def step_forward_euler_numpy(
-    s_now: np.ndarray,
-    s_int: np.ndarray,
-    s_new: np.ndarray,
-    u_int: np.ndarray,
-    v_int: np.ndarray,
-    su_int: np.ndarray = None,
-    sv_int: np.ndarray = None,
-    mtg_int: np.ndarray = None,
-    sqv_now: np.ndarray = None,
-    sqv_int: np.ndarray = None,
-    sqv_new: np.ndarray = None,
-    sqc_now: np.ndarray = None,
-    sqc_int: np.ndarray = None,
-    sqc_new: np.ndarray = None,
-    sqr_now: np.ndarray = None,
-    sqr_int: np.ndarray = None,
-    sqr_new: np.ndarray = None,
-    s_tnd: np.ndarray = None,
-    qv_tnd: np.ndarray = None,
-    qc_tnd: np.ndarray = None,
-    qr_tnd: np.ndarray = None,
+    s_now: NDArray,
+    s_int: NDArray,
+    s_new: NDArray,
+    u_int: NDArray,
+    v_int: NDArray,
+    su_int: Optional[NDArray] = None,
+    sv_int: Optional[NDArray] = None,
+    mtg_int: Optional[NDArray] = None,
+    sqv_now: Optional[NDArray] = None,
+    sqv_int: Optional[NDArray] = None,
+    sqv_new: Optional[NDArray] = None,
+    sqc_now: Optional[NDArray] = None,
+    sqc_int: Optional[NDArray] = None,
+    sqc_new: Optional[NDArray] = None,
+    sqr_now: Optional[NDArray] = None,
+    sqr_int: Optional[NDArray] = None,
+    sqr_new: Optional[NDArray] = None,
+    s_tnd: Optional[NDArray] = None,
+    qv_tnd: Optional[NDArray] = None,
+    qc_tnd: Optional[NDArray] = None,
+    qr_tnd: Optional[NDArray] = None,
     *,
     dt: float,
     dx: float,
     dy: float,
-    origin: typingx.TripletInt,
-    domain: typingx.TripletInt,
+    origin: TripletInt,
+    domain: TripletInt,
 ) -> None:
     i = slice(origin[0], origin[0] + domain[0])
     j = slice(origin[1], origin[1] + domain[1])
@@ -130,29 +136,29 @@ def step_forward_euler_numpy(
 
 @stencil_definition.register(backend=("numpy", "cupy"), stencil="step_forward_euler_momentum")
 def step_forward_euler_momentum_numpy(
-    s_now: np.ndarray,
-    s_int: np.ndarray,
-    s_new: np.ndarray,
-    u_int: np.ndarray,
-    v_int: np.ndarray,
-    su_now: np.ndarray,
-    su_int: np.ndarray,
-    su_new: np.ndarray,
-    sv_now: np.ndarray,
-    sv_int: np.ndarray,
-    sv_new: np.ndarray,
-    mtg_now: np.ndarray,
-    mtg_new: np.ndarray,
-    mtg_int: np.ndarray = None,
-    su_tnd: np.ndarray = None,
-    sv_tnd: np.ndarray = None,
+    s_now: NDArray,
+    s_int: NDArray,
+    s_new: NDArray,
+    u_int: NDArray,
+    v_int: NDArray,
+    su_now: NDArray,
+    su_int: NDArray,
+    su_new: NDArray,
+    sv_now: NDArray,
+    sv_int: NDArray,
+    sv_new: NDArray,
+    mtg_now: NDArray,
+    mtg_new: NDArray,
+    mtg_int: Optional[NDArray] = None,
+    su_tnd: Optional[NDArray] = None,
+    sv_tnd: Optional[NDArray] = None,
     *,
     dt: float,
     dx: float,
     dy: float,
     eps: float,
-    origin: typingx.TripletInt,
-    domain: typingx.TripletInt,
+    origin: TripletInt,
+    domain: TripletInt,
 ) -> None:
     i = slice(origin[0], origin[0] + domain[0])
     im1 = slice(origin[0] - 1, origin[0] + domain[0] - 1)
@@ -369,7 +375,7 @@ def step_forward_euler_momentum_gt4py(
             sv_tnd=sv_tnd,
         )
 
-        if __INLINED(su_tnd_on):  # compile-time if
+        if su_tnd_on:  # compile-time if
             su_new = su_now[0, 0, 0] - dt * (
                 (flux_su_x[1, 0, 0] - flux_su_x[0, 0, 0]) / dx
                 + (flux_su_y[0, 1, 0] - flux_su_y[0, 0, 0]) / dy
@@ -385,7 +391,7 @@ def step_forward_euler_momentum_gt4py(
                 + eps * s_new[0, 0, 0] * (mtg_new[1, 0, 0] - mtg_new[-1, 0, 0]) / (2.0 * dx)
             )
 
-        if __INLINED(sv_tnd_on):  # compile-time if
+        if sv_tnd_on:  # compile-time if
             sv_new = sv_now[0, 0, 0] - dt * (
                 (flux_sv_x[1, 0, 0] - flux_sv_x[0, 0, 0]) / dx
                 + (flux_sv_y[0, 1, 0] - flux_sv_y[0, 0, 0]) / dy
