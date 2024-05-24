@@ -20,4 +20,5 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-import tasmania.python.physics.microphysics.sedimentation_fluxes
+
+from tasmania.physics.microphysics import sedimentation_fluxes

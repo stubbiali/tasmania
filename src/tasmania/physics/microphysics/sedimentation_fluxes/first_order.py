@@ -20,10 +20,11 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from gt4py import gtscript
 
-from tasmania.python.framework.tag import subroutine_definition
-from tasmania.python.physics.microphysics.utils import SedimentationFlux
+from gt4py.cartesian import gtscript
+
+from tasmania.framework.tag import subroutine_definition
+from tasmania.physics.microphysics.utils import SedimentationFlux
 
 
 class FirstOrderUpwind(SedimentationFlux):

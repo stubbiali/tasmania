@@ -20,28 +20,23 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-import numpy as np
-from typing import Optional, Sequence, TYPE_CHECKING
 
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
+from gt4py.cartesian import gtscript
 from sympl._core.time import Timer
 
-from gt4py import gtscript
-
-from tasmania.python.framework.core_components import TendencyComponent
-from tasmania.python.framework.tag import (
-    stencil_definition,
-    subroutine_definition,
-)
+from tasmania.framework.core_components import TendencyComponent
+from tasmania.framework.tag import stencil_definition, subroutine_definition
 
 if TYPE_CHECKING:
-    from sympl._core.typingx import NDArrayLikeDict, PropertyDict
+    from collections.abc import Sequence
+    from typing import Optional
 
-    from tasmania.python.domain.domain import Domain
-    from tasmania.python.framework.options import (
-        BackendOptions,
-        StorageOptions,
-    )
-    from tasmania.python.utils.typingx import TripletInt
+    from tasmania.domain.domain import Domain
+    from tasmania.framework.options import BackendOptions, StorageOptions
+    from tasmania.utils.typingx import NDArray, NDArrayDict, PropertyDict, TripletInt
 
 
 class Smagorinsky2d(TendencyComponent):
@@ -59,14 +54,14 @@ class Smagorinsky2d(TendencyComponent):
 
     def __init__(
         self,
-        domain: "Domain",
+        domain: Domain,
         smagorinsky_constant: float = 0.18,
         *,
         enable_checks: bool = True,
         backend: str = "numpy",
-        backend_options: Optional["BackendOptions"] = None,
+        backend_options: Optional[BackendOptions] = None,
         storage_shape: Optional[Sequence[int]] = None,
-        storage_options: Optional["StorageOptions"] = None,
+        storage_options: Optional[StorageOptions] = None,
         **kwargs,
     ) -> None:
         """
@@ -118,7 +113,7 @@ class Smagorinsky2d(TendencyComponent):
         self._stencil = self.compile_stencil("smagorinsky")
 
     @property
-    def input_properties(self) -> "PropertyDict":
+    def input_properties(self) -> PropertyDict:
         dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])
         return {
             "x_velocity": {"dims": dims, "units": "m s^-1"},
@@ -126,7 +121,7 @@ class Smagorinsky2d(TendencyComponent):
         }
 
     @property
-    def tendency_properties(self) -> "PropertyDict":
+    def tendency_properties(self) -> PropertyDict:
         dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])
         return {
             "x_velocity": {"dims": dims, "units": "m s^-2"},
@@ -134,15 +129,15 @@ class Smagorinsky2d(TendencyComponent):
         }
 
     @property
-    def diagnostic_properties(self) -> "PropertyDict":
+    def diagnostic_properties(self) -> PropertyDict:
         return {}
 
     def array_call(
         self,
-        state: "NDArrayLikeDict",
-        out_tendencies: "NDArrayLikeDict",
-        out_diagnostics: "NDArrayLikeDict",
-        overwrite_tendencies: "NDArrayLikeDict",
+        state: NDArrayDict,
+        out_tendencies: NDArrayDict,
+        out_diagnostics: NDArrayDict,
+        overwrite_tendencies: NDArrayDict,
     ):
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
         nb = self._nb
@@ -169,18 +164,18 @@ class Smagorinsky2d(TendencyComponent):
     @staticmethod
     @stencil_definition(backend=("numpy", "cupy", "numba:cpu:numpy"), stencil="smagorinsky")
     def _stencil_numpy(
-        in_u: np.ndarray,
-        in_v: np.ndarray,
-        out_u_tnd: np.ndarray,
-        out_v_tnd: np.ndarray,
+        in_u: NDArray,
+        in_v: NDArray,
+        out_u_tnd: NDArray,
+        out_v_tnd: NDArray,
         *,
         dx: float,
         dy: float,
         cs: float,
         ow_out_u_tnd: bool,
         ow_out_v_tnd: bool,
-        origin: "TripletInt",
-        domain: "TripletInt",
+        origin: TripletInt,
+        domain: TripletInt,
     ) -> None:
         ib, ie = origin[0], origin[0] + domain[0]
         jb, je = origin[1], origin[1] + domain[1]
@@ -212,10 +207,7 @@ class Smagorinsky2d(TendencyComponent):
             out_v_tnd = set_output(out_v_tnd, tmp_out_v_tnd, ow_out_v_tnd)
 
     @staticmethod
-    @subroutine_definition(
-        backend=("numpy", "cupy", "numba:cpu:numpy"),
-        stencil="smagorinsky_core",
-    )
+    @subroutine_definition(backend=("numpy", "cupy", "numba:cpu:numpy"), stencil="smagorinsky_core")
     def _core_numpy(u, v, dx, dy, cs, ib, ie, jb, je, k):
         s00 = (u[ib : ie + 2, jb - 1 : je + 1, k] - u[ib - 2 : ie, jb - 1 : je + 1, k]) / (2.0 * dx)
         s01 = 0.5 * (

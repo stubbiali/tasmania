@@ -20,4 +20,5 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-import tasmania.python.physics.microphysics
+
+from tasmania.physics import microphysics

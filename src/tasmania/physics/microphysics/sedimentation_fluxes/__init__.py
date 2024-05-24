@@ -20,5 +20,5 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from .first_order import FirstOrderUpwind
-from .second_order import SecondOrderUpwind
+
+from tasmania.physics.microphysics.sedimentation_fluxes import first_order, second_order

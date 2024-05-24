@@ -21,4 +21,4 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 
-from tasmania import burgers, domain, framework, isentropic
+from tasmania import burgers, domain, framework, isentropic, physics

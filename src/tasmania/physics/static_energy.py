@@ -20,26 +20,24 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-import numpy as np
-from typing import Mapping, Optional, Sequence, TYPE_CHECKING
 
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
+from gt4py.cartesian import gtscript
 from sympl._core.data_array import DataArray
 from sympl._core.time import Timer
 
-from gt4py import gtscript
-
-from tasmania.python.framework.core_components import DiagnosticComponent
-from tasmania.python.framework.tag import stencil_definition
+from tasmania.framework.core_components import DiagnosticComponent
+from tasmania.framework.tag import stencil_definition
 
 if TYPE_CHECKING:
-    from sympl._core.typingx import NDArrayLikeDict, PropertyDict
+    from collections.abc import Sequence
+    from typing import Optional
 
-    from tasmania.python.domain.domain import Domain
-    from tasmania.python.framework.options import (
-        BackendOptions,
-        StorageOptions,
-    )
-    from tasmania.python.utils.typingx import TripletInt
+    from tasmania.domain.domain import Domain
+    from tasmania.framework.options import BackendOptions, StorageOptions
+    from tasmania.utils.typingx import NDArray, NDArrayDict, PropertyDict, TripletInt
 
 
 class DryStaticEnergy(DiagnosticComponent):
@@ -55,16 +53,16 @@ class DryStaticEnergy(DiagnosticComponent):
 
     def __init__(
         self,
-        domain: "Domain",
+        domain: Domain,
         grid_type: str = "numerical",
         height_on_interface_levels: bool = True,
-        physical_constants: Optional[Mapping[str, DataArray]] = None,
+        physical_constants: Optional[dict[str, DataArray]] = None,
         *,
         enable_checks: bool = True,
         backend: str = "numpy",
-        backend_options: Optional["BackendOptions"] = None,
+        backend_options: Optional[BackendOptions] = None,
         storage_shape: Optional[Sequence[int]] = None,
-        storage_options: Optional["StorageOptions"] = None,
+        storage_options: Optional[StorageOptions] = None,
     ) -> None:
         # keep track of input arguments needed at run-time
         self._stgz = height_on_interface_levels
@@ -96,24 +94,21 @@ class DryStaticEnergy(DiagnosticComponent):
         self._stencil = self.compile_stencil("static_energy")
 
     @property
-    def input_properties(self) -> "PropertyDict":
+    def input_properties(self) -> PropertyDict:
         g = self.grid
         dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
         dims_stgz = (g.x.dims[0], g.y.dims[0], g.z_on_interface_levels.dims[0])
 
         return_dict = {"air_temperature": {"dims": dims, "units": "K"}}
         if self._stgz:
-            return_dict["height_on_interface_levels"] = {
-                "dims": dims_stgz,
-                "units": "m",
-            }
+            return_dict["height_on_interface_levels"] = {"dims": dims_stgz, "units": "m"}
         else:
             return_dict["height"] = {"dims": dims, "units": "m"}
 
         return return_dict
 
     @property
-    def diagnostic_properties(self) -> "PropertyDict":
+    def diagnostic_properties(self) -> PropertyDict:
         g = self.grid
         dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
 
@@ -121,7 +116,7 @@ class DryStaticEnergy(DiagnosticComponent):
 
         return return_dict
 
-    def array_call(self, state: "NDArrayLikeDict", out: "NDArrayLikeDict") -> None:
+    def array_call(self, state: NDArrayDict, out: NDArrayDict) -> None:
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
 
         in_t = state["air_temperature"]
@@ -143,12 +138,12 @@ class DryStaticEnergy(DiagnosticComponent):
     @stencil_definition(backend=("numpy", "cupy", "numba:cpu:numpy"), stencil="static_energy")
     def _stencil_numpy(
         self,
-        in_t: np.ndarray,
-        in_h: np.ndarray,
-        out_dse: np.ndarray,
+        in_t: NDArray,
+        in_h: NDArray,
+        out_dse: NDArray,
         *,
-        origin: "TripletInt",
-        domain: "TripletInt",
+        origin: TripletInt,
+        domain: TripletInt,
     ):
         i = slice(origin[0], origin[0] + domain[0])
         j = slice(origin[1], origin[1] + domain[1])
@@ -170,7 +165,7 @@ class DryStaticEnergy(DiagnosticComponent):
         from __externals__ import cp, g, height_on_interface_levels
 
         with computation(PARALLEL), interval(...):
-            if __INLINED(height_on_interface_levels):
+            if height_on_interface_levels:
                 h = 0.5 * (in_h[0, 0, 0] + in_h[0, 0, 1])
             else:
                 h = in_h
@@ -188,14 +183,14 @@ class MoistStaticEnergy(DiagnosticComponent):
 
     def __init__(
         self,
-        domain: "Domain",
+        domain: Domain,
         grid_type: str = "numerical",
-        physical_constants: Optional[Mapping[str, DataArray]] = None,
+        physical_constants: Optional[dict[str, DataArray]] = None,
         *,
         backend: str = "numpy",
-        backend_options: Optional["BackendOptions"] = None,
+        backend_options: Optional[BackendOptions] = None,
         storage_shape: Optional[Sequence[int]] = None,
-        storage_options: Optional["StorageOptions"] = None,
+        storage_options: Optional[StorageOptions] = None,
     ) -> None:
         # call parent's constructor
         super().__init__(
@@ -215,22 +210,19 @@ class MoistStaticEnergy(DiagnosticComponent):
         self._stencil = self.compile_stencil("moist_static_energy")
 
     @property
-    def input_properties(self) -> "PropertyDict":
+    def input_properties(self) -> PropertyDict:
         g = self.grid
         dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
 
         return_dict = {
             "montgomery_potential": {"dims": dims, "units": "m^2 s^-2"},
-            "mass_fraction_of_water_vapor_in_air": {
-                "dims": dims,
-                "units": "g g^-1",
-            },
+            "mass_fraction_of_water_vapor_in_air": {"dims": dims, "units": "g g^-1"},
         }
 
         return return_dict
 
     @property
-    def diagnostic_properties(self) -> "PropertyDict":
+    def diagnostic_properties(self) -> PropertyDict:
         g = self.grid
         dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
 
@@ -238,7 +230,7 @@ class MoistStaticEnergy(DiagnosticComponent):
 
         return return_dict
 
-    def array_call(self, state: "NDArrayLikeDict", out: "NDArrayLikeDict") -> None:
+    def array_call(self, state: NDArrayDict, out: NDArrayDict) -> None:
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
 
         in_dse = state["montgomery_potential"]
@@ -257,18 +249,15 @@ class MoistStaticEnergy(DiagnosticComponent):
         )
         Timer.stop()
 
-    @stencil_definition(
-        backend=("numpy", "cupy", "numba:cpu:numpy"),
-        stencil="moist_static_energy",
-    )
+    @stencil_definition(backend=("numpy", "cupy", "numba:cpu:numpy"), stencil="moist_static_energy")
     def _stencil_numpy(
         self,
-        in_dse: np.ndarray,
-        in_qv: np.ndarray,
-        out_mse: np.ndarray,
+        in_dse: NDArray,
+        in_qv: NDArray,
+        out_mse: NDArray,
         *,
-        origin: "TripletInt",
-        domain: "TripletInt",
+        origin: TripletInt,
+        domain: TripletInt,
     ):
         i = slice(origin[0], origin[0] + domain[0])
         j = slice(origin[1], origin[1] + domain[1])
