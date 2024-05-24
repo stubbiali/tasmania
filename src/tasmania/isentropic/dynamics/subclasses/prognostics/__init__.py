@@ -25,4 +25,5 @@ from tasmania.isentropic.dynamics.subclasses.prognostics import (
     centered_si,
     forward_euler_si,
     rk3ws_si,
+    utils,
 )

@@ -30,7 +30,7 @@ from sympl import DataArray
 import timeit
 from typing import TYPE_CHECKING
 
-from tasmania.externals import cp
+from tasmania.externals import cupy
 
 if TYPE_CHECKING:
     from typing import Optional
@@ -124,9 +124,9 @@ class Timer:
         cls.head = node
 
         # tic
-        if cp is not None:
+        if cupy is not None:
             try:
-                cp.cuda.Device(0).synchronize()
+                cupy.cuda.Device(0).synchronize()
             except RuntimeError:
                 pass
         cls.head.tic = timeit.default_timer()
@@ -142,9 +142,9 @@ class Timer:
         assert label == cls.active[-1], f"Cannot stop {label} before stopping {cls.active[-1]}"
 
         # toc
-        if cp is not None:
+        if cupy is not None:
             try:
-                cp.cuda.Device(0).synchronize()
+                cupy.cuda.Device(0).synchronize()
             except RuntimeError:
                 pass
         toc = timeit.default_timer()
