@@ -57,6 +57,4 @@ def ones_gt4py(shape, *, storage_options=None):
     backend = ones_gt4py.__tasmania_runtime__["backend"]
     gt_backend = get_gt_backend(backend)
     so = storage_options or StorageOptions
-    return gt_storage.ones(
-        shape, dtype=so.dtype, backend=gt_backend, aligned_index=so.aligned_index
-    )
+    return gt_storage.ones(shape, dtype=so.dtype, backend=gt_backend)

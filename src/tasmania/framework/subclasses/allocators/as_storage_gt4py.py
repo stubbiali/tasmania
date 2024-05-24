@@ -46,9 +46,7 @@ def _(data: np.ndarray, *, storage_options: Optional[StorageOptions] = None) -> 
     backend = as_storage_gt4py.__tasmania_runtime__["backend"]
     gt_backend = get_gt_backend(backend)
     so = storage_options or StorageOptions
-    return gt_storage.from_array(
-        data, dtype=so.dtype, backend=gt_backend, aligned_index=so.aligned_index
-    )
+    return gt_storage.from_array(data, dtype=so.dtype, backend=gt_backend)
 
 
 if cp:
@@ -58,6 +56,4 @@ if cp:
         backend = as_storage_gt4py.__tasmania_runtime__["backend"]
         gt_backend = get_gt_backend(backend)
         so = storage_options or StorageOptions
-        return gt_storage.from_array(
-            data, dtype=so.dtype, backend=gt_backend, aligned_index=so.aligned_index
-        )
+        return gt_storage.from_array(data, dtype=so.dtype, backend=gt_backend)
