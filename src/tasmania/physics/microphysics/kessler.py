@@ -190,7 +190,7 @@ class KesslerMicrophysics(TendencyComponent):
         }
         self._stencil = self.compile_stencil("kessler")
 
-        self._fake_field = self.zeros(shape=self.storage_shape)
+        self._placeholder = self.zeros(shape=self.storage_shape)
 
     @property
     def input_properties(self) -> PropertyDict:
@@ -271,7 +271,7 @@ class KesslerMicrophysics(TendencyComponent):
             "in_qv": state[mfwv],
             "out_qc_tnd": out_tendencies[mfcw],
             "out_qr_tnd": out_tendencies[mfpw],
-            "out_qv_tnd": out_tendencies.get(mfwv, self._fake_field),
+            "out_qv_tnd": out_tendencies.get(mfwv, self._placeholder),
             "ow_out_qc_tnd": overwrite_tendencies[mfcw],
             "ow_out_qr_tnd": overwrite_tendencies[mfpw],
             "ow_out_qv_tnd": overwrite_tendencies.get(mfwv, False),
@@ -291,7 +291,7 @@ class KesslerMicrophysics(TendencyComponent):
             else:
                 stencil_args["out_theta_tnd"] = out_tendencies["air_potential_temperature"]
         else:
-            stencil_args["out_theta_tnd"] = self._fake_field
+            stencil_args["out_theta_tnd"] = self._placeholder
 
         # run the stencil
         Timer.start(label="stencil")

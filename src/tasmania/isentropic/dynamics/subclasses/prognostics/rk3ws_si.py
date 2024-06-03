@@ -92,6 +92,8 @@ class RK3WSSI(IsentropicPrognostic):
             self._sqc_now = None
             self._sqr_now = None
 
+        self._placeholder = self.zeros(shape=self._storage_shape)
+
     @property
     def stages(self):
         return 3
@@ -138,7 +140,7 @@ class RK3WSSI(IsentropicPrognostic):
         stencil_args = {
             "s_now": self._s_now,
             "s_int": state["air_isentropic_density"],
-            "s_tnd": tendencies.get("air_isentropic_density", None),
+            "s_tnd": tendencies.get("air_isentropic_density", self._placeholder),
             "s_new": out_state["air_isentropic_density"],
             "u_int": state["x_velocity_at_u_locations"],
             "v_int": state["y_velocity_at_v_locations"],
@@ -150,15 +152,15 @@ class RK3WSSI(IsentropicPrognostic):
                 {
                     "sqv_now": self._sqv_now,
                     "sqv_int": state["isentropic_density_of_water_vapor"],
-                    "qv_tnd": tendencies.get(mfwv, None),
+                    "qv_tnd": tendencies.get(mfwv, self._placeholder),
                     "sqv_new": out_state["isentropic_density_of_water_vapor"],
                     "sqc_now": self._sqc_now,
                     "sqc_int": state["isentropic_density_of_cloud_liquid_water"],
-                    "qc_tnd": tendencies.get(mfcw, None),
+                    "qc_tnd": tendencies.get(mfcw, self._placeholder),
                     "sqc_new": out_state["isentropic_density_of_cloud_liquid_water"],
                     "sqr_now": self._sqr_now,
                     "sqr_int": state["isentropic_density_of_precipitation_water"],
-                    "qr_tnd": tendencies.get(mfpw, None),
+                    "qr_tnd": tendencies.get(mfpw, self._placeholder),
                     "sqr_new": out_state["isentropic_density_of_precipitation_water"],
                 }
             )
@@ -205,11 +207,11 @@ class RK3WSSI(IsentropicPrognostic):
             "mtg_new": self._mtg_new,
             "su_now": self._su_now,
             "su_int": state["x_momentum_isentropic"],
-            "su_tnd": tendencies.get("x_momentum_isentropic"),
+            "su_tnd": tendencies.get("x_momentum_isentropic", self._placeholder),
             "su_new": out_state["x_momentum_isentropic"],
             "sv_now": self._sv_now,
             "sv_int": state["y_momentum_isentropic"],
-            "sv_tnd": tendencies.get("y_momentum_isentropic"),
+            "sv_tnd": tendencies.get("y_momentum_isentropic", self._placeholder),
             "sv_new": out_state["y_momentum_isentropic"],
         }
 
