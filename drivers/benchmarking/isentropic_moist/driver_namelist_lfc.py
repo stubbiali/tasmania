@@ -2,7 +2,7 @@
 #
 # Tasmania
 #
-# Copyright (c) 2018-2021, ETH Zurich
+# Copyright (c) 2018-2024, ETH Zurich
 # All rights reserved.
 #
 # This file is part of the Tasmania project. Tasmania is free software:
@@ -20,19 +20,44 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+
 import click
 from datetime import timedelta
+import os
+import sys
 
 from sympl._core.time import Timer
 
-import tasmania as taz
-
-from drivers.benchmarking.isentropic_moist import namelist_lfc
-from drivers.benchmarking.utils import (
-    exec_info_to_csv,
-    inject_backend,
-    run_info_to_csv,
+from tasmania.domain.domain import Domain
+from tasmania.framework.allocators import zeros
+from tasmania.framework.concurrent_coupling import ConcurrentCoupling
+from tasmania.framework.generic_functions import to_numpy
+from tasmania.isentropic.dynamics.dycore import IsentropicDynamicalCore
+from tasmania.isentropic.physics.coriolis import IsentropicConservativeCoriolis
+from tasmania.isentropic.physics.diagnostics import (
+    IsentropicDiagnostics,
+    IsentropicVelocityComponents,
 )
+from tasmania.isentropic.physics.horizontal_smoothing import IsentropicHorizontalSmoothing
+from tasmania.isentropic.physics.turbulence import IsentropicSmagorinsky
+from tasmania.isentropic.physics.vertical_advection import IsentropicVerticalAdvection
+from tasmania.isentropic.state import get_isentropic_state_from_brunt_vaisala_frequency
+from tasmania.isentropic.utils import AirPotentialTemperatureToDiagnostic
+from tasmania.physics.microphysics.kessler import (
+    KesslerFallVelocity,
+    KesslerMicrophysics,
+    KesslerSaturationAdjustmentPrognostic,
+    KesslerSedimentation,
+)
+from tasmania.physics.microphysics.utils import Precipitation
+from tasmania.utils.storage import get_dataarray_3d
+from tasmania.utils.utils import feed_module
+from tasmania.utils.xarrayx import DataArrayDictOperator
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
+
+import namelist_lfc
+from utils import exec_info_to_csv, inject_backend, run_info_to_csv
 
 
 @click.command()
@@ -53,13 +78,13 @@ def main(backend=None, namelist="namelist_lfc.py", no_log=False):
     _namelist = _namelist[:-3] if _namelist.endswith(".py") else _namelist
     exec(f"import {_namelist} as namelist_module")
     nl = locals()["namelist_module"]
-    taz.feed_module(target=nl, source=namelist_lfc)
+    feed_module(target=nl, source=namelist_lfc)
     inject_backend(nl, backend)
 
     # ============================================================
     # The underlying domain
     # ============================================================
-    domain = taz.Domain(
+    domain = Domain(
         nl.domain_x,
         nl.nx,
         nl.domain_y,
@@ -82,7 +107,7 @@ def main(backend=None, namelist="namelist_lfc.py", no_log=False):
     # ============================================================
     # The initial state
     # ============================================================
-    state = taz.get_isentropic_state_from_brunt_vaisala_frequency(
+    state = get_isentropic_state_from_brunt_vaisala_frequency(
         cgrid,
         nl.init_time,
         nl.x_velocity,
@@ -98,8 +123,8 @@ def main(backend=None, namelist="namelist_lfc.py", no_log=False):
     domain.horizontal_boundary.reference_state = state
 
     # add tendency_of_air_potential_temperature to the state
-    state["tendency_of_air_potential_temperature"] = taz.get_dataarray_3d(
-        taz.zeros(backend, shape=storage_shape, storage_options=nl.so),
+    state["tendency_of_air_potential_temperature"] = get_dataarray_3d(
+        zeros(backend, shape=storage_shape, storage_options=nl.so),
         cgrid,
         "K s^-1",
         grid_shape=(cgrid.nx, cgrid.ny, cgrid.nz),
@@ -112,7 +137,7 @@ def main(backend=None, namelist="namelist_lfc.py", no_log=False):
     args = []
 
     # component calculating the Coriolis acceleration
-    cf = taz.IsentropicConservativeCoriolis(
+    cf = IsentropicConservativeCoriolis(
         domain,
         grid_type="numerical",
         coriolis_parameter=nl.coriolis_parameter,
@@ -125,7 +150,7 @@ def main(backend=None, namelist="namelist_lfc.py", no_log=False):
     args.append(cf)
 
     # component implementing the Smagorinsky turbulence model
-    turb = taz.IsentropicSmagorinsky(
+    turb = IsentropicSmagorinsky(
         domain,
         smagorinsky_constant=nl.smagorinsky_constant,
         enable_checks=nl.enable_checks,
@@ -137,7 +162,7 @@ def main(backend=None, namelist="namelist_lfc.py", no_log=False):
     args.append(turb)
 
     # component calculating the microphysics
-    ke = taz.KesslerMicrophysics(
+    ke = KesslerMicrophysics(
         domain,
         "numerical",
         air_pressure_on_interface_levels=True,
@@ -155,7 +180,7 @@ def main(backend=None, namelist="namelist_lfc.py", no_log=False):
     args.append(ke)
 
     # components calculating the tendencies "emulating" the saturation adjustment
-    sa = taz.KesslerSaturationAdjustmentPrognostic(
+    sa = KesslerSaturationAdjustmentPrognostic(
         domain,
         grid_type="numerical",
         air_pressure_on_interface_levels=True,
@@ -169,7 +194,7 @@ def main(backend=None, namelist="namelist_lfc.py", no_log=False):
     args.append(sa)
 
     # component promoting air_potential_temperature to state variable
-    t2d = taz.AirPotentialTemperatureToDiagnostic(
+    t2d = AirPotentialTemperatureToDiagnostic(
         domain,
         "numerical",
         enable_checks=nl.enable_checks,
@@ -182,7 +207,7 @@ def main(backend=None, namelist="namelist_lfc.py", no_log=False):
 
     if nl.vertical_advection:
         # component integrating the vertical flux
-        vf = taz.IsentropicVerticalAdvection(
+        vf = IsentropicVerticalAdvection(
             domain,
             flux_scheme=nl.vertical_flux_scheme,
             moist=True,
@@ -196,7 +221,7 @@ def main(backend=None, namelist="namelist_lfc.py", no_log=False):
         args.append(vf)
 
     # component estimating the raindrop fall velocity
-    rfv = taz.KesslerFallVelocity(
+    rfv = KesslerFallVelocity(
         domain,
         "numerical",
         enable_checks=nl.enable_checks,
@@ -208,7 +233,7 @@ def main(backend=None, namelist="namelist_lfc.py", no_log=False):
     args.append(rfv)
 
     # component integrating the sedimentation flux
-    sd = taz.KesslerSedimentation(
+    sd = KesslerSedimentation(
         domain,
         "numerical",
         sedimentation_flux_scheme=nl.sedimentation_flux_scheme,
@@ -221,13 +246,13 @@ def main(backend=None, namelist="namelist_lfc.py", no_log=False):
     args.append(sd)
 
     # wrap the components in a ConcurrentCoupling object
-    slow_tends = taz.ConcurrentCoupling(
+    slow_tends = ConcurrentCoupling(
         *args,
         execution_policy="serial",
         enable_checks=nl.enable_checks,
         backend=nl.backend,
         backend_options=nl.bo,
-        storage_options=nl.so
+        storage_options=nl.so,
     )
 
     # ============================================================
@@ -237,7 +262,7 @@ def main(backend=None, namelist="namelist_lfc.py", no_log=False):
 
     # component retrieving the diagnostic variables
     pt = state["air_pressure_on_interface_levels"][0, 0, 0]
-    idv = taz.IsentropicDiagnostics(
+    idv = IsentropicDiagnostics(
         domain,
         grid_type="numerical",
         moist=True,
@@ -251,7 +276,7 @@ def main(backend=None, namelist="namelist_lfc.py", no_log=False):
     args.append(idv)
 
     # component calculating the accumulated precipitation
-    ap = taz.Precipitation(
+    ap = Precipitation(
         domain,
         "numerical",
         enable_checks=nl.enable_checks,
@@ -264,7 +289,7 @@ def main(backend=None, namelist="namelist_lfc.py", no_log=False):
     args.append(ap)
 
     # component performing the horizontal smoothing
-    hs = taz.IsentropicHorizontalSmoothing(
+    hs = IsentropicHorizontalSmoothing(
         domain,
         nl.smooth_type,
         nl.smooth_coeff,
@@ -279,7 +304,7 @@ def main(backend=None, namelist="namelist_lfc.py", no_log=False):
     args.append(hs)
 
     # component calculating the velocity components
-    vc = taz.IsentropicVelocityComponents(
+    vc = IsentropicVelocityComponents(
         domain,
         enable_checks=nl.enable_checks,
         backend=nl.backend,
@@ -290,19 +315,19 @@ def main(backend=None, namelist="namelist_lfc.py", no_log=False):
     args.append(vc)
 
     # wrap the components in a ConcurrentCoupling object
-    slow_diags = taz.ConcurrentCoupling(
+    slow_diags = ConcurrentCoupling(
         *args,
         execution_policy="serial",
         enable_checks=nl.enable_checks,
         backend=nl.backend,
         backend_options=nl.bo,
-        storage_options=nl.so
+        storage_options=nl.so,
     )
 
     # ============================================================
     # The dynamical core
     # ============================================================
-    dycore = taz.IsentropicDynamicalCore(
+    dycore = IsentropicDynamicalCore(
         domain,
         moist=True,
         # parameterizations
@@ -345,7 +370,7 @@ def main(backend=None, namelist="namelist_lfc.py", no_log=False):
     nt = nl.niter
 
     # dict operator
-    dict_op = taz.DataArrayDictOperator(
+    dict_op = DataArrayDictOperator(
         backend=nl.backend, backend_options=nl.bo, storage_options=nl.so
     )
 
@@ -396,9 +421,9 @@ def main(backend=None, namelist="namelist_lfc.py", no_log=False):
     # Post-processing
     # ============================================================
     # print umax and vmax for validation
-    u = taz.to_numpy(state["x_velocity_at_u_locations"].data)
+    u = to_numpy(state["x_velocity_at_u_locations"].data)
     umax = u[:, :-1, :-1].max()
-    v = taz.to_numpy(state["y_velocity_at_v_locations"].data)
+    v = to_numpy(state["y_velocity_at_v_locations"].data)
     vmax = v[:-1, :, :-1].max()
     print(f"Validation: umax = {umax:.5f}, vmax = {vmax:.5f}")
 
@@ -408,13 +433,8 @@ def main(backend=None, namelist="namelist_lfc.py", no_log=False):
 
     if not no_log:
         # save to file
-        exec_info_to_csv(nl.exec_info_csv, nl.backend, nl.bo)
-        run_info_to_csv(
-            nl.run_info_csv, backend, Timer.get_time("compute_time", "s")
-        )
-        run_info_to_csv(
-            nl.stencil_info_csv, backend, Timer.get_time("stencil", "s")
-        )
+        exec_info_to_csv(nl.exec_info_csv, "lfc", nl.backend, nl.bo)
+        run_info_to_csv(nl.run_info_csv, "lfc", nl.backend)
         Timer.log(nl.log_txt, "s")
 
 

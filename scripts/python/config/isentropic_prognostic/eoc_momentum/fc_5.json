@@ -1,4 +1,0 @@
-{
-  "config_coarse": "config/isentropic_prognostic/rmsd_momentum/fc_4.json",
-  "config_fine": "config/isentropic_prognostic/rmsd_momentum/fc_5.json"
-}

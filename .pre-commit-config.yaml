@@ -2,7 +2,7 @@
 #
 # Tasmania
 #
-# Copyright (c) 2018-2021, ETH Zurich
+# Copyright (c) 2018-2024, ETH Zurich
 # All rights reserved.
 #
 # This file is part of the Tasmania project. Tasmania is free software:
@@ -25,27 +25,34 @@
 # See https://pre-commit.com/hooks.html for more hooks
 repos:
 -   repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v3.4.0
+    rev: v4.5.0
     hooks:
-    -   id: check-yaml
     -   id: check-added-large-files
+        args: ["--maxkb=20000"]  # maximum size set to 20MB
+    -   id: check-ast
     -   id: check-case-conflict
     -   id: check-json
     -   id: check-merge-conflict
+    -   id: check-yaml
     -   id: debug-statements
     -   id: end-of-file-fixer
     -   id: fix-encoding-pragma
+    -   id: mixed-line-ending
     -   id: requirements-txt-fixer
     -   id: trailing-whitespace
-#-   repo: https://github.com/pre-commit/mirrors-autopep8
-#    rev: v1.4.4
-#    hooks:
-#    -   id: autopep8
 -   repo: https://github.com/pre-commit/pygrep-hooks
-    rev: v1.8.0
+    rev: v1.10.0
     hooks:
+    -   id: python-check-blanket-noqa
+    -   id: python-check-blanket-type-ignore
+    -   id: python-use-type-annotations
     -   id: rst-backticks
 -   repo: https://github.com/psf/black
-    rev: 21.5b1
+    rev: 24.4.0
     hooks:
     -   id: black
+-   repo: https://github.com/PyCQA/autoflake
+    rev: v2.2.1
+    hooks:
+    -   id: autoflake
+        args: [--in-place, --remove-all-unused-imports, --ignore-init-module-imports]

@@ -2,7 +2,7 @@
 #
 # Tasmania
 #
-# Copyright (c) 2018-2021, ETH Zurich
+# Copyright (c) 2018-2024, ETH Zurich
 # All rights reserved.
 #
 # This file is part of the Tasmania project. Tasmania is free software:

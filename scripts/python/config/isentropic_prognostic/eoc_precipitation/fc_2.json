@@ -1,4 +1,0 @@
-{
-  "config_coarse": "config/isentropic_prognostic/rmsd_precipitation/fc_1.json",
-  "config_fine": "config/isentropic_prognostic/rmsd_precipitation/fc_2.json"
-}
