@@ -26,7 +26,7 @@ import collections
 import functools
 import inspect
 
-from gt4py.cartesian import backend as gtc_backend, gtscript
+from gt4py.cartesian import gtscript
 
 from tasmania.externals import cupy, numba
 from tasmania.framework.options import BackendOptions
@@ -111,8 +111,6 @@ def compiler_gt4py(definition, *, backend_options=None):
     backend_opts = bo.backend_opts or {}
     if gt_backend not in ("debug", "numpy"):
         backend_opts.setdefault("verbose", bo.verbose)
-    if gtc_backend.REGISTRY[gt_backend].storage_info["device"] == "gpu":
-        backend_opts.setdefault("device_sync", bo.device_sync)
     return gtscript.stencil(
         gt_backend,
         definition,
