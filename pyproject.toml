@@ -22,8 +22,7 @@ dependencies = [
 	'matplotlib>=2.0',
 	'netcdf4>=1.3',
 	'numpy>=1.22',
-	'pandas',
-	'pydantic<2.0',
+	'pint',
 	'sympl @ git+https://github.com/stubbiali/sympl.git@oop',
 ]
 description = 'Tasmania: Prototype framework for composable weather and climate models in Python.'
