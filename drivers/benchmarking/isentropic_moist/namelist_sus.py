@@ -20,27 +20,23 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+
 from datetime import datetime, timedelta
 import numpy as np
 import os
-import socket
+
 from sympl import DataArray
-import tasmania as taz
+
+from tasmania.framework.options import BackendOptions, StorageOptions
 
 
 # computational domain
-domain_x = DataArray([-176, 176], dims="x", attrs={"units": "km"}).to_units(
-    "m"
-)
+domain_x = DataArray([-176, 176], dims="x", attrs={"units": "km"}).to_units("m")
 nx = 161
-domain_y = DataArray([-176, 176], dims="y", attrs={"units": "km"}).to_units(
-    "m"
-)
+domain_y = DataArray([-176, 176], dims="y", attrs={"units": "km"}).to_units("m")
 ny = 161
-domain_z = DataArray(
-    [400, 280], dims="potential_temperature", attrs={"units": "K"}
-)
-nz = 60
+domain_z = DataArray([400, 280], dims="potential_temperature", attrs={"units": "K"})
+nz = 120
 
 # horizontal boundary
 hb_type = "relaxed"
@@ -48,8 +44,8 @@ nb = 3
 hb_kwargs = {"nr": 6}
 
 # backend settings
-backend = "gt4py:gtmc"
-bo = taz.BackendOptions(
+backend = "gt4py:gt:cpu_kfirst"
+bo = BackendOptions(
     # gt4py
     build_info={},
     exec_info={"__aggregate_data": True},
@@ -63,9 +59,7 @@ bo = taz.BackendOptions(
     nopython=True,
     parallel=True,
 )
-so = taz.StorageOptions(
-    dtype=np.float64, aligned_index=(nb, nb, 0), managed="gt4py"
-)
+so = StorageOptions(dtype=np.float64, aligned_index=(nb, nb, 0), managed="gt4py")
 enable_checks = False
 
 # topography
@@ -138,25 +132,11 @@ saturation_rate = DataArray(0.025, attrs={"units": "s^-1"})
 update_frequency = 0
 
 # simulation length
-timestep = timedelta(seconds=10)
+timestep = timedelta(seconds=5)
 niter = 100
 
 # output
-hostname = socket.gethostname()
-if "nid" in hostname:
-    if os.path.exists("/scratch/snx3000"):
-        prefix = "/scratch/snx3000/subbiali/timing/oop/20210607"
-    else:
-        prefix = "/scratch/snx3000tds/subbiali/timing/oop/20210607"
-elif "daint" in hostname:
-    prefix = "/scratch/snx3000/subbiali/timing/oop/20210607"
-elif "dom" in hostname:
-    prefix = "/scratch/snx3000tds/subbiali/timing/oop/20210607"
-else:
-    prefix = "../timing/oop/mbp/20210607"
-exec_info_csv = os.path.join(
-    prefix, f"isentropic_moist_exec_sus_{backend}.csv"
-)
-run_info_csv = os.path.join(prefix, "isentropic_moist_run_sus.csv")
-stencil_info_csv = os.path.join(prefix, "isentropic_moist_stencil_sus.csv")
-log_txt = os.path.join(prefix, f"isentropic_moist_log_sus_{backend}.txt")
+data_dir = os.path.join(os.path.dirname(__file__), "../../../data")
+exec_info_csv = os.path.join(data_dir, "isentropic_moist_exec.csv")
+run_info_csv = os.path.join(data_dir, "isentropic_moist_run.csv")
+log_txt = os.path.join(data_dir, f"isentropic_moist_log_sus_{backend}.txt")
